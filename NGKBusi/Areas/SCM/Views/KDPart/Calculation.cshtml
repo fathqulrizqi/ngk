@@ -1,0 +1,205 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($("#tblSCMCalculation").length) {
+                $("#tblSCMCalculation").tablesorter({
+                    theme: 'metro-dark',
+                    widthFixed: true,
+                    widgets: ['columns', 'filter', 'stickyHeaders']
+                }).tablesorterPager({
+                    container: $(".pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: 50
+                });
+            }
+            $("#tblSCMCalculation tr[data-method='CALCULATION']").each(function () {
+                var currTR = $(this);
+                var get = currTR.data("get");
+                var gims = currTR.data("item");
+                var ajaxURL = "";
+                switch (get) {
+                    case "USAGE":
+                        ajaxURL = "/NGKBusi/SCM/KDPart/GetUsage";
+                        break;
+                    case "ARRIVAL":
+                        ajaxURL = "/NGKBusi/SCM/KDPart/GetArrival";
+                        break;
+                    case "STOCK":
+                        ajaxURL = "/NGKBusi/SCM/KDPart/GetStock";
+                        break;
+                    case "LEVEL":
+                        ajaxURL = "/NGKBusi/SCM/KDPart/GetStockLevel";
+                        break;
+                    default:
+                        break;
+                }
+                //alert(new Date(new Date().setMonth(-1)).getMonth() + "||" + new Date(new Date().setMonth(-1)).getFullYear() + "||" + new Date().getFullYear());
+                var StockPrevQTY = 0;
+                $("td:not(:first-child)", this).each(function () {
+                    var currTD = $(this);
+                    var dt = currTD.data("dt");
+                    var type = currTD.data("type");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        type: "POST",
+                        url: ajaxURL,
+                        data: { iGIMS: gims, iDate: dt, iType: type },
+                        tryCount: 0,
+                        tryLimit: 3,
+                        success: function (data) {
+                            var dataVal = data;
+                            if (get == "STOCK" && dt >= new Date().setMonth(-1)) {
+                                StockPrevQTY = StockPrevQTY + data;
+                            } else {
+                                StockPrevQTY = 0;
+                            }
+
+                            if (get == "STOCK" && dt == "B") {
+                                dataVal = accounting.formatNumber(data + StockPrevQTY);
+                                StockPrevQTY = StockPrevQTY + data;
+                            } else {
+                                dataVal = accounting.formatNumber(data);
+                            }
+                            if (get == "LEVEL") {
+                                dataVal = data;
+                            }
+                            currTD.text(dataVal);
+                            if (parseInt(dataVal) < 0) {
+                                currTD.css("background-color", "red");
+                            }
+                            currTD.LoadingOverlay("hide");
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                        }
+                    });
+                });
+            });
+        });
+    </script>
+}
+
+<h2>KD Part Calculation</h2>
+<hr />
+<table id="tblSCMCalculation">
+    <thead>
+        <tr>
+            <th class="filter-select" data-placeholder="-Origin-">Type</th>
+            <th>Item Name</th>
+            <th>GIMS</th>
+            <th class="filter-false"></th>
+            <th>@(DateTime.Now.AddMonths(-3).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(-2).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(-1).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(1).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(2).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(3).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(4).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(5).ToString("MMM-yy"))</th>
+            <th>@(DateTime.Now.AddMonths(6).ToString("MMM-yy"))</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.Calculation)
+        {
+            <tr>
+                <td rowspan="4">@data.Type</td>
+                <td rowspan="4">@data.Item_Name</td>
+                <td rowspan="4">@data.GIMS</td>
+            </tr>
+            <tr data-method="CALCULATION" data-get="USAGE" data-item="@(data.GIMS)">
+                <td>USAGE</td>
+                <td data-dt="@(DateTime.Now.AddMonths(-3))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-2))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-1))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now)" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(1))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(2))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(3))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(4))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(5))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(6))" data-type="B"></td>
+            </tr>
+            <tr data-method="CALCULATION" data-get="ARRIVAL" data-item="@(data.GIMS)">
+                <td>ARRIVAL</td>
+                <td data-dt="@(DateTime.Now.AddMonths(-3))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-2))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-1))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now)" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(1))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(2))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(3))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(4))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(5))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(6))" data-type="B"></td>
+            </tr>
+            <tr data-method="CALCULATION" data-get="STOCK" data-item="@(data.GIMS)">
+                <td>STOCK</td>
+                <td data-dt="@(DateTime.Now.AddMonths(-3))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-2))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-1))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now)" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(1))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(2))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(3))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(4))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(5))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(6))" data-type="B"></td>
+            </tr>
+            @*<tr data-method="CALCULATION" data-get="LEVEL" data-item="@(data.GIMS)" style="display:none;">
+                <td>STOCK LEVEL</td>
+                <td data-dt="@(DateTime.Now.AddMonths(-3))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-2))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(-1))" data-type="A"></td>
+                <td data-dt="@(DateTime.Now)" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(1))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(2))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(3))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(4))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(5))" data-type="B"></td>
+                <td data-dt="@(DateTime.Now.AddMonths(6))" data-type="B"></td>
+            </tr>*@
+        }
+
+    </tbody>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="14">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>

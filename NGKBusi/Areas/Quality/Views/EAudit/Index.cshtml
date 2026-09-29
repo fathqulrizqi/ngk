@@ -1,0 +1,745 @@
+﻿@{
+    ViewBag.Title = "Audit Event Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Library CSS & JS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Menggunakan Highcharts -->
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script>
+<script src="https://code.highcharts.com/modules/accessibility.js"></script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        overflow-x: hidden;
+    }
+
+    .highcharts-background {
+        fill: transparent;
+    }
+
+    #detailSidebar {
+        transition: transform 0.3s ease-in-out;
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    #dashboard-slider-container {
+        transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+</style>
+
+<!-- Main Wrapper -->
+<div class="min-h-screen p-4 lg:p-6 font-sans relative max-w-[1600px] mx-auto overflow-hidden">
+
+    <!-- Top Navbar / Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow-sm mb-6 border border-slate-200 border-t-4 border-t-blue-600 gap-4 md:gap-4 relative overflow-hidden">
+        <div class="flex items-center gap-3 w-full md:w-auto">
+            <div class="bg-blue-600 text-white p-2.5 rounded-lg shadow-sm shrink-0 hidden md:block">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            </div>
+            <div class="flex-1 w-full">
+                <h1 class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Internal Audit Dashboard</h1>
+
+                <!-- Ubah w-64 dan w-80 di sini menjadi lebih panjang, contoh: w-96 dan w-[500px] -->
+                <div class="relative inline-block w-full md:w-96 lg:w-[500px]">
+
+                    <select id="eventSelector" onchange="changeEvent(this.value)" class="appearance-none bg-transparent text-base sm:text-lg font-bold text-blue-700 tracking-tight pr-6 py-1 cursor-pointer focus:outline-none focus:ring-0 border-b border-transparent hover:border-blue-300 transition-colors w-full truncate">
+                        @if (ViewBag.EventList != null)
+                        {
+                            foreach (var data in ViewBag.EventList)
+                            {
+                                <option value="@data.audit_event_id">@data.audit_name</option>
+                            }
+                        }
+                        else
+                        {
+                            <option value="">-- No event data --</option>
+                        }
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-blue-600">
+                        <i class="bi bi-chevron-down text-xs sm:text-sm font-bold"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-[11px] md:text-xs text-slate-500 italic bg-blue-50/50 text-blue-700 px-3 py-2 md:px-4 rounded-lg border border-blue-100 flex items-center gap-2 w-full md:w-auto shrink-0">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>Click the chart area to view details.</span>
+        </div>
+    </div>
+
+    <!-- ================= 1. SCORECARD ================= -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-center transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-slate-500 font-medium">Total Findings</p>
+            <p class="text-xl md:text-2xl font-bold text-slate-800 mt-0.5" id="sumTotal">0</p>
+        </div>
+        <div class="bg-red-50 border border-red-100 rounded-xl p-3 shadow-sm flex flex-col justify-center transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-red-600 font-medium">Major</p>
+            <p class="text-xl md:text-2xl font-bold text-red-600 mt-0.5" id="sumMajor">0</p>
+        </div>
+        <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 shadow-sm flex flex-col justify-center transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-orange-600 font-medium">Minor</p>
+            <p class="text-xl md:text-2xl font-bold text-orange-600 mt-0.5" id="sumMinor">0</p>
+        </div>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 shadow-sm flex flex-col justify-center transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-blue-600 font-medium">OFI</p>
+            <p class="text-xl md:text-2xl font-bold text-blue-600 mt-0.5" id="sumOFI">0</p>
+        </div>
+        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 shadow-sm flex flex-col justify-center relative overflow-hidden transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-indigo-600 font-medium tracking-tight">Catatan Approved</p>
+            <div class="flex flex-wrap items-center justify-between mt-0.5 relative z-10 gap-1">
+                <p class="text-xl md:text-2xl font-bold text-indigo-600 flex items-baseline">
+                    <span id="sumCatApp">0</span>
+                    <span class="text-xs md:text-sm font-semibold text-indigo-400 ml-1">/ <span id="sumCatReq">0</span></span>
+                </p>
+                <span class="bg-rose-100 text-rose-700 border border-rose-200 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm" id="sumCatRej">0 Reject</span>
+            </div>
+        </div>
+        <div class="bg-teal-50 border border-teal-100 rounded-xl p-3 shadow-sm flex flex-col justify-center relative overflow-hidden transition hover:shadow-md">
+            <p class="text-[10px] md:text-[11px] text-teal-600 font-medium tracking-tight">Laporan Approved</p>
+            <div class="flex flex-wrap items-center justify-between mt-0.5 relative z-10 gap-1">
+                <p class="text-xl md:text-2xl font-bold text-teal-600 flex items-baseline">
+                    <span id="sumLapApp">0</span>
+                    <span class="text-xs md:text-sm font-semibold text-teal-400 ml-1">/ <span id="sumLapReq">0</span></span>
+                </p>
+                <span class="bg-rose-100 text-rose-700 border border-rose-200 text-[9px] md:text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm" id="sumLapRej">0 Reject</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MULTI-PAGE DASHBOARD SLIDESHOW ================= -->
+    <div class="relative group max-w-full mx-auto m-0">
+
+        <!-- Navigasi Atas & Indikator Halaman -->
+        <div class="flex justify-between items-center bg-white/80 backdrop-blur p-3 rounded-xl border border-slate-200 mb-4 shadow-sm relative z-30">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                <span class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="dashboard-page-title">Page 1: Findings Distribution & Categories</span>
+            </div>
+            <div class="flex gap-2" id="dashboard-dots">
+                <button class="w-6 h-1.5 rounded-full bg-blue-600 transition-all duration-300" data-page="0"></button>
+                <button class="w-3 h-1.5 rounded-full bg-slate-200 hover:bg-slate-300 transition-all duration-300" data-page="1"></button>
+            </div>
+        </div>
+
+        <!-- Tombol Panah Kiri (Prev) -->
+        <button id="dashboard-prev" class="absolute -left-2 lg:-left-5 top-[55%] transform -translate-y-1/2 bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200 rounded-full p-2.5 z-30 opacity-5 group-hover:opacity-100 transition-all duration-300 disabled:opacity-30">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+
+        <!-- Tombol Panah Kanan (Next) -->
+        <button id="dashboard-next" class="absolute -right-2 lg:-right-5 top-[55%] transform -translate-y-1/2 bg-white/90 hover:bg-white text-slate-700 shadow-md border border-slate-200 rounded-full p-2.5 z-30 opacity-5 group-hover:opacity-100 transition-all duration-300 disabled:opacity-30">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <!-- Window Slider Container -->
+        <div id="dashboard-slider-container" class="overflow-hidden w-full rounded-xl relative">
+            <div class="flex transition-transform duration-500 ease-in-out w-full items-start" id="dashboard-track">
+
+                <!-- SLIDE 1: HALAMAN SEBARAN -->
+                <div class="w-full shrink-0 min-w-0 dashboard-slide-item">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                        <div class="flex flex-col gap-4 lg:col-span-2 min-w-0">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-0 w-full">
+                                <h2 class="text-sm font-bold text-slate-800 mb-2">Percentage of Finding Categories</h2>
+                                <div id="chart-pie-kategori" class="h-[260px] w-full"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-0 w-full">
+                                <h2 class="text-sm font-bold text-slate-800 mb-2">Total Findings per Section</h2>
+                                <div id="chart-pie-dept" class="h-[260px] w-full"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-4 lg:col-span-3 min-w-0">
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-0 w-full">
+                                <h2 class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded inline-block mb-1">Distribution of OFI</h2>
+                                <div id="chart-bar-ofi" class="h-[150px] w-full"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-0 w-full">
+                                <h2 class="text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-1 rounded inline-block mb-1">Distribution of Minor</h2>
+                                <div id="chart-bar-minor" class="h-[150px] w-full"></div>
+                            </div>
+                            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-0 w-full">
+                                <h2 class="text-xs font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded inline-block mb-1">Distribution of Major</h2>
+                                <div id="chart-bar-major" class="h-[150px] w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SLIDE 2: HALAMAN APPROVAL -->
+                <div class="w-full shrink-0 min-w-0 dashboard-slide-item">
+                    <div class="w-full space-y-4">
+                        <div class="bg-white p-3 md:pb-0 md:px-3 md:pt-3 rounded-xl shadow-sm border border-slate-200 min-w-0 w-full overflow-hidden">
+                            <div class="flex items-center mb-3">
+                                <h2 class="text-sm font-bold text-slate-800 tracking-tight">
+                                    Approval of Form CAR (PMLK3-MR-11/L1) & OFI
+                                </h2>
+                            </div>
+                            <div class="w-full max-w-full overflow-hidden">
+                                <div id="chart-app-tindaklanjut" class="h-[180px] w-full"></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 md:pb-0 md:px-3 md:pt-3 rounded-xl shadow-sm border border-slate-200 min-w-0 w-full overflow-hidden">
+                            <div class="flex items-center mb-3">
+                                <h2 class="text-sm font-bold text-slate-800 tracking-tight">Approval of Form Catatan Audit (PMLK3-MR-09/L3)</h2>
+                            </div>
+                            <div class="w-full max-w-full overflow-hidden">
+                                <div id="chart-app-catatan" class="h-[180px] w-full"></div>
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 md:pb-0 md:px-3 md:pt-3 rounded-xl shadow-sm border border-slate-200 min-w-0 w-full overflow-hidden">
+                            <div class="flex items-center mb-3">
+                                <h2 class="text-sm font-bold text-slate-800 tracking-tight">Approval of Form Laporan Temuan Audit Internal (PMLK3-MR-09/L4)</h2>
+                            </div>
+                            <div class="w-full max-w-full overflow-hidden">
+                                <div id="chart-app-laporan" class="h-[180px] w-full"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= SIDEBAR (OFFCANVAS) ================= --><!-- ================= SIDEBAR (OFFCANVAS) ================= -->
+<div id="detailSidebar" class="fixed top-0 right-0 h-full w-[85%] max-w-[320px] bg-white shadow-2xl border-l border-slate-200 z-50 transform translate-x-full flex flex-col">
+    <div class="p-3 flex-1 overflow-y-auto">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-lg font-bold text-slate-800">Detail Chart</h3>
+            <button onclick="closeSidebar()" class="text-slate-400 hover:text-red-500 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100">
+            <p class="text-[11px] text-slate-500 uppercase tracking-wider mb-1 font-semibold">Konteks Data</p>
+            <p id="sb-context" class="font-bold text-slate-800">-</p>
+        </div>
+
+        <div class="bg-blue-50 p-4 rounded-xl mb-6 border border-blue-100 flex items-center justify-between">
+            <div>
+                <p class="text-[11px] text-blue-600 uppercase tracking-wider mb-1 font-semibold">Jumlah Data</p>
+                <p id="sb-value" class="text-3xl font-black text-blue-700">-</p>
+            </div>
+            <div class="text-blue-200">
+                <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+            </div>
+        </div>
+
+        <!-- AREA LIST LINK DINAMIS -->
+        <div>
+            <p class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-3">Tindakan Lanjutan</p>
+            <div id="sb-action-list" class="flex flex-col gap-2.5">
+                <!-- Link akan digenerate dari Javascript ke sini -->
+            </div>
+        </div>
+    </div>
+</div>
+<div id="sidebarOverlay" onclick="closeSidebar()" class="fixed inset-0 bg-slate-900 bg-opacity-20 backdrop-blur-sm z-40 hidden transition-opacity"></div>
+
+<script>
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+
+    const catMajor = '#dc2626', catMinor = '#ea580c', catOFI = '#2563eb';
+    const colorReq = '#cbd5e1', colorApp = '#10b981', colorRej = '#f43f5e';
+
+    let currentEventId = $('#eventSelector').val();
+    let chartInstances = {};
+    let sectionDataMap = {}; // Menyimpan relasi Singkatan Section -> Full Name & StakeholderId
+
+    function openSidebar(konteks, nilai, categoryName, seriesName, chartType) {
+        document.getElementById('sb-context').innerText = konteks;
+        document.getElementById('sb-value').innerText = nilai + (konteks.includes("Total") ? " Dokumen" : " Item");
+
+        let sData = sectionDataMap[categoryName];
+        let sFullName = sData ? sData.fullName : '';
+        let sId = sData ? sData.stakeholderId : '';
+
+        let listContainer = document.getElementById('sb-action-list');
+
+        listContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-6 text-slate-400">
+                <svg class="animate-spin w-6 h-6 text-blue-500 mb-2" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span class="text-xs font-medium">Memuat data dokumen...</span>
+            </div>
+        `;
+        document.getElementById('detailSidebar').classList.remove('translate-x-full');
+        document.getElementById('sidebarOverlay').classList.remove('hidden');
+
+        // ========================================================
+        // PENGECEKAN: Apakah perlu meload list CAR/OFI?
+        // (Berlaku untuk Halaman 1 ATAU ketika chart yang diklik adalah Tindak Lanjut)
+        // ========================================================
+        let isDocumentList = (currentPage === 0) || (chartType === 'TindakLanjut');
+
+        if (isDocumentList) {
+            $.ajax({
+                url: '@Url.Action("GetCAROFI", "EAudit")',
+                type: 'GET',
+                data: {
+                    search: '',
+                    page: 1,
+                    pageSize: 1000,
+                    section: sFullName,
+                    eventId: currentEventId
+                },
+                success: function (response) {
+                    let html = '';
+
+                    if (response.success && response.data.length > 0) {
+                        let filteredData = response.data;
+
+                        // =====================================
+                        // 1. FILTERING DATA BERDASARKAN KLIK
+                        // =====================================
+                        if (chartType === 'TindakLanjut') {
+                            // Filter khusus untuk chart Tindak Lanjut (Approve / Reject)
+                            if (seriesName === 'Approve') {
+                                filteredData = filteredData.filter(item => item.Verification1 === 'Approved' && item.Verification2 === 'Approved');
+                            } else if (seriesName === 'Reject') {
+                                filteredData = filteredData.filter(item => item.Verification1 === 'Rejected' && item.Verification2 === 'Rejected');
+                            }
+                            // Catatan: Jika yang diklik adalah 'Target', maka kita biarkan menampilkan SEMUA dokumen tanpa difilter.
+                        }
+                        else {
+                            // Filter untuk chart sebaran di Halaman 1 (Minor, Major, OFI)
+                            if (seriesName === 'Minor' || seriesName === 'Major' || seriesName === 'OFI') {
+                                filteredData = filteredData.filter(item => item.StatusProblem && item.StatusProblem.trim().toLowerCase() === seriesName.trim().toLowerCase());
+                            } else if (categoryName === 'Minor' || categoryName === 'Major' || categoryName === 'OFI') {
+                                filteredData = filteredData.filter(item => item.StatusProblem && item.StatusProblem.trim().toLowerCase() === categoryName.trim().toLowerCase());
+                            }
+                        }
+
+                        // =====================================
+                        // 2. RENDER KARTU DOKUMEN
+                        // =====================================
+                        if (filteredData.length > 0) {
+                            filteredData.forEach(item => {
+                                let isOfi = item.StatusProblem && item.StatusProblem.toLowerCase() === 'ofi';
+
+                                // URL langsung menuju detail dokumen (Sudah jalan normal)
+                                let url = isOfi
+                                    ? '@Url.Action("DetailOFI", "EAudit")' + '?id=' + encodeURIComponent(item.Id)
+                                    : '@Url.Action("DetailCAR", "EAudit")' + '?id=' + encodeURIComponent(item.Id);
+
+                                let badgeStyle = isOfi
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                    : (item.StatusProblem && item.StatusProblem.toLowerCase() === 'major' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-orange-50 text-orange-700 border-orange-200');
+
+                                html += `
+                                    <a href="${url}" class="flex flex-col p-3 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:shadow-md transition-all group mb-2 relative overflow-hidden">
+                                    ${ item.Verification1 === 'Approved' && item.Verification2 === 'Approved' ? `
+                                        <div class="absolute top-0 right-0 bg-green-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-widest shadow-sm z-10">
+                                            Approved
+                                        </div>
+                                    ` : ''}
+                                        <div class="flex items-start justify-between w-full mb-1.5 gap-2 relative z-10 mt-1">
+
+                                            <div class="text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider shrink-0 ${badgeStyle}">
+                                                ${item.StatusProblem || 'CAR'}
+                                            </div>
+
+                                            <div class="flex-1 flex justify-end text-right text-[10px] text-slate-400 font-mono break-words ${item.Verification1 === 'Approved' && item.Verification2 === 'Approved' ? 'mr-12' : ''}">
+                                                ${item.Clause || '-'}
+                                            </div>
+                                        </div>
+                                        <p class="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition-colors leading-tight mb-1 truncate" title="${item.Id}">
+                                            ${item.Id}
+                                        </p>
+                                        <p class="text-[10px] text-slate-500 line-clamp-2 leading-relaxed">
+                                            ${item.Question || 'No question description.'}
+                                        </p>
+                                    </a>
+                                `;
+                            });
+                        } else {
+                            html = `
+                                <div class="text-center py-6 bg-slate-50 border border-slate-100 rounded-xl">
+                                    <p class="text-slate-400 text-xs font-medium">Data spesifik tidak ditemukan.</p>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        html = `
+                            <div class="text-center py-6 bg-slate-50 border border-slate-100 rounded-xl">
+                                <p class="text-slate-400 text-xs font-medium">Tidak ada dokumen untuk section ini.</p>
+                            </div>
+                        `;
+                    }
+
+                    listContainer.innerHTML = html;
+                },
+                error: function () {
+                    listContainer.innerHTML = '<div class="text-center py-4 text-red-500 text-xs font-bold">Gagal menarik data dari server.</div>';
+                }
+            });
+        }
+        // ========================================================
+        // LOGIC UNTUK CHART CATATAN & LAPORAN
+        // ========================================================
+        else {
+            let html = '';
+
+            if (chartType === 'Catatan' && sId) {
+                let url = '@Url.Action("AuditNotes", "EAudit")' + '?id=' + sId + '&type=ALL';
+
+                let cReq = sData.catatanReq;
+                let cApp = sData.catatanApp;
+                let cRej = sData.catatanRej;
+                let cPending = cReq - cApp - cRej; 
+                cPending = cPending < 0 ? 0 : cPending;
+
+                html = `
+                    <a href="${url}" class="flex flex-col p-3 bg-white border border-slate-200 rounded-xl hover:border-indigo-400 hover:shadow-md transition-all group">
+                        <div class="flex items-start gap-3 mb-2.5">
+                            <div class="bg-indigo-50 text-indigo-600 p-2.5 rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
+                                <i class="bi bi-journal-text text-lg"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-bold text-slate-800 group-hover:text-indigo-700">Catatan Audit</p>
+                                <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">Lihat detail persetujuan catatan ${categoryName}</p>
+                            </div>
+                        </div>
+
+                        <!-- Area Detail Metrik Catatan -->
+                        <div class="flex items-center justify-between mt-auto pt-2.5 border-t border-slate-100">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shadow-sm" title="Total Catatan">
+                                ${cReq} Total
+                            </span>
+                            <div class="flex gap-1.5">
+                                ${cPending > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-orange-50 text-orange-600 border border-orange-200 shadow-sm">${cPending} Pending</span>` : ''}
+                                ${cApp > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-green-50 text-green-600 border border-green-200 shadow-sm">${cApp} Apprv</span>` : ''}
+                                ${cRej > 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 shadow-sm">${cRej} Reject</span>` : ''}
+                                ${cReq === 0 ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-50 text-slate-400 border border-slate-200">Tidak ada</span>` : ''}
+                            </div>
+                        </div>
+                    </a>
+                `;
+            } else if (chartType === 'Laporan' && sId) {
+                let url = '@Url.Action("FindingsReport", "EAudit")' + '?id=' + sId;
+
+                // Menentukan warna badge Laporan
+                let lapStatus = sData.laporanStatus;
+                let lapBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+
+                if (lapStatus === 'Approved') lapBadgeClass = 'bg-green-50 text-green-600 border-green-200';
+                else if (lapStatus === 'Rejected') lapBadgeClass = 'bg-rose-50 text-rose-600 border-rose-200';
+                else if (lapStatus === 'Draft') lapBadgeClass = 'bg-orange-50 text-orange-600 border-orange-200';
+
+                html = `
+                    <a href="${url}" class="flex flex-col p-3 bg-white border border-slate-200 rounded-xl hover:border-teal-400 hover:shadow-md transition-all group">
+                        <div class="flex items-start gap-3 mb-2.5">
+                            <div class="bg-teal-50 text-teal-600 p-2.5 rounded-lg group-hover:bg-teal-600 group-hover:text-white transition-colors shrink-0">
+                                <i class="bi bi-clipboard-data text-lg"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-bold text-slate-800 group-hover:text-teal-700">Laporan Temuan</p>
+                                <p class="text-[10px] text-slate-500 mt-0.5 leading-snug">Lihat detail laporan untuk ${categoryName}</p>
+                            </div>
+                        </div>
+
+                        <!-- Area Detail Metrik Laporan -->
+                        <div class="flex items-center justify-between mt-auto pt-2.5 border-t border-slate-100">
+                            <span class="text-[10px] font-medium text-slate-500">Status Laporan:</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded border shadow-sm ${lapBadgeClass}">
+                                ${lapStatus}
+                            </span>
+                        </div>
+                    </a>
+                `;
+            }
+
+            listContainer.innerHTML = html;
+        }
+    }
+
+    function closeSidebar() {
+        document.getElementById('detailSidebar').classList.add('translate-x-full');
+        document.getElementById('sidebarOverlay').classList.add('hidden');
+    }
+
+    $(document).ready(function () {
+        Highcharts.setOptions({
+            credits: { enabled: false },
+            chart: { style: { fontFamily: 'inherit' } },
+            plotOptions: {
+                series: {
+                    cursor: 'pointer',
+                    borderRadius: 3,
+                    point: {
+                        events: {
+                            click: function () {
+                                let categoryName = this.series.type === 'pie' ? this.name : this.category;
+                                let seriesName = this.series.name;
+                                let chartType = this.series.chart.userOptions.chart.customType || '';
+                                let titleContext = categoryName + " - " + seriesName;
+
+                                // Kirim parameter tambahan ke sidebar
+                                openSidebar(titleContext, this.y, categoryName, seriesName, chartType);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (currentEventId) loadDashboardData();
+
+        window.addEventListener('resize', () => {
+            Object.values(chartInstances).forEach(chart => { if (chart) chart.reflow(); });
+            adjustSliderHeight();
+        });
+
+        $('#dashboard-next').click(function () { changeDashboardPage((currentPage + 1) % 2); });
+        $('#dashboard-prev').click(function () { changeDashboardPage((currentPage - 1 + 2) % 2); });
+        $('#dashboard-dots button').click(function () { changeDashboardPage($(this).data('page')); });
+    });
+
+    function changeEvent(eventId) {
+        if (!eventId) return;
+        currentEventId = eventId;
+        loadDashboardData();
+    }
+
+    function loadDashboardData() {
+        // Panggil API Rekapitulasi Utama
+        let reqRekap = $.ajax({
+            url: '@Url.Action("GetRekapitulasiAudit", "EAudit")',
+            type: 'GET',
+            data: { eventId: currentEventId }
+        });
+
+        // Panggil API CAR & OFI dengan pageSize besar agar semua data temuan terambil
+        let reqCarOfi = $.ajax({
+            url: '@Url.Action("GetCAROFI", "EAudit")',
+            type: 'GET',
+            data: { search: '', page: 1, pageSize: 10000, eventId: currentEventId, section: '', type: 'ALL' }
+        });
+
+        // Tunggu kedua request selesai
+        $.when(reqRekap, reqCarOfi).done(function (resRekap, resCarOfi) {
+            let rekap = resRekap[0]; // Hasil JSON dari GetRekapitulasiAudit
+            let carOfi = resCarOfi[0]; // Hasil JSON dari GetCAROFI
+
+            if (rekap.success && carOfi.success) {
+                // Update Scorecard Atas
+                $("#sumTotal").text(rekap.summary.totalFindings);
+                $("#sumMajor").text(rekap.summary.major);
+                $("#sumMinor").text(rekap.summary.minor);
+                $("#sumOFI").text(rekap.summary.ofi);
+                $("#sumCatApp").text(rekap.summary.catatanApproved);
+                $("#sumCatReq").text(rekap.summary.catatanRequired);
+                $("#sumCatRej").text(rekap.summary.catatanRejected + " Reject");
+                $("#sumLapApp").text(rekap.summary.laporanApproved);
+                $("#sumLapReq").text(rekap.summary.laporanRequired);
+                $("#sumLapRej").text(rekap.summary.laporanRejected + " Reject");
+
+                // Kirim KEDUA data ke fungsi proses chart
+                processChartData(rekap.data, carOfi.data);
+            } else {
+                Toast.fire({ icon: 'error', title: 'Gagal memuat sebagian data dashboard.' });
+            }
+        }).fail(function() {
+            Toast.fire({ icon: 'error', title: 'Terjadi kesalahan jaringan.' });
+        });
+    }
+
+    function processChartData(apiData, carOfiData) {
+    let depts = [];
+    let dataMinor = [], dataMajor = [], dataOFI = [];
+    let catReq = [], catApp = [], catRej = [];
+    let lapReq = [], lapApp = [], lapRej = [];
+
+    // Array untuk grafik Tindak Lanjut
+    let tlReq = [], tlApp = [], tlRej = [];
+
+    let sumMinor = 0, sumMajor = 0, sumOFI = 0;
+    sectionDataMap = {};
+
+    const getShortSectionName = (name) => {
+        if (!name) return "";
+        let match = name.match(/\(([^)]+)\)/);
+        return match ? match[1] : name;
+    };
+
+    // 1. Ekstrak nama Section & data Rekap lainnya
+    apiData.forEach(item => {
+        let labelSection = getShortSectionName(item.SectionName);
+        depts.push(labelSection);
+
+        sectionDataMap[labelSection] = {
+            fullName: item.SectionName,
+            stakeholderId: item.StakeholderId,
+            catatanReq: item.CatatanStatus.TotalCategoryActive || 0,
+            catatanApp: item.CatatanStatus.TotalCategoryFullyApproved || 0,
+            catatanRej: item.CatatanStatus.TotalCategoryRejected || 0,
+            laporanStatus: item.LaporanStatus || 'N/A'
+        };
+
+        dataMinor.push(item.Minor.Total);
+        dataMajor.push(item.Major.Total);
+        dataOFI.push(item.OFI.Total);
+
+        sumMinor += item.Minor.Total;
+        sumMajor += item.Major.Total;
+        sumOFI += item.OFI.Total;
+
+        catReq.push(item.CatatanStatus.TotalCategoryActive || 0);
+        catApp.push(item.CatatanStatus.TotalCategoryFullyApproved || 0);
+        catRej.push(item.CatatanStatus.TotalCategoryRejected || 0);
+
+        let lReq = item.LaporanStatus === 'N/A' ? 0 : 1;
+        let lApp = item.LaporanStatus === 'Approved' ? 1 : 0;
+        let lRej = item.LaporanStatus === 'Rejected' ? 1 : 0;
+
+        lapReq.push(lReq); lapApp.push(lApp); lapRej.push(lRej);
+    });
+
+    // 2. Kalkulasi Tindak Lanjut dari data GetCAROFI
+    // Buat penampung (dictionary) untuk setiap section
+    let tindakLanjutMap = {};
+    depts.forEach(d => {
+        tindakLanjutMap[d] = { target: 0, approve: 0, reject: 0 };
+    });
+
+    // Looping semua dokumen temuan CAR/OFI
+    if (carOfiData && carOfiData.length > 0) {
+        carOfiData.forEach(doc => {
+            let shortSec = getShortSectionName(doc.Section);
+
+            // Pastikan section dokumen ada di dalam daftar departemen
+            if (tindakLanjutMap[shortSec] !== undefined) {
+                // Tambah 1 ke Target (Total Form)
+                tindakLanjutMap[shortSec].target += 1;
+
+                // Cek Validasi Approved
+                if (doc.Verification1 === 'Approved' && doc.Verification2 === 'Approved') {
+                    tindakLanjutMap[shortSec].approve += 1;
+                }
+                // Cek Validasi Rejected (Keduanya Rejected sesuai instruksi)
+                // Note: Ubah '&&' menjadi '||' jika cukup 1 yang reject maka form dianggap reject
+                else if (doc.Verification1 === 'Rejected' && doc.Verification2 === 'Rejected') {
+                    tindakLanjutMap[shortSec].reject += 1;
+                }
+            }
+        });
+    }
+
+    // 3. Masukkan hasil kalkulasi ke dalam array grafik
+    depts.forEach(d => {
+        tlReq.push(tindakLanjutMap[d].target);
+        tlApp.push(tindakLanjutMap[d].approve);
+        tlRej.push(tindakLanjutMap[d].reject);
+    });
+
+    let pieDeptData = apiData.map(item => ({
+        name: getShortSectionName(item.SectionName),
+        y: item.Minor.Total + item.Major.Total + item.OFI.Total
+    })).filter(x => x.y > 0);
+
+    renderCharts(depts, sumMinor, sumMajor, sumOFI, dataMinor, dataMajor, dataOFI, pieDeptData, catReq, catApp, catRej, lapReq, lapApp, lapRej, tlReq, tlApp, tlRej);
+}
+
+    function renderCharts(depts, sMinor, sMajor, sOFI, dMinor, dMajor, dOFI, pieDeptData, catReq, catApp, catRej, lapReq, lapApp, lapRej, tlReq, tlApp, tlRej) {
+
+        chartInstances['pieCat'] = Highcharts.chart('chart-pie-kategori', {
+            chart: { type: 'pie', customType: 'Global' }, title: { text: null },
+            plotOptions: { pie: { innerSize: '60%', dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y} ({point.percentage:.1f}%)', style: { fontSize: '11px' } } } },
+            series: [{ name: 'Total', data: [{ name: 'Minor', y: sMinor, color: catMinor }, { name: 'Major', y: sMajor, color: catMajor }, { name: 'OFI', y: sOFI, color: catOFI }] }]
+        });
+
+        chartInstances['pieDept'] = Highcharts.chart('chart-pie-dept', {
+            chart: { type: 'pie', customType: 'Global' }, title: { text: null },
+            plotOptions: { pie: { innerSize: '60%', dataLabels: { enabled: true, format: '<b>{point.name}</b>: {point.y}', style: { fontSize: '10px' }, distance: 10 } } },
+            series: [{ name: 'Total', data: pieDeptData }]
+        });
+
+        const distOptions = {
+            chart: { type: 'column', scrollablePlotArea: { minWidth: 600, scrollPositionX: 0 }, customType: 'Sebaran' },
+            title: { text: null }, xAxis: { categories: depts, labels: { style: { fontSize: '9px' } } },
+            yAxis: { min: 0, title: null, labels: { style: { fontSize: '10px' } } }, legend: { enabled: false }
+        };
+
+        chartInstances['barMinor'] = Highcharts.chart('chart-bar-minor', Highcharts.merge(distOptions, { series: [{ name: 'Minor', data: dMinor, color: catMinor }] }));
+        chartInstances['barMajor'] = Highcharts.chart('chart-bar-major', Highcharts.merge(distOptions, { series: [{ name: 'Major', data: dMajor, color: catMajor }] }));
+        chartInstances['barOFI'] = Highcharts.chart('chart-bar-ofi', Highcharts.merge(distOptions, { series: [{ name: 'OFI', data: dOFI, color: catOFI }] }));
+
+        const appOptions = {
+            chart: { type: 'column', scrollablePlotArea: { minWidth: 600, scrollPositionX: 0 } },
+            title: { text: null }, xAxis: { categories: depts, labels: { style: { fontSize: '9px' } } },
+            yAxis: { min: 0, title: null, labels: { style: { fontSize: '10px' } }, allowDecimals: false },
+            legend: { align: 'center', verticalAlign: 'bottom', itemStyle: { fontSize: '10px' }, margin: 10 }
+        };
+
+        chartInstances['barTindakLanjut'] = Highcharts.chart('chart-app-tindaklanjut', Highcharts.merge(appOptions, {
+            chart: { customType: 'TindakLanjut' },
+            series: [{ name: 'Target', data: tlReq, color: colorReq }, { name: 'Approve', data: tlApp, color: colorApp }, { name: 'Reject', data: tlRej, color: colorRej }]
+        }));
+
+        chartInstances['barCatatan'] = Highcharts.chart('chart-app-catatan', Highcharts.merge(appOptions, {
+            chart: { customType: 'Catatan' },
+            series: [{ name: 'Target', data: catReq, color: colorReq }, { name: 'Approve', data: catApp, color: colorApp }, { name: 'Reject', data: catRej, color: colorRej }]
+        }));
+
+        chartInstances['barLaporan'] = Highcharts.chart('chart-app-laporan', Highcharts.merge(appOptions, {
+            chart: { customType: 'Laporan' },
+            series: [{ name: 'Target', data: lapReq, color: colorReq }, { name: 'Approve', data: lapApp, color: colorApp }, { name: 'Reject', data: lapRej, color: colorRej }]
+        }));
+
+        setTimeout(adjustSliderHeight, 300);
+    }
+
+    let currentPage = 0;
+    const pageTitles = ["Page 1: Findings Distribution & Categories", "Page 2: Document Approval Monitoring"];
+
+    function adjustSliderHeight() {
+        const activeSlide = $('.dashboard-slide-item').eq(currentPage);
+        const newHeight = activeSlide.outerHeight();
+        if (newHeight > 0) $('#dashboard-slider-container').css('height', newHeight + 'px');
+    }
+
+    function changeDashboardPage(pageIndex) {
+        currentPage = pageIndex;
+        $('#dashboard-track').css('transform', `translateX(${currentPage * -100}%)`);
+        $('#dashboard-page-title').text(pageTitles[currentPage]);
+        $('#dashboard-dots button').removeClass('bg-blue-600 w-6').addClass('bg-slate-200 w-3');
+        $('#dashboard-dots button').eq(currentPage).removeClass('bg-slate-200 w-3').addClass('bg-blue-600 w-6');
+
+        adjustSliderHeight();
+        setTimeout(() => { Object.values(chartInstances).forEach(chart => { if (chart) chart.reflow(); }); }, 300);
+    }
+</script>

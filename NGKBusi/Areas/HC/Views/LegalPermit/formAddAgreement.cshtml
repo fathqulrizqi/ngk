@@ -1,0 +1,434 @@
+@{
+    ViewBag.Title = "Recap Agreement & Permit";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+@section cssHead{
+
+
+<style>
+    .input-group-append {
+        cursor: pointer;
+    }
+
+    .has-error .select2-selection {
+        border-color: #dc3545 !important;
+    }
+
+
+
+    .card img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+    }
+
+    .card-header .customs {
+    }
+
+    #txtQuantity-error {
+        font-size: 18px;
+    }
+
+    .form-switch {
+        padding-left: 8.5em;
+    }
+
+    .select2-container .select2-selection--single {
+        height: 38px !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+        border: 1px solid #ccc !important;
+        border-radius: 4px !important;
+        line-height: 36px;
+    }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #444;
+            line-height: 36px;
+        }
+</style>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+}
+
+
+<script src="@Url.Content(" ~ /Content/bootstrap-table/bootstrap-table.min.js")"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+
+<script src="https://unpkg.com/gijgo@1.9.14/js/gijgo.min.js" type="text/javascript"></script>
+<link href="https://unpkg.com/gijgo@1.9.14/css/gijgo.min.css" rel="stylesheet" type="text/css" />
+
+<div class="row">
+    <div class="col-12">
+        <div class="card" style="text-align: left; box-shadow: 0 5px 10px rgba(0,0,0,.2);">
+            <form method="post" enctype="multipart/form-data" id="formAddAgreement">
+                <div class="card-header bg-primary rounded-top rounded-5" style="text-align: center; color: white; font-weight: bold; font-size: medium; box-shadow: inherit;">
+                    @(ViewBag.ID == "0" ? "Detail of Agreement" : "Detail of Permit")
+                </div>
+                @if (ViewBag.ID == "0")
+                {
+                <div class="card-body">
+                    <input type="hidden" name="IDForm" value="@ViewBag.ID" />
+                    <div class="col-md-12">
+                        <label for="txtAgreementName" class="form-label">Name Of Agreement</label>
+                        <input type="text" name="AgreementName" class="form-control" id="txtAgreementName" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtSecondParty" class="form-label">Second Party</label>
+                        <input type="text" name="SecondParty" class="form-control" id="txtSecondParty" autocomplete="off" required>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <label for="txtAgreementNo" class="form-label">Agreement No.</label>
+                        <input type="text" name="AgreementNo" class="form-control" id="txtAgreementNo" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="datepicker" class="form-label">Periode Start</label>
+                        <input type="text" name="PeriodeStart" class="form-control" id="datepicker" value="" autocomplete="off" />
+                    </div>
+                    <div class="col-md-12">
+                        <label for="datepicker2" class="form-label">Periode End</label>
+                        <input type="text" name="PeriodeEnd" class="form-control" id="datepicker2" autocomplete="off">
+                    </div>
+                    <div class="col-md-12">
+                        <label for="fileAttachment" class="form-label">Attachment</label>
+                        <input type="file" name="FileAttachment" class="form-control" id="fileAttachment">
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtAgreementType" class="form-label">Agreement Type</label>
+                        <input type="text" name="AgreementType" class="form-control" id="txtAgreementType">
+                    </div>
+                </div>
+                }
+                else
+                {
+                <div class="card-body">
+                    <input type="hidden" name="IDForm" value="@ViewBag.ID" />
+                    <div class="col-md-12">
+                        <label for="txtPermit" class="form-label">Name of Permit</label>
+                        <input type="text" name="Permit" class="form-control" id="txtPermit" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtNumber" class="form-label">Number</label>
+                        <input type="text" name="Number" class="form-control" id="txtNumber" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtPermit" class="form-label">Section Handling</label>
+                        <select class="form-control selMultiple" id="selSection" multiple data-live-search="true" name="SectionHandling" data-placeholder="Section" style="width:100%" required>
+                            @foreach (var item in ViewBag.Section)
+                            {
+                            <option value="@item.COSTNAME">@item.COSTNAME</option>
+                            }
+
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtGoverment" class="form-label">Goverment</label>
+                        <input type="text" name="Goverment" class="form-control" id="txtGoverment" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="txtGoverment" class="form-label">Expired Date</label>
+                        <input type="text" name="PeriodeEnd" class="form-control" id="datepicker" autocomplete="off" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="selPIC" class="form-label">PIC</label>
+                        <select class="form-control selPIC" id="selPIC" multiple data-live-search="true" name="PIC" data-placeholder="Select Person" style="width:100%" required>
+                            @foreach (var item in ViewBag.Listuser)
+                            {
+                            <option value="@item.NIK">@item.Name</option>
+                            }
+
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label for="fileAttachment" class="form-label">Attachment</label>
+                        <input type="file" name="FileAttachment" class="form-control" id="fileAttachment">
+                    </div>
+                </div>
+                }
+
+                <div class="card-header bg-primary rounded-top rounded-bottom rounded-5" style="text-align: center; color: white; font-weight: bold; font-size: medium; box-shadow: inherit;">
+                    Setting Reminder
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <input type="hidden" name="ID" />
+                        @* ambil dari name of agreement *@
+                        @*<div class="col-md-12">
+                            <label for="inputEmail4" class="form-label">Reminder Title</label>
+                            <input type="text" name="ReminderTitle" class="form-control" id="txtTitle">
+                        </div>*@
+                        @* auto select permit *@
+                        @*<div class="col-md-6 mt-2">
+                            <label for="inputPassword4" class="form-label">Module</label>
+                            <select class="form-control" name="module" id="selModule">
+                                <option value="budget">Budget + License</option>
+                                <option value="permit">Permit</option>
+                                <option value="license">License</option>
+                            </select>
+                        </div>*@
+                        @* ambil dari agreement type *@
+                        @*<div class="col-md-6 mt-2">
+                            <label for="" class="form-label">Type</label>
+                            <input type="text" name="Type" class="form-control" id="txtType">
+                        </div>*@
+                        @* diambil dari second party *@
+                        @*<div class="col-6 mt-2">
+                            <label for="inputAddress2" class="form-label">Third Party</label>
+                            <select class="form-control select2" data-live-search="true" id="selThirdParty" name="ThirdParty" required style="display:none">
+                                @{
+
+                                foreach (var usr in ViewBag.ListVendor)
+                                {
+
+                                <option value="@(usr.ACCOUNTNUM)">@(usr.Name)  </option>
+                                }
+                                }
+                            </select>
+                            <input type="text" name="ThirdParty" class="form-control" id="txtThirdParty" style="display:none">
+                        </div>*@
+                        @* ambil dari name of agreement *@
+                        @*<div class="col-md-6 mt-2">
+                            <label for="inputCity" class="form-label">Description</label>
+                            <input type="text" name="Description" class="form-control" id="txtDescription">
+                        </div>*@
+                        @* ambil dari attachment agreement *@
+                        @*<div class="col-md-12 mt-2">
+                            <label for="inputCity" class="form-label">Attachment</label>
+                            <input type="file" name="FileAttachment" class="form-control" id="fileAttachment">
+                        </div>*@
+                        
+                        <div class="col-md-12 mt-2">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fa fa-bell"></i> Notification Settings
+                                </div>
+                                <div class="card-body">
+                                    <div class="col-md-12 mt-2">
+                                        <div class="form-group row">
+                                            <label for="txtNotifStart" class="col-sm-3 col-form-label">Select Recipient Email</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control selMultiple" name="selReminderUser" id="tagsInput" multiple style="width: 100%;" required>
+                                                    @{
+                                                        foreach (var usr in ViewBag.ListEmail)
+                                                        {
+                                                            <option value="@(usr.Email)">@(usr.Email)  </option>
+                                                        }
+                                                    }
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="txtNotifStart" class="col-sm-3 col-form-label">Start Send Notification From</label>
+                                            <div class="col-sm-6"><input type="number" name="NotifStart" class="form-control" id="txtNotifStart" min="0" placeholder="Number of Days "></div>
+                                            <label for="txtNotifStart" class="col-sm-3 col-form-label">Days Before Periode End.</label>
+
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="selNotifTime" class="col-sm-3 col-form-label">Send Notification Time</label>
+                                            <div class="col-sm-6">
+                                                <select class="form-control" name="NotifTime" id="selNotifTime" aria-label="Select Time">
+                                                    <option value="00">00:00</option>
+                                                    <option value="01">01:00</option>
+                                                    <option value="02">02:00</option>
+                                                    <option value="03">03:00</option>
+                                                    <option value="04">04:00</option>
+                                                    <option value="05">05:00</option>
+                                                    <option value="06">06:00</option>
+                                                    <option value="07">07:00</option>
+                                                    <option value="08">08:00</option>
+                                                    <option value="09">09:00</option>
+                                                    <option value="10">10:00</option>
+                                                    <option value="11">11:00</option>
+                                                    <option value="12">12:00</option>
+                                                    <option value="13">13:00</option>
+                                                    <option value="14">14:00</option>
+                                                    <option value="15">15:00</option>
+                                                    <option value="16">16:00</option>
+                                                    <option value="17">17:00</option>
+                                                    <option value="18">18:00</option>
+                                                    <option value="19">19:00</option>
+                                                    <option value="20">20:00</option>
+                                                    <option value="21">21:00</option>
+                                                    <option value="22">22:00</option>
+                                                    <option value="23">23:00</option>
+                                                    <option value="24">24:00</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="txtIntervalRepeatNotifNumber" class="col-sm-3 col-form-label">Repeat Notification Every</label>
+                                            <div class="col-sm-6">
+                                                <input type="number" name="IntervalRepeatNotifNumber" class="form-control" id="txtIntervalRepeatNotifNumber" value="" placeholder="" min="1">
+                                            </div>
+                                            <div class="col-sm-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="IntervalRepeatNotifType" value="OneTime">
+                                                    <label class="form-check-label" for="gridRadios2">
+                                                        One Time
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="IntervalRepeatNotifType" value="hour">
+                                                    <label class="form-check-label" for="gridRadios1">
+                                                        Hours
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="IntervalRepeatNotifType" value="day">
+                                                    <label class="form-check-label" for="gridRadios2">
+                                                        Days
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary" id="btnSave"><i class="fa fa-floppy-disk"></i> | Save</button>
+                        <a href="@Url.Action("Recap", "LegalPermit" , new { Area="HC" })" class="btn btn-warning"><i class="fa fa-arrow-left"></i> | Back</a>
+                        @*<button id="showNotificationBtn" class="btn btn-success">Tampilkan Notifikasi</button>*@
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+
+        var today, datepicker;
+        today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+
+        $('#datepicker').datepicker({ uiLibrary: 'bootstrap5', format: 'dd/mm/yyyy' });
+
+        $('#datepicker2').datepicker({ uiLibrary: 'bootstrap5', format: 'dd/mm/yyyy', minDate: today });
+
+        $("#multiple-select-field").select2({
+            theme: "bootstrap-5"
+        });
+
+        $("input[name='IntervalRepeatNotifType']").change(function () {
+            var selectedValue = $("input[name='IntervalRepeatNotifType']:checked").val();
+            if (selectedValue === "OneTime") {
+                $("#txtIntervalRepeatNotifNumber").val(0).prop("readonly", true);
+            } else {
+                $("#txtIntervalRepeatNotifNumber").prop("readonly", false);
+            }
+        });
+        $('#selPIC').select2({
+            //dropdownParent: $('#modalCreate'),
+            closeOnSelect: true
+        });
+
+        $('#selSection').select2({
+            //dropdownParent: $('#modalCreate'),
+            closeOnSelect: true
+        });
+
+        $('#tagsInput').select2({
+            //dropdownParent: $('#eventDetailModal'),
+            placeholder: "Select Option or Add New",
+            tags: true,
+            allowClear: true,
+            createTag: function (params) {
+                return {
+                    id: params.term,
+                    text: params.term,
+                    newOption: true
+                }
+            },
+            templateResult: function (data) {
+                var $result = $("<span></span>");
+                $result.text(data.text);
+
+                if (data.newOption) {
+                    $result.append(" <em>(Add New)</em>");
+                }
+
+                return $result;
+            }
+        });
+
+        // Handle button click to show selected values
+        $('#showValues').on('click', function () {
+            var selectedValues = $('#tagsInput').val(); // Get selected values as an array
+            if (selectedValues.length > 0) {
+                alert("Nilai yang dipilih: " + selectedValues.join("+ "));
+            } else {
+                alert("Tidak ada nilai yang dipilih.");
+            }
+        });
+
+        $('#formAddAgreement').on('submit', function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            var redirectUrl = "@Url.Action("Recap", "LegalPermit", new { area = "HC" })";
+            //console.log(formData);
+            //return false;
+            $.ajax({
+                type: 'POST',
+                url: "@Url.Action("AddAgreement", "LegalPermit", new { area = "HC" })",
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                beforeSend: function () {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', true); // Menonaktifkan tombol setelah diklik
+                    $btn.html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Please Wait ...'
+                    );
+                },
+                success: function (json) {
+                    var $btn = $('#btnSave');
+                    if (json.status == 1) {
+                        $btn.prop('disabled', false);
+                        Swal.fire({
+                            title: "Good job",
+                            text: json.msg,
+                            icon: "success"
+                        }).then(function () {
+                            location.href = redirectUrl;
+                        });
+                    } else {
+                        Swal.fire("Error", json.msg, "error");
+                        $btn.prop('disabled', false);
+                        $btn.html(
+                            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Save'
+                        );
+                    }
+
+                },
+                error: function (data) {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', false);
+                },
+                complete: function (data) {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', false);
+                    $btn.html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Save'
+                    );
+                }
+            });
+        });
+
+    });
+</script>

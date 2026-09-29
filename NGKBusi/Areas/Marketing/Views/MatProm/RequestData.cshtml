@@ -1,0 +1,372 @@
+﻿    <!doctype html>
+@{
+    ViewBag.Title = "Data Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style>
+    .card  {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        text-align: center;
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+    .card .card-header {
+        /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+        text-align: center;
+        color:white;
+        font-weight:bold;
+        font-size:medium;
+        box-shadow: inset;
+    }
+    
+</style>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info">Data Request Material Promotion</div>
+                <div class="card-body">
+                    <div class="row p-2">
+                        <div class="col-lg-12">
+                            @{
+                                string dateFrom = Session["startDate"] as string;
+                                string dateTo = Session["endDate"] as string;
+                                string statusFilter = Session["status"] as string;
+                                string status = ViewBag.statusFilter;
+                            }
+                            <form action="@Url.Action("RequestData", "MatProm", new { area = "Marketing" })" method="post" id="formFilter">
+                                <div class="form-group row">
+                                    <label for="dateRange" class="col-md-2 col-form-label">Select Periode</label>
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control dateFrom" id="dateRange" name="dateFrom" placeholder="select date" required autocomplete="off">
+
+                                    </div>
+                                    To
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control dateTo" id="dateRange" name="dateTo" placeholder="select date" required autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="inputPassword" class="col-md-2 col-form-label">Request No</label>
+                                    <div class="col-md-8">
+                                        <input type="text" class="form-control" name="RequestNo" placeholder="Request No." required>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="inputPassword" class="col-md-2 col-form-label">Select Status</label>
+                                    <div class="col-md-8">
+
+                                        <select class="form-control" name="status" data-placeholder="Select Status" required>
+                                            <option value="all" @(status == "all" ? "selected" : "")>-- All Status --</option>
+                                            <option value="Signed" @(status == "Signed" ? "selected" : "")>Signed</option>
+                                            <option value="Acknowledgment" @(status == "Acknowledgment" ? "selected" : "")>Waiting Approval</option>
+                                            <option value="Approved" @(status == "Approved" ? "selected" : "")>Approved</option>
+                                            <option value="Rejected" @(status == "Rejected" ? "selected" : "")>Rejected</option>
+                                            <option value="Verified" @(status == "Verified" ? "selected" : "")>Verified</option>
+                                            <option value="Cancelled" @(status == "Cancelled" ? "selected" : "")>Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group row ">
+                                    <div class="col-md-1"></div>
+                                    <div class="col-md-10">
+                                        <a type="button" class="btn btn-info col-12" id="findData" /><i class="fa fa-search"></i> Find Data</a>
+                                    </div>
+                                </div>
+                            </form>
+                            <div id="toolbar">
+                                <a href="@Url.Action("CreateRequest", "MatProm", new { area = "Marketing" })" class="btn btn-success"><i class="fa fa-plus"></i> New Request</a>
+
+                               
+                            </div>
+                            <table id="fresh-table"
+                                   data-toolbar="#toolbar"
+                                   data-click-to-select="true"
+                                   data-detail-view="true"
+                                   data-detail-view-icon="true"
+                                   data-detail-view-by-click="false"
+                                   data-detail-formatter="detailFormatter"
+                                   data-ajax="ajaxRequest"
+                                   data-query-params="queryParams"
+                                   class="table table-hover">
+                                <thead>
+
+                                    @if (ViewBag.status == "Approved")
+                                    {
+                                    <th data-field="state" data-checkbox="true"></th>
+                                    }
+                                    <th data-field="RequestNo">Request No</th>
+                                    <th data-field="Name" data-sortable="true">Request By</th>
+                                    <th data-field="FormType" data-sortable="true">Form Type</th>
+                                    <th data-field="CostName" data-sortable="true">Section</th>
+                                    <th data-field="RequestTime" data-sortable="true" data-filter-type="datepicker_range">Request Time</th>
+                                    <th data-field="Status">Status</th>
+                                    <th data-field="Action">Actions</th>
+                                    </thead>
+                                    
+                            </table>
+                            </div>
+                        
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+    var $process = $('#process');
+    var $table = $('#fresh-table');
+
+    $(function () {
+        $('#fresh-table').bootstrapTable({
+            exportDataType: "all",
+            exportTypes: ['excel', 'pdf'],
+            buttonsClass: 'primary',
+        })
+    });
+
+    function detailFormatter(index, row) {
+        var requestNo = row.RequestNo;
+        var data = getItemList(requestNo);
+
+        console.log(data);
+        return data;
+
+        //var html = []
+        //$.each(row, function (key, value) {
+        //    html.push('<p><b>' + key + ':</b> ' + value + '</p>')
+        //})
+        //html.join('')
+    }
+
+    function getItemList(requestNo) {
+        var Link = "@Url.Action("ItemListRequest", "MatProm", new { area = "Marketing" })";
+        var html = "";
+        html += "<table class='table table-sm table-primary'>";
+        html += "<thead class='thead-light '>"
+        html += "<tr>";
+        html += "<th>No.</th>";
+        html += "<th>Item Name</th>";
+        html += "<th>Item Name</th>";
+        html += "<th>Quantity Request</th>";
+        html += "</tr>";
+        html += "</thead>";
+        html += "<tbody>";
+
+        $.ajax({
+            url: Link,
+            type: "POST",
+            dataType: "json",
+            data: { RequestNo: requestNo, status: 1 },
+            async: false,
+            success: function (json) {
+                if (json.status == 1) {
+
+                    var len = json.rows.length;
+
+                    if (len > 0) {
+                        var NO = 1;
+                        for (var i = 0; i < len; i++) {
+
+                            if (json.rows[i].ITEMID) {
+
+                                html += "<tr class='table-success'>"
+                                html += "<td>" + NO + "</td>"
+                                html += "<td>" + json.rows[i].ITEMID + "</td>"
+                                html += "<td>" + json.rows[i].ProductName + "</td>"
+                                html += "<td>" + json.rows[i].Quantity + "</td>"
+                                html += "</tr>";
+
+                            }
+                            NO++;
+                        }
+
+                    }
+                }
+
+            }
+        });
+        html += "</body>";
+        html += "</table>";
+        return (html);
+    }
+
+    $(function () {
+        var $startDate = $('.dateFrom');
+        var $endDate = $('.dateTo');
+
+        $table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+            $process.prop('disabled', !$table.bootstrapTable('getSelections').length)
+        })
+
+        $process.click(function () {
+
+            var ids = $.map($table.bootstrapTable('getSelections'), function (row) {
+                return row.id
+            })
+            @{ String Action = ""; String Msg = ""; }
+        @if (ViewBag.status == "WaitingSIgn")
+        {
+            Action = "PrepareRequest";
+            Msg = "Prepare Selected Item ?";
+
+        }
+        else if (ViewBag.status == "Verified") {
+            Action = "CloseRequest";
+            Msg = "Close Selected Item ?";
+        }
+
+            var Link = "@Url.Action(@Action, "Sparepart", new { area = "SCM" })";
+            var Msg = "@Msg";
+            //var Link = $('this').attr('action');
+            @*@Url.Action("CloseRequest", "Sparepart", new { area = "SCM" })*@
+
+            ConfirmSendRequest(Link, Msg, ids);
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        })
+
+        $startDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd',
+            date: '@(ViewBag.dateStart)',
+            autoPick: '@ViewBag.autopick'
+        });
+        $endDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd',
+            date: '@(ViewBag.dateEnd)',
+            autoPick: '@ViewBag.autopick',
+            startDate: $startDate.datepicker('getDate'),
+        });
+
+        $startDate.on('change', function () {
+            $endDate.datepicker('setStartDate', $startDate.datepicker('getDate'));
+        });
+
+        function ConfirmSendRequest(Link, Text, ids) {
+            new swal({
+                title: "Are you sure?",
+                text: Text,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Confirm",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        data: { requestNo: ids },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                new swal({
+                                    title: "Success",
+                                    text: json.msg,
+                                    type: "success"
+                                }, function () {
+                                    location.href = '@Url.Action("RequestData", "Sparepart", new { area = "SCM" })';
+                                });
+
+                            } else {
+                                new swal("Failed!", json.msg, "error");
+                            }
+                        },
+                        complete: function (data) {
+                            $("select[name='status'").val('2');
+                            $('#findData').click();
+                        },
+                        error: function () {
+                            new swal("Canceled!", Link, "error");
+                        }
+
+                    })
+                } else {
+                    new swal("Cancelled", "Cancel Request", "error");
+                }
+            });
+        }
+    });
+
+    $(function () {
+        //$('.selectpicker').selectpicker();
+
+        $(document).on('click', '#findData', function (e) {
+
+            $('#fresh-table').bootstrapTable('refresh', function () {
+                console.log('tes');
+            });
+        });
+    });
+
+    function queryParams(params) {
+
+        return params;
+    }
+
+    function ajaxRequest(params) {
+        var RequestNo = "@(ViewBag.RequestNo)";
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("GetRequestData", "MatProm", new { area = "Marketing" })",
+            dataType: 'json',
+            data: $('#formFilter').serialize(),
+            success: function (items) {
+                //console.log(items.notReady);
+                //if (items.notReady === 0) {
+
+                //    $('#confirmPickup').removeClass("btn btn-secondary").addClass("btn btn-warning").prop('disabled', false);
+                //}
+                //if (items.status == 1 && (items.role == "AdminSparepart" || items.role == "WarehouseSparepart" || items.role == "Administrator")) {
+                //    $('.btn_prepare').show();
+                //    console.log($('#selStatus').val());
+                //} else {
+                //    $('.btn_prepare').hide();
+                //    console.log($('#selStatus').val());
+                //}
+                params.success({
+                    rows: items.reqList
+                }, null);
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+        }
+
+
+    </script>
+

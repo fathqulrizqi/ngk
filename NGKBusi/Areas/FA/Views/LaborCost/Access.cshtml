@@ -1,0 +1,146 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Access";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-filter.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/Access.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+<h2>Access <button id="btnLCAccessAdd" class="btnImplemented btn btn-success" title="Add" data-toggle="modal" data-target="#LCAccessModal">Add New</button></h2>
+<div style="overflow-x:auto;">
+    <table id="tblLCAccess" class="tablesorter">
+        <thead>
+            <tr>
+                <th data-placeholder="NIK">NIK</th>
+                <th data-placeholder="Name">Name</th>
+                <th class="filter-false sorter-false">Master</th>
+                <th class="filter-false sorter-false">Data Entry</th>
+                <th class="filter-false sorter-false">Report</th>
+                <th class="filter-false sorter-false"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.Access)
+            {
+                <tr data-id="@(item.ID)">
+                    <td class="text-center">@(item.NIK)</td>
+                    <td class="text-left">@(item.User.Name)</td>
+                    <td class="text-center">
+                        @if (!item.isMaster)
+                        {<button data-id="@(item.ID)" data-menu="Master" type="button" class="btn btn-warning btn-sm btnLCA"><i class="fas fa-times"></i></button>}
+                        else
+                        {<button data-id="@(item.ID)" data-menu="Master" type="button" class="btn btn-success btn-sm btnLCA"><i class="fas fa-check"></i></button>}
+                    </td>
+                    <td class="text-center">
+                        @if (!item.isDataEntry)
+                        {<button data-id="@(item.ID)" data-menu="Data Entry" type="button" class="btn btn-warning btn-sm btnLCA"><i class="fas fa-times"></i></button>}
+                        else
+                        {<button data-id="@(item.ID)" data-menu="Data Entry" type="button" class="btn btn-success btn-sm btnLCA"><i class="fas fa-check"></i></button>}
+                    </td>
+                    <td class="text-center">
+                        @if (!item.isReport)
+                        {<button data-id="@(item.ID)" data-menu="Report" type="button" class="btn btn-warning btn-sm btnLCA"><i class="fas fa-times"></i></button>}
+                        else
+                        {<button data-id="@(item.ID)" data-menu="Report" type="button" class="btn btn-success btn-sm btnLCA"><i class="fas fa-check"></i></button>}
+                    </td>
+                    <td class="text-center text-nowrap">
+                        @if (currUser.GetUserId() != item.User.NIK)
+                        {
+                            <form id="formLCAccess" action="@Url.Action("AccessDelete", "LaborCost", new { area = "FA" })" class="form-horizontal" method="post">
+                                <input type="hidden" name="iLCADeleteNIK" value="@(item.NIK)" />
+                                <button data-id="@(item.ID)" data-nik="@(item.NIK)" type="submit" class="btn btn-danger btn-sm btnLCAccessDelete" onclick="return confirm('Are you sure want to revoke this user access ?')"><i class="fas fa-trash"></i> Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="dark-row">
+                <th colspan="6">
+                    <div class="pager">
+                        <button type="button" class="first"><<</button>
+                        <button type="button" class="prev"><</button>
+                        <span class="pagedisplay"></span>
+                        <button type="button" class="next">></button>
+                        <button type="button" class="last">>></button>
+                        <select class="pagesize" title="Select page size" style="color:black;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                        </select>
+                        <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<div id="LCAccessModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Labor Cost - Rate</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formLCAccess" action="@Url.Action("AccessAdd", "LaborCost", new { area = "FA" })" class="form-horizontal" method="post">
+                <input type="hidden" name="iLCDataID" id="hfLCDataID" value="" />
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="selLCAccessNIK">User</label>
+                        <div class="col-sm-8">
+                            <select id="selLCAccessNIK" name="iLCAccessNIK" class="form-control select2" required>
+                                <option value="">-Select User-</option>
+                                @foreach (var item in ViewBag.AccessUser)
+                                {
+                                    <option value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Menu</label>
+                        <div class="col-sm-8">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="cbLCAccessMaster" name="iLCAccessMaster">
+                                <label class="form-check-label" for="cbLCAccessMaster">Master</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="cbLCAccessDataEntry" name="iLCAccessDataEntry">
+                                <label class="form-check-label" for="cbLCAccessDataEntry">Data Entry</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="cbLCAccessReport" name="iLCAccessReport">
+                                <label class="form-check-label" for="cbLCAccessReport">Report</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnDataLCSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button type="reset" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

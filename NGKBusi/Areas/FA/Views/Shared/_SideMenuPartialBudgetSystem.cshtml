@@ -1,0 +1,54 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity
+@using NGKBusi.Models;
+@{
+    ViewBag.Title = "_SideMenuPartial";
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currNIK = currUser.GetUserId();
+    DefaultConnection db = new DefaultConnection();
+    var checkAccessBEL = db.Approval_Master.Where(w => w.User_NIK == currNIK && w.Menu_Id == 59).FirstOrDefault();
+    var checkAccessCFA = db.Approval_Master.Where(w => w.User_NIK == currNIK && w.Menu_Id == 62).FirstOrDefault();
+    var checkAccessSummarize = db.Approval_Master.Where(w => w.User_NIK == currNIK && w.Menu_Id == 63).FirstOrDefault();
+}
+
+<!-- Sidebar -->
+<ul>
+    <li class="navSubChild navSubChildHeader">
+        <span>Data Entry</span>
+    </li>
+    <li class="navSubChild">
+        <a href="@Url.Action("Expense","BudgetSystem",new { area="FA" })"><span>(BEX) Expense</span></a>
+    </li>
+    @if (checkAccessBEL != null)
+    {
+        <li class="navSubChild">
+            <a href="@Url.Action("Labor", "BudgetSystem", new { area = "FA" })"><span>(BEL) Labor</span></a>
+        </li>
+    }
+    <li class="navSubChild">
+        <a href="@Url.Action("Investment","BudgetSystem",new { area="FA" })"><span>(BIP) Investment</span></a>
+    </li>
+    <li class="navSubChild">
+        <a href="@Url.Action("AssetInProgress","BudgetSystem",new { area="FA" })"><span>(CIP) Asset In Progress</span></a>
+    </li>
+    @if (checkAccessCFA != null)
+    {
+        <li class="navSubChild">
+            <a href="@Url.Action("CurrentAsset","BudgetSystem",new { area="FA" })"><span>(CFA) Current Asset</span></a>
+        </li>
+    }
+
+    @if (checkAccessSummarize != null)
+    {
+        <li class="navSubChild navSubChildHeader">
+            <span>Report</span>
+        </li>
+        <li class="navSubChild">
+            <a href="@Url.Action("SummarizeBudget","BudgetSystem",new { area="FA" })"><span>Summarize Budget</span></a>
+        </li>
+        <li class="navSubChild">
+            <a href="@Url.Action("Finalize", "BudgetSystem",new { area="FA" })"><span>Finalize</span></a>
+        </li>
+    }
+</ul>
+<!-- /#sidebar-wrapper -->

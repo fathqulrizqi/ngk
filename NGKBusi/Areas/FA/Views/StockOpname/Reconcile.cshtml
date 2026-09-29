@@ -1,0 +1,119 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-reflow.min.js")"></script>
+}
+<style type="text/css">
+    .container, .body-content {
+        margin-left: 0px !important;
+        margin-right: 0px !important;
+        width: 100% !important;
+    }
+
+    .variance {
+        background-color: orange !important;
+    }
+</style>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $(".tablesorter").tablesorter({
+            theme: "bootstrap",
+            widgets: ["filter", "zebra", "stickyHeaders"], //'scroller'
+            widgetOptions: {
+                filter_cssFilter: "form-control",
+                iconSortNone: 'bootstrap-icon-unsorted',
+                iconSortAsc: 'fa fa-chevron-up',
+                iconSortDesc: 'fa fa-chevron-down',
+                //scroller_upAfterSort: true,
+                //scroller_jumpToHeader: true,
+                //scroller_barWidth : null
+            }
+        }).tablesorterPager({
+            container: $(".ts-pager"),
+            cssGoto: ".pagenum",
+            size: 50,
+            removeRows: true,
+            output: '{startRow} - {endRow} / {filteredRows} ({totalRows})'
+        });
+    });
+</script>
+<h1>SO List <button class="btn btn-primary" onclick="location.reload();">Refresh</button><button type="button" class="btn btn-info pull-right" data-toggle="modal" data-target="#filterModal">Learn how to filter</button></h1>
+<hr class="colorgraph">
+<table id="cTbl" class="tablesorter table-responsive selectable">
+    <thead>
+        <tr>
+            <th>Warehouse</th>
+            <th>Product</th>
+            <th>Item Group</th>
+            <th>CutOff_Item ID</th>
+            <th>SO_Item ID</th>
+            <th>Item Name</th>
+            <th>CutOff_Quantity</th>
+            <th>SO_Quantity</th>
+            <th>variance</th>
+            <th>Description</th>
+            <th>Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.SOList)
+        {
+        <tr>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.Warehouse)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.Product)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.ItemGroup)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.CutOff_ItemID)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.SO_ItemID)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.ItemName)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(Convert.ToDouble(item.CutOff_Quantity))</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(Convert.ToDouble(item.SO_Quantity))</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(Convert.ToDouble(item.Variance))</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.Description)</td>
+            <td class="@(item.Variance != 0?"variance":"")">@(item.Name)</td>
+        </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <td class="ts-pager form-horizontal text-left" colspan="11" style="border-right:none;">
+                <button class="btn first" type="button"><i class="icon-step-backward fa fa-step-backward"></i></button>
+                <button class="btn prev" type="button"><i class="icon-arrow-left fa fa-backward"></i></button>
+                <span class="pagedisplay"></span>
+                <button class="btn next" type="button"><i class="icon-arrow-right fa fa-forward"></i></button>
+                <button class="btn last" type="button"><i class="icon-step-forward fa fa-step-forward"></i></button>
+                <select title="Select page size" class="pagesize input-mini">
+                    <option selected="selected" value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="150">150</option>
+                    <option value="200">200</option>
+                </select>
+                <select title="Select page number" class="pagenum input-mini"></select>
+            </td>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="modal fade" id="filterModal" role="dialog">
+    <div class="modal-dialog" style="width:95%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">How to filter</h4>
+            </div>
+            <div class="modal-body text-center">
+                <img class="img-responsive" src="@Url.Content("~/Content/Images/how_to_filter.png")" alt="How to filter" style="margin:auto;" />
+            </div>
+        </div>
+    </div>
+</div>
+

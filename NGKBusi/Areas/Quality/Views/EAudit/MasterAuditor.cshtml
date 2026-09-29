@@ -1,0 +1,826 @@
+﻿@using Newtonsoft.Json
+
+@{
+    ViewBag.Title = "Master Auditor";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Pindahkan logic serialize ke sini untuk menghindari error CS1503
+    object rawData = ViewBag.GroupedQuestions ?? new List<object>();
+    string jsonGroupedData = JsonConvert.SerializeObject(rawData);
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    html, body {
+        /* Gradien diagonal: Biru agak tua -> Biru muda terang -> Putih/Slate terang */
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    /* Menyembunyikan scrollbar pada filter tabs di mobile tapi tetap bisa di-scroll */
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+</style>
+
+<div class="min-h-screen pt-3 sm:px-0">
+    <div class="max-w-7xl mx-auto">
+
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-extrabold text-blue-50 tracking-tight">Master Auditor</h1>
+                <p class="text-sm text-blue-200 mt-1">Manage auditor profiles and assignments</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+                <button onclick="openImportModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white px-5 py-2.5 rounded-lg flex items-center font-semibold transition-all shadow-lg shadow-emerald-500/30 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Import Excel
+                </button>
+
+                <button onclick="openModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-opacity text-white px-5 py-2.5 rounded-lg flex items-center transition-colors font-semibold shadow-sm text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2">
+                        <path fill-rule="evenodd" d="M10.5 4.5a1.5 1.5 0 0 1 3 0v6h6a1.5 1.5 0 0 1 0 3h-6v6a1.5 1.5 0 0 1-3 0v-6h-6a1.5 1.5 0 0 1 0-3h6v-6Z" clip-rule="evenodd" />
+                    </svg>
+                    Add Person
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-row overflow-x-auto sm:flex-wrap gap-2 mb-4 pb-2 sm:pb-0 hide-scrollbar">
+            <button id="btnFilter-All" onclick="setRoleFilter('All')" class="role-filter-btn whitespace-nowrap bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors border border-transparent">
+                All
+            </button>
+            <button id="btnFilter-Auditor" onclick="setRoleFilter('Auditor')" class="role-filter-btn whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                Auditors
+            </button>
+            <button id="btnFilter-Auditie" onclick="setRoleFilter('Auditie')" class="role-filter-btn whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+                Auditees
+            </button>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="relative flex-1 shadow-sm rounded-xl">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <input type="text" id="searchInput" onkeyup="filterAuditors()"
+                       class="block w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-slate-700 placeholder-slate-400 transition-shadow"
+                       placeholder="Search by name, NIK, or role...">
+            </div>
+
+            <div class="w-full md:w-56 relative group">
+                <select id="AuditStandardDropdown" onchange="filterAuditors()" class="block w-full font-bold border border-slate-200 rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-slate-700 bg-white appearance-none cursor-pointer shadow-sm">
+                    <option value="">All Audit Types</option>
+                    @if (ViewBag.AuditStandard != null)
+                    {
+                        bool isFirst = false;
+                        foreach (var at in ViewBag.AuditStandard)
+                        {
+                            <option value="@at.audit_standard_id" @(isFirst ? "selected" : "")>@at.audit_standard_name</option>
+                            isFirst = false;
+                        }
+                    }
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div id="auditors-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </div>
+</div>
+
+<div id="createPersonModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-2xl flex flex-col max-h-[90vh]">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-95 flex items-center gap-3 shrink-0 rounded-t-2xl">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Add New Person</h3>
+                <p class="text-xs text-cyan-50 mt-0.5">Register a new auditor or auditee to the system.</p>
+            </div>
+        </div>
+
+        <form id="createPersonForm" onsubmit="event.preventDefault();" class="flex flex-col flex-1 overflow-hidden">
+
+            <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
+                        <select id="inp_person_name" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white transition-all">
+                            <option value="" disabled selected>-- Select Person --</option>
+                            @if (ViewBag.AccessUsers != null)
+                            {
+                                foreach (var u in ViewBag.AccessUsers)
+                                {
+                                    <option value="@u.name" data-nik="@u.NIK" data-email="@u.email">@u.NIK - @u.name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">NIK <span class="text-red-500">*</span></label>
+                        <input type="text" id="inp_nik" required readonly placeholder="Auto-filled NIK"
+                               class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm bg-slate-100 text-slate-500 cursor-not-allowed focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Email</label>
+                        <input type="email" id="inp_email" readonly placeholder="Auto-filled Email"
+                               class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm bg-slate-100 text-slate-500 cursor-not-allowed focus:outline-none">
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Main Section (Profile) <span class="text-red-500">*</span></label>
+                        <select id="inp_main_section" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white">
+                            <option value="">-- Select Main Section --</option>
+                            @if (ViewBag.Section != null)
+                            {
+                                foreach (var sec in ViewBag.Section)
+                                {
+                                    <option value="@sec.section_name">@sec.section_name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="flex gap-3 sm:col-span-2">
+                        <div class="flex-1">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Role <span class="text-red-500">*</span></label>
+                            <select id="inp_role" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white">
+                                <option value="Auditor">Auditor</option>
+                                <option value="Auditee">Auditee</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-semibold text-slate-700 mb-1.5">Status <span class="text-red-500">*</span></label>
+                            <select id="inp_status" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <hr class="border-slate-200">
+
+                <div>
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800">Certifications & Responsibilities</h4>
+                            <p class="text-xs text-slate-500">Assign audit types and areas to this person.</p>
+                        </div>
+                        <button type="button" onclick="addDetailRow()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-semibold py-1.5 px-3 rounded-lg border border-blue-200 transition-colors flex items-center">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                            Add Area
+                        </button>
+                    </div>
+
+                    <div id="detailsContainer" class="space-y-3">
+                    </div>
+                </div>
+
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-slate-50/50 shrink-0 rounded-b-2xl">
+                <button type="button" onclick="closeModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 text-center">
+                    Cancel
+                </button>
+                <button type="submit" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-90 hover:opacity-100 transition-opacity text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-500/30 text-center">
+                    Save Profile
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<template id="detailRowTemplate">
+    <div class="detail-row flex flex-col md:flex-row md:items-end gap-3 bg-slate-50 p-4 md:p-3 rounded-xl border border-slate-200">
+        <div class="w-full md:flex-1">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Audit Type (Standard)</label>
+            <select class="sel-audit-standard block w-full border border-slate-300 rounded-md py-2 md:py-1.5 px-2.5 text-sm bg-white" required>
+                <option value="">-- Select Type --</option>
+                @if (ViewBag.AuditStandard != null)
+                {
+                    foreach (var at in ViewBag.AuditStandard)
+                    {
+                        <option value="@at.audit_standard_id">@at.audit_standard_name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="w-full md:flex-1">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Responsibility Area (Section)</label>
+            <select class="sel-section block w-full border border-slate-300 rounded-md py-2 md:py-1.5 px-2.5 text-sm bg-white" required>
+                <option value="">-- Select Section --</option>
+                @if (ViewBag.Section != null)
+                {
+                    foreach (var sec in ViewBag.Section)
+                    {
+                        <option value="@sec.section_id">@sec.section_name</option>
+                    }
+                }
+            </select>
+        </div>
+
+        <div class="w-full md:flex-1">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Category Audit</label>
+            <select class="sel-category block w-full border border-slate-300 rounded-md py-2 md:py-1.5 px-2.5 text-sm bg-white" required>
+                <option value="">-- Select Category --</option>
+                <option value="Process">Process</option>
+                <option value="System">System</option>
+                <option value="Product">Product</option>
+            </select>
+        </div>
+
+        <button type="button" onclick="removeDetailRow(this)" class="w-full md:w-auto mt-2 md:mt-0 flex justify-center items-center bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 p-2 rounded-lg border border-slate-200 hover:border-red-200 transition-colors" title="Remove row">
+            <svg class="w-4 h-4 mr-2 md:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            <span class="md:hidden text-sm font-semibold">Remove Area</span>
+        </button>
+    </div>
+</template>
+
+<div id="importExcelModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-md flex flex-col transform transition-all">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-95 flex items-center gap-3 shrink-0 rounded-t-2xl">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Import Excel Data</h3>
+                <p class="text-xs text-teal-50 mt-0.5">Upload auditor data in bulk using the template.</p>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <h4 class="text-sm font-semibold text-blue-800 mb-1">Don't have a template yet?</h4>
+                <p class="text-xs text-blue-600 mb-3">Download the latest Excel template to ensure data formats and dropdowns match the database.</p>
+                <a href="@Url.Action("DownloadExcelTemplateAuditorMaster", "EAudit")" class="inline-flex items-center justify-center w-full px-4 py-2 bg-white border border-blue-200 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors shadow-sm">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Excel Template
+                </a>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-2">Choose Excel File (.xlsx / .xls)</label>
+                <input type="file" id="modalFileExcelUpload" accept=".xlsx, .xls"
+                       class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition-all border border-slate-200 rounded-xl p-1.5 cursor-pointer bg-slate-50">
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50 rounded-b-2xl">
+            <button type="button" onclick="closeImportModal()" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all">
+                Cancel
+            </button>
+            <button type="button" onclick="submitImportExcel()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-lg text-sm font-semibold shadow-sm transition-all flex items-center">
+                Upload Data
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const rawGroupedData = @Html.Raw(string.IsNullOrEmpty(jsonGroupedData) ? "[]" : jsonGroupedData);
+
+        console.log(rawGroupedData);
+        // Global variable
+        let currentRoleFilter = 'All';
+        let auditorsData = [];
+        let editingAuditorId = null;
+
+        if (rawGroupedData && Array.isArray(rawGroupedData)) {
+            rawGroupedData.forEach(group => {
+                const members = Array.isArray(group) ? group : (group.Elements || group);
+
+                if (Array.isArray(members)) {
+                    members.forEach(item => {
+                        const nameParts = item.person_name ? item.person_name.trim().split(' ') : ['U', 'N'];
+                        let initials = nameParts.length > 1
+                            ? nameParts[0][0] + nameParts[1][0]
+                            : nameParts[0].substring(0, 2);
+                        initials = initials.toUpperCase();
+
+                        // Mengambil Category Audit untuk ditampilkan di badge
+                        const certs = item.Details && item.Details.length > 0
+                            ? item.Details.map(d => {
+                                const cat = d.category_audit || d.CategoryAudit || 'None';
+                                return `${d.AuditStandardName} (${d.SectionName}) [${cat}]`;
+                            })
+                            : [];
+
+                        const AuditStandards = item.Details && item.Details.length > 0
+                            ? item.Details.map(d => d.AuditStandardName)
+                            : [];
+
+                        const isActive = item.status === 1 || item.status === "1" || item.status === true || item.status === "Active" || item.status === "Y" || item.status === "active";
+
+                        auditorsData.push({
+                            id: item.audity_auditor_id,
+                            name: item.person_name,
+                            initials: initials,
+                            role: item.role || 'Auditor',
+                            status: isActive ? "Active" : "Inactive",
+                            nik: item.nik || '-',
+                            section: item.section || 'No Section',
+                            email: item.email || '-',
+                            certifications: certs,
+                            AuditStandards: AuditStandards,
+                            rawDetails: item.Details || [] // Simpan raw details untuk auto-fill dropdown Edit
+                        });
+                    });
+                }
+            });
+        }
+
+        // 3. Fungsi Render HTML Badge Sertifikasi
+        function buildCertificationsHTML(certs) {
+            if (!certs || certs.length === 0) return '<p class="text-[11px] text-slate-400 font-medium italic mb-1">No certifications mapped</p>';
+
+            const visibleCerts = certs.slice(0, 2);
+            const hiddenCerts = certs.slice(2);
+            let html = '<div class="flex flex-wrap gap-2">';
+
+            visibleCerts.forEach(cert => {
+                html += `<span class="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-purple-100">${cert}</span>`;
+            });
+
+            if (hiddenCerts.length > 0) {
+                let hiddenItemsHtml = '';
+                hiddenCerts.forEach(cert => {
+                    hiddenItemsHtml += `<span class="bg-purple-50 text-purple-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-purple-100">${cert}</span>`;
+                });
+
+                html += `
+                <div class="relative group cursor-pointer">
+                    <span class="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 hover:bg-slate-100 transition-colors flex items-center h-full">
+                        +${hiddenCerts.length} More
+                    </span>
+                    <div class="absolute bottom-full right-0 pb-2 hidden group-hover:block w-max max-w-[260px] z-50">
+                        <div class="bg-white border border-slate-200 shadow-lg rounded-xl p-3 flex flex-wrap gap-2 relative">
+                            ${hiddenItemsHtml}
+                            <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white border-b border-r border-slate-200 transform rotate-45"></div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            html += '</div>';
+            return html;
+        }
+
+        // 4. Fungsi Generate Grid Card
+        function renderAuditors(data) {
+            const grid = document.getElementById('auditors-grid');
+            grid.innerHTML = '';
+
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="col-span-full p-6 text-center text-slate-500 bg-white rounded-xl shadow-sm">No profile matches your criteria.</div>';
+                return;
+            }
+            data.forEach(person => {
+                const certsHTML = buildCertificationsHTML(person.certifications);
+                const statusClass = person.status === 'Active'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-slate-100 text-slate-600 border-slate-200';
+
+                const roleColorClass = person.role === 'Auditor' ? 'text-blue-600 bg-blue-50 border-blue-100' : 'text-orange-600 bg-orange-50 border-orange-100';
+
+                const cardHTML = `
+                    <div class="w-full relative hover:z-20 bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+                        <div>
+                            <div class="h-1.5 rounded-t-xl bg-gradient-to-r ${person.role === 'Auditor' ? 'from-blue-500 to-cyan-400' : 'from-orange-400 to-amber-300'} opacity-80 hover:opacity-100 transition-opacity"></div>
+
+                            <div class="p-6 py-3 flex justify-between items-start">
+                                <div class="flex items-center gap-4">
+                                    <div class="h-12 w-12 rounded-full ${roleColorClass} flex items-center justify-center font-bold text-xl border shrink-0">
+                                        ${person.initials}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h2 class="text-lg font-bold text-slate-900 leading-tight truncate">${person.name}</h2>
+                                        <p class="text-sm font-medium ${roleColorClass.split(' ')[0]} mt-0.5">${person.role}</p>
+                                    </div>
+                                </div>
+                                <span class="${statusClass} px-2.5 py-1 rounded-full text-xs font-semibold border shrink-0 ml-2">
+                                    ${person.status}
+                                </span>
+                            </div>
+
+                            <hr class="border-slate-100 mx-6">
+
+                            <div class="p-6 py-3 space-y-3">
+                                <div class="flex items-center text-sm text-slate-600">
+                                    <svg class="w-4 h-4 mr-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"></path>
+                                    </svg>
+                                    <span class="font-medium mr-1">NIK:</span> <span class="truncate">${person.nik}</span>
+                                </div>
+                                <div class="flex items-center text-sm text-slate-600">
+                                    <svg class="w-4 h-4 mr-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                    <span class="font-medium mr-1">Section:</span> <span class="truncate">${person.section}</span>
+                                </div>
+                                <div class="flex items-center text-sm text-slate-600" title="${person.email}">
+                                    <svg class="w-4 h-4 mr-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="truncate">${person.email}</span>
+                                </div>
+                            </div>
+
+                            <div class="px-6 pb-3">
+                                <p class="text-[11px] text-slate-500 mb-2.5 uppercase tracking-wider font-bold">Certifications & Responsibilities Area</p>
+                                ${certsHTML}
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 px-6 py-3 flex gap-3 border-t border-slate-200 mt-auto rounded-b-xl">
+                            <button onclick="openEditModal(${person.id})" class="flex-1 bg-white hover:bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-semibold flex justify-center items-center border border-slate-300 shadow-sm transition-colors">
+                                <svg class="w-4 h-4 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Edit Profile
+                            </button>
+                            <button onclick="deleteAuditor(${person.id})" class="bg-white hover:bg-red-50 text-red-600 p-2 px-3 rounded-lg flex justify-center items-center border border-slate-300 hover:border-red-200 shadow-sm transition-colors" aria-label="Delete">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>`;
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+
+        // 5. Fungsi Mengubah Aktif Filter Role Button
+        function setRoleFilter(role) {
+            currentRoleFilter = role;
+
+            document.querySelectorAll('.role-filter-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-transparent');
+                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
+            });
+
+            const activeBtn = document.getElementById(`btnFilter-${role}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
+                activeBtn.classList.add('bg-blue-600', 'text-white', 'border-transparent');
+            }
+
+            filterAuditors();
+        }
+
+        // 6. Fitur Pencarian Real-time Kombinasi
+        function filterAuditors() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const auditDropdown = document.getElementById('AuditStandardDropdown');
+
+            const selectedAuditValue = auditDropdown.value;
+            const selectedAuditText = auditDropdown.options[auditDropdown.selectedIndex].text;
+
+            const filtered = auditorsData.filter(a => {
+                const isRoleMatch = currentRoleFilter === 'All' || a.role === currentRoleFilter;
+
+                const isTextMatch =
+                    (a.name && a.name.toLowerCase().includes(query)) ||
+                    (a.nik && a.nik.toLowerCase().includes(query)) ||
+                    (a.role && a.role.toLowerCase().includes(query));
+
+                const isAuditMatch = selectedAuditValue === "" || (a.AuditStandards && a.AuditStandards.includes(selectedAuditText));
+
+                return isRoleMatch && isTextMatch && isAuditMatch;
+            });
+
+            renderAuditors(filtered);
+        }
+
+        // --- FUNGSI MODAL ADD & EDIT ---
+
+        function openModal() {
+            editingAuditorId = null; // Pastikan sedang di mode Create
+
+            // Reset Form
+            $('#createPersonForm')[0].reset();
+            // Kembalikan dropdown nama ke default kosong
+            $('#inp_person_name').val('').trigger('change');
+
+            // Reset teks UI ke mode 'Add'
+            $('#createPersonModal h3').text('Add New Person');
+            $('#createPersonModal p.text-xs').text('Register a new auditor or auditie to the system.');
+            $('#createPersonForm button[type="submit"]').text('Save Profile');
+
+            $('#detailsContainer').empty();
+            $('#createPersonModal').removeClass('hidden');
+
+            if ($('#detailsContainer').children().length === 0) {
+                addDetailRow();
+            }
+        }
+
+        function openEditModal(id) {
+            editingAuditorId = id; // Set penanda bahwa ini mode Edit
+            const person = auditorsData.find(a => a.id === id);
+            if (!person) return;
+
+            // Set teks UI ke mode 'Edit'
+            $('#createPersonModal h3').text('Edit Person Profile');
+            $('#createPersonModal p.text-xs').text('Update the profile details and responsibilities.');
+            $('#createPersonForm button[type="submit"]').text('Update Profile');
+
+            // Auto-fill input teks utama
+            $('#inp_person_name').val(person.name);
+            $('#inp_nik').val(person.nik);
+            $('#inp_email').val(person.email !== '-' ? person.email : '');
+            $('#inp_role').val(person.role);
+            $('#inp_status').val(person.status);
+            $('#inp_main_section').val(person.section);
+
+            // Kosongkan detail area, lalu render ulang sesuai data existing
+            $('#detailsContainer').empty();
+
+            if (person.rawDetails && person.rawDetails.length > 0) {
+                person.rawDetails.forEach(detail => {
+                    // Ambil ID
+                    const aId = detail.audit_standard_id || detail.AuditStandardId;
+                    const sId = detail.section_id || detail.SectionId;
+
+                    // Ambil Nama/Text
+                    const aName = detail.AuditStandardName || detail.audit_standard_name;
+                    const sName = detail.SectionName || detail.section_name;
+
+                    // Ambil Category
+                    const cAudit = detail.category_audit || detail.CategoryAudit || "";
+
+                    addDetailRow(aId, sId, aName, sName, cAudit);
+                });
+            } else {
+                addDetailRow(); // Render 1 baris kosong jika tidak punya detail
+            }
+
+            $('#createPersonModal').removeClass('hidden');
+        }
+
+        // Fungsi menambah baris dinamis (dengan Fitur Fallback Pencarian Select)
+        function addDetailRow(auditId = '', sectionId = '', auditName = '', sectionName = '', cAudit = '') {
+            const template = document.getElementById('detailRowTemplate');
+            const clone = template.content.cloneNode(true);
+
+            // 1. Tempelkan HTML ke dalam container
+            document.getElementById('detailsContainer').appendChild(clone);
+
+            // 2. Tangkap elemen baris yang baru saja ditambahkan
+            const $newRow = $('#detailsContainer .detail-row').last();
+
+            // 3. Set value dengan sedikit jeda
+            setTimeout(() => {
+                if (auditId) $newRow.find('.sel-audit-standard').val(auditId.toString());
+                if (sectionId) $newRow.find('.sel-section').val(sectionId.toString());
+                if (cAudit) $newRow.find('.sel-category').val(cAudit.toString());
+
+                if (!$newRow.find('.sel-audit-standard').val() && auditName) {
+                    $newRow.find('.sel-audit-standard option').filter(function () {
+                        return $(this).text().trim() === auditName.trim();
+                    }).prop('selected', true);
+                }
+
+                if (!$newRow.find('.sel-section').val() && sectionName) {
+                    $newRow.find('.sel-section option').filter(function () {
+                        return $(this).text().trim() === sectionName.trim();
+                    }).prop('selected', true);
+                }
+            }, 10);
+        }
+
+        function closeModal() {
+            editingAuditorId = null;
+            $('#createPersonModal').addClass('hidden');
+            $('#createPersonForm')[0].reset();
+            $('#detailsContainer').empty();
+        }
+
+        // Fungsi menghapus baris dinamis
+        function removeDetailRow(button) {
+            if ($('.detail-row').length > 1) {
+                $(button).closest('.detail-row').remove();
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Cannot Remove',
+                    text: 'At least one certification/area is required.',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        }
+
+        // --- FUNGSI DELETE ---
+
+        function deleteAuditor(id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this data!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Deleting...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("DeleteAuditorMaster", "EAudit")?id=' + id,
+                        type: 'POST',
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire('Deleted!', res.message, 'success').then(() => {
+                                    window.location.reload();
+                                });
+                            } else {
+                                Swal.fire('Failed', res.message, 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire('Error', 'Server connection error: ' + error, 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        // --- SUBMIT EVENT HANDLER ---
+
+        $(document).ready(function () {
+            // Inisialisasi awal render grid
+            renderAuditors(auditorsData);
+
+            $('#inp_person_name').on('change', function () {
+                const selectedOption = $(this).find('option:selected');
+                const nik = selectedOption.attr('data-nik') || '';
+                const email = selectedOption.attr('data-email') || '';
+
+                $('#inp_nik').val(nik);
+                $('#inp_email').val(email);
+            });
+
+            $('#createPersonForm').on('submit', function (e) {
+                e.preventDefault();
+
+                // 1. Kumpulkan data detail dinamis
+                let detailArray = [];
+                $('.detail-row').each(function () {
+                    let auditId = $(this).find('.sel-audit-standard').val();
+                    let sectionId = $(this).find('.sel-section').val();
+                    let catAudit = $(this).find('.sel-category').val();
+
+                    if (auditId && sectionId && catAudit) {
+                        detailArray.push({
+                            audit_standard_id: parseInt(auditId),
+                            section_id: parseInt(sectionId),
+                            category_audit: catAudit
+                        });
+                    }
+                });
+
+                if (detailArray.length === 0 && $('.detail-row').length > 0) {
+                    Swal.fire('Incomplete Data', 'Please fill all fields (Audit Type, Section, and Category) in the details area.', 'warning');
+                    return;
+                }
+
+                // 2. Siapkan Payload JSON
+                const payload = {
+                    person_name: $('#inp_person_name').val(),
+                    nik: $('#inp_nik').val(),
+                    email: $('#inp_email').val(),
+                    role: $('#inp_role').val(),
+                    status: $('#inp_status').val(),
+                    section: $('#inp_main_section').val(),
+                    Details: detailArray
+                };
+
+                const isEdit = editingAuditorId !== null;
+                const targetUrl = isEdit
+                    ? '@Url.Action("UpdateAuditorMaster", "EAudit")?id=' + editingAuditorId
+                    : '@Url.Action("CreateAuditorMaster", "EAudit")';
+
+                Swal.fire({
+                    title: isEdit ? 'Updating Profile...' : 'Saving New Person...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                // 4. Kirim AJAX
+                $.ajax({
+                    url: targetUrl,
+                    type: 'POST',
+                    contentType: 'application/json; charset=utf-8',
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire('Success!', res.message, 'success').then(() => {
+                                closeModal();
+                                window.location.reload();
+                            });
+                        } else {
+                            Swal.fire('Failed', res.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Error', 'Server connection error: ' + error, 'error');
+                    }
+                });
+            });
+        });
+
+        /// --- FUNGSI MODAL IMPORT EXCEL ---
+
+        function openImportModal() {
+            $('#modalFileExcelUpload').val('');
+            $('#importExcelModal').removeClass('hidden');
+        }
+
+        function closeImportModal() {
+            $('#importExcelModal').addClass('hidden');
+        }
+
+        function submitImportExcel() {
+            var fileInput = document.getElementById('modalFileExcelUpload');
+
+            if (fileInput.files.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'File Kosong',
+                    text: 'Silakan pilih file Excel terlebih dahulu!'
+                });
+                return;
+            }
+
+            var file = fileInput.files[0];
+            var formData = new FormData();
+            formData.append('fileUpload', file);
+
+            Swal.fire({
+                title: 'Uploading...',
+                text: 'Membaca dan memproses data Excel.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("ImportExcelAuditor", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    closeImportModal();
+                    if (res.success) {
+                        Swal.fire('Import Berhasil!', res.message, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Import Gagal', res.message, 'error');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    closeImportModal();
+                    Swal.fire('Error', 'Server connection error: ' + error, 'error');
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,625 @@
+@model IEnumerable<NGKBusi.Areas.HC.Models.CorporatePolicyModel>
+@{
+    ViewBag.Title = "Corporate Policy Portal";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isHrdAdmin = ViewBag.IsHrdAdmin ?? false;
+    var policies = ViewBag.Policies as List<NGKBusi.Areas.HC.Models.CorporatePolicyModel> ?? new List<NGKBusi.Areas.HC.Models.CorporatePolicyModel>();
+    var activePolicies = policies.Where(w => w.IsActive).ToList();
+    var archivedPolicies = policies.Where(w => !w.IsActive).ToList();
+}
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+<!-- Local Tailwind CSS v4 & PDFObject -->
+<script src="@Url.Content("~/Scripts/tailwind/tailwind.js")"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js"></script>
+
+<style>
+    /* Custom font styling */
+    .font-outfit {
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    #pdfPreviewContainer {
+        min-height: 500px;
+    }
+    #pdfContainer {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<div class="font-outfit bg-slate-50/50 min-h-screen p-3 sm:p-5 md:p-6 lg:p-8">
+    <!-- Header Banner -->
+    <div class="bg-gradient-to-r from-blue-800 via-indigo-800 to-slate-900 rounded-2xl md:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 text-white mb-6 md:mb-8 relative overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute right-1/4 -bottom-24 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <span class="bg-white/20 text-white text-[11px] sm:text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider font-mono">Corporate Policy</span>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight mt-1.5 sm:mt-2">Policy & Rules</h1>
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                @if (isHrdAdmin)
+                {
+                    <button type="button" id="btnToggleUploadForm" class="w-full sm:w-auto bg-white hover:bg-blue-50 text-blue-800 font-semibold px-4 sm:px-5 py-2.5 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform active:scale-95 flex items-center justify-center gap-2 text-xs sm:text-sm">
+                        <i class="fa fa-cloud-upload"></i>
+                        <span>Upload New Policy</span>
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+        
+        <!-- Left Side: Policies List & Upload Form (if admin) -->
+        <div class="lg:col-span-5 xl:col-span-4 space-y-5 md:space-y-6">
+            
+            <!-- Upload Policy Form Card (Admin Only) -->
+            @if (isHrdAdmin)
+            {
+                <div id="uploadFormContainer" class="hidden bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-xl overflow-hidden transition-all duration-500">
+                    <div class="bg-slate-50 border-b border-slate-100 p-4 sm:p-5 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                                <i class="fa fa-file-text text-base sm:text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">New Policy Upload</h3>
+                                <p class="text-xs text-slate-500">Add a new active document</p>
+                            </div>
+                        </div>
+                        <button type="button" id="btnCloseUploadForm" class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-xl transition-all">
+                            <i class="fa fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="formUploadPolicy" action="@Url.Action("UploadPolicy", "CorporatePolicy", new { area = "HC" })" method="post" enctype="multipart/form-data" class="p-4 sm:p-6 space-y-4 sm:space-y-5">
+                        @Html.AntiForgeryToken()
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5" for="PolicyName">Policy Name / Title</label>
+                            <input type="text" id="PolicyName" name="PolicyName" class="w-full bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-3.5 py-2.5 sm:py-3 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all placeholder:text-slate-400" placeholder="e.g. HC Employee Attendance Policy 2026" required />
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">Select PDF File</label>
+                            <div class="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center cursor-pointer hover:bg-blue-50/20 transition-all relative group" id="dropzoneContainer">
+                                <input type="file" id="filePolicy" name="file" accept=".pdf" class="absolute inset-0 opacity-0 cursor-pointer" required />
+                                <div class="space-y-1.5 pointer-events-none">
+                                    <div class="text-2xl sm:text-3xl text-slate-400 group-hover:text-blue-500 transition-colors">
+                                        <i class="fa fa-file-pdf-o"></i>
+                                    </div>
+                                    <p class="text-xs sm:text-sm font-medium text-slate-700" id="fileSelectLabel">Drag & drop your PDF file here, or browse</p>
+                                    <p class="text-[11px] text-slate-400">Only PDF formats supported</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-1">
+                            <button type="submit" id="btnSubmitUpload" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-xl sm:rounded-2xl transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-xs sm:text-sm">
+                                <i class="fa fa-check"></i>
+                                <span>Save & Publish</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            }
+
+            <!-- Navigation Tabs (Active vs Archived) -->
+            <div class="bg-white border border-slate-200/80 rounded-2xl p-1.5 shadow-md flex gap-2 w-full">
+                <button type="button" id="tabActiveBtn" class="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm tracking-wide transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 bg-blue-600 text-white shadow-md shadow-blue-500/10 min-w-0">
+                    <i class="fa fa-folder-open text-xs sm:text-sm"></i>
+                    <span class="truncate">Active Policies</span>
+                    <span class="bg-white/20 text-white text-[11px] px-2 py-0.5 rounded-full shrink-0" id="activeCountBadge">@activePolicies.Count</span>
+                </button>
+                <button type="button" id="tabArchivedBtn" class="flex-1 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm tracking-wide transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 text-slate-500 hover:text-slate-800 hover:bg-slate-50 min-w-0">
+                    <i class="fa fa-archive text-xs sm:text-sm"></i>
+                    <span class="truncate">Archived Policies</span>
+                    <span class="bg-slate-200 text-slate-600 text-[11px] px-2 py-0.5 rounded-full shrink-0" id="archiveCountBadge">@archivedPolicies.Count</span>
+                </button>
+            </div>
+
+            <!-- List of Policies Container -->
+            <div class="bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-lg p-4 sm:p-5">
+                
+                <!-- Search Box -->
+                <div class="relative mb-4 sm:mb-5">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs sm:text-sm">
+                        <i class="fa fa-search"></i>
+                    </span>
+                    <input type="text" id="searchPolicyInput" class="w-full bg-slate-50 border border-slate-100 rounded-xl sm:rounded-2xl pl-10 pr-3.5 py-2.5 sm:py-3 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all placeholder:text-slate-400 font-medium" placeholder="Search policy by name..." />
+                </div>
+
+                <!-- Active List -->
+                <div id="activeList" class="max-h-[420px] sm:max-h-[500px] overflow-y-auto pr-1">
+                    @if (activePolicies.Any())
+                    {
+                        foreach (var item in activePolicies)
+                        {
+                            <div class="policy-card group border-b border-l-4 border-l-transparent border-slate-100 last:border-b-0 py-2.5 pl-2 pr-2 hover:bg-blue-50/20 transition-all duration-200 flex items-center justify-between gap-2 cursor-pointer" data-id="@item.FileName" data-title="@item.PolicyName" data-status="active">
+                                <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <div class="text-red-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                        <i class="fa fa-file-pdf-o text-base sm:text-lg"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h4 class="font-medium text-slate-700 text-xs sm:text-sm group-hover:text-blue-700 transition-colors leading-snug line-clamp-2">@item.PolicyName</h4>
+                                    </div>
+                                </div>
+                                @if (isHrdAdmin)
+                                {
+                                    <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 shrink-0">
+                                        <button type="button" class="btnArchivePolicy p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition-all text-xs" data-id="@item.ID" title="Archive Policy">
+                                            <i class="fa fa-archive"></i>
+                                        </button>
+                                        <button type="button" class="btnDeletePolicy p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all text-xs" data-id="@item.ID" title="Delete Policy">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-10 px-4" id="emptyActivePlaceholder">
+                            <div class="text-3xl text-slate-300 mb-2">
+                                <i class="fa fa-file-o"></i>
+                            </div>
+                            <p class="text-slate-500 font-medium text-xs sm:text-sm">No active policies found</p>
+                        </div>
+                    }
+                </div>
+
+                <!-- Archived List (Hidden initially) -->
+                <div id="archivedList" class="hidden max-h-[420px] sm:max-h-[500px] overflow-y-auto pr-1">
+                    @if (archivedPolicies.Any())
+                    {
+                        foreach (var item in archivedPolicies)
+                        {
+                            <div class="policy-card group border-b border-l-4 border-l-transparent border-slate-100 last:border-b-0 py-2.5 pl-2 pr-2 hover:bg-blue-50/20 transition-all duration-200 flex items-center justify-between gap-2 cursor-pointer" data-id="@item.FileName" data-title="@item.PolicyName" data-status="archived">
+                                <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                                    <div class="text-slate-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                                        <i class="fa fa-file-pdf-o text-base sm:text-lg"></i>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h4 class="font-medium text-slate-500 text-xs sm:text-sm group-hover:text-blue-700 transition-colors leading-snug line-clamp-2">@item.PolicyName</h4>
+                                    </div>
+                                </div>
+                                @if (isHrdAdmin)
+                                {
+                                    <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 shrink-0">
+                                        <button type="button" class="btnRestorePolicy p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg transition-all text-xs" data-id="@item.ID" title="Restore Policy to Active">
+                                            <i class="fa fa-undo"></i>
+                                        </button>
+                                        <button type="button" class="btnDeletePolicy p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all text-xs" data-id="@item.ID" title="Permanently Delete Policy">
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="text-center py-10 px-4" id="emptyArchivePlaceholder">
+                            <div class="text-3xl text-slate-300 mb-2">
+                                <i class="fa fa-archive"></i>
+                            </div>
+                            <p class="text-slate-500 font-medium text-xs sm:text-sm">No archived policies found</p>
+                        </div>
+                    }
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- Right Side: PDF Preview Pane -->
+        <div class="lg:col-span-7 xl:col-span-8">
+            <div class="bg-white border border-slate-200/80 rounded-2xl md:rounded-3xl shadow-xl p-4 sm:p-6" id="pdfPreviewContainer">
+                
+                <!-- Displayed when no policy is selected -->
+                <div id="pdfPlaceholder" class="h-[350px] sm:h-[500px] lg:h-[700px] flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
+                    <div class="w-16 h-16 sm:w-20 sm:h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-500/5 mb-4 animate-bounce">
+                        <i class="fa fa-file-pdf-o text-2xl sm:text-3xl"></i>
+                    </div>
+                    <h3 class="text-slate-800 font-bold text-base sm:text-lg">On-Page Document Preview</h3>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-2 max-w-sm">
+                        Select a policy from the list on the left side to preview its PDF document instantly here.
+                    </p>
+                </div>
+
+                <!-- Actual PDF viewer wrapper (Hidden initially) -->
+                <div id="pdfViewerWrapper" class="hidden flex flex-col space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center shrink-0">
+                                <i class="fa fa-file-pdf-o text-base sm:text-lg"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 id="previewDocTitle" class="font-bold text-slate-800 text-xs sm:text-sm md:text-base leading-snug break-words line-clamp-2">Policy Name</h3>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-[10px] sm:text-xs font-semibold bg-emerald-50 text-emerald-600" id="previewDocStatus">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200/80 rounded-xl p-1.5 shadow-sm shrink-0 self-start sm:self-auto">
+                            <button type="button" id="btnZoomOut" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 rounded-lg transition-all text-xs" title="Zoom Out">
+                                <i class="fa fa-minus"></i>
+                            </button>
+                            <span id="zoomLevelIndicator" class="text-xs font-semibold text-slate-600 px-1.5 min-w-[40px] text-center">100%</span>
+                            <button type="button" id="btnZoomIn" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 rounded-lg transition-all text-xs" title="Zoom In">
+                                <i class="fa fa-plus"></i>
+                            </button>
+                            <button type="button" id="btnZoomReset" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 rounded-lg transition-all text-xs" title="Reset Zoom">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="pdfScrollWrapper" class="rounded-2xl border border-slate-200/80 overflow-auto bg-slate-100 shadow-inner h-[480px] sm:h-[650px] lg:h-[740px]">
+                        <div id="pdfContainer" class="w-full h-full min-h-[460px]"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Scripts section -->
+<script type="text/javascript">
+    $(document).ready(function () {
+        // Toggle Upload Form Display
+        $('#btnToggleUploadForm, #btnCloseUploadForm').click(function () {
+            $('#uploadFormContainer').slideToggle(350);
+        });
+
+        // Dropzone decoration when file is selected
+        $('#filePolicy').change(function (e) {
+            var fileName = e.target.files[0] ? e.target.files[0].name : "Browse for PDF";
+            $('#fileSelectLabel').text(fileName).addClass('text-blue-600 font-semibold');
+        });
+
+        // Tab Selection Logic
+        $('#tabActiveBtn').click(function () {
+            $(this).addClass('bg-blue-600 text-white shadow-md shadow-blue-500/10').removeClass('text-slate-500 hover:text-slate-800 hover:bg-slate-50');
+            $('#tabArchivedBtn').removeClass('bg-blue-600 text-white shadow-md shadow-blue-500/10').addClass('text-slate-500 hover:text-slate-800 hover:bg-slate-50');
+            $('#activeList').removeClass('hidden');
+            $('#archivedList').addClass('hidden');
+        });
+
+        $('#tabArchivedBtn').click(function () {
+            $(this).addClass('bg-blue-600 text-white shadow-md shadow-blue-500/10').removeClass('text-slate-500 hover:text-slate-800 hover:bg-slate-50');
+            $('#tabActiveBtn').removeClass('bg-blue-600 text-white shadow-md shadow-blue-500/10').addClass('text-slate-500 hover:text-slate-800 hover:bg-slate-50');
+            $('#archivedList').removeClass('hidden');
+            $('#activeList').addClass('hidden');
+        });
+
+        // Policy item selection for Preview (WITHOUT reload)
+        $(document).on('click', '.policy-card', function (e) {
+            if ($(e.target).closest('button').length > 0) return;
+
+            $('.policy-card').removeClass('bg-blue-50/80 border-l-blue-600').addClass('border-l-transparent');
+            $(this).addClass('bg-blue-50/80 border-l-blue-600').removeClass('border-l-transparent');
+
+            var fileName = $(this).data('id');
+            var title = $(this).data('title');
+            var status = $(this).data('status');
+
+            var folderPath = status === 'active' ? 'CorporatePolicy/' : 'CorporatePolicy/archive/';
+            var pdfUrl = '@Url.Content("~/Files/HC/")' + folderPath + fileName;
+
+            // Setup preview UI
+            $('#pdfPlaceholder').addClass('hidden');
+            $('#pdfViewerWrapper').removeClass('hidden');
+            
+            $('#previewDocTitle').text(title);
+
+            if (status === 'active') {
+                $('#previewDocStatus').html('<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active').removeClass('bg-slate-100 text-slate-600').addClass('bg-emerald-50 text-emerald-600');
+            } else {
+                $('#previewDocStatus').html('<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Archived').removeClass('bg-emerald-50 text-emerald-600').addClass('bg-slate-100 text-slate-600');
+            }
+
+            // Set global active PDF URL
+            currentPdfUrl = pdfUrl;
+
+            // Reset zoom to 100% on new document select (this internally triggers displayPDF)
+            updatePdfZoom(100);
+
+            // Auto scroll to preview on mobile screen sizes
+            if ($(window).width() < 1024) {
+                $('html, body').animate({
+                    scrollTop: $('#pdfPreviewContainer').offset().top - 20
+                }, 400);
+            }
+        });
+
+        var currentZoom = 100;
+        var currentPdfUrl = '';
+
+        function updatePdfZoom(zoomVal) {
+            currentZoom = zoomVal;
+            $('#zoomLevelIndicator').text(currentZoom + '%');
+            
+            var baseHeight = $(window).width() < 1024 ? 500 : 720;
+            var targetWidth = currentZoom + '%';
+            var targetHeight = (baseHeight * (currentZoom / 100)) + 'px';
+            
+            $('#pdfContainer').css({
+                'width': targetWidth,
+                'height': targetHeight
+            });
+            
+            if (currentPdfUrl) {
+                displayPDF(currentPdfUrl);
+            }
+        }
+
+        function displayPDF(pdfUrl) {
+            currentPdfUrl = pdfUrl;
+            var container = $('#pdfContainer');
+            container.empty();
+            
+            var securePdfUrl = pdfUrl + "#toolbar=0&navpanes=0&statusbar=0&zoom=" + currentZoom + "&view=FitH";
+            
+            var options = {
+                pdfOpenParams: {
+                    navpanes: 0,
+                    toolbar: 0,
+                    statusbar: 0,
+                    zoom: currentZoom,
+                    view: "FitH"
+                },
+                forcePDFJS: false
+            };
+
+            var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || $(window).width() < 768;
+
+            var baseHeight = $(window).width() < 1024 ? 500 : 720;
+            var targetWidth = currentZoom + '%';
+            var targetHeight = (baseHeight * (currentZoom / 100)) + 'px';
+
+            if (isMobile) {
+                // Render mobile responsive fallback wrapper with dynamic iframe dimensions
+                var mobileHtml = 
+                    '<div class="w-full h-full overflow-auto border border-slate-200 rounded-xl bg-white" style="min-height: 440px;">' +
+                    '  <iframe src="' + securePdfUrl + '" style="width: ' + targetWidth + '; height: ' + targetHeight + '; min-height: 440px;" class="border-0 transition-all duration-200"></iframe>' +
+                    '</div>';
+                container.html(mobileHtml);
+            } else {
+                var embedded = PDFObject.embed(securePdfUrl, container[0], options);
+                if (!embedded) {
+                    var fallbackHtml = 
+                        '<div class="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3 bg-slate-50 rounded-2xl">' +
+                        '  <i class="fa fa-file-pdf-o text-3xl text-red-500"></i>' +
+                        '  <p class="text-sm text-slate-600 font-medium">Inline PDF preview not supported in this browser.</p>' +
+                        '  <a href="' + pdfUrl + '" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-semibold">Open PDF File</a>' +
+                        '</div>';
+                    container.html(fallbackHtml);
+                }
+            }
+        }
+
+        $('#btnZoomIn').click(function() {
+            if (currentZoom < 200) {
+                updatePdfZoom(currentZoom + 20);
+            }
+        });
+
+        $('#btnZoomOut').click(function() {
+            if (currentZoom > 60) {
+                updatePdfZoom(currentZoom - 20);
+            }
+        });
+
+        $('#btnZoomReset').click(function() {
+            updatePdfZoom(100);
+        });
+
+        // Live Search Filter
+        $('#searchPolicyInput').on('input', function() {
+            var val = $(this).val().toLowerCase();
+            
+            // Search through active list
+            var visibleActive = 0;
+            $('#activeList .policy-card').each(function() {
+                var txt = $(this).data('title').toLowerCase();
+                if(txt.indexOf(val) > -1) {
+                    $(this).show();
+                    visibleActive++;
+                } else {
+                    $(this).hide();
+                }
+            });
+            
+            // Search through archived list
+            var visibleArchived = 0;
+            $('#archivedList .policy-card').each(function() {
+                var txt = $(this).data('title').toLowerCase();
+                if(txt.indexOf(val) > -1) {
+                    $(this).show();
+                    visibleArchived++;
+                } else {
+                    $(this).hide();
+                }
+            });
+
+            // Handle empty placeholders on search
+            if (visibleActive === 0 && $('#activeList .policy-card').length > 0) {
+                if(!$('#searchEmptyActive').length) {
+                    $('#activeList').append('<div id="searchEmptyActive" class="text-center py-8 text-slate-400 text-sm">No matching active policies</div>');
+                }
+            } else {
+                $('#searchEmptyActive').remove();
+            }
+
+            if (visibleArchived === 0 && $('#archivedList .policy-card').length > 0) {
+                if(!$('#searchEmptyArchived').length) {
+                    $('#archivedList').append('<div id="searchEmptyArchived" class="text-center py-8 text-slate-400 text-sm">No matching archived policies</div>');
+                }
+            } else {
+                $('#searchEmptyArchived').remove();
+            }
+        });
+
+        // AJAX submit for upload policy
+        $('#formUploadPolicy').submit(function (e) {
+            e.preventDefault();
+
+            var form = $(this);
+            var formData = new FormData(this);
+
+            $('#btnSubmitUpload').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <span>Uploading...</span>');
+
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (res) {
+                    $('#btnSubmitUpload').prop('disabled', false).html('<i class="fa fa-check"></i> <span>Save & Publish</span>');
+                    if (res.status === 1) {
+                        swal({
+                            title: "Success!",
+                            text: res.msg,
+                            type: "success",
+                            confirmButtonColor: "#2563eb"
+                        }, function () {
+                            location.reload();
+                        });
+                    } else {
+                        swal("Failed", res.msg, "error");
+                    }
+                },
+                error: function () {
+                    $('#btnSubmitUpload').prop('disabled', false).html('<i class="fa fa-check"></i> <span>Save & Publish</span>');
+                    swal("Error", "Something went wrong during upload.", "error");
+                }
+            });
+        });
+
+        // AJAX Action to Move to Archive
+        $(document).on('click', '.btnArchivePolicy', function (e) {
+            e.stopPropagation();
+            var id = $(this).data('id');
+            
+            swal({
+                title: "Archive Policy?",
+                text: "This document will be moved to the Archive folder.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#f59e0b",
+                confirmButtonText: "Yes, Archive it!",
+                closeOnConfirm: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.post('@Url.Action("MoveToArchive", "CorporatePolicy", new { area = "HC" })', { id: id }, function (res) {
+                        if (res.status === 1) {
+                            swal({
+                                title: "Archived!",
+                                text: res.msg,
+                                type: "success",
+                                confirmButtonColor: "#2563eb"
+                            }, function () {
+                                location.reload();
+                            });
+                        } else {
+                            swal("Failed", res.msg, "error");
+                        }
+                    }).fail(function () {
+                        swal("Error", "Failed to archive document.", "error");
+                    });
+                }
+            });
+        });
+
+        // AJAX Action to Restore from Archive
+        $(document).on('click', '.btnRestorePolicy', function (e) {
+            e.stopPropagation();
+            var id = $(this).data('id');
+            
+            swal({
+                title: "Restore Policy?",
+                text: "This document will be moved back to the Active list.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#10b981",
+                confirmButtonText: "Yes, Restore it!",
+                closeOnConfirm: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.post('@Url.Action("RestoreFromArchive", "CorporatePolicy", new { area = "HC" })', { id: id }, function (res) {
+                        if (res.status === 1) {
+                            swal({
+                                title: "Restored!",
+                                text: res.msg,
+                                type: "success",
+                                confirmButtonColor: "#2563eb"
+                            }, function () {
+                                location.reload();
+                            });
+                        } else {
+                            swal("Failed", res.msg, "error");
+                        }
+                    }).fail(function () {
+                        swal("Error", "Failed to restore document.", "error");
+                    });
+                }
+            });
+        });
+
+        // AJAX Action to Delete Policy
+        $(document).on('click', '.btnDeletePolicy', function (e) {
+            e.stopPropagation();
+            var id = $(this).data('id');
+            
+            swal({
+                title: "Delete Policy Permanently?",
+                text: "This action cannot be undone. The database record and physical file will be removed.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#ef4444",
+                confirmButtonText: "Yes, Delete it permanently!",
+                closeOnConfirm: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.post('@Url.Action("DeletePolicy", "CorporatePolicy", new { area = "HC" })', { id: id }, function (res) {
+                        if (res.status === 1) {
+                            swal({
+                                title: "Deleted!",
+                                text: res.msg,
+                                type: "success",
+                                confirmButtonColor: "#2563eb"
+                            }, function () {
+                                location.reload();
+                            });
+                        } else {
+                            swal("Failed", res.msg, "error");
+                        }
+                    }).fail(function () {
+                        swal("Error", "Failed to delete document.", "error");
+                    });
+                }
+            });
+        });
+
+        // Prevent right click on preview panel wrapper to block "Save As..."
+        $(document).on('contextmenu', '#pdfScrollWrapper', function(e) {
+            e.preventDefault();
+            return false;
+        });
+    });
+</script>

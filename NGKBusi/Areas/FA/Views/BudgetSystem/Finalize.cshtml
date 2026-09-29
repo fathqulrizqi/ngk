@@ -1,0 +1,144 @@
+﻿@using NGKBusi.Models;
+
+@{
+    ViewBag.Title = "DataList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    var yearStart = 2021;
+    var yearEnd = DateTime.Now.Year - 1;
+    var currYear = DateTime.Now.Year;
+    var _Period = ViewBag.Period.Split('|');
+    string _Period_FY = _Period[0].ToString();
+    int _Period_Year = int.Parse(_Period[1]);
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#btnBudgetUpload").click(function () {
+                $("#fUpload").click();
+            });
+
+            var _currData;
+            var _len;
+            var _start;
+            $("#fUpload").change(function () {
+                var currCTR = $("#btnBudgetUpload");
+                var file_data = $(this).prop('files')[0];
+                var form_data = new FormData();
+                form_data.append('file', file_data);
+                form_data.append('period', $("#selPeriod").val());
+                form_data.append('level', "1-1");
+                form_data.append('isFinal', "true");
+                // currCTR.LoadingOverlay("hide");
+                var uploadURL = "/NGKBusi/FA/BudgetSystem/" + ($("#selBudgetType").val() =="BEX" ? "_GetDataBEX" : "_GetDataBEL");
+                $.ajax({
+                    url: uploadURL,
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    data: form_data, success: function (data) {
+                        _currData = data;
+                        _len = data.length;
+                        _start = 0;
+                        uploadData(data[_start]);
+                        $(".upload-wrap").fadeIn();
+                        $("#fUpload").val("");
+                        $(".uploadProgress").attr("aria-valuemax", _len);
+                        currCTR.LoadingOverlay("hide");
+                        $(".uploadProgress").removeClass("bg-success");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#fUpload").val("");
+                        currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            function uploadData(_data) {
+                if (_start < _len) {
+                    $.ajax({
+                        url: "/NGKBusi/FA/BudgetSystem/UploadBEXBELFinal",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            level: "3-0",
+                            period: $("#selPeriod").val(),
+                            uploadData: _data.join("|")
+                        }, success: function (data) {
+                            console.log(data);
+                            _start++;
+                            var completed = ""
+                            if (_start == _len) {
+                                completed = " Completed!"
+                                $(".uploadProgress").addClass("bg-success");
+                            }
+                            $(".uploadProgress").text((_start) + " of " + _len + completed);
+                            $(".uploadProgress").attr("aria-valuenow", _start);
+                            $(".uploadProgress").css("width", Math.round((_start / _len) * 100) + "%");
+                            uploadData(_currData[_start]);
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            $("#fUpload").val("");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                } else {
+                    location.reload();
+                }
+                $("#fUpload").val("");
+            }
+        });
+    </script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialBudgetSystem")
+}
+
+<h2>
+    Finalize
+    <button type="button" id="btnBudgetUpload" class="btn btn-success">Upload</button>
+</h2>
+
+<select id="selBudgetType" name="iPeriod" class="form-control selSubmit">
+    <option value="BEX">BEX</option>
+    <option value="BEL">BEL</option>
+</select>
+<select id="selPeriod" name="iPeriod" class="form-control selSubmit">
+    @for (var i = yearStart; i <= yearEnd; i++)
+    {
+        var fy = "FY1" + (i + 2).ToString().Substring(2, 2);
+        <option value="@(fy + "|" + i)" @(ViewBag.Period == fy + "|" + i ? "selected" : "")>@(fy)</option>
+    }
+</select>
+<input type="file" name="iUpload" id="fUpload" class="d-none" />
+<div class="upload-wrap" style="display:none;">
+    <h3>Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+    </div>
+    <hr />
+</div>

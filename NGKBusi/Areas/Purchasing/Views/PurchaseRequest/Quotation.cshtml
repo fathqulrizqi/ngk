@@ -1,0 +1,2207 @@
+﻿﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.Purchasing.Controllers;
+@using NGKBusi.Areas.Purchasing.Models;
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Areas.SCM.Models;
+@using System.Linq;
+@{
+    ViewBag.Title = "Quotation";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currData = ViewBag.Quotation;
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = _currUser.GetUserId();
+    var currUserFullName = _currUser.FindFirstValue("FullName");
+    var quoNumber = Request["QuoNumber"];
+    var PR = ViewContext.Controller as PurchaseRequestController;
+    var currApproval = ViewBag.CurrApproval;
+    string[] PurchasingMember = { "594.04.10", "546.08.05", "719.04.15", "616.08.12", "626.10.12", "703.04.15", "801.08.18", "845.01.20", "816.09.18", "672.08.14", "715.06.15", "719.04.15" };
+    var isPurchasingMember = PurchasingMember.Contains(currUserID);
+    PurchaseRequestConnection dbPR = new PurchaseRequestConnection();
+    DefaultConnection db = new DefaultConnection();
+    D365ExcelFormConnection dbD365 = new D365ExcelFormConnection();
+    var currDataLines = dbPR.Purchasing_PurchaseRequest_Quotation_Line.Where(w => w.QuoNumber == quoNumber).ToList()?.OrderBy(o => o.Sequence);
+    var isAllowEdit = currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub && currData?.Created_By == currUserID ? true : false;
+    var isAllowSign = currData != null && ((IEnumerable<dynamic>)ViewBag.CurrApprovalList).Any(a => a.Levels == currData.Approval && a.Levels_Sub == currData.Approval_Sub && a.IsEmailOnly == false);
+    if (isAllowSign == false && currData != null)
+    {
+        int currDataApproval = (int)currData.Approval;
+        int currDataApprovalSub = (int)currData.Approval_Sub;
+        string currDataSection = currData.Section.Substring(0, 5);
+        var checkSign = db.Approval_Master.Where(w => w.User_NIK == currUserID && w.Menu_Id == 40 && w.Document_Id == 2 && w.Levels == currDataApproval && w.Levels_Sub == currDataApprovalSub && w.Dept_Code == currDataSection && w.IsEmailOnly == false).FirstOrDefault();
+        isAllowSign = checkSign != null ? true : false;
+        isAllowEdit = checkSign != null ? true : false;
+    }
+
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Scripts/comment/css/jquery-comments.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ui-state-highlight {
+            height: 1.5em;
+            line-height: 1.2em;
+        }
+
+        .QTsortableHandle {
+            color: chocolate;
+        }
+
+            .QTsortableHandle:hover {
+                cursor: move;
+            }
+
+        .tblQTVendorPrice td, .tblBasisAward td {
+            position: relative;
+        }
+
+            .tblQTVendorPrice td input, .tblQTVendorPrice td textarea, .tblBasisAward td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+
+        .trQTVendorList, .trQTVendorDetail, .tblPRBudgetRemaining thead tr, .tblBasisAward thead tr, .tblQuoteSkipSign thead tr {
+            color: white;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+
+        .select2-container.select2-container-disabled .select2-choice {
+            background-color: #ddd;
+            border-color: #a8a8a8;
+        }
+
+        .divQTVendorPrice {
+            overflow: auto;
+        }
+
+        .thQTVendorDetailAmount {
+            width: 150px !important;
+        }
+
+        .tblSign thead th {
+            background-color: #1F4E78 !important;
+            color: white;
+        }
+        .thQTVendorDetail {
+            position: relative;
+        }
+
+        .rbSelectAllVendor {
+            position: absolute;
+            display: block;
+            top: 10%;
+            left: 10%; 
+            margin: 0;
+            height: 80%;
+            width: 80%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cbBasisAward {
+            width: 100%;
+            height: 100%;
+            background: #eee;
+            background-image: url(https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Check_mark_23x20_02.svg/1081px-Check_mark_23x20_02.svg.png);
+            background-size: 40px 40px;
+            background-repeat: no-repeat;
+            background-position: -999px -999px;
+        }
+
+        .tdBasisAward {
+            width: 50px;
+            height: 50px;
+        }
+
+        .badgeDiscount {
+            cursor: pointer;
+        }
+
+            .badgeDiscount:hover {
+                opacity: .8;
+            }
+
+        /*CSS to make Viima Comment JS Attachment image to align correctly*/
+        #QTComments .attachments .previews > div {
+            display: inline-block;
+        }
+
+        fieldset legend {
+            font-size: 1em;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/comment/js/jquery-comments.min.js?v=1")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('.tablesorter-childRow td').hide();
+            $(".tblCreateQuoSelectItem").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders", "output"],
+                widgetOptions: {
+                    output_delivery: 'download',
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+                });
+            $(".tblQuotationList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders", "output"],
+                widgetOptions: {
+                    output_delivery: 'download',
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ], filter_defaultFilter: {
+                        // "{query} - a single or double quote signals an exact filter search
+                        7: '"{q}'
+                    }
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+            $('.tablesorter').delegate('.toggle', 'click', function () {
+                $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+                return false;
+            });
+
+            $('.btnQuotationListDownload').click(function () {
+                var $table = $(".tblQuotationList");
+                var wo = $table[0].config.widgetOptions;
+                wo.output_saveFileName = 'QuotationList.csv';
+                $table.trigger('outputTable');
+            });
+            $('.btnQuotationCreateListDownload').click(function () {
+                var $table = $(".tblCreateQuoSelectItem");
+                var wo = $table[0].config.widgetOptions;
+                wo.output_saveFileName = 'QuotationCreateList.csv';
+                $table.trigger('outputTable');
+            });
+
+            $(".jqDateQuo").datepicker({ dateFormat: "dd-mm-yy", minDate: 0 });
+            $(".cbQTCreateItems").change(function () {
+                $(this).closest("td").find("input[type=hidden]").prop("disabled", !$(this).is(":checked"));
+            });
+            $(".selAddSection,.selReceivedBy").change(function () {
+                var loc = location.href.split('?')[0];
+                location.href = "?addNew=addNew" + ($(this).val() != "" ? "&iSection=" + $(".selAddSection").val() + "&iReceivedBy=" + $(".selReceivedBy").val() : "");
+            });
+            $(".tblQTVendorPrice").find("thead .thQTVendorAttachment:first .btnDelete").hide();
+            var lastIDX = $(".thQTVendorList").length|| 1;
+            $(".btnAdd").click(function () {
+                lastIDX++;
+                var blankTHList = $(this).closest(".tblQTVendorPrice").find("thead .thQTVendorList:first").clone().attr('data-idx', lastIDX);
+                var blankTHAttachment = $(this).closest(".tblQTVendorPrice").find("thead .thQTVendorAttachment:first").clone().attr('data-idx', lastIDX);
+                var blankTHDetail = $(this).closest(".tblQTVendorPrice").find("thead .thQTVendorDetailFirst").clone().attr('data-idx', lastIDX).removeClass("thQTVendorDetailFirst");
+                var blankTFPrice = $(this).closest(".tblQTVendorPrice").find("tfoot .tdQTVendorPriceTotal:first").clone().text(0).attr('data-idx', lastIDX);
+                var blankTFDiscount = $(this).closest(".tblQTVendorPrice").find("tfoot .tdQTVendorDiscountTotal:first").clone().text(0).attr('data-idx', lastIDX);
+                var blankTFTotal = $(this).closest(".tblQTVendorPrice").find("tfoot .tdQTVendorTotalAll:first").clone().text(0).attr('data-idx', lastIDX);
+
+                blankTHDetail.find(".rbSelectAllVendor").attr("data-idx", lastIDX).prop("checked", false);
+                blankTHList.find("input[type='text'], input[type='hidden']").val("").change();
+                blankTHDetail.find(".badgeDiscount").attr("data-vendorname","");
+                blankTHAttachment.find(".ulFiles").empty().append('<li style="list-style: none; ">-</li>');
+                blankTHAttachment.find(".btnAttachment").hide();
+                blankTHAttachment.find(".btnDelete").show();
+                bindAutoComplete(blankTHList.find(".txtThirdParty"));
+                $(".trQTVendorList").append(blankTHList);
+                $(".trQTVendorList").append(blankTHAttachment);
+                $(".trQTVendorDetail").append(blankTHDetail);
+
+                $(".tblQTVendorPrice tbody .trQTVendor").each(function () {
+                    var blankTD = $(this).find(".tdQTVendorFirst").clone().attr('data-idx', lastIDX).removeClass("tdQTVendorFirst");
+                    blankTD.find("input:not(.hfQTVendorDiscountType)").val("0");
+                    blankTD.find(".spanTotal").text("0");
+                    blankTD.find(".rbQTVendorChoose").prop("checked", false);
+                    $(this).append(blankTD);
+                });
+                $(".trGrandTotal").append(blankTFPrice);
+                $(".trGrandTotal").append(blankTFDiscount);
+                $(".trGrandTotal").append(blankTFTotal);
+                $(".trGrandTotal").append("<td data-idx='"+lastIDX + "'></td>");
+                lastIDX++;
+            });
+
+            if ($(".txtQTVendorPrice").length > 0) {
+                new AutoNumeric.multiple(".txtQTVendorPrice", { unformatOnSubmit: true, allowDecimalPadding: false });
+                new AutoNumeric.multiple(".txtQTVendorDiscount", { unformatOnSubmit: true, allowDecimalPadding: false });
+                new AutoNumeric.multiple(".spanCurrNetPrice", { unformatOnSubmit: true, allowDecimalPadding: false });
+                new AutoNumeric.multiple(".spanCurrHistoryPrice", { unformatOnSubmit: true, allowDecimalPadding: false });
+            }
+            if ($(".txtQTQuantity").length > 0) {
+                new AutoNumeric.multiple(".txtQTQuantity", { unformatOnSubmit: true, allowDecimalPadding: false });
+            }
+            $(".selUnit").select2();
+            function quotationTotal(type, idx, discType = "Total") {
+                var quoTotal = 0;
+                switch (type.toLowerCase()) {
+                    case "price":
+                        $(".tdQTVendorPrice[data-idx='" + idx + "'] .txtQTVendorPrice").each(function () {
+                            var qty = parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtQTQuantity").val()));
+                            quoTotal += qty * parseFloat(AutoNumeric.unformat($(this).val()));
+                        });
+                        break;
+                    case "discount":
+                        $(".tdQTVendorDiscount[data-idx='" + idx + "'] .txtQTVendorDiscount").each(function () {
+                            var qty = parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtQTQuantity").val()));
+                            quoTotal += (discType == "Total" ? parseFloat(AutoNumeric.unformat($(this).val())) : qty * parseFloat(AutoNumeric.unformat($(this).val())));
+                        });
+                        break;
+                    case "total":
+                        $(".tdQTVendorTotal[data-idx='" + idx + "'] .hfQTVendorTotal").each(function () {
+                            quoTotal += parseFloat(AutoNumeric.unformat($(this).val()));
+                        });
+                        break;
+                    default:
+                        $(".tdQTQuantity[data-idx='" + idx + "'] .txtQTQuantity").each(function () {
+                            quoTotal += parseFloat(AutoNumeric.unformat($(this).val()));
+                        });
+                        break;
+                }
+                return quoTotal;
+            }
+            calculateGrandTotal();
+            function calculateGrandTotal(idx,discType) {
+                var setIDX = idx == null ? "" : "[data-idx='" + idx + "']";
+                $(".tdQTVendorPriceTotal" + setIDX).each(function () {
+                    var currIDX = $(this).data("idx");
+                    var currTotal = AutoNumeric.format(quotationTotal("Price", currIDX, discType), { allowDecimalPadding: false });
+                    $(this).text(currTotal);
+                });
+                $(".tdQTVendorDiscountTotal" + setIDX).each(function () {
+                    var currIDX = $(this).data("idx");
+                    var currTotal = AutoNumeric.format(quotationTotal("Discount", currIDX, discType), { allowDecimalPadding: false });
+                    $(this).text(currTotal);
+                });
+                $(".tdQTVendorTotalAll" + setIDX).each(function () {
+                    var currIDX = $(this).data("idx");
+                    var currTotal = AutoNumeric.format(quotationTotal("Total", currIDX, discType), { allowDecimalPadding: false });
+                    $(this).text(currTotal);
+                });
+            }
+            $(document).on("keyup", ".txtQTVendorPrice, .txtQTVendorDiscount", function () {
+                priceTotal($(this));
+                calculateRemaining($(this));
+                calculateGrandTotal($(this).closest("td").data("idx"),$(this).attr("data-disctype"));
+                //budgetUsageTotal();
+            });
+            $(document).on("keyup", ".txtQTQuantity", function () {
+                var $this = $(this);
+                var currTR = $this.closest("tr");
+                currTR.find(".txtQTVendorPrice, .txtQTVendorDiscount").each(function () {
+                    priceTotal($(this));
+                });
+                calculateRemaining($this);
+                calculateGrandTotal();
+            });
+            $(document).on("change", ".rbSelectAllVendor", function () {
+                var idx = $(this).data("idx");
+
+                if ($(this).is(":checked")) {
+                    $(".tdQTVendorChoose[data-idx='" + idx + "'] .rbQTVendorChoose:not(:disabled)").prop("checked", true).change();
+                }
+            });
+            $(".txtQTVendorPrice, .txtQTVendorDiscount").each(function () {
+                priceTotal($(this));
+            });
+
+            $(".btnQTVendorSubmit").click(function () {
+            });
+            $(document).on("change", ".rbQTVendorChoose", function () {
+
+                $(this).closest('tr').find(".hfQTVendorChoose").val(0);
+                $(this).closest('tr').find(".hfQTVendorTotal").attr("data-vendorchoose", 0);
+
+                $(this).closest('td').find(".hfQTVendorChoose").val(1);
+                $(this).closest('td').prev().find(".hfQTVendorTotal").attr("data-vendorchoose", 1);
+
+                calculateRemaining($(this));
+
+                var currentIdx = $(this).closest('td').data("idx");
+                var allChecked = true;
+
+                $(".rbSelectAllVendor").prop("checked", false);
+
+                $(".tdQTVendorChoose[data-idx='" + currentIdx + "'] .rbQTVendorChoose:not(:disabled)").each(function () {
+                    if (!$(this).is(":checked")) {
+                        allChecked = false;
+                    }
+                });
+
+                if (allChecked) {
+                    $(".rbSelectAllVendor[data-idx='" + currentIdx + "']").prop("checked", true);
+                }
+            });
+
+            setTimeout(function () {
+                $(".rbSelectAllVendor").each(function () {
+                    var idx = $(this).data("idx");
+                    var totalRows = $(".tdQTVendorChoose[data-idx='" + idx + "'] .rbQTVendorChoose:not(:disabled)").length;
+                    var checkedRows = $(".tdQTVendorChoose[data-idx='" + idx + "'] .rbQTVendorChoose:checked:not(:disabled)").length;
+
+                    if (totalRows > 0 && totalRows === checkedRows) {
+                        $(this).prop("checked", true);
+                    }
+                });
+            }, 300);
+            //budgetUsageTotal();
+
+
+            bindAutoComplete($(".txtThirdParty"));
+            $(document).on("keyup", ".txtThirdParty", function (e) {
+                var item = $(this).val().split('|');
+                var btnAttachment = $(this).closest("th").next("th").find(".btnAttachment");
+                if (item.length > 1) {
+                    $(this).closest("th").find(".hfThirdPartyID").val(item[0].trim());
+                    $(this).closest("th").find(".hfThirdPartyName").val(item[1].trim());
+                    btnAttachment.attr("data-thirdparty", item[1].trim());
+                } else {
+                    $(this).closest("th").find(".hfThirdPartyID").val("");
+                    $(this).closest("th").find(".hfThirdPartyName").val($(this).val());
+                    btnAttachment.attr("data-thirdparty", $(this).val());
+                }
+            });
+            $(document).on("change", ".txtThirdParty", function (e) {
+                var idx = $(this).closest("th").data("idx");
+                $(".thQTVendorDetail[data-idx='" + idx + "'] .badgeDiscount").attr("data-vendorname", $(this).val());
+            });
+
+            $(document).on("click", ".btnAttachment", function (e) {
+                var thirdPartyName = $(this).attr("data-thirdparty");
+                $("#hfAttachmentThirdPartyCode").val(thirdPartyName);
+                var quoNumber = $("#hfQuoNumberAttachment").val();
+                getQTAttachment(quoNumber, thirdPartyName, ".ulFiles");
+
+                e.preventDefault();
+            });
+
+            getQTAttachment($("#hfQuoNumber").val(), "Quotation", ".ulQTFiles");
+            function getQTAttachment(quoNumber, thirdPartyName, ulFiles) {
+                var isAllowEdit = $("#hfisAllowEdit").val();
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("getQTAttachment", "PurchaseRequest", new { area = "Purchasing" })',
+                    data: {
+                        iQuoNumber: quoNumber,
+                        iThirdPartyName: thirdPartyName
+                    },
+                    tryCount: 0,
+                    tryLimit: 3,
+                    success: function (data) {
+                        var liFiles = "";
+                        $(ulFiles).empty();
+                        $.each(data.files, function (k, v) {
+                            switch (v.ext.toLowerCase()) {
+                                case ".doc":
+                                case ".docm":
+                                case ".docx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/QT/" + quoNumber + "/" + thirdPartyName + "/" + v.filename + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".xls":
+                                case ".xlsx":
+                                case ".xlsm":
+                                case ".csv":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/QT/" + quoNumber + "/" + thirdPartyName + "/" + v.filename + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li>";
+                                    break;
+                                case ".pdf":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/QT/" + quoNumber + "/" + thirdPartyName + "/" + v.filename + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".ppt":
+                                case ".pptx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/QT/" + quoNumber + "/" + thirdPartyName + "/" + v.filename + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".jpg":
+                                case ".jpeg":
+                                case ".png":
+                                case ".gif":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/QT/" + quoNumber + "/" + thirdPartyName + "/" + v.filename + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                            }
+                        });
+                        $(ulFiles).append(liFiles);
+                        if ($("li", ulFiles).length < 1) {
+                            liFiles = "<li style = 'list-style: none; '>-</li>";
+                            $(ulFiles).append(liFiles);
+                        }
+
+                        if (ulFiles == ".ulFiles") {
+                            $(".mdlAttachment").modal();
+                        }
+
+                        if (!isAllowEdit) {
+                            $(".ifileDelete").hide();
+                        }
+                    }, error: function (xhr, textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                    }
+                });
+            }
+
+            $('.ulFiles, .ulQTFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/deleteQTAttachment",
+                        data: {
+                            iID: currID
+                        },
+                        tryCount: 0,
+                        tryLimit: 3,
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function (xhr, textStatus) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            //$(".spanPriceEst").each(function () {
+            //    $(this).text(AutoNumeric.format($(this).text(), {allowDecimalPadding: false }));
+            //});
+            $(".rbCategory").change(function () {
+                bindBudget();
+            });
+            bindBudget();
+
+            $(".cbQTCreateItemsAll").change(function () {
+                if ($(this).is(":checked") == true) {
+                    $(".cbQTCreateItems:visible").prop("checked", $(this).is(":checked"));
+                } else {
+                    $(".cbQTCreateItems").prop("checked", $(this).is(":checked"));
+                }
+                $(".cbQTCreateItems").change();
+            });
+
+            $(".btnCreateQuoSubmit").click(function () {
+                var currAction = $(this).data("action");
+                $("#formCreateQuo").attr("action", currAction);
+            });
+
+            $(document).on("click", ".btnDelete", function () {
+                if (confirm('Are you sure want to remove this vendor?')) {
+                    var currIndex = parseInt($(this).closest("th").data("idx"));
+                    var deleteVendor = $(".tblQTVendorPrice th[data-idx='" + currIndex + "'],.tblQTVendorPrice td[data-idx='" + currIndex +"']")
+                    deleteVendor.remove();
+                    lastidx--;
+                    //var currIndex = parseInt($(this).closest("th").index());
+                    //var trQTVendorList = $(".tblQTVendorPrice thead .trQTVendorList th:eq(" + (currIndex - 1) + "),.tblQTVendorPrice thead .trQTVendorList th:eq(" + currIndex + ")");
+                    //var trQTVendorDetail = $(".tblQTVendorPrice thead .trQTVendorDetail th:eq(" + (currIndex - 2) + "),.tblQTVendorPrice thead .trQTVendorDetail th:eq(" + (currIndex - 1) + "),.tblQTVendorPrice thead .trQTVendorDetail th:eq(" + currIndex + "),.tblQTVendorPrice thead .trQTVendorDetail th:eq(" + (currIndex + 1) + "),.tblQTVendorPrice thead .trQTVendorDetail th:eq(" + (currIndex + 2) + ")");
+                    //$(".tblQTVendorPrice tbody .trQTVendor").each(function () {
+                    //    var trQTVendor = $(this).find("td:eq(" + ((currIndex * 2) - 1) + "),td:eq(" + ((currIndex * 2) - 2) + "),td:eq(" + ((currIndex * 2) - 3) + "),td:eq(" + ((currIndex * 2) - 4) + "),td:eq(" + ((currIndex * 2) - 5) + ")")
+                    //    trQTVendor.remove();
+                    //});
+                    //trQTVendorList.remove();
+                    //trQTVendorDetail.remove();
+                }
+            });
+
+            $(".tblQTVendorPrice thead th,.tblQTVendorPrice tbody td").click(function () {
+                //alert($(this).index());
+            });
+
+            $(document).on('click', '.btnBudgetDetails', function () {
+                var budgetNo = $(this).data('budgetno');
+                var budgetName= $(this).data('budgetname');
+                var items = [];
+                var grandTotal = 0;
+                $('.tblQTVendorPrice tbody .trQTVendor').each(function () {
+                    var rowBudgetNo = $(this).data('budgetno');
+                    if (rowBudgetNo && rowBudgetNo.split('|')[0] === budgetNo) {
+                        var item = {
+                            item: '',
+                            unit: '',
+                            qty: 0,
+                            price: 0,
+                            total: 0,
+                            note: ''
+                        };
+                        // Extract item name
+                        var labelItem = $(this).find('label.font-weight-bold:contains("Item:")');
+                        if (labelItem.length > 0) {
+                            item.item = labelItem[0].nextSibling ? labelItem[0].nextSibling.textContent.trim() : '';
+                        }
+                        // Extract unit and qty
+                        item.unit = $(this).find('td:eq(1)').text().trim();
+                        var qtyText = $(this).find('td:eq(2)').text().trim();
+                        item.qty = parseFloat(qtyText.replace(/,/g, '')) || 0;
+                        // Extract net price from spanCurrNetPrice
+                        var netPriceText = $(this).find('.spanCurrNetPrice').text().replace(/,/g, '').trim();
+                        item.price = parseFloat(netPriceText) || 0;
+                        // Calculate total
+                        item.total = item.qty * item.price;
+                        grandTotal += item.total;
+                        // Extract note
+                        var labelNote = $(this).find('label.font-weight-bold:contains("Note:")');
+                        if (labelNote.length > 0) {
+                            item.note = labelNote[0].nextSibling ? labelNote[0].nextSibling.textContent.trim() : '';
+                        }
+                        items.push(item);
+                    }
+                });
+                var $tbody = $('#budgetItemsTable tbody');
+                $tbody.empty();
+                function formatNumber(num) {
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+                if (items.length > 0) {
+                    var rows = items.map(function (item) {
+                        return '<tr>' +
+                            '<td>' + item.item + '</td>' +
+                            '<td>' + item.unit + '</td>' +
+                            '<td class="text-right">' + formatNumber(item.qty) + '</td>' +
+                            '<td class="text-right">' + formatNumber(item.price) + '</td>' +
+                            '<td class="text-right">' + formatNumber(item.total) + '</td>' +
+                            '<td>' + item.note + '</td>' +
+                            '</tr>';
+                    });
+                    $tbody.append(rows.join(''));
+                } else {
+                    $tbody.append('<tr><td colspan="6">No items found for this budget.</td></tr>');
+                }
+                $('#budgetItemsGrandTotal').text(formatNumber(grandTotal));
+                $('#budgetDetailsModalLabel').text("Items List of "+budgetNo + " | " + budgetName);
+                $('#budgetDetailsModal').modal('show');
+            });
+
+            $(document).on("click", ".badgeDiscount", function () {
+                var _Approval = $(this).data("approval");
+                var _ApprovalSub = $(this).data("approvalsub");
+                if(_Approval == 1 && _ApprovalSub == 0) {
+                    var currCTR = $(this);
+                    var currTH = currCTR.closest("th");
+                    var discountType = "Pcs";
+                    if (currCTR.text() == "Pcs") {
+                        discountType = "Total";
+                    } else {
+                        discountType = "Pcs";
+                    }
+                    var _QuoNumber = currCTR.data("quonumber");
+                    var _VendorName = currCTR.data("vendorname");
+                    var _Idx = currTH.data("idx");
+                    $(".tdQTVendorDiscount[data-idx='" + _Idx + "'] .txtQTVendorDiscount,.tdQTVendorPrice[data-idx='" + _Idx + "'] .txtQTVendorPrice").each(function () {
+                        $(this).attr("data-disctype", discountType);
+                    }).keyup();
+                    $(".tdQTVendorDiscount[data-idx='" + _Idx + "'] .hfQTVendorDiscountType").each(function () {
+                        $(this).val(discountType);
+                    });
+                        currCTR.text(discountType);
+
+                }
+            });
+
+            $(".btnQuoteCreateEdit").click(function () {
+                var ID = $(this).data("id");
+                var item = $(this).data("item");
+                var itemID = $(this).data("itemid");
+                var itemName = $(this).data("itemname");
+                var itemGroup = $(this).data("itemgroup");
+                $(".hfQuoteCreateID").val(ID);
+                $(".txtQuoteCreateItem").val(item);
+                $(".hfQuoteCreateItemID").val(itemID);
+                $(".hfQuoteCreateItemName").val(itemName);
+                $(".hfQuoteCreateItemGroup").val(itemGroup);
+                $(".lblQuoteCreateItemGroup").text(itemGroup);
+            });
+
+            $(document).on("keyup", ".txtQuoteCreateItem", function (e) {
+                var item = $(this).closest("div").find(".txtQuoteCreateItem").val().split('||');
+                if (item.length > 1) {
+                    $(this).closest("div").find("#hfQuoteCreateItemID").val(item[0].trim());
+                    $(this).closest("div").find("#hfQuoteCreateItemName").val(item[1].trim());
+                } else {
+                    $(this).closest("div").find("#hfQuoteCreateItemID").val("");
+                    $(this).closest("div").find("#hfQuoteCreateItemName").val($(this).val());
+                }
+            });
+
+            bindQuoteCreateAutoComplete($(".txtQuoteCreateItem"));
+
+            $(".btnQuoteSkipSign").click(function () {
+                var signHeader = $(this).data("header");
+                var signTitle = $(this).data("title");
+                var signQuoNumber = $(this).data("quonumber");
+                var signLevel = $(this).data("level");
+                var signLevelSub = $(this).data("levelsub");
+                $("#mdlQuoteSkipSign .lblQuoteSkipSignHeader").text(signHeader);
+                $("#mdlQuoteSkipSign .lblQuoteSkipSignTitle").text(signTitle);
+                $("#mdlQuoteSkipSign .tblQuoteSkipSign tbody").empty();
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/Purchasing/PurchaseRequest/getSignList",
+                    data: {
+                        iQuoNumber: signQuoNumber,
+                        iLevel: signLevel,
+                        iLevelSub: signLevelSub
+                    },
+                    tryCount: 0,
+                    tryLimit: 3,
+                    success: function (data) {
+
+                        $.each(data, function (k, v) {
+
+                            var newRow = "<tr><td>" + "<input type='checkbox' name='iSkipSignID[]' class='cbQuoteSkipSign' value='" + v.id + "'>" + "</td><td>" + v.User_NIK + "</td><td>" + v.Users.Name + "</td></tr>";
+
+                            $("#mdlQuoteSkipSign .tblQuoteSkipSign tbody").append(newRow);
+                        });
+                        console.log(data)
+                        }, error: function (xhr, textStatus) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                        alert("Error Occurred, Please try again !");
+                    }
+                });
+            });
+            $("#formQuotationSign").submit(function () {
+                $(this).find(':submit').attr('disabled', 'disabled').text("Signing..");
+            });
+            $(".QTsortable").sortable({
+                placeholder: "ui-state-highlight",
+                handle: '.QTsortableHandle',
+                cursor:"move",
+                revert: true,
+                start: function (event, ui) {
+                    // creates a temporary attribute on the element with the old index
+                    $(this).attr('data-previndex', ui.item.index());
+                },
+                update: function (event, ui) {
+                    $(".QTsortable tr").each(function (index,element) {
+                        var seq = index + 1;
+                        $(this).attr("data-sequence", seq);
+                        $(this).find(".hfQTVendorLineSequence").val(seq);
+                    });
+                }
+            });
+
+            $(document).on("click", ".btnQTLineDelete", function () {
+                var $btn = $(this);
+                var lineID = $btn.data("lineid");
+                var $tr = $btn.closest(".trQTVendor");
+                if (confirm('Are you sure want to remove this line?')) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/QuotationLineDelete",
+                        data: {
+                            iQuoNumber: $("#hfQuoNumber").val(),
+                            iLineID: lineID
+                        },
+                        success: function (data) {
+                            $tr.remove();
+                            $(".QTsortable tr").each(function (index, element) {
+                                var seq = index + 1;
+                                $(this).attr("data-sequence", seq);
+                                $(this).find(".hfQTVendorLineSequence").val(seq);
+                            });
+                            calculateGrandTotal();
+                        },
+                        error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            // Add this function after the existing $(document).ready(function () { ... }) block or inside it as appropriate
+
+            $(document).on('click', '.btnBudgetInUseDetails', function () {
+                // Find the budget number and name from the row
+                var $tr = $(this).closest('tr');
+                var budgetNo = $(this).data('budgetno');
+                var budgetName = $(this).data('budgetname');
+                var details = (budgetRemainingData[budgetNo] && budgetRemainingData[budgetNo].details) ? budgetRemainingData[budgetNo].details : [];
+                // Filter details for this budget if needed (if multiple budgets in one page)
+                // If not needed, just use details as is
+
+                // Build table rows
+                var $tbody = $('#budgetUsageTable tbody');
+                $tbody.empty();
+                var rows = '';
+                var grandTotal = 0;
+                if (details.length > 0) {
+                    details.forEach(function (item) {
+                        var link = window.location.origin + "/NGKBusi/Purchasing/PurchaseRequest/Quotation" + "?QuoNumber=" + encodeURIComponent(item.reference);
+                        if (item.type == "Purchase Request") {
+                            link = window.location.origin + "/NGKBusi/Purchasing/PurchaseRequest/PRequest" + "?ReqNumber=" + encodeURIComponent(item.reference);
+                        }else if (item.type == "E-Voucher") {
+                            link = window.location.origin + "/NGKBusi/FA/PaymentRequest/NonPOView" + "?EVoucher=" + encodeURIComponent(item.reference);
+                        }
+                        rows += '<tr>' +
+                            '<td>' + (item.type || '') + '</td>' +
+                            '<td>' + (item.date || '') + '</td>' +
+                            '<td> <a href="' + link +'" target="_blank">' + (item.reference || '') + ' <i class="fa-solid fa-arrow-up-right-from-square"></i></a></td>' +
+                            '<td>' + (item.desc || '') + '</td>' +
+                            '<td class="text-right">' + (item.usage != null ? item.usage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '') + '</td>' +
+                            '</tr>';
+                        grandTotal += item.usage || 0;
+                    });
+                    $tbody.append(rows);
+                } else {
+                    $tbody.append('<tr><td colspan="5">No usage details found for this budget.</td></tr>');
+                }
+                $('#budgetUsageGrandTotal').text(grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#budgetUsageDetailsModalLabel').text("Usages List of " + budgetNo + (budgetName ? " | " + budgetName : ""));
+                $('#budgetUsageDetailsModal').modal('show');
+            });
+        });
+
+        function bindQuoteCreateAutoComplete(e) {
+            e.autocomplete({
+                source: function (request, response) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/GetItemID",
+                        dataType: "json",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iItemGroup: e.closest("div").find(".hfQuoteCreateItemGroup").val(),
+                            iItemID: e.val()
+                        },
+                        success: function (data) {
+                            response(data);
+                        }, error: function (xhr, textStatus) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                },
+                minLength: 1
+                , select: function (event, ui) {
+                    $(this).closest("div").find("#hfQuoteCreateItemID").val(ui.item.itemID);
+                    $(this).closest("div").find("#hfQuoteCreateItemName").val(ui.item.itemName);
+                }
+            });
+        }
+        var budgetRemainingData = {};
+        function bindBudget() {
+            var budgetList = [];
+            $(".tblQTVendorPrice tbody .trQTVendor").each(function () {
+                if ($.inArray($(this).data("budgetno"), budgetList) < 0) {
+                    budgetList.push($(this).data("budgetno"));
+                }
+            });
+            $(".tblPRBudgetRemaining tbody").empty();
+            budgetList.forEach(function (e) {
+                var bNumber = e.split("|")[0];
+                var bName = e.split("|")[1];
+                $.ajax({
+                    type: "POST",
+                    url: '@Url.Action("GetRemainingBudget", "PurchaseRequest", new { area = "Purchasing" })',
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iCategory: $(".rbCategory:checked").val(),
+                        iBudgetNumber: bNumber,
+                        iBudgetName: bName,
+                        iQuoID: $("#hfQuoID").val()
+                    },
+                    success: function (data) {
+                        budgetRemainingData[bNumber] = data; // Store per budget number
+                        var estimatePrice = 0.00;
+                        $(".tblQTVendorPrice tbody .trQTVendor[data-budgetno='" + bNumber + "|" + bName + "'").each(function () {
+                            var selectedPrice = $(this).find(".hfQTVendorChoose[value='1']") || $(this).find(".hfQTVendorChoose:first");
+                            var vendorPrice = selectedPrice.closest("td").prev().prev().prev().find(".txtQTVendorPrice").val() || 0.00;
+                            var vendorDiscount = selectedPrice.closest("td").prev().prev().find(".txtQTVendorDiscount").val() || 0.00;
+                            var vendorDiscountType = selectedPrice.closest("td").prev().prev().find(".txtQTVendorDiscount").data("disctype");
+                            var vendorTotal = parseFloat(AutoNumeric.unformat(vendorPrice)) * parseFloat(AutoNumeric.unformat($(this).find(".txtQTQuantity").val()));
+                            estimatePrice += vendorTotal - (vendorDiscountType == "Total" ? parseFloat(AutoNumeric.unformat(vendorDiscount)) : parseFloat(AutoNumeric.unformat(vendorDiscount) * AutoNumeric.unformat($(this).find(".txtQTQuantity").val())));
+                         });
+
+                        var budgetTotal = data.getData.Total_Amount || 0.00;
+                        var budgetUsage = data.getData.Usage || 0.00;
+                        var budgetRemaining = budgetTotal - budgetUsage - estimatePrice;
+                        var isNotCommonBudget = (bNumber == "UNB" || bNumber == "Rebate" || bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget" ? true:false);
+                        var budgetStatus = (bNumber == "Rebate" || bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget") || budgetRemaining >= 0 ? " <span style='color:green;'>(On Budget <i class='fa fa-check'></i>)</span>" : " <span style='color:red;'>(Over Budget <i class='fa fa-triangle-exclamation'></i>)</span>";
+                        budgetStatus = bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget" ? "" : budgetStatus;
+                        var newRow = "<tr>";
+                        newRow += "<td class='tdPRRemainingBudget' data-budgetno='" + bNumber + "'>" + bNumber + " | " + bName + " <label class='lblBudgetStatus'>" + budgetStatus + "</label></td>";
+                        newRow += "<td class='tdPRRemainingAmount'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetTotal, { allowDecimalPadding: false })) + "</td>";
+                        newRow += "<td class='tdPRRemainingInUse'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetUsage, { allowDecimalPadding: false })) + (isNotCommonBudget ? "" : "<button type='button' class='btn btn-info btn-xs ml-1 btnBudgetInUseDetails px-2 py-1' data-budgetno='" + bNumber + "' data-budgetname='" + bName + "' title='View Budget Details'><i class='fas fa-list'></i></button>") + "</td>";
+                        newRow += "<td class='tdPRRemainingEstimation' data-remaining='" + (budgetTotal - budgetUsage) + "'>" + AutoNumeric.format(estimatePrice, { allowDecimalPadding: false }) + "<button type='button' class='btn btn-info btn-xs ml-1 btnBudgetDetails px-2 py-1' data-budgetno='" + bNumber + "' data-budgetname='" + bName + "' title='View Budget Details'><i class='fas fa-list'></i></button>" + "</td>";
+                        newRow += "<td class='tdPRRemainingTotal'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetRemaining, { allowDecimalPadding: false })) + "</td>";
+                        //newRow += "<td><button type='button' class='btn btn-info btn-sm btnBudgetDetails' data-budgetno='" + bNumber + "'>Details</button></td>";
+                        newRow += "</tr>";
+                        $(".tblPRBudgetRemaining tbody").append(newRow);
+                    }, error: function (xhr, textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+
+
+        function calculateRemaining(e) {
+            var estimatePrice = 0.00;
+            var currBudgetNo = e.closest("tr").data("budgetno");
+            $(".tblQTVendorPrice tbody .trQTVendor[data-budgetno='" + currBudgetNo + "'").each(function () {
+                var selectedPrice = $(this).find(".hfQTVendorChoose[value='1']") || $(this).find(".hfQTVendorChoose:first");
+                var vendorPrice = selectedPrice.closest("td").prev().prev().prev().find(".txtQTVendorPrice").val() || 0.00;
+                var vendorDiscount = selectedPrice.closest("td").prev().prev().find(".txtQTVendorDiscount").val() || 0.00;
+                var vendorDiscountType = selectedPrice.closest("td").prev().prev().find(".txtQTVendorDiscount").data("disctype");
+                var vendorTotal = parseFloat(AutoNumeric.unformat(vendorPrice)) * parseFloat(AutoNumeric.unformat($(this).find(".txtQTQuantity").val()));
+                estimatePrice += vendorTotal - (vendorDiscountType == "Total" ? parseFloat(AutoNumeric.unformat(vendorDiscount)) : parseFloat(AutoNumeric.unformat(vendorDiscount) * AutoNumeric.unformat($(this).find(".txtQTQuantity").val())));
+            });
+            var budgetRemainingTR = $(".tblPRBudgetRemaining tbody tr:has(td[data-budgetno='" + currBudgetNo.split("|")[0] + "'])");
+            var budgetRemainingTotalTD = budgetRemainingTR.find(".tdPRRemainingTotal");
+            var budgetEstimationTD = budgetRemainingTR.find(".tdPRRemainingEstimation");
+            var budgetRemaining = budgetEstimationTD.data("remaining");
+            var budgetRemainingTotal = parseFloat(AutoNumeric.unformat(budgetRemaining)) - parseFloat(AutoNumeric.unformat(estimatePrice));
+            var budgetStatus = (currBudgetNo.split("|")[0] == "Rebate" || currBudgetNo.split("|")[0] == "New-Price" || currBudgetNo.split("|")[0] == "Selling-Out" || currBudgetNo.split("|")[0] == "Next-FY-Budget") || budgetRemainingTotal >= 0 ? " <span style='color:green;'>(On Budget <i class='fa fa-check'></i>)</span>" : " <span style='color:red;'>(Over Budget <i class='fa fa-triangle-exclamation'></i>)</span>";
+            if (currBudgetNo.split("|")[0] == "Rebate" || currBudgetNo.split("|")[0] == "New-Price" || currBudgetNo.split("|")[0] == "Selling-Out" || currBudgetNo.split("|")[0] == "Next-FY-Budget") {
+                budgetRemainingTotalTD.text('-');
+                budgetRemainingTR.find(".tdPRRemainingAmount").text('-');
+            } else {
+                budgetRemainingTotalTD.text(AutoNumeric.format(budgetRemainingTotal, { allowDecimalPadding: false }));
+            }
+            budgetRemainingTR.find(".lblBudgetStatus").html(budgetStatus);
+            budgetEstimationTD.text(AutoNumeric.format(estimatePrice, { allowDecimalPadding: false }));
+        }
+
+        function priceTotal($this) {
+            var input = $this.val();
+            var currVal = AutoNumeric.format(input, { allowDecimalPadding: false });
+            var currTR = $this.closest('tr');
+            var currQty = parseFloat(AutoNumeric.unformat(currTR.find(".txtQTQuantity").val())) || 0;
+            var currPrice = $this.hasClass("txtQTVendorDiscount") ? $this.closest("td").prev().find(".txtQTVendorPrice").val() : $this.val();
+            var currDiscount = $this.hasClass("txtQTVendorPrice") ? $this.closest("td").next().find(".txtQTVendorDiscount").val() : $this.val();
+            var currDiscountType = $this.hasClass("txtQTVendorPrice") ? $this.closest("td").next().find(".txtQTVendorDiscount").attr("data-disctype") : $this.attr("data-disctype");
+            var currTotal = (AutoNumeric.unformat(currPrice) * currQty) - (currDiscountType == "Total" ? AutoNumeric.unformat(currDiscount) : AutoNumeric.unformat(currDiscount) * currQty);
+            var currHFTotal = $this.hasClass("txtQTVendorDiscount") ? $this.closest("td").next().find(".hfQTVendorTotal") : $this.closest("td").next().next().find(".hfQTVendorTotal");
+            var currSpanTotal = $this.hasClass("txtQTVendorDiscount") ? $this.closest("td").next().find(".spanTotal") : $this.closest("td").next().next().find(".spanTotal");
+            currHFTotal.val(currTotal);
+            currSpanTotal.text(AutoNumeric.format(currTotal ?? 0, { allowDecimalPadding: false }));
+        }
+
+        function bindAutoComplete(e) {
+            e.autocomplete({
+                source: function (request, response) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/GetThirdParty",
+                        dataType: "json",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iThirdParty: e.val()
+                        },
+                        success: function (data) {
+                            response(data);
+                        }, error: function (xhr, textStatus) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                },
+                minLength: 1
+                , select: function (event, ui) {
+                    $(this).closest("th").find(".hfThirdPartyID").val(ui.item.thirdPartyID);
+                    $(this).closest("th").find(".hfThirdPartyName").val(ui.item.thirdPartyName);
+                    $(this).closest("th").next("th").find(".btnAttachment").attr("data-thirdparty", ui.item.thirdPartyName);
+                }
+            });
+
+            $("#selPRFilterStatus,#selPRFilterYear,#selPRFilterLevel").change(function () {
+                $(".btnPRFilter").click();
+            });
+
+            $('#QTComments').comments({
+                enableNavigation: false,
+                enablePinging: false,
+                enableAttachments: true,
+                enableUpvoting: false,
+                timeFormatter: function (time) {
+                    return moment(time).format("MMMM D, YYYY [at] HH:mm");
+                },
+                postComment: function (commentJSON, success, error) {
+                    console.log("postComment");
+                    commentJSON["QuoNumber"] = $("#hfQuoNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";
+
+                    //NOTE!! :
+                    //If updating the comment js file don't forget to change :
+                    //jquery-comment-min.js "return e.attachments.length>0" into "return e.attachments?.length>0"
+                    //jquery-comment.js "return commentModel.attachments.length" into "return commentModel.attachments?.length"
+                    //to avoid error posting without attachment
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON), function (index, key) {
+                        var value = commentJSON[key];
+                        if (key != 'attachments') {
+                            formData.append(key, value);
+                        } else {
+                            $.each(value, function (i,v) {
+                                formData.append(key, v.file);
+                            });
+                            //console.log(value)
+                        }
+                    });
+
+                    //var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                    //    return !attachment.id
+                    //});
+                    //$(attachmentsToBeCreated).each(function (index, attachment) {
+                    //    formData.append('attachments_to_be_created', attachment.file);
+                    //});
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/QuotationCommentAdd",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                putComment: function (commentJSON, success, error) {
+                    console.log("putComment");
+                    commentJSON["QuoNumber"] = $("#hfQuoNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";
+
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON), function (index, key) {
+                        var value = commentJSON[key];
+                        if (key != 'attachments') {
+                            formData.append(key, value);
+                        } else {
+                            $.each(value, function (i,v) {
+                                formData.append(key, v.file);
+                            });
+                            //console.log(value)
+                        }
+                    });
+
+                    //var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                    //    return !attachment.id
+                    //});
+                    //$(attachmentsToBeCreated).each(function (index, attachment) {
+                    //    formData.append('attachments_to_be_created', attachment.file);
+                    //});
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/QuotationCommentEdit",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                deleteComment: function (commentJSON, success, error) {
+                    console.log("deleteComment");
+                    commentJSON["QuoNumber"] = $("#hfQuoNumber").val();
+                    console.log(commentJSON);
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/QuotationCommentDelete",
+                        data: commentJSON,
+                        success: success,
+                        error: error
+                    });
+                }, getComments: function (success, error) {
+                    $.ajax({
+                        type: 'get',
+                        url: '@Url.Action("QuotationCommentGet", "PurchaseRequest", new { area = "Purchasing" })',
+                        contentType: 'multipart/form-data',
+                        data: {
+                            iQuoNumber: $("#hfQuoNumber").val(),
+                            iNIK: "@(currUserID)"
+                        },
+                        success: function (commentsArray) {
+                            success(commentsArray)
+                        },
+                        error: error
+                    });
+                }
+            });
+
+        }
+    </script>
+}
+
+<h2>
+    Quotation
+    @if (Request["addNew"] == null && Request["QuoNumber"] == null)
+    {
+        if (PurchasingMember.Contains(currUserID))
+        {
+            <a href="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing", addNew = "addNew" })" class="btn btn-primary">Create Quotation</a>
+            <button class="btnQuotationListDownload btn btn-primary">Download List</button>
+        }
+    }
+    else
+    {
+        <a href="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing" })" class="btn btn-success">Back to Quotation List</a>
+        <button class="btnQuotationCreateListDownload btn btn-primary">Download List</button>
+
+        if (currData != null && PurchasingMember.Contains(currUserID))
+        {
+            <a href="@Url.Action("DownloadQuotation", "PurchaseRequest", new { area = "Purchasing", QuoNumber = Request["QuoNumber"] })" target="_blank" class="btn btn-warning">Export D365</a>
+        }
+    }
+
+    @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 0)
+    {
+        <form action="@Url.Action("QuotationDelete", "PurchaseRequest", new { area = "Purchasing" })" method="post" class="d-inline-block">
+            <input type="hidden" name="iQuoNumber" value="@(currData?.QuoNumber)" />
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure want to delete this Quotation?')">Delete Quotation</button>
+        </form>
+    }
+</h2>
+
+
+@if (Request["addNew"] == "addNew")
+{
+    <form action="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+        <select id="selSection" name="iSection" class="form-control selAddSection" style="width:100%" required>
+            <option data-dept-to="" value="" selected>-Section-</option>
+            @foreach (var item in ViewBag.SectionList)
+            {
+                <option data-dept-to="@(item)" value="@(item)" @(Request["iSection"] == item.ToString() ? "selected" : "")>@(item)</option>
+            }
+        </select>
+        <select id="selReceivedBy" name="iReceivedBy" class="form-control selReceivedBy" style="width:100%" required>
+            <option selected value="">-Received By-</option>
+            @foreach (var data in ViewBag.AssignMember)
+            {
+                <option value="@(data.NIK)" @(Request["iReceivedBy"] == data.NIK ? "selected" : "")>@(data.NIK + " | " + data.Name)</option>
+            }
+        </select>
+    </form>
+    <div class="divCreateQuo overflow-auto">
+        <form id="formCreateQuo" action="@Url.Action("QuotationAdd", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+            <input type="hidden" class="hfAddSection" name="iSection" value="@Request["section"]" />
+            <table class="table table-bordered table-striped tblCreateQuoSelectItem">
+                <thead>
+                    <tr>
+                        <th class="align-middle sorter-false filter-false" rowspan="2">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input cbQTCreateItemsAll">
+                            </div>
+                        </th>
+                        <th class="align-middle sorter-false" colspan="2">
+                            <button type="submit" data-action="@Url.Action("QuotationAdd", "PurchaseRequest", new { area = "Purchasing" })" class="btn btn-sm btn-primary btnCreateQuoSubmit" onclick="return confirm('Are you sure want to create quotation?');">Create Quotation</button>
+                        </th>
+                        <th class="sorter-false" colspan="3">
+                            <select id="selAssignTo" name="iAssignTo" class="form-control @(currUserID == "703.04.15" || currUserID == "626.10.12" ? "" : "d-none") ">
+                                <option value="">-Select Member-</option>
+                                @foreach (var data in ViewBag.AssignMember)
+                                {
+                                    <option value="@(data.NIK)" @(data.NIK == currUserID ? "selected" : "")>@(data.NIK + " | " + data.Name)</option>
+                                }
+                            </select>
+                            <br />
+                            <button type="submit" data-action="@Url.Action("QuotationAssignMember", "PurchaseRequest", new { area = "Purchasing", iUnAssign = false })" class="btn btn-sm btn-primary form-control btnCreateQuoSubmit" onclick="return confirm('Are you sure want receive this data?');">Receive Quotation</button>
+                            <button type="submit" data-action="@Url.Action("QuotationAssignMember", "PurchaseRequest", new { area = "Purchasing", iUnAssign = true })" class="btn btn-sm btn-warning form-control btnCreateQuoSubmit" onclick="return confirm('Are you sure want unreceive this data?');">unReceive Quotation</button>
+                        </th>
+                        <th colspan="7" class="sorter-false"></th>
+                    </tr>
+
+                    <tr>
+                        <th>ReqNumber</th>
+                        <th>Created Date</th>
+                        <th>ETA Date</th>
+                        <th class="filter-select filter-exact" data-placeholder="-Select-">Section</th>
+                        <th class="filter-select filter-exact" data-placeholder="-Select-">Item Group</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Unit</th>
+                        <th>Note</th>
+                        <th class="filter-select filter-exact" data-placeholder="-Select-">Create By</th>
+                        <th class="filter-select filter-exact" data-placeholder="-Select-">Received By</th>
+                        <th class="sorter-false filter-false"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var data in ViewBag.OpenRequest)
+                    {
+                        string currCreatedNIK = data.Headers.Created_By;
+                        string currcurrAssignToNIK = data.Assign_To;
+                        var currCreatedBy = db.Users.Where(w => w.NIK == currCreatedNIK).FirstOrDefault();
+                        var currAssignTo = db.Users.Where(w => w.NIK == currcurrAssignToNIK).FirstOrDefault();
+                        <tr>
+                            <td>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input cbQTCreateItems">
+                                </div>
+                                <input type="hidden" class="hfLineID" name="iLineID[]" value="@data.ID" disabled />
+                                <input type="hidden" class="hfReqNumber" name="iReqNumber[]" value="@data.ReqNumber" disabled />
+                                <input type="hidden" class="hfSection" name="iSection[]" value="@data.Headers.Section" disabled />
+                                <input type="hidden" class="hfSectionTo" name="iSectionTo[]" value="@data.Section_To" disabled />
+                                <input type="hidden" class="hfBudgetNumber" name="iBudgetNumber[]" value="@data.Budget_Number" disabled />
+                                <input type="hidden" class="hfItemGroup" name="iItemGroup[]" value="@data.Item_Group" disabled />
+                                <input type="hidden" class="hfETADate" name="iETADate[]" value="@data.Headers.Due_Date.ToString("dd-MM-yyyy")" disabled />
+                                <input type="hidden" class="hfItem" name="iItemID[]" value="@(data?.Item_ID)" disabled />
+                                <input type="hidden" class="hfItem" name="iItemName[]" value="@(data?.Item_Name)" disabled />
+                                <input type="hidden" class="hfUnit" name="iUnit[]" value="@(data?.Unit)" disabled />
+                                <input type="hidden" class="hfQty" name="iQty[]" value="@data.Qty" disabled />
+                                <input type="hidden" class="hfPrice" name="iPrice[]" value="@data.Price_Estimation" disabled />
+                                <input type="hidden" class="hfNote" name="iNote[]" value="@data.Note" disabled />
+                            </td>
+                            <td><a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing", ReqNumber = data.ReqNumber })" target="_blank">@data.ReqNumber</a></td>
+                            <td>@data.Headers.Created_At.ToString("dd-MM-yyyy")</td>
+                            <td>@data.Headers.Due_Date.ToString("dd-MM-yyyy")</td>
+                            <td>@data.Headers.Section</td>
+                            <td>@data.Item_Group</td>
+                            <td>@((data?.Item_ID != "" ? data?.Item_ID + " || " : data?.Item_ID) + data?.Item_Name)</td>
+                            <td>@data.Qty</td>
+                            <td>@data.Unit</td>
+                            <td>@data.Note</td>
+                            <td>@(currCreatedBy?.Name)</td>
+                            <td>@(currAssignTo?.Name)</td>
+                            <td><button type="button" class="btn btn-sm btn-warning btnQuoteCreateEdit" data-toggle="modal" data-target="#mdlQuoteCreateEdit" data-id="@(data.ID)" data-itemgroup="@data.Item_Group" data-itemid="@(data?.Item_ID)" data-itemname="@(data?.Item_Name)" data-item="@((data?.Item_ID != "" ? data?.Item_ID + " || " : data?.Item_ID) + data?.Item_Name)"><i class="fas fa-edit"></i></button></td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="13" class="ts-pager">
+                            <div class="form-inline">
+                                <div class="btn-group btn-group-sm mx-1" role="group">
+                                    <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                                    <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                                </div>
+                                <span class="pagedisplay"></span>
+                                <div class="btn-group btn-group-sm mx-1" role="group">
+                                    <button type="button" class="btn btn-secondary next" title="next">→</button>
+                                    <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                                </div>
+                                <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                                    <option selected="selected" value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="all">All Rows</option>
+                                </select>
+                                <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                            </div>
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </form>
+    </div>
+    <div id="mdlQuoteCreateEdit" class="modal fade mdlQuoteCreateEdit ui-front" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <!-- Modal content-->
+            <form id="formQuoteCreateEdit" action="@Url.Action("QuotationCreateEdit", "PurchaseRequest", new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Edit Item</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-horizontal">
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Item Group:</label>
+                                <div class="col-9">
+                                    <label class="lblQuoteCreateItemGroup"></label>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Item :</label>
+                                <div class="col-9">
+                                    <input type="text" id="txtQuoteCreateItem" name="iItem" placeholder="Item ID" class="form-control txtQuoteCreateItem" value="" />
+                                    <input type="hidden" id="hfQuoteCreateItemID" name="iItemID" class="form-control hfQuoteCreateItemID" value="" />
+                                    <input type="hidden" id="hfQuoteCreateItemName" name="iItemName" class="form-control hfQuoteCreateItemName" value="" />
+                                    <input type="hidden" id="hfQuoteCreateItemGroup" name="iItemGroup" class="form-control hfQuoteCreateItemGroup" value="" />
+                                    <input type="hidden" id="hfQuoteCreateID" name="iID" class="form-control hfQuoteCreateID" value="" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnStepSubmit" type="submit" class="btn btn-warning">Edit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+else if (Request["QuoNumber"] != null)
+{
+    <div class="container-fluid" style="overflow:auto;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form id="formVendorQuotation" action="@Url.Action("QuotationEdit", "PurchaseRequest", new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-info text-white w-100" title="Quotation Number">
+                                        <i class="fas fa-file-alt mr-1"></i> Quotation Number
+                                    </span>
+                                </div>
+                                <input type="text"
+                                       class="form-control-plaintext font-weight-bold"
+                                       readonly
+                                       value="@(currData?.QuoNumber ?? "Auto Generate after submit")"
+                                       style="background: #f8f9fa; color: #007b85; font-size: 1.1em; padding-left:15px;"
+                                       data-toggle="tooltip"
+                                       data-placement="right"
+                                       title="@(currData?.QuoNumber == null ? "This will be generated after you submit the form." : "Request Number")" />
+                            </div>
+                            <hr />
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Dept/Section</label>
+                                <div class="col-sm-10">
+                                    <input id="hfQuoNumber" type="hidden" name="iQuoNumber" value="@(currData?.QuoNumber)" />
+                                    <input id="hfQuoID" type="hidden" name="iQuoID" value="@(currData?.ID)" />
+                                    <input id="hfisAllowEdit" type="hidden" name="iAllowEdit" value="@(isAllowEdit)" />
+                                    <input id="hfisApproval" type="hidden" value="@(currData?.Approval)" />
+                                    <input id="hfisApprovalSub" type="hidden" value="@(currData?.Approval_Sub)" />
+                                    <select id="selSection" name="iSection" class="form-control selSection" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                        <option data-dept-to="@(currData?.Section)" value="@(currData?.Section)" selected>@(currData?.Section)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtCategory" class="col-sm-2 col-form-label">Category</label>
+                                <div class="col-sm-10">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input rbCategory" type="radio" id="rbCategory1" name="iCategory" value="Purchase Order" @(currData != null && currData.Category == "Purchase Order" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                        <label class="form-check-label" for="cbCategory1">Purchase Order</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input rbCategory" type="radio" id="rbCategory2" name="iCategory" value="Working Order" @(currData != null && currData.Category == "Working Order" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                        <label class="form-check-label" for="cbCategory2">Working Order</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDueDate" class="col-sm-2 col-form-label">ETD Date</label>
+                                <div class="col-sm-10">
+                                    <input type="text" id="txtDueDate" name="iDueDate" placeholder="ETD Date" class="form-control jqDateQuo" autocomplete="off" value="@(currData?.Due_Date?.ToString("dd-MM-yyyy"))" required @(isAllowEdit ? "" : "disabled") />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selCurrency" class="col-sm-2 col-form-label">Currency</label>
+                                <div class="col-sm-10">
+                                    <select id="selCurrency" name="iCurrency" class="form-control selCurrency" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                        <option value="">-Currency-</option>
+                                        <option value="IDR" @(currData?.Currency == "IDR" ? "selected" : "")>IDR</option>
+                                        <option value="JPY" @(currData?.Currency == "JPY" ? "selected" : "")>JPY</option>
+                                        <option value="USD" @(currData?.Currency == "USD" ? "selected" : "")>USD</option>
+                                        <option value="THB" @(currData?.Currency == "THB" ? "selected" : "")>THB</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-sm-2 col-form-label">Attachment</label>
+                                <div class="col-sm-10">
+                                    @if (isAllowEdit)
+                                    {
+                                        <input type="file" name="iFiles" multiple="multiple" @(isAllowEdit ? "" : "disabled") />
+                                    }
+                                    <ul class="ulQTFiles pl-0"></ul>
+                                </div>
+                            </div>
+                            @if (currData != null && currData.Approval >= 4 && PurchasingMember.Contains(currUserID))
+                            {
+                                <div class="form-group row">
+                                    <label class="col-sm-2 col-form-label">PO No:</label>
+                                    <div class="col-sm-10">
+                                        <label id="lblPONo">@(currData?.PONo ?? "-")</label>
+                                        <button type="button" id="btnInputPO" class="btn btn-primary" data-toggle="modal" data-target="#mdlInputPO">Input PO</button>
+                                    </div>
+                                </div>
+                            }
+                            <div class="form-group row">
+                                <label for="txtDescription" class="col-sm-2 col-form-label">Description</label>
+                                <div class="col-sm-10">
+                                    <textarea id="txtDescription" name="iDescription" placeholder="Description" class="form-control txtDescription" required @(isAllowEdit ? "" : "disabled")>@(currData?.Description)</textarea>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    <table class="table table-bordered table-striped tblPRBudgetRemaining">
+                                        <thead>
+                                            <tr class="bg-info text-bg-info">
+                                                <th>Budget</th>
+                                                <th>Amount</th>
+                                                <th>Used</th>
+                                                <th>Propose</th>
+                                                <th>Total Remaining</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    @{
+                                        var _currDataVendor = dbPR.Purchasing_PurchaseRequest_Quotation_Line_Vendor.Where(w => w.QuoNumber == quoNumber).OrderByDescending(o => o.IsChoosen).ToList();
+                                        var currDataVendor = _currDataVendor.Select(s => s.Third_Party_ID + "|" + s.Third_Party_Name).Distinct();
+                                    }
+                                    <div class="divQTVendorPrice">
+                                        <table class="table table-bordered table-striped tblQTVendorPrice">
+                                            <thead>
+                                                <tr class="trQTVendorList bg-info">
+                                                    <th rowspan="2">No</th>
+                                                    <th rowspan="2">Items <button type="button" class="btnAdd btn btn-success @(isAllowEdit ? "" : "d-none")">Add Vendor</button></th>
+                                                    <th rowspan="2">Unit</th>
+                                                    <th rowspan="2">Qty</th>
+                                                    <th rowspan="2">History Price</th>
+                                                    @if (currDataVendor.Count() > 0)
+                                                    {
+                                                        var thDetailFirst = 1;
+                                                        foreach (var currDataVendorList in currDataVendor)
+                                                        {
+                                                            var currThirdParty = currDataVendorList.Split('|');
+                                                            <th colspan="3" class="thQTVendorList" data-idx="@(thDetailFirst)">
+                                                                <input type="text" name="iThirdParty[]" placeholder="Third Party" class="form-control txtThirdParty" value="@((currThirdParty[0] != "" ? currThirdParty[0] + " | " : currThirdParty[0]) + currThirdParty[1])" required @(isAllowEdit ? "" : "disabled") />
+                                                                <input type="hidden" name="iThirdPartyID[]" value="@(currThirdParty[0])" placeholder="Item ID" class="hfThirdPartyID form-control" />
+                                                                <input type="hidden" name="iThirdPartyName[]" value="@(currThirdParty[1])" placeholder="Item Name" class="hfThirdPartyName form-control" />
+                                                            </th>
+                                                            <th class="text-center thQTVendorAttachment" data-idx="@(thDetailFirst)" width="55">
+                                                                <button class="btn btn-sm btn-warning btnAttachment" data-thirdparty="@(currThirdParty[1])">
+                                                                    <i class="fas fa-file-alt"></i>
+                                                                </button>
+                                                                @if (isAllowEdit)
+                                                                {
+                                                                    <button type="button" class="btn btn-sm btn-danger btnDelete mt-1" data-thirdparty="@(currThirdParty[1])">
+                                                                        <i class="fas fa-trash"></i>
+                                                                    </button>
+                                                                }
+                                                            </th>
+                                                            thDetailFirst++;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <th colspan="3" class="thQTVendorList" data-idx="0">
+                                                            <input type="text" name="iThirdParty[]" placeholder="Third Party" class="form-control txtThirdParty" required @(isAllowEdit ? "" : "disabled") />
+                                                            <input type="hidden" name="iThirdPartyID[]" placeholder="Item ID" class="hfThirdPartyID form-control" />
+                                                            <input type="hidden" name="iThirdPartyName[]" placeholder="Item Name" class="hfThirdPartyName form-control" />
+
+                                                        </th>
+                                                        <th class="text-center thQTVendorAttachment" data-idx="0">
+                                                            <button class="btn btn-sm btn-primary btnAttachment" data-thirdparty="" style="display:none;">
+                                                                <i class="fas fa-file-alt"></i>
+                                                            </button>
+                                                        </th>
+                                                    }
+                                                </tr>
+                                                <tr class="trQTVendorDetail bg-info">
+                                                    @if (currDataVendor.Count() > 0)
+                                                    {
+                                                        var thDetailFirst = 1;
+                                                        foreach (var currDataVendorList in currDataVendor)
+                                                        {
+                                                            var currThirdParty = currDataVendorList.Split('|');
+                                                            var currDataVendorDiscType = _currDataVendor.Where(w => w.Third_Party_Name == currThirdParty[1]).First().Discount_Type;
+                                                            <th data-idx="@(thDetailFirst)" class="thQTVendorDetail thQTVendorDetailAmount @(thDetailFirst == 1 ? "thQTVendorDetailFirst" : "")">Price</th>
+                                                            <th data-idx="@(thDetailFirst)" class="thQTVendorDetail thQTVendorDetailAmount @(thDetailFirst == 1 ? "thQTVendorDetailFirst" : "")">Discount <i class="@(isAllowEdit && currData != null && currData.Created_By == currUserID ?"badgeDiscount":"") badgeDiscount badge badge-warning d-inline-block" data-quonumber="@(quoNumber)" data-approval="@(currData?.Approval)" data-approvalsub="@(currData?.Approval_Sub)" data-vendorname="@(currThirdParty[1])">@(currDataVendorDiscType)</i></th>
+                                                            <th data-idx="@(thDetailFirst)" class="thQTVendorDetail thQTVendorDetailAmount @(thDetailFirst == 1 ? "thQTVendorDetailFirst" : "")">Total</th>
+                                                            <th data-idx="@(thDetailFirst)" class="thQTVendorDetail text-center align-middle @(thDetailFirst == 1 ? "thQTVendorDetailFirst" : "")">
+                                                                <input type="radio" class="rbSelectAllVendor" name="rbSelectAllVendor" data-idx="@(thDetailFirst)" title="Award all items to this vendor" @(isAllowEdit ? "" : "disabled") style="cursor:pointer; transform: scale(1.2);" />
+                                                            </th>
+                                                            thDetailFirst++;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <th data-idx="0" class="thQTVendorDetail thQTVendorDetailAmount thQTVendorDetailFirst">Price</th>
+                                                        <th data-idx="0" class="thQTVendorDetail thQTVendorDetailAmount thQTVendorDetailFirst">Discount <i class="badgeDiscount badge badge-warning d-inline-block">Total</i></th>
+                                                        <th data-idx="0" class="thQTVendorDetail thQTVendorDetailAmount thQTVendorDetailFirst">Total</th>
+                                                        <th data-idx="0" class="thQTVendorDetail thQTVendorDetailFirst text-center align-middle">
+                                                            <input type="radio" class="rbSelectAllVendor" name="rbSelectAllVendor" data-idx="0" title="Award all items to this vendor" @(isAllowEdit ? "" : "disabled") style="cursor:pointer; transform: scale(1.2);" />
+                                                        </th>
+                                                    }
+                                                </tr>
+                                            </thead>
+                                            <tbody class="@(isAllowEdit? "QTsortable":"")">
+                                                @{ int rowIndex = 1; }
+                                                @foreach (var data in currDataLines)
+                                                {
+                                                    // Calculate previous Japanese fiscal year months (April to March) based on currData.Created_At
+                                                    //var createdAt = currData?.Created_At ?? DateTime.Now;
+                                                    //int fiscalYear = createdAt.Month >= 4 ? createdAt.Year - 1 : createdAt.Year - 2;
+                                                    //var prevFiscalYearMonths = new List<string>();
+                                                    //for (int m = 4; m <= 12; m++)
+                                                    //{
+                                                    //    prevFiscalYearMonths.Add(new DateTime(fiscalYear, m, 1).ToString("yyyy_MM"));
+                                                    //}
+                                                    //for (int m = 1; m <= 3; m++)
+                                                    //{
+                                                    //    prevFiscalYearMonths.Add(new DateTime(fiscalYear + 1, m, 1).ToString("yyyy_MM"));
+                                                    //}
+                                                    // Example usage: prevFiscalYear
+                                                    var currentQUODate = data?.Headers.Created_At;
+                                                    var currentQUOItemID = data?.Item_ID;
+                                                    var currentQUOItemName = data?.Item_Name;
+                                                    var netPrice = dbPR.Purchasing_PurchaseRequest_Quotation_Line_Vendor.Where(w => w.Line_ID == data.ID && w.IsChoosen == true).FirstOrDefault();
+                                                    var currNetPrice = (netPrice?.Discount_Type == "Pcs"
+                                                        ? netPrice?.Price - netPrice?.Discount
+                                                        : netPrice?.Price - (netPrice?.Qty > 0 ? (netPrice?.Discount / netPrice?.Qty) : 0)) ?? (double?)0;
+                                                    var isNewPriceBudget = data.Budget_Number == "New-Price|Propose";
+                                                    double currHistoryPrice = 0;
+
+                                                    if (!isNewPriceBudget)
+                                                    {
+                                                        var historyPrice = dbPR.Purchasing_PurchaseRequest_Quotation_Line
+                                                            .Include("vendors")
+                                                            .Where(w => w.Item_ID == currentQUOItemID && w.Item_ID != "" && w.Headers.Created_At < currentQUODate)?.OrderByDescending(o => o.Headers.Created_At)?.FirstOrDefault()?
+                                                            .Vendors?.Where(w => w.IsChoosen == true).FirstOrDefault();
+
+                                                        currHistoryPrice = (historyPrice?.Discount_Type == "Pcs"
+                                                            ? (historyPrice?.Price - historyPrice?.Discount)
+                                                            : historyPrice?.Price - (historyPrice?.Discount / historyPrice?.Qty)) ?? 0;
+                                                    }
+                                                    else
+                                                    {
+                                                        var historyPriceForNewPrice = dbD365.SCM_D365ImporForm_PurchaseLines
+                                                            .Where(w => w.Item_number == currentQUOItemID && w.Created_at < currentQUODate && ((double)(w.Unit_price - w.Discount) != currNetPrice))?
+                                                            .OrderByDescending(o => o.Created_at)?.FirstOrDefault();
+
+                                                        var historyPriceForNewPriceCustom = dbPR.Purchasing_PurchaseRequest_Quotation_History_Price_Custom
+                                                            .Where(w => (w.Item_ID == currentQUOItemID || w.Item_Name == currentQUOItemName) && w.Price_Date < currentQUODate)?
+                                                            .OrderByDescending(o => o.Price_Date)?.FirstOrDefault();
+
+                                                        currHistoryPrice = historyPriceForNewPrice != null
+                                                            ? (double)historyPriceForNewPrice.Unit_price - (double)historyPriceForNewPrice.Discount
+                                                            : (double?)historyPriceForNewPriceCustom?.Price ?? 0;
+                                                    }
+                                                    <tr class="trQTVendor" data-budgetno="@(data?.Budget_Number)" data-lineID="@(data.ID)" data-sequence="@(data?.Sequence)">
+                                                        <td class="text-center align-middle font-weight-bold">
+                                                            @(rowIndex++)
+                                                        </td>
+                                                        <td style="min-width:450px;">
+                                                            @if (isAllowEdit)
+                                                            {
+                                                                <button type="button" class="btn btn-sm btn-danger btnQTLineDelete" data-lineid="@(data?.ID)" title="Delete this line">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                                <i class="fas fa-list QTsortableHandle"></i>
+                                                            }
+                                                            <input type="hidden" class="hfQTVendorLineSequence" name="iLineSequence[]" value="@(data?.Sequence)" />
+                                                            <input type="hidden" class="hfQTVendorLineID" name="iLineID[]" value="@(data?.ID)" />
+                                                            <label class="font-weight-bold">PR No:</label>  <a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing", ReqNumber = data.ReqNumber })" target="_blank">@data.ReqNumber</a><br />
+                                                            <label class="font-weight-bold">Item:</label> @((data?.Item_ID != "" ? data?.Item_ID + " || " : data?.Item_ID) + data?.Item_Name)<br />
+                                                            <label class="font-weight-bold">Section To:</label> @(data?.Section_To)<br />
+                                                            @*<label class="font-weight-bold">Unit:</label> @(data?.Unit)<br />
+                    <label class="font-weight-bold">Item-Group:</label> @(data?.Item_Group)<br />*@
+                                                            @*<label class="font-weight-bold">Budget:</label> @(data?.Budget_Number)<br />*@
+                                                            @*<label class="font-weight-bold">Section-To:</label> @(data?.Section_To)<br />*@
+                                                            <label class="font-weight-bold">Budget No.:</label> <span class="spanPriceEst">@(data?.Budget_Number)</span><br />
+                                                            @if (data?.Note != "")
+                                                            {
+                                                                <label class="font-weight-bold">Note:</label> @(data?.Note ?? "-")<br />
+                                                            }
+                                                        </td>
+                                                        <td style="min-width:120px;" class="align-middle text-right">
+                                                            <select name="iUnit[]" class="form-control select2 selUnit" style="width:100%" @(isAllowEdit ? "" : "disabled") required>
+                                                                <option value="">-Unit-</option>
+                                                                @foreach (var item in ViewBag.Units)
+                                                                {
+                                                                    <option value="@(item)" @(data?.Unit == item ? "Selected" : "")>@(item)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td style="min-width:60px;" data-idx="0" class="tdQTQuantity align-middle text-right">
+                                                            <input type="text" class="form-control align-middle text-right txtQTQuantity" name="iQty[]" value="@(data?.Qty)" @(isAllowEdit ? "" : "disabled") />
+                                                        </td>
+                                                        <td style="min-width:165px" class="tdQTHistoryPrice align-middle">
+                                                            <fieldset class="border rounded text-center align-middle"><legend class="w-auto rounded p-1 m-0">History Net Price</legend><span class="spanCurrHistoryPrice">@(currHistoryPrice)</span></fieldset>
+                                                            <fieldset class="border rounded text-center align-middle"><legend class="w-auto rounded p-1 m-0">Current Net Price</legend><span class="spanCurrNetPrice" style="color:@(currNetPrice <= (double?)currHistoryPrice ?"Green":"#ce7200")">@(currNetPrice)</span></fieldset>
+                                                        </td>
+                                                        @{var currDataLinesVendor = dbPR.Purchasing_PurchaseRequest_Quotation_Line_Vendor.Where(w => w.Line_ID == data.ID).OrderByDescending(o => o.IsChoosen).ToList();}
+
+                                                        @if (currDataLinesVendor.Count() > 0)
+                                                        {
+                                                            var tdVendorFirst = 1;
+                                                            foreach (var dataLinesVendor in currDataLinesVendor)
+                                                            {
+                                                                <td style="min-width:125px;" data-idx="@(tdVendorFirst)" class="tdQTVendor tdQTVendorDetailAmount @(tdVendorFirst == 1 ? "tdQTVendorFirst" : "") tdQTVendorPrice"><input type="text" class="form-control align-middle text-right txtQTVendorPrice" name="@("iPrice" + data.ID + "[]")" data-disctype="@dataLinesVendor.Discount_Type" value="@dataLinesVendor.Price" @(isAllowEdit ? "" : "disabled") /></td>
+                                                                <td style="min-width:125px;" data-idx="@(tdVendorFirst)" class="tdQTVendor tdQTVendorDetailAmount @(tdVendorFirst == 1 ? "tdQTVendorFirst" : "") tdQTVendorDiscount">
+                                                                    <input type="text" class="form-control align-middle text-right txtQTVendorDiscount" name="@("iDiscount" + data.ID + "[]")" data-disctype="@dataLinesVendor.Discount_Type" value="@dataLinesVendor.Discount" @(isAllowEdit ? "" : "disabled") />
+                                                                    <input type="hidden" class="hfQTVendorDiscountType" name="@("iDiscountType" + data.ID + "[]")" value="@dataLinesVendor.Discount_Type" />
+                                                                </td>
+                                                                <td style="min-width:125px;" data-idx="@(tdVendorFirst)" class="tdQTVendor tdQTVendorDetailAmount @(tdVendorFirst == 1 ? "tdQTVendorFirst" : "") tdQTVendorTotal align-middle text-right"><input type="hidden" class="form-control hfQTVendorTotal" name="@("iTotal" + data.ID + "[]")" data-budgetno="@(data?.Budget_Number)" data-vendorchoose="@(dataLinesVendor.IsChoosen ? 1 : 0)" data-disctype="@dataLinesVendor.Discount_Type" value="@(dataLinesVendor?.Total ?? 0)" @(isAllowEdit ? "" : "disabled") /><span class="spanTotal">@(dataLinesVendor?.Total ?? 0)</span></td>
+                                                                <td style="min-width:50px;" data-idx="@(tdVendorFirst)" class="tdQTVendor @(tdVendorFirst == 1 ? "tdQTVendorFirst" : "") tdQTVendorChoose align-middle text-center">
+                                                                    <input type="hidden" class="form-control hfQTVendorID" name="@("iVendorID" + data.ID + "[]")" value="@(dataLinesVendor.ID)" />
+                                                                    <input type="hidden" class="form-control hfQTVendorChoose" name="@("iVendorChoose" + data.ID + "[]")" value="@(dataLinesVendor.IsChoosen ? 1 : 0)" />
+                                                                    <input type="radio" class="form-check-input rbQTVendorChoose" name="@("iVndrChoose" + data.ID + "[]")" @(dataLinesVendor.IsChoosen ? "checked" : "") required @(isAllowEdit ? "" : "disabled")>
+                                                                </td>
+                                                                tdVendorFirst++;
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <td style="min-width:125px;" data-idx="0" class="tdQTVendor tdQTVendorDetailAmount tdQTVendorFirst tdQTVendorPrice"><input type="text" class="form-control align-middle text-right txtQTVendorPrice" name="@("iPrice" + data.ID + "[]")" data-disctype="Total" value="0" @(isAllowEdit ? "" : "disabled") /></td>
+                                                            <td style="min-width:125px;" data-idx="0" class="tdQTVendor tdQTVendorDetailAmount tdQTVendorFirst tdQTVendorDiscount">
+                                                                <input type="text" class="form-control align-middle text-right txtQTVendorDiscount" name="@("iDiscount" + data.ID + "[]")" data-disctype="Total" value="0" @(isAllowEdit ? "" : "disabled") />
+                                                                <input type="hidden" class="hfQTVendorDiscountType" name="@("iDiscountType" + data.ID + "[]")" value="Total" />
+                                                            </td>
+                                                            <td style="min-width:125px;" data-idx="0" class="tdQTVendor tdQTVendorDetailAmount tdQTVendorFirst tdQTVendorTotal align-middle text-right"><input type="hidden" class="form-control hfQTVendorTotal" name="@("iTotal" + data.ID + "[]")" data-budgetno="@(data?.Budget_Number)" data-vendorchoose="1" data-disctype="Total" value="0" @(isAllowEdit ? "" : "disabled") /><span class="spanTotal">0</span></td>
+                                                            <td style="min-width:50px;" data-idx="0" class="tdQTVendor tdQTVendorFirst tdQTVendorChoose align-middle text-center">
+                                                                <input type="hidden" class="form-control hfQTVendorID" name="@("iVendorID" + data.ID + "[]")" value="0" />
+                                                                <input type="hidden" class="form-control hfQTVendorChoose" name="@("iVendorChoose" + data.ID + "[]")" value="0" />
+                                                                <input type="radio" class="form-check-input rbQTVendorChoose" name="@("iVndrChoose" + data.ID + "[]")" required @(isAllowEdit ? "" : "disabled")>
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                            <tfoot>
+                                                <tr class="trGrandTotal" style="background-color:#17bad4;">
+                                                    <td colspan="5" class="font-weight-bold">Grand Total</td>
+
+                                                    @{
+                                                        var _currDataVendorList = dbPR.Purchasing_PurchaseRequest_Quotation_Line_Vendor.Where(w => w.QuoNumber == quoNumber).Select(s => s.Third_Party_Name).Distinct();
+                                                        var _tdVendorFirst = 1;
+                                                    }
+
+                                                    @if (_currDataVendorList.Count() > 0)
+                                                    {
+                                                        foreach (var data in _currDataVendorList)
+                                                        {
+                                                            <td data-idx="@(_tdVendorFirst)" class="text-right tdQTVendorPriceTotal font-weight-bold">0</td>
+                                                            <td data-idx="@(_tdVendorFirst)" class="text-right tdQTVendorDiscountTotal font-weight-bold">0</td>
+                                                            <td data-idx="@(_tdVendorFirst)" class="text-right tdQTVendorTotalAll font-weight-bold">0</td>
+                                                            <td data-idx="@(_tdVendorFirst)"></td>
+                                                            _tdVendorFirst++;
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <td data-idx="0" class="text-right tdQTVendorPriceTotal font-weight-bold">0</td>
+                                                        <td data-idx="0" class="text-right tdQTVendorDiscountTotal font-weight-bold">0</td>
+                                                        <td data-idx="0" class="text-right tdQTVendorTotalAll font-weight-bold">0</td>
+                                                        <td data-idx="0"></td>
+                                                    }
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    <table class="table table-bordered table-striped tblBasisAward">
+                                        <thead>
+                                            <tr class="bg-info text-bg-info">
+                                                <th colspan="4">
+                                                    Basis of award @("- " + dbPR.Purchasing_PurchaseRequest_Quotation_Line_Vendor.Where(w => w.QuoNumber == quoNumber && w.IsChoosen == true).FirstOrDefault()?.Third_Party_Name)
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                string[] basisAwards = currData?.Basis_Award?.Split(new[] { "," }, StringSplitOptions.None);
+                                            }
+                                            <tr>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Lowest price" @(basisAwards != null && basisAwards.Contains("Lowest price") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Lowest price</td>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Earliest Delivery" @(basisAwards != null && basisAwards.Contains("Earliest Delivery") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Earliest Delivery</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Spec Requirement" @(basisAwards != null && basisAwards.Contains("Spec Requirement") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Spec Requirement</td>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Good Quality" @(basisAwards != null && basisAwards.Contains("Good Quality") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Good Quality</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Duration" @(basisAwards != null && basisAwards.Contains("Duration") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Duration</td>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Work Already Done" @(basisAwards != null && basisAwards.Contains("Work Already Done") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Work Already Done</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Urgent Purchase" @(basisAwards != null && basisAwards.Contains("Urgent Purchase") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Urgent Purchase</td>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Authorized Distributor" @(basisAwards != null && basisAwards.Contains("Authorized Distributor") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Authorized Distributor</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Repeat Order" @(basisAwards != null && basisAwards.Contains("Repeat Order") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Repeat Order</td>
+                                                <td class="tdBasisAward"><input type="checkbox" name="iBasisAward[]" class="cbBasisAward" value="Frame Contract" @(basisAwards != null && basisAwards.Contains("Frame Contract") ? "checked" : "") @(isAllowEdit ? "" : "disabled") /></td>
+                                                <td>Frame Contract</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            @*<div class="form-group row">
+                                    <label for="txtComment" class="col-sm-2 col-form-label">Comment, If Any</label>
+                                    <div class="col-sm-10">
+                                        <textarea id="txtComment" name="iComment" placeholder="Comment, If Any" class="form-control txtComment" rows="4" @(isAllowEdit || isAllowSign ? "" : "disabled") @(currData?.Approval == 2 ? "required" : "")>@(currData?.Comment)</textarea>
+                                    </div>
+                                </div>*@
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    <button type="submit" class="btn btn-primary form-control btnQTVendorSubmit @(isAllowEdit ? "" : "d-none")" onclick="return confirm('Are you sure want to save Vendor Quotation?')">Save</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="form-group row">
+                            <div class="col-12">
+                                <div id="QTComments"></div>
+                            </div>
+                        </div>
+
+                        @{
+                            var currSignList = db.Approval_List.Where(w => w.Menu_Id == 40 && w.Document_Id == 2 && w.Reveral_ID == quoNumber && w.Is_Skip == false && w.IsEmailOnly == false).Select(s => new { Title = s.Title, Header = s.Header, Label = s.Label, Levels = s.Levels, Levels_Sub = s.Levels_Sub }).Distinct().ToList().OrderByDescending(o => o.Levels).ThenByDescending(o => o.Levels_Sub);
+                        }
+                        <table class="table table-bordered tblSign mt-3">
+                            <thead>
+                                <tr>
+                                    <th class="text-center" colspan="@(currSignList.Where(w => w.Header == "Management").Count())">Management</th>
+                                    <th class="text-center" colspan="@(currSignList.Where(w => w.Header == "Department").Count())">Department</th>
+                                    <th class="text-center" colspan="@(currSignList.Where(w => w.Header == "Purchasing").Count())">
+                                        <form action="@Url.Action("resetSignList", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                            <input id="hfQuoNumberSkipSign" name="iQuoNumber" type="hidden" value="@(Request["QuoNumber"])" />
+                                            @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 0)
+                                            {
+                                                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure want to reset sign?')">Reset Sign</button>
+                                            }
+                                        </form>
+                                        Purchasing
+                                    </th>
+                                </tr>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <th class="text-center @((currData.Created_At > DateTime.Parse("4/1/2025") && !isPurchasingMember && (dList.Levels == 1 && (dList.Levels_Sub == 1 || dList.Levels_Sub == 2))) ? "d-none":"")">
+                                            @(dList.Label)
+                                            @if (dList.Levels + dList.Levels_Sub > 1 && currData.Approval == 1 && currData.Approval_Sub == 0)
+                                            {
+                                                <button type="button" class="btn btn-sm btn-danger btnQuoteSkipSign" data-quonumber="@quoNumber" data-level="@dList.Levels" data-levelsub="@dList.Levels_Sub" data-toggle="modal" data-target="#mdlQuoteSkipSign" data-header="@(dList.Header)" data-title="@(dList.Title)"><i class="fas fa-x"></i></button>
+                                            }
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center align-middle @((currData.Created_At > DateTime.Parse("4/1/2025") && !isPurchasingMember && (dList.Levels == 1 && (dList.Levels_Sub == 1 || dList.Levels_Sub == 2))) ? "d-none":"")" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Is_Reject == false && currData.Approval == dList.Levels && currData.Approval_Sub == dList.Levels_Sub && isAllowSign)
+                                            {
+                                                <form id="formQuotationSign" action="@Url.Action("quotationSign", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                                    <input type="hidden" name="iSignQuoNumber" value="@(Request["QuoNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary" onclick="if (!confirm('Are you sure want to sign this quotation ?')) return false; this.disabled=true; this.innerText='Signing...'; this.form.submit(); return false;">Sign</button>
+                                                </form>
+                                                if (currData != null && (currData.Approval + currData.Approval_Sub != 1))
+                                                {
+                                                    <hr />
+                                                    <form action="@Url.Action("quotationSign", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                                        <input type="hidden" name="iSignQuoNumber" value="@(Request["QuoNumber"])" />
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                        <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                    </form>
+                                                    <hr />
+                                                    <form action="@Url.Action("quotationSign", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                                        <input type="hidden" name="iSignQuoNumber" value="@(Request["QuoNumber"])" />
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                    </form>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                string currQuoNumber = currData.QuoNumber.ToString();
+                                                var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 40 && w.Document_Id == 2 && w.Reveral_ID == currQuoNumber && w.Approval == dList.Levels && w.Approval_Sub == dList.Levels_Sub).OrderByDescending(o => o.id).FirstOrDefault();
+                                                if (currData != null && (currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels)
+                                                {
+                                                    if (checkHistory != null && checkHistory.IsReject == true)
+                                                    {
+                                                        <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                    }
+                                                }
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center @((currData.Created_At > DateTime.Parse("4/1/2025") && !isPurchasingMember && (dList.Levels == 1 && (dList.Levels_Sub == 1 || dList.Levels_Sub == 2))) ? "d-none":"")">
+                                            @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                                            {
+                                                @(PR.ApprovalHistory(currData.QuoNumber, dList.Levels, dList.Levels_Sub, 1, 2));
+                                            }
+                                            else
+                                            {
+                                                var getNextSignList = db.Approval_List.Where(w => w.Menu_Id == 40 && w.Document_Id == 2 && w.Reveral_ID == quoNumber && w.Levels == dList.Levels && w.Levels_Sub == dList.Levels_Sub && w.Is_Skip == false && w.IsEmailOnly == false).ToList();
+                                                var cnt = 0;
+                                                var nextSignList = new List<string>();
+                                                foreach (var dListNext in getNextSignList)
+                                                {
+                                                    if (!nextSignList.Contains(dListNext?.Users?.Name))
+                                                    {
+                                                        @((cnt > 0 ? " / " : "") + dListNext?.Users?.Name)
+                                                        nextSignList.Add(dListNext?.Users?.Name);
+                                                        cnt++;
+                                                    }
+                                                }
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center @((currData.Created_At > DateTime.Parse("4/1/2025") && !isPurchasingMember && (dList.Levels == 1 && (dList.Levels_Sub == 1 || dList.Levels_Sub == 2))) ? "d-none":"")">
+                                            @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                                            {
+                                                @(PR.ApprovalHistory(currData.QuoNumber, dList.Levels, dList.Levels_Sub, 2, 2));
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade mdlAttachment" role="dialog">
+        <div class="modal-dialog">
+            <!-- Modal content-->
+            <form id="NSNewAppForm" action="@Url.Action("uploadQTAttachment","PurchaseRequest",new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Attachment</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-horizontal">
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Attachment</label>
+                                <div class="col-9">
+                                    <input id="hfQuoNumberAttachment" name="iQuoNumber" type="hidden" value="@(Request["QuoNumber"])" />
+                                    <input id="hfAttachmentThirdPartyCode" name="iThirdPartyName" type="hidden" />
+                                    @if (isAllowEdit)
+                                    {
+                                        <input type="file" name="iFiles" multiple="multiple" />
+                                    }
+                                    <ul class="ulFiles pl-0"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnStepSubmit" type="submit" class="btn btn-default">Upload</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div id="mdlQuoteSkipSign" class="modal fade mdlQuoteSkipSign ui-front" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <!-- Modal content-->
+            <form id="formQuoteSkipSign" action="@Url.Action("setSignList","PurchaseRequest",new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Skip Sign</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-horizontal">
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Header:</label>
+                                <div class="col-9">
+                                    <label class="lblQuoteSkipSignHeader"></label>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Title:</label>
+                                <div class="col-9">
+                                    <label class="lblQuoteSkipSignTitle"></label>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">List :</label>
+                                <div class="col-9">
+                                    <table class="table table-bordered tblQuoteSkipSign">
+                                        <thead class="bg-info text-bg-info">
+                                            <tr>
+                                                <th></th>
+                                                <th>NIK</th>
+                                                <th>Name</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnStepSubmit" type="submit" class="btn btn-danger" onclick="return confirm('Are you sure want to skip this sign?')">Skip Sign</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="mdlInputPO" class="modal fade mdlInputPO ui-front" role="dialog">
+        <div class="modal-dialog modal-sm">
+            <!-- Modal content-->
+            <form id="formInputPO" action="@Url.Action("InputQuotationPO","PurchaseRequest",new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Input PO Number & Edit ETD Date</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-horizontal">
+                            <div class="form-group row">
+                                <div class="col-12">
+                                    <input type="text" name="iPONo" class="form-control" value="@(currData?.PONo ?? "")" placeholder="PO Number" required />
+                                    <input type="text" name="iETDDate" class="form-control jqDateQuo mt-2 " value="@(currData?.Due_Date?.ToString("dd-MM-yyyy") ?? "")" placeholder="ETD Date" required />
+                                    <input type="hidden" name="iQuoNumber" value="@(currData?.QuoNumber)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnStepSubmit" type="submit" class="btn btn-primary form-control">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Budget Details -->
+    <div class="modal fade" id="budgetDetailsModal" tabindex="-1" role="dialog" aria-labelledby="budgetDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="budgetDetailsModalLabel">Budget Item Details</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <table class="table table-bordered table-striped mb-0" id="budgetItemsTable">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Item</th>
+                                <th>Unit</th>
+                                <th class="text-right">Qty</th>
+                                <th class="text-right">Net Price</th>
+                                <th class="text-right">Total</th>
+                                <th>Note</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr class="table-info font-weight-bold">
+                                <td colspan="4" class="text-right">Grand Total</td>
+                                <td class="text-right" id="budgetItemsGrandTotal">0</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal for Budget Usage Details -->
+    <div class="modal fade" id="budgetUsageDetailsModal" tabindex="-1" role="dialog" aria-labelledby="budgetUsageDetailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="budgetUsageDetailsModalLabel">Budget Item Details</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-0">
+                    <table class="table table-bordered table-striped mb-0" id="budgetUsageTable">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Type</th>
+                                <th class="text-nowrap">Date</th>
+                                <th class="text-nowrap">Reference No</th>
+                                <th>Description</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr class="table-info font-weight-bold">
+                                <td colspan="4" class="text-right">Grand Total</td>
+                                <td class="text-right" id="budgetUsageGrandTotal">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+}
+else
+{
+
+    <div class="divPRFilter @(Request["ReqNumber"] == null && Request["addNew"] == null ? "":"d-none")">
+        <form action="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+            <select id="selPRFilterYear" class="form-control" name="iPRFilterYear">
+                <option value="">-Year-</option>
+                @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+                {
+                    <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+                }
+            </select>
+            <select id="selPRFilterStatus" class="form-control" name="iPRFilterStatus">
+                <option value="">-Status-</option>
+                <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+                <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+                <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+            </select>
+            @if (((IEnumerable<dynamic>)ViewBag.currUserLevels).Count() > 1)
+            {
+                <select id="selPRFilterLevel" class="form-control" name="iPRFilterLevel">
+                    <option value="">-Level-</option>
+                    @foreach (var data in ((IEnumerable<dynamic>)ViewBag.currUserLevels).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+                    {
+                        <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.UserLevel + "|" + ViewBag.UserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                    }
+                </select>
+            }
+            <button type="submit" class="btnPRFilter" style="display:none;">Submit</button>
+        </form>
+    </div>
+    <div class="divQuotationList overflow-auto">
+        <table class="table table-bordered table-striped tblQuotationList">
+            <thead>
+                <tr>
+                    <th>Quotation Number</th>
+                    <th>Date</th>
+                    <th>ETD Date</th>
+                    <th>Description</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Section</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Created By</th>
+                    <th>Po Number</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var data in ViewBag.QuotationList)
+                {
+                    <tr>
+                        <td style="min-width:125px;"><a href="#" class="toggle btn btn-sm btn-primary"><i class="fa-solid fa-list"></i></a> <a href="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing", QuoNumber = data.QuoNumber })" target="_blank">@(data.QuoNumber)</a></td>
+                        <td>@(data.Created_At.ToString("dd-MM-yyyy")) </td>
+                        <td>@(data.Due_Date?.ToString("dd-MM-yyyy")) </td>
+                        <td>@(data.Description) </td>
+                        <td>@(data.Section) </td>
+                        <td>@(data.Creator.Name) </td>
+                        <td>@(data.PONo ?? "")</td>
+                        <td class="text-center">
+                            @if (!data.Is_Reject)
+                            {
+                                <span class="badge badge-info">@(PR.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub, 2))</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-danger">Rejected</span>
+                            }
+                        </td>
+                    </tr>
+                    string currQuoNumber = data.QuoNumber.ToString();
+                    var itemDetail = dbPR.Purchasing_PurchaseRequest_Quotation_Line.Where(w => w.QuoNumber == currQuoNumber).ToList();
+                    <tr class="tablesorter-childRow">
+                        <td colspan="8">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Item Group</th>
+                                        <th>Unit</th>
+                                        <th>Qty</th>
+                                        <th>Note</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in itemDetail)
+                                    {
+                                        <tr>
+                                            <td>@(item.Item_ID != null ? (item.Item_ID + " | " + item.Item_Name) : item.Item_Name)</td>
+                                            <td>@(item.Item_Group)</td>
+                                            <td>@(item.Unit)</td>
+                                            <td class="text-right">@(item.Qty)</td>
+                                            <td>@(item.Note)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="8" class="ts-pager">
+                        <div class="form-inline">
+                            <div class="btn-group btn-group-sm mx-1" role="group">
+                                <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                                <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                            </div>
+                            <span class="pagedisplay"></span>
+                            <div class="btn-group btn-group-sm mx-1" role="group">
+                                <button type="button" class="btn btn-secondary next" title="next">→</button>
+                                <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                            </div>
+                            <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                                <option selected="selected" value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="all">All Rows</option>
+                            </select>
+                            <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}

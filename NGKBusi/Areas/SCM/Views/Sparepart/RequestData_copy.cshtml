@@ -1,0 +1,551 @@
+﻿<!doctype html>
+@{
+    ViewBag.Title = "Data Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<title>Fresh Bootstrap Table by Creative Tim</title>
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+
+
+
+<style>
+    .card {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        text-align: center;
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card .card-header {
+            /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+
+    .notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #25D366;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 16px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        display: none;
+    }
+</style>
+
+
+<div class="row">
+    <div class="col-12" id="notification-container">
+       
+    </div>
+    <button id="enableSoundButton" onclick="enableNotificationSound()" style="display: none;">Aktifkan Notifikasi Suara</button>
+    <!-- Audio element untuk memainkan suara notifikasi -->
+    <audio id="notificationSound" src="~/Files/SCM/Sparepart/Audio/alert-1931.wav" preload="auto"></audio>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info">Data Request Sparepart</div>
+            <div class="card-body">
+                <div class="row p-2">
+                    <div class="col-lg-12">
+                        @{
+                            string dateFrom = Session["startDate"] as string;
+                            string dateTo = Session["endDate"] as string;
+                            string statusFilter = Session["status"] as string;
+                            int status = Convert.ToInt32(ViewBag.statusFilter);
+                        }
+                        <form action="@Url.Action("RequestData", "Sparepart", new { area = "SCM" })" method="post">
+                            <div class="form-group row">
+                                <label for="dateRange" class="col-md-2 col-form-label">Select Periode</label>
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control dateFrom" id="dateRange" name="dateFrom" placeholder="select date" required>
+
+                                </div>
+                                To
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control dateTo" id="dateRange" name="dateTo" placeholder="select date" required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="inputPassword" class="col-md-2 col-form-label">Select Status</label>
+                                <div class="col-md-4">
+
+                                    <select class="form-control" name="status" data-placeholder="Select Status" required>
+                                        <option value="0" @(status == 0 ? "selected" : "")>-- All Status --</option>
+                                        <option value="1" @(status == 1 ? "selected" : "")>Open</option>
+                                        <option value="1" @(status == 2 ? "selected" : "")>Preparing</option>
+                                        <option value="3" @(status == 3 ? "selected" : "")>Ready</option>
+                                        <option value="4" @(status == 4 ? "selected" : "")>Close</option>
+                                        <option value="10" @(status == 10 ? "selected" : "")>Cancel</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="submit" class="btn btn-info col-10" id="findData" value="Find Data" />
+                                </div>
+                            </div>
+                        </form>
+                        <div id="toolbar">
+                            @if (ViewBag.status == 1 && (User.IsInRole("AdminSparepart") || User.IsInRole("Administrator") || User.IsInRole("WarehouseSparepart")))
+                            {
+                                <button id="process" class="btn btn-warning" disabled>Prepare Selected</button>
+                            }
+                            else if (ViewBag.status == 3)
+                            {
+                                <button id="process" class="btn btn-success" disabled>Close Selected</button>
+                            }
+
+                        </div>
+                        <table id="fresh-table"
+                               data-toolbar="#toolbar"
+                               data-click-to-select="true"
+                               data-detail-view="true"
+                               data-detail-view-icon="true"
+                               data-detail-view-by-click="false"
+                               data-detail-formatter="detailFormatter"
+                               class="table table-hover">
+                            <thead>
+
+                                @if (ViewBag.status == 1 || ViewBag.status == 3)
+                                {
+                                <th data-field="state" data-checkbox="true"></th>
+                            }
+                                <th data-field="id">Request No</th>
+                                <th data-field="userRequest" data-sortable="true">Request By</th>
+                                <th data-field="salary" data-sortable="true">Remark</th>
+                                <th data-field="section" data-sortable="true">Section</th>
+                                <th data-field="country" data-sortable="true" data-filter-type="datepicker_range">Request Time</th>
+                                <th data-field="Status">Status</th>
+                                <th data-field="actions">Actions</th>
+                                </thead>
+                                <tbody>
+                                    @foreach (var tbl in ViewBag.RequestList)
+                                    {
+                                        var date = tbl.Create_Time.ToShortDateString();
+                                        string sta = "";
+                                        string badge = "";
+                                        string countdown = "";
+                                        if (tbl.Status == 1)
+                                        {
+                                            sta = "open";
+                                            badge = "primary";
+                                            countdown = "";
+                                        }
+                                        else if (tbl.Status == 2)
+                                        {
+                                            sta = "Preparing";
+                                            badge = "warning";
+                                            countdown = "";
+                                        }
+                                        else if (tbl.Status == 3)
+                                        {
+                                            sta = "Ready";
+                                            badge = "info";
+                                            countdown = Html.Raw("Please Close your request before <strong>") + tbl.CloseTimeDueDate.ToString("dd - MMMM - yyyy") + Html.Raw("</strong>");
+                                        }
+                                        else if (tbl.Status == 10)
+                                        {
+                                            sta = "Cancelled";
+                                            badge = "dark";
+                                            countdown = "";
+                                        }
+                                        else
+                                        {
+                                            sta = "Close";
+                                            badge = "secondary";
+                                            countdown = "";
+                                        }
+                                        <tr>
+                                            @if (ViewBag.status == 1 || ViewBag.status == 3)
+                                            {
+                                                <td></td>
+                                            }
+                                            <td>@(tbl.RequestNo)</td>
+                                            <td>@(tbl.Name)</td>
+                                            <td>@(tbl.Remark)</td>
+                                            <td>@(tbl.CostName)</td>
+                                            <td>@(date)</td>
+                                            <td>
+                                                <h5><span class="badge badge-@(badge)"> @(sta) </span></h5>
+                                                @if (tbl.Status == 3)
+                                                {<p> Please Close your request before <br /><strong> @tbl.CloseTimeDueDate.ToString("dd - MMMM - yyyy HH:mm")</strong> </p>}
+                                            </td>
+                                            <td>
+                                                <a href="@Url.Action("DetailRequest", "Sparepart", new { area = "SCM", RequestNo = tbl.RequestNo })" class="btn btn-info btn-sm" data-toggle="tooltip" data-placement="right" title="view Detail"><i class="fa fa-eye"></i> </a>
+                                                &nbsp;
+                                                @if (tbl.Status == 4 && tbl.IsReturn == 0)
+                                                {
+                                                    <a href="@Url.Action("ReturRequest", "Sparepart", new { area = "SCM", RequestNo = tbl.RequestNo })" class="btn btn-warning btn-sm" data-toggle="tooltip" data-placement="right" title="Retur Item"><i class="fa fa-undo"></i> </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                            </table>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+
+<script src="@Url.Content("~/Scripts/jquery.signalR-2.4.3.min.js")"></script>
+<script src="@Url.Content("~/signalr/js")"></script>
+
+<script>
+
+    var $process = $('#process');
+    var $table = $('#fresh-table');
+
+    $(function () {
+        $('#fresh-table').bootstrapTable({
+            exportDataType: "all",
+            exportTypes: ['excel', 'pdf'],
+            buttonsClass: 'primary',
+        })
+    });
+
+    /* --------------------------------------------------------------- notification with signalR  -------------------------------------------------------------------------- */
+    function remove(el) {
+        var element = el;
+        element.parentNode.remove();
+    }
+
+    function appendText(RequestNo) {
+
+        var url = "@Url.Action("DetailRequest", "Sparepart", new { area = "SCM", RequestNo = "__RequestNo__" })";
+        // Mengganti placeholder dengan nilai JavaScript
+        url = url.replace('__RequestNo__', RequestNo);
+        var txt1 = "<div class='alert alert-primary' role='alert'><span class='fa fa-info-circle'></span> | New Request Received <a href='" + url + "' target='_blank' class='alert-link' onclick='remove(this)'>" + RequestNo + "</a>. Click for Details.</div > ";
+        $("#notification-container").append(txt1);      // Append the new elements
+    }
+
+    var soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+    var userInteracted = false;
+
+    // Fungsi untuk mengaktifkan izin suara setelah klik pertama
+    function enableNotificationSound() {
+        var audio = document.getElementById("notificationSound");
+        audio.volume = 0; // Set volume ke 0 agar tidak terdengar
+
+        audio.play().then(function () {
+            soundEnabled = true;
+            localStorage.setItem('soundEnabled', 'true');
+            document.getElementById("enableSoundButton").style.display = 'none';
+            console.log("Suara notifikasi diaktifkan setelah interaksi pengguna.");
+        }).catch(function (error) {
+            console.log("Suara gagal dimainkan:", error);
+        });
+    }
+
+
+    $(document).ready(function () {
+
+        // Meminta izin untuk menampilkan notifikasi jika belum diberikan
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission().then(function (permission) {
+                console.log("Izin notifikasi:", permission);
+            });
+        }
+
+        // Inisialisasi koneksi ke SignalR Hub
+        // Mengakses hub
+        var notificationHub = $.connection.notificationHub;
+
+        // Mendefinisikan method untuk menerima dan menampilkan notifikasi
+        //notificationHub.client.receiveNotification = function (message) {
+        //    var notificationContainer = $('<div class="notification">').text(message);
+        //    $('body').append(notificationContainer);
+
+        //    // Gaya notifikasi seperti WhatsApp
+        //    notificationContainer.css({
+        //        position: 'fixed',
+        //        bottom: '20px',
+        //        right: '20px',
+        //        background: '#25D366',
+        //        color: 'white',
+        //        padding: '15px',
+        //        borderRadius: '10px',
+        //        fontSize: '16px',
+        //        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+        //        zIndex: 1000
+        //    }).hide().fadeIn(500);
+
+        //    $('#notification-container').html(message);
+
+        //    // Mainkan suara notifikasi
+        //    if (soundEnabled) {
+        //        document.getElementById("notificationSound").play().catch(function (error) {
+        //            console.log("Suara tidak bisa diputar:", error);
+        //        });
+        //    }
+
+        //    // Menghilangkan notifikasi setelah 5 detik
+        //    setTimeout(function () {
+        //        notificationContainer.fadeOut(500, function () {
+        //            $(this).remove();
+        //        });
+        //    }, 5000); // Durasi tampil notifikasi (5000ms atau 5 detik)
+        //};
+        notificationHub.client.receiveNotification = function (message) {
+            //$('#notification-container').html(message);
+            appendText(message);
+
+            // Menampilkan notifikasi di layar (mirip WhatsApp)
+            if (Notification.permission === "granted") {
+                new Notification("New Sparepart Request", {
+                    body: message,
+                    icon: "/path/to/your/icon.png" // Ganti dengan path ke ikon Anda
+                });
+            }
+
+            if (soundEnabled) {
+                document.getElementById("notificationSound").play().catch(function (error) {
+                    console.log("Suara tidak bisa diputar:", error);
+                });
+            }
+
+            // Menampilkan notifikasi juga di halaman
+            //$('#notification-container').append('<div>' + message + '</div>');
+        };
+
+        // Mulai koneksi ke hub
+        $.connection.hub.start().done(function () {
+            console.log("Connected to NotificationHub.");
+        }).fail(function (error) {
+            console.log("Failed to connect to NotificationHub:", error);
+        });
+    });
+    /* --------------------------------------------------------------- notification with signalR  -------------------------------------------------------------------------- */
+    function detailFormatter(index, row) {
+        var requestNo = row.id;
+        var data = getItemList(requestNo);
+
+        console.log(data);
+        return data;
+
+        //var html = []
+        //$.each(row, function (key, value) {
+        //    html.push('<p><b>' + key + ':</b> ' + value + '</p>')
+        //})
+        //html.join('')
+    }
+
+        function getItemList(requestNo) {
+            var Link = "@Url.Action("ItemListRequest", "Sparepart", new { area = "SCM" })";
+            var html = "";
+            html += "<table class='table table-sm table-primary'>";
+            html += "<thead class='thead-light '>"
+            html += "<tr>";
+            html += "<th>No.</th>";
+            html += "<th>Item Name</th>";
+            html += "<th>Item Name</th>";
+            html += "<th>Quantity Request</th>";
+            html += "</tr>";
+            html += "</thead>";
+            html += "<tbody>";
+
+            $.ajax({
+                url: Link,
+                type: "POST",
+                dataType: "json",
+                data: { RequestNo: requestNo, status: 1 },
+                async: false,
+                success: function (json) {
+                    if (json.status == 1) {
+
+                        var len = json.rows.length;
+
+                        if (len > 0) {
+                            var NO = 1;
+                            for (var i = 0; i < len; i++) {
+
+                                if (json.rows[i].ITEMID) {
+
+                                    html += "<tr class='table-success'>"
+                                    html += "<td>" + NO + "</td>"
+                                    html += "<td>" + json.rows[i].ITEMID + "</td>"
+                                    html += "<td>" + json.rows[i].ProductName + "</td>"
+                                    html += "<td>" + json.rows[i].Quantity + "</td>"
+                                    html += "</tr>";
+
+                                }
+                                NO++;
+                            }
+
+                        }
+                    }
+
+                }
+            });
+            html += "</body>";
+            html += "</table>";
+            return (html);
+        }
+
+    $(function () {
+        var $startDate = $('.dateFrom');
+        var $endDate = $('.dateTo');
+
+        $table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+            $process.prop('disabled', !$table.bootstrapTable('getSelections').length)
+        })
+
+        $process.click(function () {
+
+            var ids = $.map($table.bootstrapTable('getSelections'), function (row) {
+                return row.id
+            })
+            @{ String Action = ""; String Msg = ""; }
+        @if (ViewBag.status == 1)
+        {
+            Action = "PrepareRequest";
+            Msg = "Prepare Selected Item ?";
+
+        }
+        else if (ViewBag.status == 3) {
+            Action = "CloseRequest";
+            Msg = "Close Selected Item ?";
+        }
+
+            var Link = "@Url.Action(@Action, "Sparepart", new { area = "SCM" })";
+            var Msg = "@Msg";
+            //var Link = $('this').attr('action');
+            @*@Url.Action("CloseRequest", "Sparepart", new { area = "SCM" })*@
+
+            ConfirmSendRequest(Link, Msg, ids);
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        })
+
+        $startDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd',
+            date: '@(ViewBag.dateStart)',
+            autoPick: '@ViewBag.autopick'
+        });
+        $endDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd',
+            date: '@(ViewBag.dateEnd)',
+            autoPick: '@ViewBag.autopick',
+            startDate: $startDate.datepicker('getDate'),
+        });
+
+        $startDate.on('change', function () {
+            $endDate.datepicker('setStartDate', $startDate.datepicker('getDate'));
+        });
+
+        function ConfirmSendRequest(Link, Text, ids) {
+            swal({
+                title: "Are you sure?",
+                text: Text,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Confirm",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        data: { requestNo: ids },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                swal({
+                                    title: "Success",
+                                    text: json.msg,
+                                    type: "success"
+                                }, function () {
+                                    location.href = '@Url.Action("RequestData", "Sparepart", new { area = "SCM" })';
+                                });
+
+                            } else {
+                                swal("Failed!", json.msg, "error");
+                            }
+                        },
+                        complete: function (data) {
+                            $("select[name='status'").val('2');
+                            $('#findData').click();
+                        },
+                        error: function () {
+                            swal("Canceled!", Link, "error");
+                        }
+
+                    })
+                } else {
+                    swal("Cancelled", "Cancel Request", "error");
+                }
+            });
+        }
+    });
+
+    //// countdown
+    //// Set the date we're counting down to
+    //var countDownDate = new Date("Jan 5, 2024 15:37:25").getTime();
+
+    //// Update the count down every 1 second
+    //var x = setInterval(function () {
+
+    //    // Get today's date and time
+    //    var now = new Date().getTime();
+
+    //    // Find the distance between now and the count down date
+    //    var distance = countDownDate - now;
+
+    //    // Time calculations for days, hours, minutes and seconds
+    //    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    //    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    //    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    //    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+    //    // Display the result in the element with id="demo"
+    //    document.getElementById("demo").innerHTML = days + "d " + hours + "h "
+    //        + minutes + "m " + seconds + "s ";
+
+    //    // If the count down is finished, write some text
+    //    if (distance < 0) {
+    //        clearInterval(x);
+    //        document.getElementById("demo").innerHTML = "EXPIRED";
+    //    }
+    //}, 1000);
+
+</script>
+

@@ -1,0 +1,872 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Tailwind via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Inline Styles to override Bootstrap conflicts and style premium components -->
+<style>
+    .bcp-table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        letter-spacing: 0.05em !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .bcp-table td {
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155 !important;
+        font-size: 0.875rem !important;
+    }
+    .bcp-btn-primary {
+        background-color: #007581 !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .bcp-btn-primary:hover {
+        background-color: #00555e !important;
+    }
+    .bcp-glass {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+
+    /* Fix Select2 container width so it occupies full column width */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    /* Style Select2 to match premium Tailwind look */
+    .select2-container--default .select2-selection--single,
+    .select2-container--default .select2-selection--multiple {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        min-height: 42px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        padding-left: 12px !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        padding: 2px 8px !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #e0f3f5 !important;
+        border: 1px solid #007581 !important;
+        color: #00555e !important;
+        border-radius: 0.375rem !important;
+        padding: 2px 8px !important;
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: #00555e !important;
+        margin-right: 5px !important;
+    }
+    .select2-dropdown {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+        z-index: 9999 !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        padding: 6px 10px !important;
+        font-size: 0.875rem !important;
+    }
+    .select2-results__option {
+        font-size: 0.875rem !important;
+        padding: 8px 12px !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #007581 !important;
+    }
+</style>
+
+<div class="container-fluid py-4 px-md-5">
+    <!-- Breadcrumb & Header -->
+    <div class="bg-gradient-to-r from-white to-ngk-primaryLight border border-slate-200/60 rounded-2xl p-6 sm:p-8 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors no-underline">BCP Dashboard</a>
+                <span>/</span>
+                <span class="text-ngk-primary font-semibold">Assessment Questions Master</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight m-0">Assessment Questions</h1>
+            <p class="text-slate-500 mt-1 text-sm md:text-base m-0">Create, update, and manage assessment scoring templates and criteria mappings.</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <button id="btnNewQuestion" class="inline-flex items-center gap-2 px-5 py-3 bcp-btn-primary text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold cursor-pointer border-0">
+                <i class="fas fa-plus-circle text-ngk-primaryLight"></i>
+                New Question
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive Form Panel (Inline, Expandable) -->
+    <div id="formPanel" class="hidden transition-all duration-300 ease-in-out mb-8">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="formTitle" class="text-lg font-bold text-slate-800 m-0">Create Assessment Question</h3>
+                <button id="btnCancelForm" class="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="questionForm" class="p-6 m-0">
+                <input type="hidden" id="questionId" name="ID" />
+                
+                <div class="row">
+                    <!-- Criteria -->
+                    <div class="col-md-6 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Scoring Criteria <span class="text-rose-500">*</span></label>
+                        <select id="criteriaSelect" name="CriteriaID" class="form-control rounded-lg border-slate-200 font-medium w-full" required>
+                            <option value="">-- Select Criteria --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Select which master BCP scoring category this question belongs to.</p>
+                    </div>
+
+                    <!-- Weight -->
+                    <div class="col-md-3 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Weight (%)</label>
+                        <input type="number" id="questionWeight" name="Weight" min="0" max="100" step="0.01" class="form-control rounded-lg border-slate-200 py-2" placeholder="e.g. 20" />
+                        <p class="text-xs text-slate-400 mt-1">Weight representation (0 - 100%).</p>
+                    </div>
+
+                    <!-- Sort Order -->
+                    <div class="col-md-3 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Sort Order</label>
+                        <input type="number" id="questionSortOrder" name="SortOrder" min="1" class="form-control rounded-lg border-slate-200 py-2" placeholder="e.g. 1" />
+                        <p class="text-xs text-slate-400 mt-1">Order displayed during assessment.</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Question Text -->
+                    <div class="col-12 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Question Text <span class="text-rose-500">*</span></label>
+                        <textarea id="questionText" name="QuestionText" rows="3" class="form-control rounded-lg border-slate-200 font-medium" required placeholder="Type the assessment question here..."></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Allowed Departments (Select2 Multiple) -->
+                    <div class="col-md-8 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Allowed Departments (Leave empty for ALL departments)</label>
+                        <select id="deptSelect" name="AllowedDepartments" class="form-control rounded-lg border-slate-200 font-medium w-full" multiple>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Select one or more departments allowed to answer this question. If empty, all departments can answer it.</p>
+                    </div>
+
+                    <!-- Is Active -->
+                    <div class="col-md-4 mb-4 flex items-center pt-md-4">
+                        <label class="inline-flex items-center cursor-pointer select-none">
+                            <input type="checkbox" id="questionIsActive" name="IsActive" class="sr-only peer" checked>
+                            <div class="relative w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-ngk-primary"></div>
+                            <span class="ml-3 text-sm font-semibold text-slate-700">Question is Active</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Question Choices Editor -->
+                <div class="border border-slate-100 rounded-2xl p-6 bg-slate-50/50 mt-4 mb-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                        <div>
+                            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider m-0">Question Choices & Values</h4>
+                            <p class="text-xs text-slate-400 m-0">Provide scoring choices for this question (usually scores 1 to 5).</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="btnGenLikert" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition-all cursor-pointer">
+                                <i class="fas fa-magic mr-1 text-ngk-primary"></i> Generate standard 1-5 choices
+                            </button>
+                            <button type="button" id="btnAddChoiceRow" class="px-3 py-1.5 bg-ngk-primaryLight text-ngk-primaryDark hover:bg-ngk-primaryLight/80 rounded-lg text-xs font-bold transition-all cursor-pointer border-0">
+                                <i class="fas fa-plus mr-1"></i> Add Choice
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead>
+                                <tr class="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                                    <th class="w-24 pb-2">Score Value</th>
+                                    <th class="pb-2">Choice Text / Description</th>
+                                    <th class="w-20 text-center pb-2">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="choicesEditorBody">
+                                <tr id="noChoicesPlaceholder">
+                                    <td colspan="3" class="text-center py-6 text-slate-400 text-xs italic">
+                                        No choices added yet. Add custom choices or click "Generate standard 1-5 choices".
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 mt-2">
+                    <button type="button" id="btnDiscard" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-semibold border-0 cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 bcp-btn-primary text-white rounded-xl transition-all font-semibold border-0 cursor-pointer shadow-sm">
+                        Save Question
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main List Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="relative w-full md:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </span>
+                <input type="text" id="tableSearch" placeholder="Search questions..." class="form-control pl-10 rounded-xl border-slate-200 text-sm py-2" />
+            </div>
+            <div class="text-slate-400 text-sm font-medium" id="recordCountLabel">
+                Showing 0 questions
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table bcp-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="pl-6 w-16 text-center">No</th>
+                        <th class="w-1/4">Criteria & Weight</th>
+                        <th>Question text</th>
+                        <th>Target Departments</th>
+                        <th class="text-center w-24">Status</th>
+                        <th class="pr-6 w-36 text-center">Actions</th>
+                    </tr>
+                    <tr class="bg-slate-50/50 filter-row">
+                        <th></th>
+                        <th class="p-2">
+                            <select id="filterQuestionCriteria" class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full">
+                                <option value="">All Criteria</option>
+                            </select>
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterQuestionText" placeholder="Filter Question..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterQuestionDept" placeholder="Filter Dept..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <select id="filterQuestionStatus" class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="questionTableBody">
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-400">
+                            <div class="spinner-border spinner-border-sm text-primary mr-2" role="status"></div>
+                            Loading questions...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Section -->
+        <div class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50" id="paginationWrapper">
+            <div class="text-xs font-semibold text-slate-500" id="paginationInfo">
+                Showing 0 to 0 of 0 entries
+            </div>
+            <div class="flex items-center gap-1.5" id="paginationControls">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Select2 Script -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+ 
+    <script>
+        $(document).ready(function () {
+            // Data stores
+            let allQuestions = [];
+            let allCriteria = [];
+            let allDepartments = [];
+            let currentPage = 1;
+            const rowsPerPage = 10;
+
+            // Initialize Select2 dropdowns
+            $('#criteriaSelect').select2({
+                placeholder: "-- Select Criteria --",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            $('#deptSelect').select2({
+                placeholder: "All Departments",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            // Load criteria and departments lookups
+            function loadFormData() {
+                $.ajax({
+                    url: '@Url.Action("GetAssessmentQuestionFormData", "BCP")',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allCriteria = res.criteria;
+                            allDepartments = res.departments;
+
+                            // Populate criteria select in Form and filter
+                            let critHtml = '<option value="">-- Select Criteria --</option>';
+                            let filterCritHtml = '<option value="">All Criteria</option>';
+                            res.criteria.forEach(function (c) {
+                                let opt = `<option value="${c.ID}">${c.Name}</option>`;
+                                critHtml += `<option value="${c.ID}">${c.Name} (${c.Weight}%)</option>`;
+                                filterCritHtml += opt;
+                            });
+                            $('#criteriaSelect').html(critHtml);
+                            $('#filterQuestionCriteria').html(filterCritHtml);
+
+                            // Populate departments select
+                            let deptHtml = '';
+                            res.departments.forEach(function (d) {
+                                deptHtml += `<option value="${d.Code}">${d.Code} - ${d.DeptName}</option>`;
+                            });
+                            $('#deptSelect').html(deptHtml).trigger('change');
+                        } else {
+                            Swal.fire("Error", "Failed to load lookup data: " + res.message, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Network connection failed.", "error");
+                    }
+                });
+            }
+
+            // Fetch Questions List
+            function loadQuestions() {
+                $.ajax({
+                    url: '@Url.Action("GetAssessmentQuestionList", "BCP")',
+                    type: 'GET',
+                    data: { search: '' },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allQuestions = res.data;
+                            currentPage = 1;
+                            applyFiltersAndPagination();
+                        } else {
+                            $('#questionTableBody').html(`<tr><td colspan="6" class="text-center py-8 text-danger">Error: ${res.message}</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        $('#questionTableBody').html('<tr><td colspan="6" class="text-center py-8 text-danger">Failed to fetch data from server.</td></tr>');
+                    }
+                });
+            }
+
+            // Filter and Paginate logic
+            function applyFiltersAndPagination() {
+                let generalSearch = ($('#tableSearch').val() || '').toLowerCase().trim();
+                let criteriaFilter = $('#filterQuestionCriteria').val();
+                let textFilter = ($('#filterQuestionText').val() || '').toLowerCase().trim();
+                let deptFilter = ($('#filterQuestionDept').val() || '').toLowerCase().trim();
+                let statusFilter = $('#filterQuestionStatus').val();
+
+                let filtered = allQuestions.filter(function(item) {
+                    // General search
+                    if (generalSearch) {
+                        let matchGeneral = (item.CriteriaName || '').toLowerCase().includes(generalSearch) ||
+                                           (item.QuestionText || '').toLowerCase().includes(generalSearch) ||
+                                           (item.AllowedDepartmentNames || '').toLowerCase().includes(generalSearch) ||
+                                           (item.AllowedDepartments || '').toLowerCase().includes(generalSearch) ||
+                                           ((!item.AllowedDepartments || item.AllowedDepartments.trim() === '') && 'all departments'.includes(generalSearch));
+                        if (!matchGeneral) return false;
+                    }
+                    // Criteria filter
+                    if (criteriaFilter && String(item.CriteriaID) !== criteriaFilter) {
+                        return false;
+                    }
+                    // Question text filter
+                    if (textFilter && !(item.QuestionText || '').toLowerCase().includes(textFilter)) {
+                        return false;
+                    }
+                    // Target departments filter
+                    if (deptFilter) {
+                        let targetNames = (item.AllowedDepartmentNames || '').toLowerCase();
+                        let targetCodes = (item.AllowedDepartments || '').toLowerCase();
+                        let isAll = (!item.AllowedDepartments || item.AllowedDepartments.trim() === '');
+                        if (isAll) {
+                            if (!'all departments'.includes(deptFilter)) return false;
+                        } else {
+                            if (!targetNames.includes(deptFilter) && !targetCodes.includes(deptFilter)) return false;
+                        }
+                    }
+                    // Status filter
+                    if (statusFilter) {
+                        let isActiveMatch = (statusFilter === 'active');
+                        if (item.IsActive !== isActiveMatch) return false;
+                    }
+                    return true;
+                });
+
+                let totalItems = filtered.length;
+                let totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                let startIndex = (currentPage - 1) * rowsPerPage;
+                let endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+                let paginatedItems = filtered.slice(startIndex, endIndex);
+
+                renderTable(paginatedItems, startIndex);
+                renderPagination(totalItems, totalPages, startIndex, endIndex);
+            }
+
+            // Render Questions List
+            function renderTable(questions, startIndex) {
+                if (questions.length === 0) {
+                    $('#questionTableBody').html('<tr><td colspan="6" class="text-center py-12 text-slate-400"><i class="fas fa-folder-open text-3xl mb-2 block"></i>No assessment questions found.</td></tr>');
+                    return;
+                }
+
+                let html = '';
+                questions.forEach(function (q, index) {
+                    // Allowed departments pills showing Department Name (not code)
+                    let targetDepts = '<span class="text-xs text-slate-400 italic">All Departments</span>';
+                    if (q.DepartmentBadgeList && q.DepartmentBadgeList.length > 0) {
+                        targetDepts = q.DepartmentBadgeList.map(name => `<span class="inline-block px-2.5 py-1 mr-1 mb-1 rounded-lg bg-teal-50 text-teal-800 font-bold text-xs border border-teal-200">${name}</span>`).join('');
+                    } else if (q.AllowedDepartments) {
+                        let depts = q.AllowedDepartments.split(new RegExp('[,;|]')).map(d => d.trim()).filter(d => d.length > 0);
+                        targetDepts = depts.map(code => {
+                            let found = allDepartments.find(d => d.Code && d.Code.toLowerCase() === code.toLowerCase());
+                            let deptName = (found && found.DeptName) ? found.DeptName : code;
+                            return `<span class="inline-block px-2.5 py-1 mr-1 mb-1 rounded-lg bg-teal-50 text-teal-800 font-bold text-xs border border-teal-200">${deptName}</span>`;
+                        }).join('');
+                    }
+
+                    // Choices list sub-render
+                    let choicesHtml = '';
+                    if (q.Choices && q.Choices.length > 0) {
+                        choicesHtml = `<div class="bg-slate-50/50 rounded-xl p-3 border border-slate-100 mt-2 space-y-1.5 max-w-2xl">
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200/50 pb-1 mb-1.5 flex justify-between">
+                                <span>Choices & Scores</span>
+                                <span>Total: ${q.Choices.length} options</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        `;
+                        q.Choices.forEach(c => {
+                            choicesHtml += `
+                                <div class="flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-full bg-ngk-primary text-white flex items-center justify-center font-bold text-xs shrink-0">${c.ScoreValue}</span>
+                                    <span class="text-xs font-semibold text-slate-600 truncate" title="${c.ChoiceText}">${c.ChoiceText}</span>
+                                </div>
+                            `;
+                        });
+                        choicesHtml += `</div></div>`;
+                    } else {
+                        choicesHtml = `<p class="text-xs text-rose-500 font-medium italic mt-2"><i class="fas fa-exclamation-triangle mr-1"></i> No choices defined! Assessment cannot function correctly.</p>`;
+                    }
+
+                    html += `
+                        <tr class="hover:bg-slate-50/30 transition-colors">
+                            <td class="pl-6 text-center font-semibold text-slate-400 align-top pt-4">${startIndex + index + 1}</td>
+                            <td class="align-top pt-4">
+                                <span class="block font-black text-slate-800 text-sm mb-1">${q.CriteriaName}</span>
+                                <div class="flex flex-wrap gap-1">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-ngk-primaryLight text-ngk-primaryDark border border-ngk-primary/20">
+                                        Weight: ${q.Weight || 0}%
+                                    </span>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                        Order: ${q.SortOrder || '-'}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="align-top pt-4">
+                                <div class="font-bold text-slate-700 text-sm leading-snug max-w-xl">${q.QuestionText}</div>
+                                ${choicesHtml}
+                            </td>
+                            <td class="align-top pt-4">${targetDepts}</td>
+                            <td class="align-top pt-4 text-center">
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold ${q.IsActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-400 border border-slate-200'}">
+                                    ${q.IsActive ? 'Active' : 'Inactive'}
+                                </span>
+                            </td>
+                            <td class="pr-6 text-center align-top pt-4">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary rounded-lg edit-btn p-2" data-id="${q.ID}" title="Edit Question">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger rounded-lg delete-btn p-2" data-id="${q.ID}" title="Delete/Deactivate Question">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                $('#questionTableBody').html(html);
+            }
+
+            // Render pagination controls
+            function renderPagination(totalItems, totalPages, startIndex, endIndex) {
+                $('#recordCountLabel').text(`Showing ${totalItems} question${totalItems !== 1 ? 's' : ''}`);
+
+                if (totalItems === 0) {
+                    $('#paginationInfo').text('Showing 0 to 0 of 0 entries');
+                    $('#paginationControls').html('');
+                    return;
+                }
+
+                $('#paginationInfo').text(`Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+
+                let paginationHtml = '';
+                if (currentPage === 1) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-left"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-prev-btn"><i class="fas fa-chevron-left"></i></button>`;
+                }
+
+                let maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                if (startPage > 1) {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === currentPage) {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-ngk-primary text-white border border-ngk-primary shadow-sm">${i}</button>`;
+                    } else {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${totalPages}">${totalPages}</button>`;
+                }
+
+                if (currentPage === totalPages) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-right"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-next-btn"><i class="fas fa-chevron-right"></i></button>`;
+                }
+
+                $('#paginationControls').html(paginationHtml);
+            }
+
+            // Pagination button events
+            $(document).on('click', '.page-num-btn', function() {
+                currentPage = parseInt($(this).attr('data-page'));
+                applyFiltersAndPagination();
+            });
+
+            $(document).on('click', '.page-prev-btn', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    applyFiltersAndPagination();
+                }
+            });
+
+            $(document).on('click', '.page-next-btn', function() {
+                currentPage++;
+                applyFiltersAndPagination();
+            });
+
+            // Bind column filter inputs and table search
+            $('#filterQuestionCriteria, #filterQuestionText, #filterQuestionDept, #filterQuestionStatus, #tableSearch').on('input change', function () {
+                currentPage = 1;
+                applyFiltersAndPagination();
+            });
+
+            // Choice Row Dynamic Management
+            let choiceRowIndex = 0;
+            function addChoiceRow(scoreVal = '', textVal = '', dbId = '') {
+                $('#noChoicesPlaceholder').hide();
+                choiceRowIndex++;
+                
+                let row = `
+                    <tr class="choice-row" data-index="${choiceRowIndex}">
+                        <td class="py-2">
+                            <input type="hidden" class="choice-db-id" value="${dbId}" />
+                            <select class="form-control form-control-sm rounded-lg font-bold choice-score-val" required>
+                                <option value="1" ${scoreVal == 1 ? 'selected' : ''}>1</option>
+                                <option value="2" ${scoreVal == 2 ? 'selected' : ''}>2</option>
+                                <option value="3" ${scoreVal == 3 ? 'selected' : ''}>3</option>
+                                <option value="4" ${scoreVal == 4 ? 'selected' : ''}>4</option>
+                                <option value="5" ${scoreVal == 5 || (!scoreVal && choiceRowIndex == 5) ? 'selected' : ''}>5</option>
+                            </select>
+                        </td>
+                        <td class="py-2">
+                            <input type="text" class="form-control form-control-sm rounded-lg font-medium choice-text-val" value="${textVal}" placeholder="Enter choice text description..." required />
+                        </td>
+                        <td class="py-2 text-center">
+                            <button type="button" class="btn btn-sm btn-link text-danger remove-choice-row p-1 hover:scale-110 transition-transform">
+                                <i class="fas fa-trash-alt text-base"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $('#choicesEditorBody').append(row);
+
+                // Auto-set the dropdown value for newly added rows depending on index (up to 5)
+                if (!scoreVal && choiceRowIndex <= 5) {
+                    $(`.choice-row[data-index="${choiceRowIndex}"] .choice-score-val`).val(choiceRowIndex);
+                }
+            }
+
+            // Click Add Choice
+            $('#btnAddChoiceRow').click(function () {
+                addChoiceRow();
+            });
+
+            // Remove Choice Row
+            $(document).on('click', '.remove-choice-row', function () {
+                $(this).closest('tr').remove();
+                if ($('.choice-row').length === 0) {
+                    $('#noChoicesPlaceholder').show();
+                    choiceRowIndex = 0;
+                }
+            });
+
+            // Generate standard Likert scale
+            $('#btnGenLikert').click(function () {
+                Swal.fire({
+                    title: "Generate Likert Choices?",
+                    text: "This will clear existing choices in the editor and generate 5 standard choices (Scores 1 to 5).",
+                    icon: "info",
+                    showCancelButton: true,
+                    confirmButtonColor: "#007581",
+                    confirmButtonText: "Generate"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('#choicesEditorBody .choice-row').remove();
+                        choiceRowIndex = 0;
+                        addChoiceRow(1, 'Sangat Rendah / Sangat Ringan');
+                        addChoiceRow(2, 'Rendah / Ringan');
+                        addChoiceRow(3, 'Sedang / Cukup');
+                        addChoiceRow(4, 'Tinggi / Berat');
+                        addChoiceRow(5, 'Sangat Tinggi / Sangat Berat');
+                    }
+                });
+            });
+
+            // Expand Panel: New Question
+            $('#btnNewQuestion').click(function () {
+                resetForm();
+                $('#formTitle').text('Create Assessment Question');
+                $('#formPanel').removeClass('hidden');
+                $('html, body').animate({
+                    scrollTop: $("#formPanel").offset().top - 100
+                }, 500);
+            });
+
+            // Cancel form
+            $('#btnCancelForm, #btnDiscard').click(function () {
+                $('#formPanel').addClass('hidden');
+                resetForm();
+            });
+
+            // Edit Click Action
+            $(document).on('click', '.edit-btn', function () {
+                let id = $(this).data('id');
+                let q = allQuestions.find(x => x.ID == id);
+                if (q) {
+                    resetForm();
+                    $('#questionId').val(q.ID);
+                    $('#formTitle').text('Edit Assessment Question');
+                    
+                    // Bind Fields
+                    $('#criteriaSelect').val(q.CriteriaID).trigger('change');
+                    $('#questionWeight').val(q.Weight);
+                    $('#questionSortOrder').val(q.SortOrder);
+                    $('#questionText').val(q.QuestionText);
+                    $('#questionIsActive').prop('checked', q.IsActive);
+
+                    // Allowed departments binding
+                    if (q.AllowedDepartments) {
+                        let depts = q.AllowedDepartments.split(',').map(d => d.trim());
+                        $('#deptSelect').val(depts).trigger('change');
+                    } else {
+                        $('#deptSelect').val(null).trigger('change');
+                    }
+
+                    // Choices Binding
+                    $('#choicesEditorBody .choice-row').remove();
+                    if (q.Choices && q.Choices.length > 0) {
+                        $('#noChoicesPlaceholder').hide();
+                        q.Choices.forEach(c => {
+                            addChoiceRow(c.ScoreValue, c.ChoiceText, c.ID);
+                        });
+                    }
+
+                    $('#formPanel').removeClass('hidden');
+                    $('html, body').animate({
+                        scrollTop: $("#formPanel").offset().top - 100
+                    }, 500);
+                }
+            });
+
+            // Submit Save Action
+            $('#questionForm').submit(function (e) {
+                e.preventDefault();
+
+                // Build choices payload
+                let choicesPayload = [];
+                $('.choice-row').each(function () {
+                    choicesPayload.push({
+                        ID: $(this).find('.choice-db-id').val(),
+                        ScoreValue: $(this).find('.choice-score-val').val(),
+                        ChoiceText: $(this).find('.choice-text-val').val()
+                    });
+                });
+
+                if (choicesPayload.length === 0) {
+                    Swal.fire("Warning", "At least one choice with score is required for the question.", "warning");
+                    return;
+                }
+
+                // Allowed departments as comma string
+                let selectedDepts = $('#deptSelect').val();
+                let deptString = selectedDepts ? selectedDepts.join(',') : null;
+
+                let payload = {
+                    ID: $('#questionId').val(),
+                    CriteriaID: $('#criteriaSelect').val(),
+                    QuestionText: $('#questionText').val(),
+                    Weight: $('#questionWeight').val(),
+                    SortOrder: $('#questionSortOrder').val(),
+                    AllowedDepartments: deptString,
+                    IsActive: $('#questionIsActive').is(':checked'),
+                    Choices: choicesPayload
+                };
+
+                $.ajax({
+                    url: '@Url.Action("SaveAssessmentQuestion", "BCP")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire("Success", res.message, "success");
+                            $('#formPanel').addClass('hidden');
+                            resetForm();
+                            loadQuestions();
+                        } else {
+                            Swal.fire("Warning", res.message, "warning");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Request failed. Please try again.", "error");
+                    }
+                });
+            });
+
+            // Delete Action Click
+            $(document).on('click', '.delete-btn', function () {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: "Delete this question?",
+                    text: "You are about to delete or deactivate this assessment question. Active answers associated with this question will preserve historical data.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Yes, delete/deactivate it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteAssessmentQuestion", "BCP")',
+                            type: 'POST',
+                            data: { ID: id },
+                            success: function (res) {
+                                if (res.status === 'success') {
+                                    let icon = res.code === 'deactivated' ? 'info' : 'success';
+                                    Swal.fire("Success", res.message, icon);
+                                    loadQuestions();
+                                } else {
+                                    Swal.fire("Error", res.message, "error");
+                                }
+                            },
+                            error: function () {
+                                Swal.fire("Error", "Request failed. Please try again.", "error");
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Helper: Reset Form
+            function resetForm() {
+                $('#questionId').val('');
+                $('#questionForm')[0].reset();
+                $('#criteriaSelect').val('').trigger('change');
+                $('#deptSelect').val(null).trigger('change');
+                $('#choicesEditorBody .choice-row').remove();
+                $('#noChoicesPlaceholder').show();
+                choiceRowIndex = 0;
+            }
+
+            // Initial load commands
+            loadFormData();
+            loadQuestions();
+        });
+    </script>
+}

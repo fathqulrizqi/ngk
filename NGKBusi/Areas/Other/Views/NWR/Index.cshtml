@@ -1,0 +1,2221 @@
+﻿﻿﻿﻿@{
+    ViewBag.Title = "NWR";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isLogin = (System.Web.HttpContext.Current.User != null) && System.Web.HttpContext.Current.User.Identity.IsAuthenticated;
+    var hcList = ViewBag.HCUsersList as List<string> ?? new List<string>();
+    var currentNik = ViewBag.currUsr as string ?? "";
+    bool isAuthorized = ViewBag.IsAllowedConfig ?? false;
+}
+
+@section cssHead {
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/fonts/Inter/css2.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: Inter;
+            font-size: 13px;
+            background-color: #F5F5F5;
+        }
+
+        .fc-event-main-frame {
+            cursor: default;
+        }
+
+        .fc-daygrid-day-frame {
+            cursor: pointer;
+        }
+
+        .fc-daygrid-day-events {
+            cursor: default;
+        }
+
+        #calendar {
+            max-width: 900px;
+            max-height: fit-content;
+            margin: 40px auto;
+        }
+
+        .fc-col-header {
+            background-color: #2C3E50;
+            color: white;
+        }
+
+        .building-info {
+            margin-top: 20px;
+        }
+
+        .carousel-item img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .background-purple {
+            background-color: #564154;
+        }
+
+        .disabled-icon {
+            opacity: 0.5;
+        }
+
+        .fc-event-inner {
+            font-size: 13px;
+        }
+
+        .fc-col-header-cell-cushion {
+            text-decoration: none;
+            color: white;
+            font-size: 13px;
+            padding: 2px;
+        }
+
+            .fc-col-header-cell-cushion:hover {
+                text-decoration: none;
+                color: white;
+                font-size: 13px;
+                padding: 2px;
+                cursor: default;
+            }
+
+        .fc-timegrid-slot-label-frame {
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .fc-toolbar-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .category p {
+            background-color: #2c3e50;
+            color: white;
+            border-radius: 5px;
+            padding: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .category i {
+            color: #2c3e50;
+        }
+
+        .category:hover p {
+            background-color: #34495e;
+        }
+
+        .category:hover i {
+            color: #34495e;
+        }
+
+        .category.active p {
+            background-color: #F6AA04;
+            color: white;
+        }
+
+        .category.active i {
+            color: #F6AA04;
+        }
+
+        .container-fluid.no-padding {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* From Uiverse.io by Yaya12085 */
+        .radio-inputs {
+            display: flex;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+            .radio-inputs > * {
+                margin: 6px;
+            }
+
+        .radio-input:checked + .radio-tile {
+            border-color: #2260ff;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+        }
+
+            .radio-input:checked + .radio-tile:before {
+                transform: scale(1);
+                opacity: 1;
+                background-color: #2260ff;
+                border-color: #2260ff;
+            }
+
+            .radio-input:checked + .radio-tile .radio-icon svg {
+                fill: #2260ff;
+            }
+
+            .radio-input:checked + .radio-tile .radio-label {
+                color: #2C3E50;
+                font-weight: bold;
+            }
+
+        .radio-input:focus + .radio-tile {
+            border-color: #2260ff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+            .radio-input:focus + .radio-tile:before {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+        .radio-tile {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-height: 30px;
+            border-radius: 0.5rem;
+            border: 1px solid #b5bfd9;
+            background-color: #fff;
+            transition: 0.15s ease;
+            cursor: pointer;
+            gap: 0.5rem;
+            position: relative;
+            padding: 0 1rem;
+        }
+
+            .radio-tile:before {
+                display: none !important;
+            }
+
+            .radio-tile:hover {
+                border-color: #2260ff;
+            }
+
+                .radio-tile:hover:before {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+
+
+        .radio-label {
+            color: #707070;
+            transition: 0.375s ease;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .radio-input {
+            clip: rect(0 0 0 0);
+            clip-path: inset(100%);
+            height: 1px;
+            overflow: hidden;
+            position: absolute;
+            white-space: nowrap;
+            width: 1px;
+        }
+        /* .carousel-control-prev-icon, .carousel-control-next-icon {
+            width: 50px;
+            height: 50px;
+            color: white;
+        }*/
+
+        .carousel-control-prev-icon {
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 8 8'%3E%3Cpath d='M5.25 0l-4 4 4 4 1.5-1.5-2.5-2.5 2.5-2.5-1.5-1.5z'/%3E%3C/svg%3E") !important;
+        }
+
+        .carousel-control-next-icon {
+            background-image: url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23fff' viewBox='0 0 8 8'%3E%3Cpath d='M2.75 0l-1.5 1.5 2.5 2.5-2.5 2.5 1.5 1.5 4-4-4-4z'/%3E%3C/svg%3E") !important;
+        }
+
+        .carousel-control-next {
+            background-color: rgba(55, 55, 55, 0.5);
+        }
+
+        .carousel-control-prev {
+            background-color: rgba(55, 55, 55, 0.5);
+        }
+       
+    </style>
+}
+
+@section scriptHead {
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+    <script src="~/Content/FullCalendar/index.global.min.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="~/Scripts/moment2.29.1/moment.min.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.2/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript">
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
+    </script>
+    <script>
+        var idConflictX;
+        var startConflictX;
+        var endConflictX;
+        var roomConflictX;
+        var startRequest;
+        var endRequest;
+        var roomRequest;
+        let currentView = 'timeGridWeek';
+        let currentDate = new Date();
+        let calendar = null;
+        let lastMonthDate = new Date();
+
+       function renderCalendar(roomId) {
+    let previousView = currentView;
+    let previousDate = currentDate;
+
+    // Menghapus kalender sebelumnya jika sudah ada
+    if (calendar) {
+        previousView = calendar.view.type;
+        // Jika month view, selalu gunakan today
+        previousDate = previousView === 'dayGridMonth' ? new Date() : calendar.getDate();
+        calendar.destroy();
+    }
+
+    const link = '@Url.Action("GetSchedule", "NWR", new { area = "Other" })' + '?roomId=' + roomId;
+    var calendarEl = document.getElementById('calendar');
+
+    // PERBAIKAN: Hapus kata "var" di sini agar dia menggunakan variabel global
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        expandRows: true,
+        selectable: true,
+        aspectRatio: 1,
+        allDaySlot: false,
+        initialView: previousView,
+        initialDate: previousView === 'dayGridMonth' ? new Date() : previousDate,
+
+        datesSet: function (info) {
+            currentView = info.view.type;
+            if (info.view.type !== 'dayGridMonth') {
+                currentDate = info.start;
+            }
+        },
+        contentHeight: 500,
+        themeSystem: 'bootstrap5',
+        slotMinTime: '07:00',
+        slotMaxTime: '21:00',
+        firstDay: 1,
+        selectConstraint: {
+            start: Date.parse('@ViewBag.now'),
+        },
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        eventOverlap: false,
+            select: function (info) {
+                $("#date").val(moment(info.start).format('dd-MM-yyyy'));
+                $("#starttime").val(moment(info.start).format('HH:mm'));
+                $("#endtime").val(moment(info.end).format('HH:mm'));
+
+                const eventsInRange = calendar.getEvents().filter(event => {
+                    return (
+                        moment(event.start).isBefore(info.end) &&
+                        moment(event.end).isAfter(info.start)
+                    );
+                });
+
+                if (eventsInRange.length > 0) {
+                    let conflictMessage = '';
+
+                    if (eventsInRange.length > 1) {
+                        conflictMessage = 'The following events overlap with your selection:<br><br>';
+
+                        eventsInRange.forEach(event => {
+                            conflictMessage += `&bull; <strong>${event.title}</strong> ${moment(event.start).format('D MMMM YYYY')} (${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')})<br>`;
+                        });
+
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Multiple Conflicts Detected!',
+                            html: conflictMessage,
+                            confirmButtonText: 'Dismiss',
+                        });
+                    } else {
+                        const event = eventsInRange[0];
+                        conflictMessage = `
+                            The following event overlaps with your selection:<br><br>
+                            <strong>${event.title}</strong> ${moment(event.start).format('D MMMM YYYY')} (${moment(event.start).format('HH:mm')} - ${moment(event.end).format('HH:mm')})
+                        `;
+
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Conflict Detected!',
+                            html: conflictMessage,
+                            showCancelButton: true,
+                            confirmButtonText: 'Open Request Form',
+                            cancelButtonText: 'Dismiss',
+                            confirmButtonColor: '#007bff',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                //populateRequestModal(event);
+                                populateRequestModal(event, info.start, info.end);
+                                $("#createModal").modal('hide');
+                                // $('#requestModal').modal('show');
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+
+                function populateRequestModal(conflictingEvent, startTime, endTime) {
+                    const idBook = conflictingEvent.id || conflictingEvent.ID;
+                    const activeRoomTitle = $("#buildingName").text();
+
+                    // Store the selected times for later use
+                    const selectedStart = startTime || $("#starttime").val();
+                    const selectedEnd = endTime || $("#endtime").val();
+                    const selectedDate = $("#date").val();
+
+                    $.ajax({
+                        type: 'GET',
+                        url: `@Url.Action("GetScheduleByEventId", "NWR", new { area = "Other" })`,
+                        data: { idBook: idBook },
+                        success: function (res) {
+                            if (res && res.length > 0) {
+                                const eventDetails = res[0];
+
+                                // Populate conflict details
+                                $("#usernameConflict").val(eventDetails.username);
+                                $("#subjectConflict").val(conflictingEvent.Subject || conflictingEvent.title);
+                                $("#dateConflict").val(conflictingEvent.Day || moment(conflictingEvent.start).format('DD-MM-YYYY'));
+                                $("#starttimeConflict").val(conflictingEvent.StartTime || moment(conflictingEvent.start).format('HH:mm'));
+                                $("#endtimeConflict").val(conflictingEvent.EndTime || moment(conflictingEvent.end).format('HH:mm'));
+                                $("#roomTitleConflict").val(activeRoomTitle);
+                                $("#attendanceConflict").val(eventDetails.attendance);
+
+                                // Populate request details
+                                $("#usernameRequest").val();
+                                $("#roomTitleRequest").val(activeRoomTitle);
+
+                                // Use the stored selected times if available
+                                if (startTime && endTime) {
+                                    // Direct selection from calendar
+                                    $("#dateRequest").val(moment(startTime).format('DD-MM-YYYY'));
+                                    $("#starttimeRequest").val(moment(startTime).format('HH:mm'));
+                                    $("#endtimeRequest").val(moment(endTime).format('HH:mm'));
+                                } else {
+                                    // From create modal submission
+                                    $("#dateRequest").val(selectedDate);
+                                    $("#starttimeRequest").val(selectedStart);
+                                    $("#endtimeRequest").val(selectedEnd);
+                                }
+
+
+                                $('#requestModal').modal('show');
+                                var choices = ["00","30"];
+                                $("#starttimeRequest, #endtimeRequest").clockpicker({
+                                    placement: 'top',
+                                    autoclose: true, afterShow: function () {
+                                        $(".clockpicker-minutes").find(".clockpicker-tick").filter(function (index, element) {
+                                            return !($.inArray($(element).text(), choices) != -1)
+                                        }).remove();
+                                    }
+                                });
+
+                                 $("#formRequest").off("submit").on("submit", function (event) {
+                                    event.preventDefault();
+
+                                     if (!$("#formRequest").valid()) {
+                                         return;
+                                     }
+
+                                     const form = this;
+                                     if (!form.checkValidity()) {
+                                         form.classList.add('was-validated');
+                                         return;
+                                     }
+
+                                     var startreq = $("#starttimeRequest").val();
+                                     var endreq = $("#endtimeRequest").val();
+                                     var startcon = $("#starttimeConflict").val();
+                                     var endcon = $("#endtimeConflict").val();
+
+                                     if (!(startreq < endcon && endreq > startcon)) {
+
+                                         Swal.fire({
+                                             icon: 'warning',
+                                             title: 'Conflict Not Found!',
+                                             text: 'Would you like to create a new booking instead?',
+                                             showCancelButton: true,
+                                             confirmButtonText: 'Create New',
+                                             cancelButtonText: 'Cancel'
+                                         }).then((result) => {
+                                             if (result.isConfirmed) {
+                                                 // Create new booking
+                                                 $("#requestModal").modal('hide');
+
+                                                 // Populate create modal with the request form values
+                                                 $("#date").val($("#dateRequest").val());
+                                                 $("#starttime").val(startreq);
+                                                 $("#endtime").val(endreq);
+                                                 $("#roomTitle").val($("#roomTitleRequest").val());
+                                                 $("#username").val($("#usernameRequest").val());
+
+                                                 $("#attendance").val($("#attendanceRequest").val());
+
+                                                 $("#createModal").modal('show');
+                                             }
+                                         });
+                                         return;
+                                     }
+
+                                    var $submitButton = $(this).find("button[type='submit']");
+                                    $submitButton.prop("disabled", true).text("Submitting...");
+
+                                    var submitForm = new FormData(form);
+                                    var usernikr = $("#userIdRequest").val();
+
+                                     submitForm.append("idConflict", eventDetails.id);
+                                     submitForm.append("NIKConflict", eventDetails.user);
+                                     submitForm.append("startConflict", eventDetails.start);
+                                     submitForm.append("endConflict", eventDetails.end);
+                                     submitForm.append("NIKRequest", usernikr);
+
+                                    var posting = $.ajax({
+                                        type: 'POST',
+                                        url: "@Url.Action("SubmitRequest", "NWR", new { area = "Other" })",
+                                        data: submitForm,
+                                        cache: false,
+                                        contentType: false,
+                                        processData: false,
+                                    });
+
+
+                                    posting.done(function (result) {
+                                        if (result.status === 1) {
+                                            /*sendEmail(result.idRequest);*/
+                                            Swal.fire({
+                                                icon: 'success',
+                                                title: 'Success!',
+                                                text: result.message,
+                                                confirmButtonText: 'OK'
+                                            }).then((result) => {
+                                                $('#requestModal').modal('hide');
+
+                                                if (calendar) {
+                                                    calendar.gotoDate(info.start);
+                                                    calendar.refetchEvents();
+                                                }
+                                            });
+                                        } else {
+                                            Swal.fire({
+                                                icon: 'error',
+                                                title: 'Failed!',
+                                                text: result.message,
+                                                confirmButtonText: 'OK'
+                                            }).then((result) => {
+                                                $('#requestModal').modal('hide');
+                                            });
+                                        }
+                                    }).always(function () {
+                                        $submitButton.prop("disabled", false).text("Submit Request");
+                                    });
+                                 });
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An error occurred while fetching event details: ' + error
+                            });
+                        }
+                    });
+                }
+
+                const strstart = info.startStr;
+                const strend = info.endStr;
+                const arrstart = strstart.trim().split(/\T|\+/);
+                const arrend = strend.trim().split(/\T|\+/);
+                const originalDate = arrstart[0];
+                const parts = originalDate.split("-");
+                const formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+                const activeRoomId = $("#roomId").val();
+                const activeRoomTitle = $("#buildingName").text();
+
+                $("#starttime").val(arrstart[1].slice(0, 5));
+                $("#endtime").val(arrend[1].slice(0, 5));
+                $("#date").val(formattedDate);
+                $("#username").val("@ViewBag.currUsrName");
+                $("#roomTitle").val(activeRoomTitle);
+                $("#roomIdHidden").val($("#roomId").val());
+                $("#attendance").val(1);
+                if ($("#hfIsLogin").val() == "True") {
+                    $("#createModal").modal("show");
+                } else {
+                    Swal.fire("Failed!", "Please login first!");
+                }
+
+                $('#formSchedule').off('submit').on('submit', function (e) {
+                    e.preventDefault();
+
+                    const form = this;
+                    if (!form.checkValidity()) {
+                        form.classList.add('was-validated');
+                        return;
+                    }
+
+                    var date = $("#date").val();
+
+                    var dateFormat = /^\d{2}-\d{2}-\d{4}$/;
+
+                    if (!dateFormat.test(date)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Format!',
+                            text: 'Date must be in dd-MM-yyyy format (e.g., 2025-04-26).'
+                        });
+                        return;
+                    }
+
+                    var formData = new FormData(form);
+
+                    var dateInput = $("#date").val();
+                    var parts = dateInput.split('-');
+                    if (parts.length === 3) {
+                        var formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        formData.set("Day", formattedDate);
+                    }
+
+                    $.ajax({
+                        type: 'POST',
+                        url: "@Url.Action("AddSchedule", "NWR", new { area = "Other" })",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        beforeSend: function () {
+                            var $btn = $('#btnSave');
+                            $btn.prop('disabled', true);
+                            $btn.html(
+                                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Please Wait ...'
+                            );
+                        },
+                        success: function (data) {
+                            if (data.status === 1) {
+
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Success!',
+                                    text: data.message,
+                                    confirmButtonText: 'OK'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        $('#createModal').modal('hide');
+                                        var dateValue = $("#date").val();
+                                        if (dateValue) {
+                                            var parts = dateValue.split('-');
+                                            if (parts.length === 3) {
+                                                var formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                                const gotoDate = new Date(formattedDate);
+                                                calendar.gotoDate(gotoDate);
+                                                calendar.refetchEvents();
+                                            }
+                                        }
+                                    }
+                                });
+                            } else {
+                                if (data.errorCode === 102) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Multiple Conflicts Detected!',
+                                        html: data.message,
+                                        confirmButtonText: 'Dismiss',
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $("#createModal").modal('hide');
+                                            populateRequestModal(data.conflict);
+                                            // $('#requestModal').modal('show');
+                                        }
+                                    });
+                                    return;
+                                }
+
+                                if (data.errorCode === 101) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Conflict Detected!',
+                                        html: data.message,
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Open Request Form',
+                                        cancelButtonText: 'Dismiss',
+                                        confirmButtonColor: '#007bff',
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $("#createModal").modal('hide');
+                                            const conflictingEvent = data.conflict;
+
+                                            if (conflictingEvent && conflictingEvent.length > 0) {
+                                                const event = conflictingEvent[0];
+                                                populateRequestModal(event, null, null);
+                                            } else {
+                                                Swal.fire({
+                                                    icon: 'error',
+                                                    title: 'Missing Data',
+                                                    text: 'Conflict data not found. Please try again later.'
+                                                });
+                                            }
+                                        }
+                                    });
+                                    return;
+
+
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Failed!',
+                                        text: data.message || 'Something went wrong'
+                                    });
+                                }
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            if (xhr.responseJSON && xhr.responseJSON.status === 0) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Failed!',
+                                    text: xhr.responseJSON.message
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Unexpected Error',
+                                    text: 'An unexpected error occurred. Please try again.'
+                                });
+                            }
+
+                            $('#btnSave').prop('disabled', false).html('<i class="fa fa-plus"></i> | <span>Save</span>');
+                        },
+                        complete: function () {
+                            $('#btnSave').prop('disabled', false).html('<i class="fa fa-plus"></i> | <span>Save</span>');
+                        }
+                    });
+                });
+
+                },
+
+
+            eventMouseEnter: function (info) {
+            const id = info.event.id;
+
+            let selectedschedule = document.querySelector('.fc-tooltip');
+            if (selectedschedule) selectedschedule.remove();
+
+            const startDate = info.event.start;
+            const day = startDate.getDate().toString().padStart(2, '0');
+            const month = (startDate.getMonth() + 1).toString().padStart(2, '0');
+            const year = startDate.getFullYear();
+            const formattedDate = `${day}-${month}-${year}`;
+
+            let tooltip = document.createElement("div");
+            tooltip.className = "fc-tooltip";
+            tooltip.style.position = "absolute";
+            tooltip.style.zIndex = "10001";
+            tooltip.style.background = "#FFFFFF";
+            tooltip.style.border = "1px solid black";
+            tooltip.style.fontSize = "12px";
+            tooltip.style.padding = "8px 12px";
+            tooltip.style.borderRadius = "4px";
+            tooltip.style.color = "#000";
+            tooltip.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+
+                tooltip.innerHTML = `
+    <div style="
+        font-family: Arial, sans-serif;
+        font-size: 13px;
+        color: #374151;
+        line-height: 1.6;
+        min-width: 220px;
+    ">
+        <div style="
+            font-size: 14px;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 6px;
+        ">
+            ${info.event.title}
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 6px 0;" />
+
+        <div>
+            <strong>Day:</strong> ${formattedDate}<br/>
+            <strong>Start:</strong> ${info.event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}<br/>
+            <strong>End:</strong> ${info.event.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+
+        <div style="margin-top: 6px;">
+            <i class="fa-solid fa-users" style="margin-right: 6px; color: #2563eb;"></i>
+            <span id="attendanceDisplay" style="font-weight: 600; color: #1f2937;">
+                Loading...
+            </span>
+        </div>
+
+        <hr style="border: none; border-top: 1px dashed #e5e7eb; margin: 8px 0;" />
+
+        <div id="createdBy" style="
+            font-size: 12px;
+            color: #6b7280;
+            font-style: italic;
+        ">
+            Loading user...
+        </div>
+    </div>
+`;
+
+
+            const rect = info.el.getBoundingClientRect();
+            tooltip.style.top = window.scrollY + rect.top + "px";
+            tooltip.style.left = window.scrollX + rect.right + 5 + "px";
+
+            document.body.appendChild(tooltip);
+
+            $.ajax({
+                url: "@Url.Action("GetScheduleByEventId", "NWR", new { area = "Other" })",
+                type: "POST",
+                data: { idBook: id },
+                dataType: "json",
+                cache: false,
+                success: function (res) {
+
+                    if (res.length > 0) {
+                        const data = res[0];
+                        $("#userNIK").val(data.username);
+                        $("#attendance").val(data.attendance);
+                        tooltip.querySelector("#createdBy").innerText = "Created By: " + data.username;
+                        tooltip.querySelector("#attendanceDisplay").innerText = data.attendance;
+                    } else {
+                        tooltip.querySelector("#createdBy").innerText = "Created By: Unknown";
+                        tooltip.querySelector("#attendanceDisplay").innerText = "N/A";
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error!', 'Failed to retrieve schedule data.', 'error');
+                    tooltip.querySelector("#createdBy").innerText = "Created By: Error";
+                    tooltip.querySelector("#attendanceDisplay").innerText = "Error";
+                }
+            });
+        },
+            eventMouseLeave: function () {
+                let selectedschedule = document.querySelector('.fc-tooltip');
+                if (selectedschedule) selectedschedule.remove();
+            },
+            locale: 'en',
+            events: link,
+            editable: false,
+            dateClick: function (info) {
+                if (calendar.view.type === 'dayGridMonth') {
+                    calendar.changeView('timeGridDay', info.dateStr);
+                }
+            },
+            selectAllow: function (selectInfo) {
+                return calendar.view.type === 'timeGridWeek' || calendar.view.type === 'timeGridDay';
+            },
+            eventClick: function (info) {
+                const id = info.event.id;
+                const calendar = info.view.calendar;
+
+                $.ajax({
+                    url: "@Url.Action("GetScheduleByEventId", "NWR", new { area = "Other" })",
+                    type: "POST",
+                    data: { idBook: id },
+                    dataType: "json",
+                    success: function (res) {
+                        if (res.length > 0) {
+                            const data = res[0];
+                            function prepareLink(rawLink) {
+                                if (!rawLink || rawLink.trim() === "") return "#";
+                                return (rawLink.startsWith("http://") || rawLink.startsWith("https://")) ? rawLink : "https://" + rawLink;
+                            }
+
+                            function applyLink(selector, link) {
+                                const finalLink = prepareLink(link);
+                                const $el = $(selector);
+
+                                if (finalLink === "#") {
+                                    $el.attr("href", "#")
+                                        .css({ "pointer-events": "none", "color": "gray" });
+                                } else {
+                                    $el.attr("href", finalLink)
+                                        .css({ "pointer-events": "", "color": "" });
+                                }
+                            }
+                            const originalDate = data.start.split("T")[0];
+                            const parts = originalDate.split("-");
+                            const formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+
+                            $("#idEvent").val(data.id);
+                            $("#dateUpdate").val(formattedDate);
+                            $("#starttimeUpdate").val(data.start.split("T")[1].slice(0, 5));
+                            $("#endtimeUpdate").val(data.end.split("T")[1].slice(0, 5));
+                            $("#subjectUpdate").val(data.subject);
+                            $("#roomIdHiddenUpdate").val(data.roomid);
+                            $("#linkMeetUpdate").val(data.linkmeet);
+                            applyLink("#googlecalendarupdate", data.link);
+                            applyLink("#googlemeetupdate", data.linkmeet);
+                            $("#userNIK").val(data.user);
+                            $("#usernameUpdate").val(data.username);
+                            $("#roomtitleUpdate").val(data.roomtitle);
+                            $("#timestamps").val(data.timestamps);
+                            $("#attendanceUpdate").val(data.attendance);
+                            $("#LinkUpdate").val(data.link);
+
+                            if ($("#hfIsLogin").val() == "True") {
+                                $("#updateModal").modal("show");
+                            } else {
+                                Swal.fire("Failed!", "Please login first!");
+                            }
+
+                            if ($("#userNIK").val() !== "@ViewBag.currUsr") {
+                                $("#btnUpdate").hide();
+                                $("#btnDelete").hide();
+                            } else {
+                                $("#btnUpdate").show();
+                                $("#btnDelete").show();
+                            }
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error!', 'Failed to retrieve schedule data.', 'error');
+                    }
+                });
+
+                $("#btnDelete").on("click", function (e) {
+                    e.preventDefault();
+                    Swal.fire({
+                        title: "Are you sure want to Delete Reservation?",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Yes",
+                        cancelButtonText: "Cancel",
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            $.ajax({
+                                url: "@Url.Action("DeleteSchedule", "NWR", new { area = "Other" })",
+                                type: "POST",
+                                data: { idBook: id },
+                                dataType: "json",
+                                success: function (res) {
+                                    if (res.success) {
+                                        info.event.remove();
+                                        Swal.fire('Success!', res.message, 'success');
+                                        $("#updateModal").modal('hide');
+                                    } else {
+                                        Swal.fire('Failed to Delete Data!', res.message, 'error');
+                                    }
+                                },
+                                error: function () {
+                                    Swal.fire('Error!', 'An Error has Occurred.', 'error');
+                                }
+                            });
+                        }
+                    });
+                });
+
+                $("#starttimeUpdate, #endtimeUpdate").clockpicker({
+                    autoclose: true
+                });
+
+                $("#dateUpdate").datepicker({
+                    autoclose: true,
+                    minDate: 0,
+                    dateFormat: 'dd-mm-yy',
+                });
+
+                let selectedStartTime;
+                let selectedEndTime;
+
+                $("#btnUpdate").off("click").on("click", function (e) {
+                    e.preventDefault();
+
+                    if (!$('#formScheduleUpdate').valid()) {
+                        return;
+                    }
+
+                    selectedStartTime = $("#starttimeUpdate").val();
+                    selectedEndTime = $("#endtimeUpdate").val();
+
+                    var date = $("#dateUpdate").val();
+
+                    var dateFormat = /^\d{2}-\d{2}-\d{4}$/;
+
+                    if (!dateFormat.test(date)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Format!',
+                            text: 'Date must be in dd-MM-yyyy format (e.g., 2025-04-26).'
+                        });
+                        return;
+                    }
+
+                    var startTime = $("#starttimeUpdate").val();
+                    var endTime = $("#endtimeUpdate").val();
+
+                    var startDateTime = new Date("1970-01-01T" + startTime + ":00");
+                    var endDateTime = new Date("1970-01-01T" + endTime + ":00");
+
+                    if (endDateTime < startDateTime) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Schedule Invalid!',
+                            text: 'End time cannot be less than start time.'
+                        });
+                        return;
+                    }
+
+                    var timeFormat = /^(0[0-9]|1[0-9]|2[0-3]|[0-9]):[0-5][0-9]$/;
+
+                    if (!timeFormat.test(startTime)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Format!',
+                            text: 'Start time must be in HH:mm format (e.g., 12:00).'
+                        });
+                        return;
+                    }
+
+                    if (!timeFormat.test(endTime)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Invalid Format!',
+                            text: 'End time must be in HH:mm format (e.g., 12:00).'
+                        });
+                        return;
+                    }
+
+                    var form = document.getElementById("formScheduleUpdate");
+                    if (!form.checkValidity()) {
+                        form.classList.add('was-validated');
+                        return;
+                    }
+
+                    var formDataUpdate = new FormData(form);
+                    formDataUpdate.append("idBook", $("#idEvent").val());
+
+                    var dateInput = $("#dateUpdate").val();
+                    var parts = dateInput.split('-');
+                    if (parts.length === 3) {
+                        var formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        formDataUpdate.set("DayUpdate", formattedDate);
+                    }
+
+                    $.ajax({
+                        url: "@Url.Action("UpdateSchedule", "NWR", new { area = "Other" })",
+                        type: "POST",
+                        data: formDataUpdate,
+                        tryCount: 0,
+                        contentType: false,
+                        processData: false,
+                        dataType: "json",
+                        beforeSend: function () {
+                            var $btn = $('#btnUpdate');
+                            $btn.prop('disabled', true);
+                            $btn.html(
+                                '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Please Wait ...'
+                            );
+                        },
+                        success: function (res) {
+                            if (res.status === 1) {
+                                Swal.fire('Success!', res.message, 'success');
+                                $("#updateModal").modal('hide');
+
+                                var dateValue = $("#dateUpdate").val();
+
+                                if (dateValue) {
+                                    var parts = dateValue.split('-');
+                                    if (parts.length === 3) {
+                                        var formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                        const gotoDate = new Date(formattedDate);
+                                        calendar.gotoDate(gotoDate);
+                                    }
+                                }
+                                calendar.refetchEvents();
+
+                            } else {
+                                if (res.errorCode === 0 && res.status === 0) {
+                                    Swal.fire('Failed!', res.message, 'error');
+                                }
+
+                                //if (res.errorCode === 101 && res.status === 0) {
+                                //    Swal.fire({
+                                //        icon: 'error',
+                                //        title: 'Failed!',
+                                //        html: res.message,
+                                //        showCancelButton: false,
+                                //        confirmButtonText: 'Dismiss',
+                                //        //cancelButtonText: 'Dismiss',
+                                //        //confirmButtonColor: '#007bff',
+                                //    });
+                                //}
+                                if (res.errorCode === 102) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Multiple Conflicts Detected!',
+                                        html: res.message,
+                                        confirmButtonText: 'Dismiss',
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $("#updateModal").modal('hide');
+                                            populateRequestModal(res.conflict);
+                                            // $('#requestModal').modal('show');
+                                        }
+                                    });
+                                    return;
+                                }
+
+                                if (res.errorCode === 101) {
+                                    Swal.fire({
+                                        icon: 'info',
+                                        title: 'Conflict Detected!',
+                                        html: res.message,
+                                        showCancelButton: true,
+                                        confirmButtonText: 'Open Request Form',
+                                        cancelButtonText: 'Dismiss',
+                                        confirmButtonColor: '#007bff',
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $("#updateModal").modal('hide');
+                                            populateRequestModal(res.conflict);
+                                            // $('#requestModal').modal('show');
+                                        }
+                                    });
+                                    return;
+                                }
+
+                               function populateRequestModal(conflictData) {
+    const idBook = conflictData.ID; // Ambil ID dari conflictData
+    const activeRoomTitle = $("#buildingName").text(); // Ambil judul ruangan aktif
+
+    $.ajax({
+        type: 'GET',
+        url: `@Url.Action("GetScheduleByEventId", "NWR", new { area = "Other" })`,
+        data: { idBook: idBook },
+        success: function (res) {
+            if (res && res.length > 0) {
+                const eventDetails = res[0];
+
+                // Format tanggal dan waktu menggunakan moment.js
+                const formattedDate = moment(conflictData.Day).format('DD-MM-YYYY');
+                const startTime = moment(conflictData.StartTime, 'HH:mm').format('HH:mm');
+                const endTime = moment(conflictData.EndTime, 'HH:mm').format('HH:mm');
+
+                // Mengisi data ke dalam modal
+                $("#usernameConflict").val(eventDetails.username);
+                $("#subjectConflict").val(conflictData.Subject || conflictData.title);
+                $("#dateConflict").val(formattedDate);
+                $("#starttimeConflict").val(startTime);
+                $("#endtimeConflict").val(endTime);
+                $("#roomTitleConflict").val(activeRoomTitle);
+                $("#attendanceConflict").val(eventDetails.attendance);
+                $("#roomTitleRequest").val(activeRoomTitle);
+                $("#usernameRequest").val("@ViewBag.currUsrName");
+                $("#dateRequest").val(formattedDate);
+                $("#starttimeRequest").val(selectedStartTime || startTime);
+                $("#endtimeRequest").val(selectedEndTime || endTime);
+
+                $('#requestModal').modal('show');
+
+                // Inisialisasi clockpicker untuk waktu
+                $("#starttimeRequest, #endtimeRequest").clockpicker({
+                    placement: 'top',
+                    autoclose: true
+                });
+
+                // Menangani pengiriman formulir permintaan
+                $("#formRequest").off("submit").on("submit", function (event) {
+    event.preventDefault();
+
+    if (!$("#formRequest").valid()) {
+        return;
+    }
+
+    const form = this;
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+
+    var startreq = $("#starttimeRequest").val();
+    var endreq = $("#endtimeRequest").val();
+    var startcon = $("#starttimeConflict").val();
+    var endcon = $("#endtimeConflict").val();
+
+    // Check if we have an ID (coming from update)
+    const hasId = $("#idEvent").val() !== "" && $("#idEvent").val() !== undefined;
+
+    // Validasi waktu permintaan
+    if (!(startreq < endcon && endreq > startcon)) {
+        if (hasId) {
+            // If we have an ID, show update-only option
+            Swal.fire({
+                icon: 'warning',
+                title: 'Conflict Not Found!',
+                text: 'Would you like to update the existing booking instead?',
+                showCancelButton: true,
+                confirmButtonText: 'Update Existing',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#007bff',
+            }).then((result) => {
+                if (result.isConfirmed, info) {
+                    const id = info.event.id;
+                    $.ajax({
+                        type: 'GET',
+                        url: `@Url.Action("GetScheduleByEventId", "NWR", new { area = "Other" })`,
+                        data: { idBook: id },
+                        success: function (res) {
+                            console.log("res", res);
+                            if (res && res.length > 0) {
+                                const eventData = res[0];
+                                $("#requestModal").modal('hide');
+                                $("#dateUpdate").val($("#dateRequest").val());
+                                $("#starttimeUpdate").val(startreq);
+                                $("#endtimeUpdate").val(endreq);
+                                $("#updateModal").modal('show');
+                                $("#usernameUpdate").val($("#usernameRequest").val());
+                                $("#roomtitleUpdate").val(activeRoomTitle);
+                                $("#attendanceUpdate").val($("#attendanceRequest").val());
+                                $("#subjectUpdate").val(eventData.subject);
+                            }
+                        }
+                    })
+
+                }
+            });
+        }
+        return;
+    }
+
+    // Rest of your existing code for form submission
+    var $submitButton = $(this).find("button[type='submit']");
+    $submitButton.prop("disabled", true).text("Submitting...");
+
+    var submitForm = new FormData(form);
+    var usernikr = $("#userIdRequest").val();
+
+    submitForm.append("idConflict", eventDetails.id);
+    submitForm.append("NIKConflict", eventDetails.user);
+    submitForm.append("startConflict", eventDetails.start);
+    submitForm.append("endConflict", eventDetails.end);
+    submitForm.append("NIKRequest", usernikr);
+
+    $.ajax({
+        type: 'POST',
+        url: "@Url.Action("SubmitRequest", "NWR", new { area = "Other" })",
+        tryCount: 0,
+        tryLimit: 3,
+        data: submitForm,
+        cache: false,
+        contentType: false,
+        processData: false,
+    }).done(function (result) {
+        if (result.status === 1) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: result.message,
+                confirmButtonText: 'OK'
+            }).then((result) => {
+                $('#requestModal').modal('hide');
+                if (calendar) {
+                    calendar.gotoDate(conflictData.start);
+                    calendar.refetchEvents();
+                }
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed!',
+                text: result.message,
+                confirmButtonText: 'OK'
+            }).then((result) => {
+                $('#requestModal').modal('hide');
+            });
+        }
+    }).always(function () {
+        $submitButton.prop("disabled", false).text("Submit Request");
+    });
+});
+
+            }
+        },
+        error: function (xhr, status, error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while fetching event details: ' + error
+            });
+        }
+    });
+}
+
+                                $("#starttimeRequest, #endtimeRequest").clockpicker({
+                                    autoclose: true
+                                });
+                            }
+                        },
+                        error: function (xhr, status, res) {
+                            if (res.status === 0) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Failed!',
+                                    text: 'An Error Has Occurred: ' + res.message
+                                });
+                            }
+
+
+
+
+                            $('#btnUpdate').prop('disabled', false).html('<i class="fa fa-floppy-disk"></i> | <span>Save</span>');
+                        },
+
+                        complete: function () {
+                            $('#btnUpdate').prop('disabled', false).html('<i class="fa fa-floppy-disk"></i> | <span>Save</span>');
+                        }
+                    });
+                });
+            },
+            dayHeaderContent: (args) => {
+                if (args.view.type === 'timeGridWeek') {
+                    return moment(args.date).format('ddd Do');
+                } else {
+                    return args.text;
+                }
+            },
+            views: {
+                week: {
+                    dayHeaderFormat: {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long'
+                    },
+                    slotLabelFormat: {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        meridiem: 'short'
+                    }
+                }
+            }
+        });
+
+        calendar.render();
+        }
+
+
+    </script>
+    <script>
+let allRoomsData = [];
+
+    function getDetailRooms(roomCatSequence) {
+        $.ajax({
+            url: "@Url.Action("GetRoomDetails", "NWR", new { area = "Other" })",
+            type: "POST",
+            tryCount: 0,
+            tryLimit: 3,
+            // Pastikan nama parameter cocok dengan di Controller (sequenceId)
+            data: { sequenceId: parseInt(roomCatSequence) },
+            dataType: "json",
+            success: function (response) {
+                if (!Array.isArray(response)) return;
+
+                allRoomsData = response;
+                let carouselInner = $(".carousel-inner");
+                carouselInner.empty();
+
+                if (response.length > 0) {
+                    response.forEach(function (room, index) {
+                        let activeClass = index === 0 ? "active" : "";
+                        let imageName = room.Image || "no_room.png";
+
+                        carouselInner.append(`
+                            <div class="carousel-item ${activeClass}" data-room-id="${room.ID}" data-room-title="${room.RoomTitle}">
+                                <img alt="${imageName}" src="@Url.Content("~/Content/Images/Room/")${imageName}" class="d-block w-100" height="200px" />
+                            </div>
+                        `);
+                    });
+
+                    $('.carousel-control-prev, .carousel-control-next').toggle(response.length > 1);
+
+                    const firstRoom = response[0];
+                    $("#buildingName, #activeBuildingName").text(firstRoom.RoomTitle || "No Room Available");
+                    $("#roomId").val(firstRoom.ID);
+
+                    displayRoomProps(firstRoom.ID);
+                    renderCalendar(firstRoom.ID);
+                } else {
+                    // Handler jika data ruangan kosong di dalam kategori tsb
+                    $("#buildingName, #activeBuildingName").text("No Room Available");
+                    $("#propertiesTableBody").empty();
+                    $("#ex_number").empty();
+                    $('.carousel-control-prev, .carousel-control-next').hide();
+
+                    if(calendar) {
+                        calendar.destroy();
+                        calendar = null;
+                    }
+                }
+            },
+            error: function (xhr, textStatus) {
+                if (textStatus === "timeout") {
+                    this.tryCount++;
+                    if (this.tryCount <= this.tryLimit) {
+                        $.ajax(this);
+                        return;
+                    }
+                }
+                Swal.fire('Error', 'Failed to fetch data.', 'error');
+            }
+        });
+    }
+
+    function displayRoomProps(roomId) {
+        const room = allRoomsData.find(r => r.ID === parseInt(roomId));
+        if (!room) return;
+
+        const roomHtml = `
+            <div class="d-flex align-items-center justify-content-center mt-4" style="position: relative;">
+                <p style="margin: 0; font-size: 13px; font-weight: bold" id="ex_number">
+                    ☎️ Extension Number: ${room.ExtensionNumber || '-'}
+                </p>
+            </div>
+        `;
+
+        const props = room.prop || [];
+        const propsHtml = props.map(prop => `
+            <tr>
+                <td style="font-size: 12px;">${prop.PropsName}</td>
+                <td style="padding:6px 30px; font-size: 12px;">${prop.Quantity}</td>
+            </tr>
+        `).join('');
+
+        $("#propertiesTableBody").html(propsHtml);
+        $("#ex_number").html(roomHtml);
+    }
+
+    function loadRoomCategories() {
+        $.ajax({
+            url: "@Url.Action("GetRoomCat", "NWR", new { area = "Other" })",
+            type: "GET",
+            dataType: "json",
+            success: function (categories) {
+                let container = $("#categoryContainer");
+                container.empty();
+
+                let firstAvailableSequence = null;
+
+                categories.forEach(function (cat) {
+                    let maintenanceClass = cat.isMaintenance ? "disabled-icon" : "";
+                    let maintenanceStyle = cat.isMaintenance ? "opacity: 0.5; filter: grayscale(100%);" : "";
+
+                    // Simpan sequence pertama yang tidak maintenance untuk initial load
+                    if (!cat.isMaintenance && firstAvailableSequence === null) {
+                        firstAvailableSequence = cat.sequence;
+                    }
+
+                    let focusClass = (cat.sequence === firstAvailableSequence) ? "focus active" : "";
+                    let categoryActive = (cat.sequence === firstAvailableSequence) ? "active" : "";
+
+                    let html = `
+                        <a href="#" class="link-dark category-icon ${maintenanceClass} ${focusClass}"
+                           style="text-decoration: none; ${maintenanceStyle}"
+                           data-sequence="${cat.sequence}"
+                           data-maintenance="${cat.isMaintenance}">
+                            <div class="category text-center ${categoryActive}">
+                                <i class="fa-solid fa-building fa-4x"></i>
+                                <p class="mt-2">${cat.RoomCat}</p>
+                            </div>
+                        </a>
+                    `;
+                    container.append(html);
+                });
+
+                // Load initial data for the first available category (Mencegah tampilan kosong)
+                if(firstAvailableSequence !== null) {
+                    getDetailRooms(firstAvailableSequence);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Gagal memuat kategori ruangan:", error);
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        // Render kategori secara otomatis saat halaman dimuat
+        loadRoomCategories();
+
+        // DELEGATION UNTUK KLIK ICON GEDUNG (Menggunakan .on() ke body/document)
+        $(document).on("click", ".category-icon", function (e) {
+            e.preventDefault();
+
+            const roomCatSequence = $(this).data("sequence"); // Mengambil parameter dari data-sequence
+            const isMaintenance = $(this).data("maintenance");
+
+            if (isMaintenance === true) {
+                $('#maintenanceModal').modal('show');
+                return;
+            }
+
+            if (calendar) {
+                currentView = calendar.view.type;
+                currentDate = currentView === 'dayGridMonth' ? lastMonthDate : calendar.getDate();
+            }
+
+            getDetailRooms(roomCatSequence);
+
+            // Update Class Active Visual
+            $(".category-icon").removeClass("focus active");
+            $(".category").removeClass("active");
+
+            $(this).addClass("focus active");
+            $(this).find(".category").addClass("active");
+        });
+
+        // Trigger Calendar re-render ketika ganti gambar ruangan dari Carousel
+        $("#carouselExampleFade").on("slid.bs.carousel", function () {
+            const activeItem = $(".carousel-item.active");
+            const activeRoomId = activeItem.data("room-id");
+            const newBuildingName = activeItem.data("room-title");
+
+            if (calendar) {
+                currentView = calendar.view.type;
+                currentDate = currentView === 'dayGridMonth' ? lastMonthDate : calendar.getDate();
+            }
+
+            if (newBuildingName) {
+                $("#buildingName, #activeBuildingName").text(newBuildingName);
+                $("#roomTitle").val(newBuildingName);
+            }
+
+            if (activeRoomId) {
+                $("#roomId").val(activeRoomId);
+                displayRoomProps(activeRoomId);
+                renderCalendar(activeRoomId);
+            }
+        });
+    });
+    </script>
+}
+
+<div class="container-fluid no-padding">
+
+    <div style="padding:8px; margin-bottom:8px;">
+        <div style="display:flex; flex-direction:row; align-items:center; justify-content:space-between; width:100%;">
+
+            <div style="display:flex; flex-direction:row; align-items:center;">
+                <div style="
+                width:4px;
+                height:32px;
+                margin-right:16px;
+                background: linear-gradient(to bottom, #f59e0b, #ea580c);
+                border-radius:9999px;
+            "></div>
+
+                <h1 style="
+                font-size:24px;
+                font-weight:bold;
+                color:#f9fafb;
+                margin:0;
+            ">
+                    Niterra Workspace Reservation
+                </h1>
+            </div>
+
+            @if (isAuthorized || hcList.Contains(currentNik))
+            {
+                <div>
+                    <a href="@Url.Action("NWRConfiguration", "NWR", new { area = "Other" })"
+                       class="btn btn-warning"
+                       style="
+                        background: linear-gradient(to right, #f59e0b, #ea580c);
+                        color: white;
+                        border: none;
+                        font-weight: bold;
+                        padding: 8px 16px;
+                        border-radius: 6px;
+                        text-decoration: none;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                   ">
+                        <i class="fa fa-cog"></i> Workspace Configuration
+                    </a>
+                </div>
+            }
+
+        </div>
+    </div>
+
+
+    <input type="hidden" id="hfIsLogin" value="@(isLogin.ToString())" />
+
+    <div class="row pt-4">
+        <div class="col-lg-4 col-12 mb-4">
+            <div class="p-3" style="height: 653.45px; min-width: 275px; background-color: white; border-radius: 20px;">
+                <div class="col justify-content-evenly d-flex justify-center mt-4" id="categoryContainer">
+                </div>
+
+                <div id="carouselExampleFade" class="carousel slide carousel-fade mt-4">
+                    <div class="carousel-inner">
+                        <div class="carousel-item active" id="ImagesUrl"></div>
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleFade" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleFade" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+
+                <div class="building-info">
+                    <p style="padding: 4px 0; font-size: 20px; color: #007582; border-radius: 10px; font-weight: bold; " class="fw-bold mt-4 text-center" id="buildingName"></p>
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="font-size:12px;" scope="col">Properties</th>
+                                <th style="font-size:12px;" scope="col">Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="propertiesTableBody"></tbody>
+                    </table>
+                    <div id="ex_number">Extension Number</div>
+                    <input type="text" id="roomId" value="" readonly hidden />
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-12">
+
+            <div class="p-3" style="background-color: white; border-radius: 20px;">
+                @*<p class="fw-bold mt-4 text-center" style="background-color: #2C3E50; color: white; padding: 10px 0px; border-radius: 10px; font-weight: bold;  text-transform: uppercase; font-size: 16px; " id="activeBuildingName"></p>*@
+                <div style="background-color: white;" id="calendar" class="px-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #007582;">
+                    <h1 class="modal-title fs-5" style="color: white; font-weight:bold;" id="exampleModalLabel">Create Workspace Reservation</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formSchedule" class="needs-validation" action="#" method="POST" novalidate>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <div class="row mb-3">
+                                <input type="hidden" id="idEvent" name="idBook" value="0" />
+                                <div class="col-2">
+                                    <label for="username" class="form-label">By</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="username" readonly>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="date" class="form-label">Date</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="date" name="Day" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="starttime" class="form-label">Schedule</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="starttime" name="StartTime" required>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="endtime" name="EndTime" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="roomTitle" class="form-label">Workspace</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="roomTitle" readonly>
+                                    <input type="hidden" id="roomIdHidden" name="Roomid" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="subject" class="form-label">Subject</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="subject" rows="3" style="resize:none;" name="Subject" placeholder="Please write your reservation purpose..." required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Total Attendance</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-1">
+                                    <input type="number" class="form-control" id="attendance" name="Attendance" min="1" required />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Google Calendar Url</label>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="link" name="Link" rows="3" style="resize:none;"></textarea>
+
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="linkmeet" class="form-label">Google Meet Url</label>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="linkmeet" rows="3" style="resize:none;" name="LinkMeet"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="radio-inputs">
+                                    <label>
+                                        <input class="radio-input" type="radio" name="engine" checked>
+                                        <span class="radio-tile">
+                                            <i class="fa-solid fa-earth-asia"></i>
+                                            <span class="radio-label">Public</span>
+                                        </span>
+                                    </label>
+                                    <label class="d-flex">
+                                        <input class="radio-input" type="radio" name="engine">
+                                        <span class="radio-tile d-flex">
+                                            <i class="fa-solid fa-lock"></i>
+                                            <span class="radio-label">Private</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary" id="btnSave">
+                                    <i class="fa fa-plus"></i> | <span>Add</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #007582;">
+                    <h1 style="color: white; font-weight: bold;" class="modal-title fs-5" id="exampleModalLabel">Detail Workspace Reservation</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <input type="hidden" id="hfIsLogin" value="@(isLogin.ToString())" />
+                <input type="hidden" id="idEvent" name="id" />
+
+                <form id="formScheduleUpdate" action="#" method="POST">
+                    <input type="hidden" id="userNIK" name="user" />
+                    <div class="modal-body">
+                        <div class="mb-3">
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="usernameUpdate" class="form-label">User</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="usernameUpdate" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="dateUpdate" class="form-label">Date</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="dateUpdate" name="DayUpdate" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="starttimeUpdate" class="form-label">Schedule</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="starttimeUpdate" name="StartTimeUpdate" required>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="endtimeUpdate" name="EndTimeUpdate" required>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Room</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="roomtitleUpdate" readonly disabled>
+                                    <input type="hidden" class="form-control" id="roomIdHiddenUpdate" name="RoomIdUpdate" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Subject</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="subjectUpdate" rows="3" style="resize:none;" name="SubjectUpdate" value="" required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Total Attendance</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-1">
+                                    <input type="number" class="form-control" id="attendanceUpdate" name="AttendanceUpdate" min="1" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="LinkUpdate" class="form-label">Google Calendar</label>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="LinkUpdate" name="LinkUpdate" rows="3" style="resize:none;"></textarea>
+                                    <div style="padding: 5px">
+                                        <a id="googlecalendarupdate" href="#" target="_blank" style="margin-right: 10px;" title="Google Calendar Url">
+                                            Open Link in New Tab
+                                            <span style="margin-left: 5px;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                            </span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @*<a id="linkUpdate" />
+                                <a href="" id="linkUpdate">Google Calendar Link</a>
+                                <script>
+                                    $('a').each(function () {
+                                        this.href = '' + this.id;
+                                    });
+                                </script>*@
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="linkMeetUpdate" class="form-label">Google Meet Url</label>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="linkMeetUpdate" rows="3" style="resize:none;" name="LinkMeetUpdate"></textarea>
+                                    <div style="padding: 5px">
+                                        <a id="googlemeetupdate" href="#" target="_blank" style="margin-right: 10px;" title="Google Meet Url">
+                                            Open Link in New Tab
+                                            <span style="margin-left: 5px;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                            </span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="timestamps" class="form-label">Created Time</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="timestamps" readonly>
+                                </div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary" id="btnUpdate">
+                                    <i class="fa fa-floppy-disk"></i> | <span>Save Changes</span>
+                                </button>
+                                <button type="button" class="btn btn-danger" id="btnDelete">
+                                    <i class="fa fa-trash"></i> | <span>Delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="requestModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #007582;">
+                    <h1 class="modal-title fs-5" style="color: white; font-weight: bold;">Request Workspace Reservation</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formRequest" action="#" method="POST" novalidate>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <h3 id="titleRequest">Existing Reservation Details:</h3><br />
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="usernameConflict" class="form-label">User</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="usernameConflict" name="usernameConflict" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Workspace</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="roomTitleConflict" name="roomConflict" readonly>
+                                    <input type="hidden" id="roomIdHidden" name="Roomid" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="dateConflict" class="form-label">Date</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="dateConflict" name="dateConflict" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="starttimeConflict" class="form-label">Schedule</label>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="starttimeConflict" name="startConflict" readonly>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="endtimeConflict" name="endConflict" readonly>
+                                </div>
+                            </div>
+
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="attendanceConflict" class="form-label">Total Attendance</label>
+                                </div>
+                                <div class="col-1">
+                                    <input type="number" class="form-control" id="attendanceConflict" name="attendanceConflict" min="1" readonly />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Subject</label>
+                                </div>
+                                <div class="col-10">
+                                    <textarea class="form-control" id="subjectConflict" rows="3" style="resize:none;" value="" name="subjectConflict" readonly></textarea>
+                                </div>
+                            </div>
+
+                            <hr />
+
+                            <h3 id="titleRequest2">New Request Details:</h3><br />
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="usernameRequest" class="form-label">User </label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="usernameRequest" name="usernameRequest" value="@ViewBag.currUsrName" readonly>
+                                    <input type="hidden" class="form-control" id="userIdRequest" value="@ViewBag.currUsr" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label class="form-label">Workspace</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="roomTitleRequest" name="roomRequest" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="dateRequest" class="form-label">Date</label>
+                                </div>
+                                <div class="col-10">
+                                    <input type="text" class="form-control" id="dateRequest" name="dateRequest" readonly>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="starttimeRequest" class="form-label">Schedule</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="starttimeRequest" name="startRequest" required>
+                                </div>
+                                <div class="col-5">
+                                    <input type="text" class="form-control" id="endtimeRequest" name="endRequest" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="attendanceRequest" class="form-label">Total Attendance</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-1">
+                                    <input type="number" class="form-control" id="attendanceRequest" name="attendanceRequest" min="1" value="1" />
+                                </div>
+                            </div>
+
+
+                            <div class="row mb-3">
+                                <div class="col-2">
+                                    <label for="messageRequest" class="form-label">Message</label>
+                                    <span style="color: red;">*</span>
+                                </div>
+                                <div class="col-10">
+                                    <textarea id="messageRequest" class="form-control" rows="3" style="resize:none;" name="messageRequest" placeholder="Please write a message for the existing reservation about your purpose or urgency...." required></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary" id="btnSubmit">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="maintenanceModal" data-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="maintenanceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="maintenanceModalLabel font-weight-bold">
+                        ⚠️ NOTICE: MAINTENANCE
+                    </h5>
+                    <button type="button" class="close text-white close-modal-custom" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-tools fa-4x text-secondary"></i>
+                    </div>
+                    <h4 class="font-weight-bold text-dark">MEETING ROOM CLOSED</h4>
+                    <p class="text-muted">
+                        Sorry, the <b>Front Office Room</b> is currently <br>
+                        <span class="badge badge-warning text-md p-2 mt-2">UNDER MAINTENANCE</span>
+                    </p>
+                    <hr class="mt-4">
+                    <p class="mt-2 small text-secondary">Please use Production or Central Building for now.</p>
+                </div>
+                <div class="mt-4 modal-footer justify-content-center">
+                    <button type="button" class="btn btn-secondary px-5 close-modal-custom">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script>
+    $.validator.addMethod("time24", function (value, element) {
+        return this.optional(element) || /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+    }, "Please enter a valid time in HH:mm format.");
+
+    $.validator.addMethod("dateYMD", function (value, element) {
+        return this.optional(element) || /^\d{2}-\d{2}-\d{4}$/.test(value);
+    }, "Please enter a valid date in DD-MM-YYYY format.");
+
+    $.validator.addMethod("timeRange", function (value, element) {
+        if (this.optional(element)) return true;
+        var parts = value.split(":");
+        var hour = parseInt(parts[0], 10);
+        return hour >= 6 && hour <= 21;
+    }, "Time must be between 06:00 and 21:00.");
+
+    $.validator.addMethod("endAfterStart", function (value, element, params) {
+        var startTime = $(params).val();
+        if (!startTime || !value) return true;
+
+        var start = new Date("1970-01-01T" + startTime + ":00");
+        var end = new Date("1970-01-01T" + value + ":00");
+        return end > start;
+    }, "End time must be after start time.");
+
+    $.validator.addMethod("validLink", function (value, element) {
+        if (!value) return true;
+        var pattern = /^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]!$&'()*+,;=]*)?$/i;
+        return pattern.test(value);
+    }, "Please enter a valid URL.");
+
+
+    var formScheduleValidate = $("#formSchedule").validate({
+        rules: {
+            Day: { required: true, dateYMD: true },
+            StartTime: { required: true, time24: true, timeRange: true },
+            EndTime: { required: true, time24: true, timeRange: true, endAfterStart: "#starttime" },
+            Subject: { required: true, maxlength: 100 },
+            Attendance: {
+                required: true,
+                min: 1
+            },
+            Link: { validLink: true, maxlength: 500 },
+            LinkMeet: { validLink: true, maxlength: 500 }
+        },
+        messages: {
+            Day: { required: "Please select a date." },
+            StartTime: { required: "Please enter start time." },
+            EndTime: { required: "Please enter end time." },
+            Subject: { required: "Please enter a subject.", maxlength: "Maximum 100 characters allowed." },
+            Attendance: {
+                required: "Please enter total attendance.",
+                min: "Min value 1."
+            },
+            Link: { maxlength: "Maximum 500 characters allowed." },
+            LinkMeet: { maxlength: "Maximum 500 characters allowed." },
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            element.closest('.col-10, .col-5, .col-1').append(error);
+        },
+        highlight: function (element) {
+            $(element).addClass('is-invalid');
+        },
+        unhighlight: function (element) {
+            $(element).removeClass('is-invalid');
+        },
+        submitHandler: function (form) {
+            formSubmitAjax();
+        }
+    });
+
+    var formRequestValidate = $("#formRequest").validate({
+        rules: {
+            startRequest: { required: true, time24: true, timeRange: true },
+            endRequest: { required: true, time24: true, timeRange: true, endAfterStart: "#starttimeRequest" },
+            messageRequest: { required: true, maxlength: 500 },
+            attendanceRequest: { required: true, min: 1 }
+        },
+        messages: {
+            startRequest: { required: "Please enter start time." },
+            endRequest: { required: "Please enter end time." },
+            messageRequest: { required: "Please enter your message.", maxlength: "Maximum 500 characters allowed." },
+            attendanceRequest: {
+                required: "Please enter total attendance.",
+                min: "Min value 1."
+            }
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+
+            error.addClass('invalid-feedback');
+            element.closest('.col-10, .col-5, .col-1').append(error);
+        },
+        highlight: function (element) {
+            $(element).addClass('is-invalid');
+        },
+        unhighlight: function (element) {
+            $(element).removeClass('is-invalid');
+        },
+        submitHandler: function (form) {
+            formRequestSubmit();
+        }
+    });
+
+    var formUpdateValidate = $("#formScheduleUpdate").validate({
+        rules: {
+            DayUpdate: { required: true, dateYMD: true },
+            StartTimeUpdate: { required: true, time24: true, timeRange: true, },
+            EndTimeUpdate: { required: true, time24: true, timeRange: true, endAfterStart: "#starttimeUpdate" },
+            SubjectUpdate: { required: true, maxlength: 100 },
+            AttendanceUpdate: {
+                required: true,
+                min: 1
+            },
+            LinkUpdate: { validLink: true, maxlength: 500 },
+            LinkMeetUpdate: { validLink: true, maxlength: 500 }
+        },
+        messages: {
+            DayUpdate: { required: "Please enter the date." },
+            StartTimeUpdate: { required: "Please enter start time." },
+            EndTimeUpdate: { required: "Please enter end time." },
+            SubjectUpdate: { required: "Please enter subject.", maxlength: "Maximum 100 characters allowed." },
+            AttendanceUpdate: {
+                required: "Please enter attendance.",
+                min: "Min value 1."
+            },
+            LinkUpdate: { maxlength: "Maximum 500 characters allowed." },
+            LinkMeetUpdate: { maxlength: "Maximum 500 characters allowed." }
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+
+            error.addClass('invalid-feedback');
+            element.closest('.col-10, .col-5, .col-1').append(error);
+        },
+        highlight: function (element) {
+            $(element).addClass('is-invalid');
+        },
+        unhighlight: function (element) {
+            $(element).removeClass('is-invalid');
+        },
+        submitHandler: function (form) {
+            $("#btnUpdate").click();
+        }
+    });
+
+
+</script>

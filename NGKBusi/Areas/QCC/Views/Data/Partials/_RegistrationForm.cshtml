@@ -1,0 +1,355 @@
+﻿@using NGKBusi.Areas.QCC.Models;
+@using NGKBusi.Areas.QCC.Controllers;
+@using NGKBusi.Models;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    QCCConnection dbQCC = new QCCConnection();
+    DefaultConnection db = new DefaultConnection();
+    var QCC = ViewContext.Controller as DataController;
+    NGKBusi.Areas.QCC.Models.QCC_List currData = ViewBag.QCC;
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    var currDataID = currData?.ID.ToString();
+
+    string[] isQMTeam = { "808.10.18", "867.02.23", "714.06.15", "767.11.16" };
+    var isAllowEdit = false;
+    var isAllowSign = false;
+    if (Request["addNew"] != null)
+    {
+        isAllowEdit = true;
+    }
+    if ((currData?.Created_By == currUserID || currData?.Leader == currUserID) && currData?.Approval == 1 && currData.Approval_Sub == 0)
+    {
+        if (currData?.Leader == currUserID)
+        {
+            isAllowSign = true;
+        }
+        if(currData?.Created_By == currUserID)
+        {
+            isAllowEdit = true;
+
+        }
+    }
+    else if (currData?.Facilitator == currUserID && currData?.Approval == 1 && currData.Approval_Sub == 1)
+    {
+        isAllowSign = true;
+    }
+    else if (currData?.Advisor1 == currUserID && currData?.Approval == 1 && currData.Approval_Sub == 2)
+    {
+        isAllowSign = true;
+    }
+    else if (currData?.Advisor2 == currUserID && currData?.Approval == 1 && currData.Approval_Sub == 3)
+    {
+        isAllowSign = true;
+    }
+
+    }
+
+
+<div id="divQCCFormWrapper">
+    <table id="tblHeader" class="mb-4" border="1" style="width:100%;">
+        <tr>
+            <td rowspan="4" class="text-center" style="width:235px">
+                <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+            </td>
+            <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h4>IMPROVEMENT PROJECT REGISTRATION (CHARTERED)</h4></td>
+            <td style="width:150px">No. Dok</td>
+            <td style="width:150px">PMLK3-CI-02/L1</td>
+        </tr>
+        <tr>
+            <td>Revisi</td>
+            <td>01</td>
+        </tr>
+        <tr>
+            <td>Tanggal</td>
+            <td>5 April 2023</td>
+        </tr>
+        <tr>
+            <td>Halaman</td>
+            <td>1 of 1</td>
+        </tr>
+    </table>
+    @{
+        string[] lossesWastesList = { "Defects", "Overproduction", "Waiting", "Non-Utilized Talent", "Transportation", "Inventory", "Motion", "Extra-Processing" }
+;
+        int _idx = 0;
+    }
+
+
+    <form action="@Url.Action((currData == null ? "InsertList":"editList"), "Data", new { area = "QCC" })" method="post">
+        <input type="hidden" name="iID" value="@(currData?.ID)" />
+        <div class="divQCCForm container-fluid">
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label for="cbLossesWastes" class="form-label d-block">Losses/Wastes Categorization</label>
+                        @foreach (var item in lossesWastesList)
+                        {
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input cbLossesWastes" type="checkbox" name="iLossesWastes[]" id="@("cbLossesWastes" + ++_idx)" @(currData?.Losses?.Split(',')?.Contains(item) == true ? "checked" : "") value="@item" @(!isAllowEdit ? "disabled" : "")>
+                                <label class="form-check-label" for="@("cbLossesWastes" + _idx)">@item</label>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="form-group row">
+                        <label for="selPeriodFY" class="form-label col-3">Period :</label>
+                        <select id="selPeriodFY" class="form-control col-9" name="iPeriodFY" required @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Period-</option>
+                            @for (var i = 2025; i <= (DateTime.Now.Month < 3 ? DateTime.Now.Year - 1 : DateTime.Now.Year + 1); i++)
+                            {
+                                <option value="@("FY1" + (i).ToString().Substring(2, 2))" @("FY1" + (i).ToString().Substring(2, 2) == currData?.Period_FY ? "selected" : "")>@("FY1" + (i).ToString().Substring(2, 2))</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtProjectGorup" class="form-label col-3">Project Group :</label>
+                        <div class="col-9">
+                            <input id="txtProjectGroup" type="text" name="iProjectGroup" class="form-control" placeholder="Your project group name" value="@(currData?.Group)" required @(!isAllowEdit ? "readonly" : "") />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtTimeDuration" class="form-label col-3">Time Duration :</label>
+                        <div class="col-9">
+                            <input id="txtTimeDuration" type="number" name="iTimeDuration" class="form-control col-9" placeholder="Your project time duration" value="@(currData?.Time_Duration)" required @(!isAllowEdit ? "readonly" : "") /> Month
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtTimeDuration" class="form-label col-3">Category :</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input rbCategory" type="radio" name="iCategory" id="rbCategory1" @(currData?.Category == "Teknis" ? "checked" : "") value="Teknis" required @(!isAllowEdit ? "disabled" : "")>
+                            <label class="form-check-label" for="rbCategory1">Teknis</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input rbCategory" type="radio" name="iCategory" id="rbCategory2" @(currData?.Category == "Non-Teknis" ? "checked" : "") value="Non-Teknis" required @(!isAllowEdit ? "disabled" : "")>
+                            <label class="form-check-label" for="rbCategory2">Non-Teknis</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="txtTheme" class="form-label d-block">Theme/Tema</label>
+                        <input type="text" id="txtTheme" class="form-control" name="iTheme" placeholder="Your theme" value="@(currData?.Theme)" required @(!isAllowEdit ? "readonly" : "") />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtThemeBackground" class="form-label d-block">Theme Background/Latar Belakang</label>
+                        <textarea id="txtThemeBackground" name="iThemeBackground" class="form-control" rows="3" placeholder="Your theme background" required @(!isAllowEdit ? "readonly" : "")>@(currData?.Background)</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="txtCurrentCondition" class="form-label d-block">Current Condition/Kondisi Sekarang</label>
+                        <textarea id="txtCurrentCondition" name="iCurrentCondition" class="form-control" rows="3" placeholder="Your current condition" required @(!isAllowEdit ? "readonly" : "")>@(currData?.Current_Condition)</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="txtImprovementTarget" class="form-label d-block">Improvement Target/Sasaran</label>
+                        <textarea id="txtImprovementTarget" name="iImprovementTarget" class="form-control" rows="3" placeholder="Your improvement target" required @(!isAllowEdit ? "readonly" : "")>@(currData?.Improvement_Target)</textarea>
+                    </div>
+                </div>
+                <div class="col-6">
+
+                    @*<table id="tblSign" class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th class="text-center">Advisor 2</th>
+                                    <th class="text-center">Advisor 1</th>
+                                    <th class="text-center">Facilitator</th>
+                                    <th class="text-center">Project Leader</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="height:125px;"></td>
+                                    <td>
+
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>*@
+                    <div class="form-group">
+                        <label for="selProjectLeader" class="form-label d-block">Project Leader/Kepala</label>
+                        <select id="selProjectLeader" class="select2 form-control" name="iProjectLeader" required @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Select-</option>
+                            @foreach (var user in ViewBag.UserList)
+                            {
+                                <option value="@(user.NIK)" @(user.NIK == currData?.Leader ? "selected" : "")>@(user.NIK + " || " + user.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="selFacilitator" class="form-label d-block">Facilitator (Foreman -> Asst. Man)</label>
+                        <select id="selFacilitator" class="select2 form-control" name="iFacilitator" required @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Select-</option>
+                            @foreach (var user in ViewBag.FacilitatorList)
+                            {
+                                <option value="@(user.NIK)" @(user.NIK == currData?.Facilitator ? "selected" : "")>@(user.NIK + " || " + user.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="selAdvisor1" class="form-label d-block">Advisor 1 (Manager up.)</label>
+                        <select id="selAdvisor1" class="select2 form-control" name="iAdvisor1" required @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Select-</option>
+                            @foreach (var user in ViewBag.AdvisorList)
+                            {
+                                <option value="@(user.NIK)" @(user.NIK == currData?.Advisor1 ? "selected" : "")>@(user.NIK + " || " + user.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="selAdvisor2" class="form-label d-block">Advisor 2 (Manager up.)</label>
+                        <select id="selAdvisor2" class="select2 form-control" name="iAdvisor2" @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Select-</option>
+                            @foreach (var user in ViewBag.AdvisorList)
+                            {
+                                <option value="@(user.NIK)" @(user.NIK == currData?.Advisor2 ? "selected" : "")>@(user.NIK + " || " + user.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        @{ var _currID = currData?.ID;
+                            var _members = dbQCC.QCC_List_Member.Where(w => w.List_ID == _currID).Select(s => s.Member).ToList();
+                        }
+                        <label for="selProjectMember" class="form-label d-block">Project Member/Anggota</label>
+                        <select id="selProjectMember" class="select2 form-control" name="iProjectMember[]" required multiple @(!isAllowEdit ? "disabled" : "")>
+                            <option value="">-Select-</option>
+                            @foreach (var user in ViewBag.UserList)
+                            {
+                                <option value="@(user.NIK)" @(_members.Contains(user.NIK) ? "selected" : "")>@(user.NIK + " || " + user.Name)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group pt-4">
+                        @if (isAllowEdit)
+                        {
+                            <button id="btnQCCSave" type="submit" onclick="return confirm('Save this data ?')" class="btn btn-success form-control">Save</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    @{
+        var currSignList = db.Approval_List.Where(w => w.Menu_Id == 29 && w.Document_Id == 1 && w.Reveral_ID == currDataID && w.Is_Skip == false && w.IsEmailOnly == false).Select(s => new { Title = s.Title, Header = s.Header, Label = s.Label, Levels = s.Levels, Levels_Sub = s.Levels_Sub }).Distinct().ToList().OrderByDescending(o => o.Levels).ThenByDescending(o => o.Levels_Sub);
+
+
+    }
+    @if (isQMTeam.Contains(currUserID))
+    {
+        <form action="@Url.Action("RequestSign", "Data", new { area = "QCC" })" method="post">
+            <input type="hidden" name="iSignID" value="@(currDataID)" />
+            @Html.Partial("Partials/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+            <button type="button" class="btn btn-warning form-control" data-toggle="modal" data-target="#returnModal">Return</button>
+        </form>
+        <form action="@Url.Action("RequestSign", "Data", new { area = "QCC" })" method="post">
+            <input type="hidden" name="iSignID" value="@(currDataID)" />
+            @Html.Partial("Partials/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Reminder" } })
+            <button type="button" class="btn btn-info mt-3 form-control" data-toggle="modal" data-target="#returnModal">Reminder</button>
+        </form>
+    }
+    <table class="table table-bordered tblSign mt-3">
+        <thead>
+            <tr>
+                @foreach (var dList in currSignList)
+                {
+                    <th class="text-center">
+                        @(dList.Label)
+                    </th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                @foreach (var dList in currSignList)
+                {
+                    <td class="text-center align-middle" style="height:125px;width:100px;">
+                        @if (currData != null && currData.Approval == dList.Levels && currData.Approval_Sub == dList.Levels_Sub && isAllowSign)
+                        {
+                            <form id="formQCCSign" action="@Url.Action("RequestSign", "Data", new { area = "QCC" })" method="post">
+                                <input type="hidden" name="iSignID" value="@(currDataID)" />
+                                <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this QCC Registration ?');" name="btnType" value="Sign">Sign</button>
+                            </form>
+                            if (currData != null && (currData.Approval + currData.Approval_Sub != 1))
+                            {
+                                <hr />
+                                <form action="@Url.Action("RequestSign", "Data", new { area = "QCC" })" method="post">
+                                    <input type="hidden" name="iSignID" value="@(currDataID)" />
+                                    @Html.Partial("Partials/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                </form>
+                            }
+                        }
+                        else
+                        {
+                            var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 29 && w.Document_Id == 1 && w.Reveral_ID == currDataID && w.Approval == dList.Levels && w.Approval_Sub == dList.Levels_Sub).OrderByDescending(o => o.id).FirstOrDefault();
+                            if (currData != null && (currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels)
+                            {
+                                if (checkHistory != null && checkHistory.IsReject == true)
+                                {
+                                    <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                    @Html.Partial("Partials/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                }
+                                else
+                                {
+                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                }
+                            }
+                        }
+                    </td>
+                }
+            </tr>
+            <tr>
+                @foreach (var dList in currSignList)
+                {
+                    <td class="text-center">
+                        @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                        {
+                            @(QCC.ApprovalHistory(currDataID, dList.Levels, dList.Levels_Sub, 1, 1));
+                        }
+                        else
+                        {
+                            var getNextSignList = db.Approval_List.Where(w => w.Menu_Id == 29 && w.Document_Id == 1 && w.Reveral_ID == currDataID && w.Levels == dList.Levels && w.Levels_Sub == dList.Levels_Sub && w.Is_Skip == false && w.IsEmailOnly == false).ToList();
+                            var cnt = 0;
+                            var nextSignList = new List<string>();
+                            foreach (var dListNext in getNextSignList)
+                            {
+                                if (!nextSignList.Contains(dListNext?.Users?.Name))
+                                {
+                                    @((cnt > 0 ? " / " : "") + dListNext?.Users?.Name)
+                                    nextSignList.Add(dListNext?.Users?.Name);
+                                    cnt++;
+                                }
+                            }
+                        }
+                    </td>
+                }
+            </tr>
+            <tr>
+                @foreach (var dList in currSignList)
+                {
+                    <td class="text-center">
+                        @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                        {
+                            @(QCC.ApprovalHistory(currDataID, dList.Levels, dList.Levels_Sub, 2, 1));
+                        }
+                    </td>
+                }
+            </tr>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,451 @@
+@model IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_VehicleChecksheet_Header>
+@{
+    ViewBag.Title = "List Checksheet Kendaraan Operasional";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isAdmin = ViewBag.IsAdmin ?? false;
+    string currentUserNIK = ViewBag.CurrentUserNIK;
+    DateTime today = ViewBag.CurrentDate ?? DateTime.Today;
+}
+
+<!-- Load Tailwind CSS Browser Compiler -->
+<script src="@Url.Content("~/Scripts/tailwind/tailwind.js")"></script>
+
+<div class="w-full p-4 md:p-6 font-sans">
+    
+    <!-- Toast Notifications -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="mb-4 p-4 rounded-lg bg-green-50 text-green-800 border border-green-200 flex items-center justify-between shadow-sm animate-fade-in">
+            <div class="flex items-center space-x-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="font-medium text-sm">@TempData["Success"]</span>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-green-500 hover:text-green-700 focus:outline-none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="mb-4 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 flex items-center justify-between shadow-sm animate-fade-in">
+            <div class="flex items-center space-x-2">
+                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span class="font-medium text-sm">@TempData["Error"]</span>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 focus:outline-none">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    }
+
+    <!-- Header Panel -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 tracking-tight">Checksheet Kendaraan Operasional</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                @if (isAdmin)
+                {
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        Admin Mode (Semua Data)
+                    </span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                        User Mode (Data Pribadi)
+                    </span>
+                }
+            </p>
+        </div>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <!-- Filter Bulan -->
+            <select id="filterMonth" class="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                <option value="">Semua Bulan</option>
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05">Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+            </select>
+
+            <!-- Filter Tahun -->
+            <select id="filterYear" class="rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white text-gray-700 outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                <option value="">Semua Tahun</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+
+            <a href="@Url.Action("Create")" class="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow transition-all duration-200 focus:outline-none">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                Tambah Checksheet Baru
+            </a>
+        </div>
+    </div>
+
+    <!-- Main List Card -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-150 overflow-hidden">
+        
+        <!-- Table Scroll Container -->
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="checksheetTable">
+                <thead class="bg-gray-55 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <tr>
+                        <th class="px-6 py-4 text-left font-semibold">Tgl Pengecekan</th>
+                        <th class="px-6 py-4 text-left font-semibold">Driver</th>
+                        <th class="px-6 py-4 text-left font-semibold">Nopol</th>
+                        <th class="px-6 py-4 text-left font-semibold">Tujuan</th>
+                        <th class="px-6 py-4 text-left font-semibold">Keterangan</th>
+                        <th class="px-6 py-4 text-center font-semibold">Aksi</th>
+                    </tr>
+                    <!-- Filter Row -->
+                    <tr class="bg-gray-50 border-t border-gray-200">
+                        <td class="px-4 py-2">
+                            <input type="text" id="filterDate" placeholder="Cari tanggal..." class="w-full text-xs rounded border border-gray-300 px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </td>
+                        <td class="px-4 py-2">
+                            <input type="text" id="filterDriver" placeholder="Cari driver..." class="w-full text-xs rounded border border-gray-300 px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </td>
+                        <td class="px-4 py-2">
+                            <input type="text" id="filterNopol" placeholder="Cari nopol..." class="w-full text-xs rounded border border-gray-300 px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </td>
+                        <td class="px-4 py-2">
+                            <input type="text" id="filterTujuan" placeholder="Cari tujuan..." class="w-full text-xs rounded border border-gray-300 px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </td>
+                        <td class="px-4 py-2">
+                            <input type="text" id="filterRemarks" placeholder="Cari keterangan..." class="w-full text-xs rounded border border-gray-300 px-2 py-1 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        </td>
+                        <td class="px-4 py-2 text-center text-xs text-gray-400 font-medium">Filter Aktif</td>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-150 text-sm text-gray-700" id="tableBody">
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var log in Model)
+                        {
+                            bool canModify = (log.CreatedBy == currentUserNIK && log.CheckDate.Date == today.Date);
+
+                            <tr class="hover:bg-gray-50 transition-colors duration-150 checksheet-row" data-month="@log.CheckDate.ToString("MM")" data-year="@log.CheckDate.ToString("yyyy")">
+                                <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900 cell-date">
+                                    @log.CheckDate.ToString("dd-MMM-yyyy")
+                                </td>
+                                <td class="px-6 py-4 cell-driver">
+                                    <div class="font-medium text-gray-800">@log.DriverName</div>
+                                    <div class="text-xs text-gray-400">NIK: @log.DriverNIK</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap cell-nopol">
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded bg-gray-100 text-gray-800 font-semibold text-xs border border-gray-200">
+                                        @(log.Vehicle != null ? log.Vehicle.LicensePlate : "-")
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 cell-tujuan">
+                                    @(log.Destination != null ? log.Destination.DestinationName : "-")
+                                </td>
+                                <td class="px-6 py-4 max-w-xs truncate cell-remarks" title="@log.Remarks">
+                                    @(string.IsNullOrEmpty(log.Remarks) ? "-" : log.Remarks)
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-xs font-medium">
+                                    <div class="inline-flex items-center space-x-2">
+                                        <a href="@Url.Action("Detail", new { id = log.HeaderID })" class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 rounded text-gray-700 bg-white hover:bg-gray-55 transition-colors focus:outline-none" title="Detail">
+                                            <svg class="w-3.5 h-3.5 mr-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            Detail
+                                        </a>
+
+                                        @if (canModify)
+                                        {
+                                            <a href="@Url.Action("Edit", new { id = log.HeaderID })" class="inline-flex items-center px-2.5 py-1.5 border border-indigo-200 rounded text-indigo-700 bg-indigo-50 hover:bg-indigo-100 transition-colors focus:outline-none" title="Ubah">
+                                                <svg class="w-3.5 h-3.5 mr-1 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                Ubah
+                                            </a>
+
+                                            using (Html.BeginForm("Delete", "DeliveryChecksheet", new { id = log.HeaderID }, FormMethod.Post, new { @class = "inline", onsubmit = "return confirm('Apakah Anda yakin ingin menghapus data checksheet ini? Data detail pemeriksaan juga akan dihapus secara permanen.');" }))
+                                            {
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="inline-flex items-center px-2.5 py-1.5 border border-red-200 rounded text-red-700 bg-red-50 hover:bg-red-100 transition-colors focus:outline-none" title="Hapus">
+                                                    <svg class="w-3.5 h-3.5 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                    Hapus
+                                                </button>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="inline-flex items-center px-2.5 py-1.5 rounded border border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed select-none" title="Edit/Hapus hanya tersedia untuk pengisi form pada hari yang sama">
+                                                Terkunci
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr id="emptyRow">
+                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                <span class="text-sm font-medium">Belum ada data checksheet terisi.</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination Footer Panel -->
+        <div class="bg-gray-55 border-t border-gray-150 px-6 py-4 flex items-center justify-between no-print">
+            <div class="flex-1 flex justify-between sm:hidden">
+                <button id="btnPrevMobile" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Sebelumnya
+                </button>
+                <button id="btnNextMobile" class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Berikutnya
+                </button>
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div class="flex items-center space-x-6">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            Menampilkan <span id="pagStart" class="font-medium">1</span> sampai <span id="pagEnd" class="font-medium">10</span> dari <span id="pagTotal" class="font-medium">0</span> data
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <span>Tampilkan:</span>
+                        <select id="pageSizeSelect" class="rounded border border-gray-300 px-2 py-1 text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination" id="pagButtons">
+                        <!-- Dynamic pagination buttons -->
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const filterDate = document.getElementById("filterDate");
+        const filterDriver = document.getElementById("filterDriver");
+        const filterNopol = document.getElementById("filterNopol");
+        const filterTujuan = document.getElementById("filterTujuan");
+        const filterRemarks = document.getElementById("filterRemarks");
+        
+        const filterMonth = document.getElementById("filterMonth");
+        const filterYear = document.getElementById("filterYear");
+        const pageSizeSelect = document.getElementById("pageSizeSelect");
+        
+        const rows = Array.from(document.querySelectorAll(".checksheet-row"));
+        const emptyRow = document.getElementById("emptyRow");
+        const tableBody = document.getElementById("tableBody");
+
+        let currentPage = 1;
+        let currentFilteredRows = [...rows];
+
+        function renderPage() {
+            const totalItems = currentFilteredRows.length;
+            
+            const sizeVal = pageSizeSelect.value;
+            const rowsPerPage = sizeVal === "all" ? (totalItems || 1) : parseInt(sizeVal, 10);
+            
+            const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+            
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+
+            // Hide all rows
+            rows.forEach(row => {
+                row.style.display = "none";
+            });
+
+            // Show current page rows
+            for (let i = startIndex; i < endIndex; i++) {
+                currentFilteredRows[i].style.display = "";
+            }
+
+            // Update text counters
+            document.getElementById("pagStart").textContent = totalItems === 0 ? 0 : startIndex + 1;
+            document.getElementById("pagEnd").textContent = endIndex;
+            document.getElementById("pagTotal").textContent = totalItems;
+
+            // Generate buttons
+            const pagButtons = document.getElementById("pagButtons");
+            pagButtons.innerHTML = "";
+
+            function createButton(page, text, active = false, disabled = false) {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.textContent = text;
+                
+                let classes = "relative inline-flex items-center px-3 py-2 border text-sm font-medium transition-colors ";
+                if (active) {
+                    classes += "z-10 bg-indigo-50 border-indigo-500 text-indigo-600 focus:outline-none";
+                } else if (disabled) {
+                    classes += "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed select-none";
+                } else {
+                    classes += "bg-white border-gray-300 text-gray-500 hover:bg-gray-50 focus:outline-none";
+                }
+                
+                btn.className = classes;
+                if (!disabled) {
+                    btn.addEventListener("click", () => {
+                        currentPage = page;
+                        renderPage();
+                    });
+                }
+                return btn;
+            }
+
+            // Prev Button
+            pagButtons.appendChild(createButton(currentPage - 1, "Sebelumnya", false, currentPage === 1));
+
+            // Numbers
+            const maxPageButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+            if (endPage - startPage + 1 < maxPageButtons) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+
+            if (startPage > 1) {
+                pagButtons.appendChild(createButton(1, "1"));
+                if (startPage > 2) {
+                    const dot = document.createElement("span");
+                    dot.className = "relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 select-none";
+                    dot.textContent = "...";
+                    pagButtons.appendChild(dot);
+                }
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                pagButtons.appendChild(createButton(p, p, p === currentPage));
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    const dot = document.createElement("span");
+                    dot.className = "relative inline-flex items-center px-3 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 select-none";
+                    dot.textContent = "...";
+                    pagButtons.appendChild(dot);
+                }
+                pagButtons.appendChild(createButton(totalPages, totalPages));
+            }
+
+            // Next Button
+            pagButtons.appendChild(createButton(currentPage + 1, "Berikutnya", false, currentPage === totalPages));
+
+            // Mobile Buttons
+            const btnPrevMobile = document.getElementById("btnPrevMobile");
+            const btnNextMobile = document.getElementById("btnNextMobile");
+            
+            const newBtnPrev = btnPrevMobile.cloneNode(true);
+            const newBtnNext = btnNextMobile.cloneNode(true);
+            btnPrevMobile.parentNode.replaceChild(newBtnPrev, btnPrevMobile);
+            btnNextMobile.parentNode.replaceChild(newBtnNext, btnNextMobile);
+
+            if (currentPage === 1) {
+                newBtnPrev.disabled = true;
+                newBtnPrev.classList.add("bg-gray-100", "text-gray-400", "cursor-not-allowed");
+            } else {
+                newBtnPrev.disabled = false;
+                newBtnPrev.classList.remove("bg-gray-100", "text-gray-400", "cursor-not-allowed");
+                newBtnPrev.addEventListener("click", () => {
+                    currentPage--;
+                    renderPage();
+                });
+            }
+
+            if (currentPage === totalPages) {
+                newBtnNext.disabled = true;
+                newBtnNext.classList.add("bg-gray-100", "text-gray-400", "cursor-not-allowed");
+            } else {
+                newBtnNext.disabled = false;
+                newBtnNext.classList.remove("bg-gray-100", "text-gray-400", "cursor-not-allowed");
+                newBtnNext.addEventListener("click", () => {
+                    currentPage++;
+                    renderPage();
+                });
+            }
+
+            // Empty row display logic
+            if (emptyRow) {
+                if (totalItems === 0) {
+                    emptyRow.style.display = "";
+                    emptyRow.querySelector("td").textContent = (rows.length === 0) ? "Belum ada data checksheet terisi." : "Tidak ada data yang cocok dengan filter.";
+                } else {
+                    emptyRow.style.display = "none";
+                }
+            }
+        }
+
+        function filterTable() {
+            const queryDate = filterDate.value.toLowerCase().trim();
+            const queryDriver = filterDriver.value.toLowerCase().trim();
+            const queryNopol = filterNopol.value.toLowerCase().trim();
+            const queryTujuan = filterTujuan.value.toLowerCase().trim();
+            const queryRemarks = filterRemarks.value.toLowerCase().trim();
+
+            const selectedMonth = filterMonth.value;
+            const selectedYear = filterYear.value;
+
+            currentFilteredRows = rows.filter(row => {
+                const dateText = row.querySelector(".cell-date").textContent.toLowerCase();
+                const driverText = row.querySelector(".cell-driver").textContent.toLowerCase();
+                const nopolText = row.querySelector(".cell-nopol").textContent.toLowerCase();
+                const tujuanText = row.querySelector(".cell-tujuan").textContent.toLowerCase();
+                const remarksText = row.querySelector(".cell-remarks").textContent.toLowerCase();
+
+                const rowMonth = row.getAttribute("data-month");
+                const rowYear = row.getAttribute("data-year");
+
+                const matchMonth = selectedMonth === "" || rowMonth === selectedMonth;
+                const matchYear = selectedYear === "" || rowYear === selectedYear;
+
+                return matchMonth && matchYear &&
+                       dateText.includes(queryDate) &&
+                       driverText.includes(queryDriver) &&
+                       nopolText.includes(queryNopol) &&
+                       tujuanText.includes(queryTujuan) &&
+                       remarksText.includes(queryRemarks);
+            });
+
+            currentPage = 1; // Reset to first page on search filter change
+            renderPage();
+        }
+
+        filterDate.addEventListener("keyup", filterTable);
+        filterDriver.addEventListener("keyup", filterTable);
+        filterNopol.addEventListener("keyup", filterTable);
+        filterTujuan.addEventListener("keyup", filterTable);
+        filterRemarks.addEventListener("keyup", filterTable);
+        
+        filterMonth.addEventListener("change", filterTable);
+        filterYear.addEventListener("change", filterTable);
+        
+        pageSizeSelect.addEventListener("change", () => {
+            currentPage = 1;
+            renderPage();
+        });
+
+        // Initial render on load
+        renderPage();
+    });
+</script>

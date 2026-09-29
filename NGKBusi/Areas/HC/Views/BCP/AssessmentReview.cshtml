@@ -1,0 +1,1761 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var incident = ViewBag.Incident as NGKBusi.Areas.HC.Models.HC_BCP_Incident;
+    var assessments = (ViewBag.Assessments as List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment>) ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment>();
+    var assessmentsVM = (ViewBag.AssessmentsWithArea as List<NGKBusi.Areas.HC.Models.BCPAssessmentVM>) ?? new List<NGKBusi.Areas.HC.Models.BCPAssessmentVM>();
+    var criteria = (ViewBag.Criteria as List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Criteria>) ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Criteria>();
+    var departments = (ViewBag.Departments as List<NGKBusi.Areas.HC.Models.HC_BCP_Department>) ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Department>();
+    var areas = (ViewBag.Areas as List<NGKBusi.Areas.HC.Models.HC_BCP_Area>) ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Area>();
+    var reviews = (ViewBag.Reviews as List<NGKBusi.Areas.HC.Models.HC_BCP_Review>) ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Review>();
+    var revNames = (ViewBag.ReviewerNames as Dictionary<string, string>) ?? new Dictionary<string, string>();
+    var reviewer = ViewBag.CurrentReviewer as NGKBusi.Areas.HC.Models.HC_BCP_Organization;
+    var nextReviewer = ViewBag.NextReviewer as NGKBusi.Areas.HC.Models.HC_BCP_Organization;
+    var permission = ViewBag.Permissions as NGKBusi.Areas.HC.Models.HC_BCP_Role_Permission;
+
+    string currentRole = "Reviewer";
+    string nextLevel = "Committee";
+
+    string layoutError = null;
+    try
+    {
+        currentRole = reviewer != null ? (reviewer.BCP_Role ?? "Reviewer") : "Reviewer";
+        nextLevel = nextReviewer != null ? (nextReviewer.BCP_Role ?? "Committee") : "Committee";
+    }
+    catch (Exception ex)
+    {
+        layoutError = ex.ToString();
+    }
+
+    bool canSubmitReview = ViewBag.CanSubmitReview != null ? (bool)ViewBag.CanSubmitReview : false;
+
+    var recoveryPlans = (List<NGKBusi.Areas.HC.Models.HC_BCP_Recovery_Plan>)ViewBag.RecoveryPlans ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Recovery_Plan>();
+    var orgList = (List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>)ViewBag.OrgList ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>();
+    var questionList = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>)ViewBag.QuestionList ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>();
+    bool isReviewer = ViewBag.IsReviewer == true;
+    bool isActivatedOrDeactivated = incident != null && (incident.Status == 6 || incident.Status == 7);
+    string curNik = Microsoft.AspNet.Identity.IdentityExtensions.GetUserId(User.Identity) ?? User.Identity.Name;
+    if (!string.IsNullOrEmpty(curNik) && curNik.Contains("\\")) { curNik = curNik.Split('\\').Last(); }
+    curNik = (curNik ?? "").Trim().ToLower();
+}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                colors: {
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+<style>
+    /* Fix Select2 container width so it occupies full column width */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    /* Style Select2 to match premium Tailwind look */
+    .select2-container--default .select2-selection--single {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+        background-color: #f8fafc !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 34px !important;
+        right: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 0.75rem !important;
+        padding-left: 10px !important;
+    }
+    .select2-dropdown {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+        z-index: 9999 !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+    }
+    .select2-results__option {
+        font-size: 0.75rem !important;
+        padding: 8px 12px !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #007581 !important;
+    }
+
+    .matrix-scroll::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .matrix-scroll::-webkit-scrollbar-track {
+        background: #f8fafc;
+        border-radius: 99px;
+    }
+
+    .matrix-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 99px;
+    }
+
+        .matrix-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    .cell-yes {
+        animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    @@keyframes pulseGlow {
+        0%, 100% {
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+        }
+
+        50% {
+            box-shadow: 0 0 8px 3px rgba(239, 68, 68, 0.4);
+        }
+    }
+
+    .fade-up {
+        animation: fadeUp 0.5s ease-out both;
+    }
+
+    @@keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .review-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+        .review-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        }
+
+    /* Area name rotated 90 degrees styling */
+    .area-header-cell {
+        height: 200px;
+        min-width: 56px;
+        position: relative;
+        padding: 0;
+        vertical-align: middle;
+        text-align: center;
+    }
+
+    .area-name-wrapper {
+        position: absolute;
+        top: 0;
+        bottom: 38px;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .area-name-rotate {
+        transform: rotate(-90deg);
+        transform-origin: center;
+        display: inline-block;
+        white-space: nowrap;
+        font-weight: 700;
+        color: #475569;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    @@media (max-width: 800px) {
+        .area-header-cell {
+            height: 180px;
+            min-width: 48px;
+        }
+
+        .area-name-wrapper {
+            bottom: 32px;
+        }
+
+        .area-name-rotate {
+            font-size: 10px;
+        }
+    }
+
+    /* Ensure solid borders on BCP Recovery Plan table cells due to preflight being disabled */
+    .recovery-plan-table td,
+    .recovery-plan-table th {
+        border-style: solid !important;
+        border-color: #e2e8f0 !important;
+        border-width: 1px !important;
+    }
+</style>
+
+<!-- Debug output -->
+<!-- <div class="bg-yellow-100 border border-yellow-300 p-4 rounded mb-4">
+    <strong>DEBUG Permission Object:</strong>
+    <pre>@permission</pre>
+</div> -->
+<div class="w-full bg-white font-sans min-h-screen py-6 px-2 sm:px-4 md:px-8">
+
+    @if (!string.IsNullOrEmpty(layoutError))
+    {
+        <div class="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg relative my-4 font-mono text-xs whitespace-pre-wrap" role="alert">
+            <strong class="font-bold">ERROR:</strong>
+            <span class="block sm:inline">@layoutError</span>
+        </div>
+    }
+
+    <div class="mb-6 fade-up">
+        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest mb-5 ml-2">
+            <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors duration-200 flex items-center gap-1.5">
+                <i class="fas fa-home"></i>BCP Home
+            </a>
+            <i class="fas fa-chevron-right text-[9px] text-slate-300"></i>
+            @if (incident != null)
+            {
+                <a href="@Url.Action("IncidentDetail", "BCP", new { id = incident.IncidentNo })" class="hover:text-ngk-primary transition-colors duration-200">@incident.IncidentNo</a>
+            }
+            <i class="fas fa-chevron-right text-[9px] text-slate-300"></i>
+            <span class="text-ngk-primary font-bold">Management Review</span>
+        </div>
+
+        <div class="w-full relative overflow-hidden rounded-[20px] shadow-md border border-slate-200" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #164e63 100%);">
+            <div class="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10" style="background: radial-gradient(circle, #007581 0%, transparent 70%); transform: translate(30%, -40%); pointer-events: none;"></div>
+            <div class="absolute bottom-0 left-1/2 w-72 h-72 rounded-full opacity-5" style="background: radial-gradient(circle, #eeb500 0%, transparent 70%); transform: translate(-50%, 50%); pointer-events: none;"></div>
+
+            <div class="relative z-10 px-6 md:px-10 py-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-start gap-5">
+                        <div class="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg" style="background: linear-gradient(135deg, #007581 0%, #00a3b5 100%);">
+                            <i class="fas fa-shield-alt text-white text-2xl"></i>
+                        </div>
+                        <div class="pt-1">
+                            <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight mb-1.5">Incident Review Matrix</h1>
+                            <p class="text-slate-400 text-sm md:text-base font-medium flex items-center gap-2">
+                                <span class="bg-white/10 px-2 py-0.5 rounded text-white/90 font-bold">@(incident != null ? incident.IncidentNo : "-")</span>
+                                <span class="text-slate-600">-</span>
+                                <span class="text-white/80">@(incident != null ? incident.Title : "-")</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <div class="flex items-center gap-2 bg-slate-800/50 backdrop-blur-md border border-slate-700 px-4 py-2.5 rounded-xl">
+                            <i class="fas fa-tag text-ngk-accent text-xs"></i>
+                            <span class="text-xs font-bold text-slate-300">@(incident != null ? incident.Category : "-")</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-800/50 backdrop-blur-md border border-slate-700 px-4 py-2.5 rounded-xl">
+                            <i class="fas fa-calendar text-sky-400 text-xs"></i>
+                            <span class="text-xs font-bold text-slate-300">@(incident != null ? (incident.IncidentDate?.ToString("dd MMM yyyy") ?? incident.Created_At?.ToString("dd MMM yyyy") ?? "-") : "-")</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-amber-500/10 backdrop-blur-md border border-amber-500/30 px-4 py-2.5 rounded-xl">
+                            <span class="relative flex h-2.5 w-2.5">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                            </span>
+                            <span class="text-xs font-black text-amber-400 uppercase tracking-wider">Review Phase</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700/50 grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Your Role</p>
+                        <p class="font-extrabold text-base text-ngk-accent">@currentRole</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Area Reports</p>
+                        <p class="font-extrabold text-base text-white">@assessments.Count <span class="text-slate-500 font-medium text-sm ml-1">Submitted</span></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Reported Date</p>
+                        <p class="font-extrabold text-base text-white">@(incident?.Created_At?.ToString("dd MMM yyyy") ?? "-")</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Escalation To</p>
+                        <p class="font-extrabold text-base text-sky-400">@nextLevel</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-8 fade-up" style="animation-delay: 0.1s;">
+        <div class="w-full bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden review-card">
+            <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-sky-100 text-sky-700">
+                        <i class="fas fa-th text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider">BCP Section Department Matrix</h4>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">Aggregated risk status BCP Section vs Criteria Standards</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="@Url.Action("ExportDepartmentMatrixExcel", "BCP", new { id = incident.IncidentNo })" 
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm hover:shadow transition-all border-0 cursor-pointer no-underline">
+                        <i class="fas fa-file-excel text-sm"></i>
+                        <span>Download Excel Matrix</span>
+                    </a>
+                </div>
+            </div>
+
+            @{
+                int totalMatrixCols = 0;
+                var deptAreaMap = new Dictionary<string, List<NGKBusi.Areas.HC.Models.HC_BCP_Area>>();
+                foreach (var dept in departments)
+                {
+                    var deptAreas = areas.Where(a => a.DepartmentCode == dept.Code).ToList();
+                    deptAreaMap[dept.Code] = deptAreas;
+                    totalMatrixCols += deptAreas.Any() ? deptAreas.Count : 1;
+                }
+            }
+            <div class="overflow-x-auto matrix-scroll pb-2">
+                <table class="w-full text-left border-collapse" style="min-width: 1100px;">
+                    <thead>
+                        <tr class="bg-emerald-50 text-[10px] font-extrabold tracking-widest uppercase text-center border-b-2 border-emerald-100">
+                            <th class="py-4 px-6 text-left border-r border-emerald-100 text-emerald-800" colspan="3">Criteria / Standard / Highest Score</th>
+                            <th class="py-4 px-2 text-emerald-800" colspan="@totalMatrixCols">BCP Section &amp; Areas</th>
+                        </tr>
+                        <tr class="text-[9px] font-extrabold text-slate-600 uppercase tracking-wider border-b border-slate-200 bg-white">
+                            <th class="py-3 px-6 text-left border-r border-slate-200 w-[220px]" rowspan="2">Criteria</th>
+                            <th class="py-3 px-4 text-center border-r border-slate-200 w-[140px] bg-amber-50/50" rowspan="2">
+                                <span class="text-amber-700">Standard</span>
+                            </th>
+                            <th class="py-3 px-5 text-center w-[80px] bg-blue-50/50 border-r border-slate-200" rowspan="2">
+                                <span class="text-blue-700">Highest Score</span>
+                            </th>
+                            @{ int headerDeptIndex = 0; }
+                            @foreach (var dept in departments)
+                            {
+                                var deptAreas = deptAreaMap[dept.Code];
+                                int cols = deptAreas.Any() ? deptAreas.Count : 1;
+
+                                // LOGIKA BANDING Header Department
+                                string bandBgClass = (headerDeptIndex % 2 == 0) ? "bg-slate-50" : "bg-white";
+
+                                <th class="py-3 px-2 text-center whitespace-nowrap @bandBgClass" colspan="@cols" title="@dept.DeptName">
+                                    <span class="text-sky-800 font-black">@dept.DeptName</span>
+                                </th>
+                                headerDeptIndex++;
+                            }
+                        </tr>
+                        <tr class="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            @{ int headerAreaDeptIndex = 0; }
+                            @foreach (var dept in departments)
+                            {
+                                var deptAreas = deptAreaMap[dept.Code];
+                                string bandBgClass = (headerAreaDeptIndex % 2 == 0) ? "bg-slate-50" : "bg-white";
+
+                                if (deptAreas.Any())
+                                {
+                                    foreach (var area in deptAreas)
+                                    {
+                                        bool hasAss = assessmentsVM.Any(a => a.AreaID == area.ID);
+                                        <th class="area-header-cell border-r border-slate-100/60 @bandBgClass" title="@area.AreaName">
+                                            <div class="area-name-wrapper">
+                                                <div class="area-name-rotate">@area.AreaName</div>
+                                            </div>
+                                            @if (hasAss)
+                                            {
+                                                <button type="button" class="view-detail-btn absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white hover:bg-ngk-primary hover:text-white text-slate-500 hover:scale-105 border border-slate-200 flex items-center justify-center cursor-pointer shadow-sm transition-all" data-area-id="@area.ID" data-area-name="@area.AreaName" title="View Assessment Details">
+                                                    <i class="fas fa-search-plus text-xs"></i>
+                                                </button>
+                                            }
+                                        </th>
+                                    }
+                                }
+                                else
+                                {
+                                    <th class="py-2 px-1 text-center border-r border-slate-100/60 text-slate-300 font-normal @bandBgClass">-</th>
+                                }
+                                headerAreaDeptIndex++;
+                            }
+                        </tr>
+                    </thead>
+                    <tbody class="text-xs">
+                        @{
+                            decimal overallMaxScore = 0m;
+                            bool isAltRow = false; // Flag untuk row banding
+                        }
+
+                        @foreach (var crit in criteria)
+                        {
+                            isAltRow = !isAltRow;
+                            string standard = crit.Description ?? "";
+                            decimal maxScoreInRow = 0m;
+
+                            // Calculate max score upfront for this criteria row
+                            foreach (var dept in departments)
+                            {
+                                var deptAreas = deptAreaMap[dept.Code];
+                                foreach (var area in deptAreas)
+                                {
+                                    var areaAss = assessmentsVM.FirstOrDefault(a => a.AreaID == area.ID);
+                                    if (areaAss != null && areaAss.CategoryScores != null)
+                                    {
+                                        var cs = areaAss.CategoryScores.FirstOrDefault(x => x.CriteriaID == crit.ID);
+                                        decimal scoreVal = cs != null ? cs.WeightedScore : 0m;
+                                        if (scoreVal > maxScoreInRow)
+                                        {
+                                            maxScoreInRow = scoreVal;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (maxScoreInRow > overallMaxScore)
+                            {
+                                overallMaxScore = maxScoreInRow;
+                            }
+
+                            string maxColor = maxScoreInRow >= 4.50m ? "text-rose-700 bg-rose-50/80" :
+                                              maxScoreInRow >= 3.50m ? "text-orange-700 bg-orange-50/80" :
+                                              maxScoreInRow >= 2.50m ? "text-yellow-700 bg-yellow-50/80" :
+                                              maxScoreInRow >= 1.50m ? "text-blue-700 bg-blue-50/80" :
+                                                                       "text-emerald-700 bg-emerald-50/80";
+
+                            // Menentukan warna background ROW secara selang-seling
+                            string rowBgClass = isAltRow ? "bg-slate-50" : "bg-white";
+
+                            <tr class="group border-b border-slate-100 @rowBgClass transition-colors duration-150">
+                                <td class="py-4 px-6 border-r border-slate-100 align-middle group-hover:bg-sky-50/60 transition-colors duration-200">
+                                    <p class="font-bold text-slate-700 text-[11.5px] leading-relaxed">@crit.Name</p>
+                                </td>
+                                <td class="py-4 px-4 text-center border-r border-slate-100 font-extrabold text-[10.5px] text-amber-700 align-middle bg-amber-500/5 group-hover:bg-amber-100/40 transition-colors duration-200">
+                                    @standard
+                                </td>
+                                <td class="py-4 px-4 text-center border-r border-slate-200 font-black text-xs align-middle @maxColor group-hover:brightness-95 transition-all duration-200">
+                                    @maxScoreInRow.ToString("0.00")
+                                </td>
+
+                                @{ int bodyDeptIndex = 0; }
+                                @foreach (var dept in departments)
+                                {
+                                    var deptAreas = deptAreaMap[dept.Code];
+
+                                    // LOGIKA BANDING KOLOM: Menggunakan background transparan abu-abu agar warna baris tetap terlihat
+                                    string colBandOverlay = (bodyDeptIndex % 2 == 0) ? "bg-slate-900/[0.02]" : "bg-transparent";
+
+                                    if (deptAreas.Any())
+                                    {
+                                        foreach (var area in deptAreas)
+                                        {
+                                            var areaAss = assessmentsVM.FirstOrDefault(a => a.AreaID == area.ID);
+
+                                            <td class="py-4 px-1 text-center border-r border-slate-200/50 align-middle @colBandOverlay group-hover:bg-sky-50/60 transition-colors duration-200">
+                                                @if (areaAss != null)
+                                                {
+                                                    decimal scoreVal = 0m;
+                                                    if (areaAss.CategoryScores != null)
+                                                    {
+                                                        var cs = areaAss.CategoryScores.FirstOrDefault(x => x.CriteriaID == crit.ID);
+                                                        scoreVal = cs != null ? cs.WeightedScore : 0m;
+                                                    }
+
+                                                    // LOGIKA 5 WARNA
+                                                    string badgeClass = "";
+                                                    if (scoreVal >= 4.50m)
+                                                    {
+                                                        badgeClass = "text-red-600";
+                                                    }
+                                                    else if (scoreVal >= 3.50m)
+                                                    {
+                                                        badgeClass = "text-orange-600";
+                                                    }
+                                                    else if (scoreVal >= 2.50m)
+                                                    {
+                                                        badgeClass = "text-yellow-600";
+                                                    }
+                                                    else if (scoreVal >= 1.50m)
+                                                    {
+                                                        badgeClass = "text-blue-600";
+                                                    }
+                                                    else
+                                                    {
+                                                        badgeClass = "text-emerald-600";
+                                                    }
+
+                                                    <p class="@badgeClass relative z-10 font-black">@scoreVal.ToString("0.00")</p>
+                                                }
+                                                else
+                                                {
+                                                    <p class="text-[11px] font-medium text-slate-300">-</p>
+                                                }
+                                            </td>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <td class="py-4 px-1 text-center border-r border-slate-200/50 align-middle @colBandOverlay group-hover:bg-sky-50/60 transition-colors duration-200">
+                                            <span class="text-[11px] font-medium text-slate-300">-</span>
+                                        </td>
+                                    }
+                                    bodyDeptIndex++;
+                                }
+                            </tr>
+                        }
+
+                        @{
+                            string totalStyle = overallMaxScore >= 4.50m ? "bg-rose-100 text-rose-800 border-rose-200" :
+                                                overallMaxScore >= 3.50m ? "bg-orange-100 text-orange-800 border-orange-200" :
+                                                overallMaxScore >= 2.50m ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                                                overallMaxScore >= 1.50m ? "bg-blue-100 text-blue-800 border-blue-200" :
+                                                                           "bg-emerald-100 text-emerald-800 border-emerald-200";
+                        }
+                        <tr class="font-extrabold border-t-[3px] border-slate-300 @totalStyle group">
+                            <td class="py-5 px-6 border-r border-black/5" colspan="2">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-exclamation-triangle text-lg opacity-70"></i>
+                                    <span class="uppercase tracking-wider text-xs font-black">Overall Highest Score</span>
+                                </div>
+                            </td>
+                            <td class="py-5 px-4 text-center text-lg font-black border-r border-black/10 group-hover:bg-black/5 transition-colors duration-200">
+                                @overallMaxScore.ToString("0.00")
+                            </td>
+                            @foreach (var dept in departments)
+                            {
+                                var deptAreas = deptAreaMap[dept.Code];
+                                int cols = deptAreas.Any() ? deptAreas.Count : 1;
+
+                                for (int i = 0; i < cols; i++)
+                                {
+                                    <td class="py-5 px-1 border-r border-black/5 group-hover:bg-black/10 transition-colors duration-200"></td>
+                                }
+                            }
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="w-full grid grid-cols-1 lg:grid-cols-5 gap-6 fade-up" style="animation-delay: 0.2s;">
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden review-card lg:sticky lg:top-6">
+                <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-100 text-blue-600">
+                        <i class="fas fa-gavel text-sm"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider">Review Action</h4>
+                        <p class="text-[11px] text-slate-500 font-medium mt-0.5">Submit your official decision</p>
+                    </div>
+                </div>
+                <div class="p-4 sm:p-6 md:p-8">
+                    @if (ViewBag.MyPreviousReview != null)
+                    {
+                        var myRev = (NGKBusi.Areas.HC.Models.HC_BCP_Review)ViewBag.MyPreviousReview;
+                        <div class="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                            <h5 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Review Anda Sebelumnya</h5>
+                            <p class="text-sm font-black text-slate-800 mb-1">Decision: <span class="text-rose-600">@myRev.Decision</span></p>
+                            <p class="text-xs text-slate-600 italic">"@myRev.ReviewNote"</p>
+                            <p class="text-[10px] text-slate-400 mt-2">Disubmit pada @myRev.Created_At?.ToString("dd MMM yyyy, HH:mm")</p>
+                        </div>
+                    }
+
+                    @if (canSubmitReview)
+                    {
+                        <div class="mb-8">
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] mb-3">
+                                Executive Comment <span class="text-rose-500">*</span>
+                            </label>
+                            <textarea id="ReviewNote" rows="4"
+                                      class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-800 focus:ring-2 focus:ring-ngk-primary/20 focus:border-ngk-primary focus:bg-white transition-all placeholder:text-slate-400 resize-none outline-none"
+                                      placeholder="Provide your official feedback or justification..."></textarea>
+                        </div>
+
+                        <div class="space-y-3 mb-8">
+                            <label class="block text-[11px] font-black text-slate-500 uppercase tracking-[0.1em] mb-4">Select Decision</label>
+
+                            <label class="flex items-center p-3 sm:p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-all group has-[:checked]:border-rose-500 has-[:checked]:bg-rose-50">
+                                <input type="radio" name="Decision" value="EscalateToPresdir" class="sr-only peer" checked>
+                                <div class="w-5 h-5 rounded-full border-[3px] border-slate-300 flex items-center justify-center mr-4 peer-checked:border-rose-500 peer-checked:bg-rose-500 flex-shrink-0 transition-all">
+                                    <div class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-extrabold text-slate-700 group-has-[:checked]:text-rose-700">ESCALATE TO FINAL DECISION</p>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-1">Forward to Presdir or Authorized Delegate</p>
+                                </div>
+                            </label>
+                            
+                            <label class="flex items-center p-3 sm:p-4 rounded-xl border-2 border-slate-100 cursor-pointer hover:border-slate-300 hover:bg-slate-50 transition-all group has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50">
+                                <input type="radio" name="Decision" value="ERTOnly" class="sr-only peer">
+                                <div class="w-5 h-5 rounded-full border-[3px] border-slate-300 flex items-center justify-center mr-4 peer-checked:border-amber-500 peer-checked:bg-amber-500 flex-shrink-0 transition-all">
+                                    <div class="w-2 h-2 rounded-full bg-white opacity-0 peer-checked:opacity-100"></div>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-extrabold text-slate-700 group-has-[:checked]:text-amber-700">ERT ONLY</p>
+                                    <p class="text-[11px] text-slate-500 font-medium mt-1">Activate Emergency Response Team Only</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button onclick="submitReview()"
+                                class="w-full py-4 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 bg-ngk-primary hover:bg-ngk-primaryDark">
+                            <i class="fas fa-paper-plane"></i> Submit Official Decision
+                        </button>
+                    }
+                    else
+                    {
+                        if (ViewBag.MyPreviousReview != null)
+                        {
+                            <div class="text-center py-8">
+                                <i class="fas fa-check-circle text-5xl text-emerald-500 mb-4 fade-up"></i>
+                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Review Submitted</p>
+                                <p class="text-xs text-slate-600 mt-2 px-4 leading-relaxed font-medium">Anda telah berhasil memberikan keputusan review untuk incident ini. Menunggu proses selanjutnya.</p>
+                            </div>
+                        }
+                        else if (ViewBag.HasAnyReviewSubmitted == true || (incident != null && (incident.Status >= 5 || incident.ForwardedToPresdir == true)))
+                        {
+                            var latestRev = ViewBag.LatestReview as NGKBusi.Areas.HC.Models.HC_BCP_Review;
+                            string revNikKey = latestRev != null && latestRev.ReviewerNIK != null ? latestRev.ReviewerNIK.Trim() : "";
+                            string revName = revNames.ContainsKey(revNikKey) ? revNames[revNikKey] : (!string.IsNullOrEmpty(revNikKey) ? revNikKey : "DGM / Executive Reviewer");
+
+                            <div class="text-center py-6">
+                                <div class="w-14 h-14 rounded-2xl bg-teal-50 text-ngk-primary border border-teal-100 flex items-center justify-center mx-auto mb-3 text-2xl shadow-sm">
+                                    <i class="fas fa-clipboard-check"></i>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm mb-2">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Review Completed
+                                </span>
+                                <h5 class="text-sm font-black text-slate-800 m-0">Review Telah Dilakukan</h5>
+                                <p class="text-xs text-slate-500 mt-1.5 px-2 leading-relaxed font-medium">
+                                    Tahap review dan eskalasi telah diselesaikan oleh <strong>@revName</strong> pada @(latestRev?.Created_At?.ToString("dd MMM yyyy, HH:mm")).
+                                </p>
+                                @if (latestRev != null && !string.IsNullOrEmpty(latestRev.Decision))
+                                {
+                                    <div class="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200 text-left text-xs">
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Keputusan:</span>
+                                            <span class="font-extrabold text-[11px] @(latestRev.Decision == "EscalateToPresdir" ? "text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-md" : "text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-md")">
+                                                @(latestRev.Decision == "EscalateToPresdir" ? "Escalate to Presdir" : latestRev.Decision)
+                                            </span>
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(latestRev.ReviewNote))
+                                        {
+                                            <p class="text-slate-600 italic m-0 text-[11px] mt-2 pt-2 border-t border-slate-200/60 leading-relaxed">"@latestRev.ReviewNote"</p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-6">
+                                <i class="fas fa-lock text-4xl text-slate-200 mb-4"></i>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Read-Only View</p>
+                                <p class="text-[11px] text-slate-400 mt-2 px-4 leading-relaxed">You do not have permission to submit a review decision on this incident.</p>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-[20px] border border-slate-200 shadow-sm overflow-hidden review-card h-full">
+                    <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-purple-100 text-purple-600">
+                            <i class="fas fa-history text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider">Review Trail</h4>
+                            <p class="text-[11px] text-slate-500 font-medium mt-0.5">History of all review decisions</p>
+                        </div>
+                    </div>
+                    <div class="p-4 sm:p-6 md:p-8">
+                        @if (!reviews.Any())
+                        {
+                            <div class="py-20 text-center">
+                                <div class="w-20 h-20 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-5">
+                                    <i class="fas fa-inbox text-3xl text-slate-300"></i>
+                                </div>
+                                <p class="text-sm font-bold text-slate-400 uppercase tracking-widest">No previous reviews recorded</p>
+                                <p class="text-xs text-slate-400 mt-2">Review decisions will appear here after submission</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="space-y-6 relative before:absolute before:left-[15px] sm:before:left-[19px] before:top-5 before:bottom-5 before:w-[2px] before:bg-slate-200">
+                                @foreach (var rev in reviews.OrderByDescending(x => x.Created_At))
+                                {
+                                    string decBg    = rev.Decision == "EscalateToPresdir" ? "bg-rose-50 border-rose-200" :
+                                                      rev.Decision == "ERTOnly"            ? "bg-amber-50 border-amber-200" :
+                                                                                            "bg-slate-50 border-slate-200";
+                                    string decColor  = rev.Decision == "EscalateToPresdir" ? "text-rose-700 bg-rose-100" :
+                                                       rev.Decision == "ERTOnly"            ? "text-amber-700 bg-amber-100" :
+                                                                                             "text-slate-700 bg-slate-200";
+                                    string iconColor = rev.Decision == "EscalateToPresdir" ? "text-rose-500" :
+                                                       rev.Decision == "ERTOnly"            ? "text-amber-500" :
+                                                                                             "text-slate-500";
+                                    string iconClass = rev.Decision == "EscalateToPresdir" ? "fa-arrow-up" :
+                                                       rev.Decision == "ERTOnly"            ? "fa-shield-alt" :
+                                                                                             "fa-check";
+ 
+                                    string nik = rev.ReviewerNIK?.Trim() ?? "";
+                                    string rName = revNames.ContainsKey(nik) ? revNames[nik] : "Unknown";
+ 
+                                    <div class="relative pl-10 sm:pl-12">
+                                        <div class="absolute left-0 top-3 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white border-[3px] border-slate-100 shadow-sm z-10 flex items-center justify-center">
+                                            <i class="fas @iconClass @iconColor text-xs sm:text-sm"></i>
+                                        </div>
+                                        <div class="p-4 sm:p-5 rounded-xl border @decBg transition-all hover:shadow-sm">
+                                            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                                                <div class="flex flex-wrap items-center gap-1.5 sm:gap-3">
+                                                    <div>
+                                                        <span class="text-sm font-black text-slate-800">@rName</span>
+                                                        <span class="text-xs text-slate-500 font-semibold ml-1">(@rev.ReviewerRole)</span>
+                                                    </div>
+                                                    <span class="text-[9px] sm:text-[10px] font-black px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md uppercase @decColor break-all sm:break-normal">
+                                                        @(rev.Decision == "EscalateToPresdir" ? "Escalate to Presdir" : rev.Decision == "ERTOnly" ? "ERT Only" : rev.Decision)
+                                                    </span>
+                                                </div>
+                                                @{
+                                                    var positions = ViewBag.ReviewerPositions as Dictionary<string, string>;
+                                                    string posName = positions != null && positions.ContainsKey(nik) ? positions[nik] : "Unknown Position";
+                                                }
+                                                <span class="text-[11px] sm:text-xs font-semibold text-slate-500 flex items-center gap-1.5">
+                                                    <i class="fas fa-briefcase"></i>@posName
+                                                </span>
+                                            </div>
+                                            <p class="text-sm text-slate-700 italic leading-relaxed bg-white/60 p-3 rounded-lg border border-white">"@rev.ReviewNote"</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── RECOVERY PLAN SECTION (FULL WIDTH) ──────────────── *@
+    @if (isActivatedOrDeactivated)
+    {
+        <div class="mt-8 bg-white border border-slate-200 rounded-[20px] shadow-sm overflow-hidden fade-up" style="animation-delay:.35s">
+            <div class="p-4 sm:p-6 border-b border-slate-200/80 bg-gradient-to-r from-white to-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2 m-0">
+                        <i class="fas fa-tools text-ngk-primary"></i> Incident Recovery Plan
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1 m-0">Collaborative plan to restore systems and operations. Changes are auto-saved in real-time on edit.</p>
+                </div>
+                @if (isReviewer)
+                {
+                    var hasDraftPlans = recoveryPlans.Any(p => (p.Status == "Draft" || p.Status == "Revised" || string.IsNullOrEmpty(p.Status)) && (p.Created_By ?? "").Trim().ToLower() == curNik);
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        @if (hasDraftPlans)
+                        {
+                            <button onclick="submitAllActionPlans()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-all cursor-pointer border-0 shadow-sm">
+                                <i class="fas fa-paper-plane"></i> Submit All Action Plans
+                            </button>
+                        }
+                        <button onclick="toggleQuickAddForm()" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-ngk-primary text-white text-xs font-bold rounded-xl hover:bg-ngk-primaryDark transition-all cursor-pointer border-0 shadow-sm">
+                            <i class="fas fa-plus"></i> New Action Plan
+                        </button>
+                    </div>
+                }
+            </div>
+
+            @if (isReviewer)
+            {
+                <!-- QUICK ADD ACTION PLAN FORM -->
+                <div id="quickAddForm" class="hidden p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Add Action Plan</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                        <div class="md:col-span-4">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Critical Issue <span class="text-rose-500">*</span></label>
+                            <select id="quickCritSelect" class="form-control rounded-lg text-xs py-2 w-full select2-simple">
+                                <option value="">-- Select Critical Issue --</option>
+                                @foreach (var crit in criteria)
+                                {
+                                    <option value="@crit.ID">@crit.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="md:col-span-6">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Action Plan Text <span class="text-rose-500">*</span></label>
+                            <input type="text" id="quickActionText" class="form-control rounded-lg text-xs py-2 w-full" placeholder="Enter Action Plan Description..." />
+                        </div>
+                        <div class="md:col-span-2">
+                            <button onclick="submitQuickActionPlan()" class="w-full py-2 bg-ngk-primary text-white text-xs font-bold rounded-lg hover:bg-ngk-primaryDark transition-all cursor-pointer border-0">
+                                <i class="fas fa-check mr-1"></i> Save Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            <div class="overflow-x-auto">
+                <table class="recovery-plan-table w-full text-left border-collapse table-fixed text-xs min-w-[1000px] m-0">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-500 uppercase tracking-widest text-[10px] font-extrabold border-b border-slate-300 border-t border-slate-300">
+                            <th class="py-3 px-4 text-center w-12 border-l border-r border-slate-300">No</th>
+                            <th class="py-3 px-4 text-center w-36 border-r border-slate-300">Incident</th>
+                            <th class="py-3 px-4 w-60 border-r border-slate-300">Critical Issue</th>
+                            <th class="py-3 px-4 w-72 border-r border-slate-300">Action Plan</th>
+                            <th class="py-3 px-4 w-72 border-r border-slate-300">To Do List</th>
+                            <th class="py-3 px-4 w-44 border-r border-slate-300">PIC</th>
+                            <th class="py-3 px-4 text-center w-32 border-r border-slate-300">Due Date</th>
+                            <th class="py-3 px-4 text-center w-28 border-r border-slate-300">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-300" id="recoveryPlanTableBody">
+                        @if (recoveryPlans.Any())
+                        {
+                            int incidentRowSpan = recoveryPlans.Sum(p => Math.Max(1, p.Todos.Count));
+                            bool isFirstIncidentRow = true;
+
+                            var groupedByCrit = recoveryPlans.GroupBy(p => p.CriteriaID).ToList();
+
+                            foreach (var critGroup in groupedByCrit)
+                            {
+                                var critPlans = critGroup.ToList();
+                                int critRowSpan = critPlans.Sum(p => Math.Max(1, p.Todos.Count));
+                                bool isFirstCritRow = true;
+                                var criteriaObj = critPlans.First().Criteria;
+                                var criteriaName = criteriaObj != null ? criteriaObj.Name : "Critical Issue";
+
+                                foreach (var plan in critPlans)
+                                {
+                                    int planRowSpan = Math.Max(1, plan.Todos.Count);
+                                    bool isFirstPlanRow = true;
+                                    var todos = plan.Todos.ToList();
+                                    string planCreatorNik = (plan.Created_By ?? "").Trim().ToLower();
+                                    bool isPlanOwner = isReviewer && planCreatorNik == curNik;
+                                    bool isPlanEditable = isPlanOwner && (plan.Status == "Draft" || plan.Status == "Revised" || string.IsNullOrEmpty(plan.Status));
+                                    bool canChangeStatus = isPlanOwner && (plan.Status != "Submitted");
+                                    bool canManageTodos = isPlanOwner && (plan.Status == "Draft" || plan.Status == "Revised" || plan.Status == "Approved" || string.IsNullOrEmpty(plan.Status));
+
+                                    for (int i = 0; i < planRowSpan; i++)
+                                    {
+                                        var todo = i < todos.Count ? todos[i] : null;
+                                        <tr class="hover:bg-slate-50/50 transition-colors">
+                                            @if (isFirstIncidentRow)
+                                            {
+                                                <td rowspan="@incidentRowSpan" class="text-center font-bold align-middle border-l border-r border-b border-slate-300 bg-slate-50/20">1</td>
+                                                <td rowspan="@incidentRowSpan" class="font-black text-slate-800 align-middle border-r border-b border-slate-300 text-center bg-slate-50/20 p-3">
+                                                    <div class="font-bold text-[11px] text-slate-700 leading-tight">@(incident != null ? incident.Title : "")</div>
+                                                    <div class="text-[10px] text-slate-400 font-bold mt-1">@(incident != null ? incident.IncidentNo : "")</div>
+                                                </td>
+                                                isFirstIncidentRow = false;
+                                            }
+
+                                            @if (isFirstCritRow)
+                                            {
+                                                <td rowspan="@critRowSpan" class="font-semibold text-slate-700 align-middle p-3 border-r border-b border-slate-300 bg-slate-50/10">
+                                                    <div class="line-clamp-3 leading-relaxed">@criteriaName</div>
+                                                    @if (isReviewer)
+                                                    {
+                                                        <div class="mt-2.5 flex items-center gap-2">
+                                                            <button onclick="insertInlineActionPlan(@critGroup.Key)" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded text-[9px] font-bold cursor-pointer transition-all">
+                                                                <i class="fas fa-plus mr-0.5"></i> Action Plan
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                </td>
+                                                isFirstCritRow = false;
+                                            }
+
+                                            @if (isFirstPlanRow)
+                                            {
+                                                <td rowspan="@planRowSpan" class="font-semibold text-slate-700 align-top p-3 border-r border-b border-slate-300 bg-slate-50/5">
+                                                    @if (plan.Status == "Revised" && !string.IsNullOrEmpty(plan.RevisionComment))
+                                                    {
+                                                        <div class="mb-2 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-[10px] font-medium leading-normal">
+                                                            <span class="font-extrabold uppercase text-[9px] block mb-0.5 text-rose-700"><i class="fas fa-exclamation-circle mr-1"></i>Revision Feedback:</span>
+                                                            "@plan.RevisionComment"
+                                                        </div>
+                                                    }
+
+                                                    @if (isPlanEditable)
+                                                    {
+                                                        <div class="flex flex-col gap-2">
+                                                             <textarea class="w-full bg-slate-50/80 border border-slate-200 hover:border-slate-300 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary p-2 transition-all rounded-xl text-xs resize-none h-20 outline-none leading-relaxed"
+                                                                       onchange="updateActionPlan(@plan.ID, @plan.CriteriaID, this.value)"
+                                                                       placeholder="Enter Action Plan...">@plan.ActionPlanText</textarea>
+                                                             <div class="flex items-center justify-between border-t border-slate-100 pt-2 mt-1 flex-wrap gap-1">
+                                                                 <button onclick="insertInlineTodo(@plan.ID)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ngk-primaryLight hover:bg-ngk-primary/20 text-ngk-primaryDark rounded-lg text-[10px] font-bold cursor-pointer transition-all border-0 shadow-sm">
+                                                                     <i class="fas fa-plus text-[8px]"></i> Add Task
+                                                                 </button>
+                                                                 <div class="flex items-center gap-1">
+                                                                     <button onclick="submitActionPlan(@plan.ID)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold cursor-pointer transition-all border-0 shadow-sm" title="Submit Action Plan to Presdir">
+                                                                         <i class="fas fa-paper-plane text-[8px]"></i> Submit
+                                                                     </button>
+                                                                     <button onclick="deleteActionPlan(@plan.ID)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-[10px] font-bold cursor-pointer transition-all border-0" title="Delete Action Plan">
+                                                                         <i class="fas fa-trash-alt"></i> Delete
+                                                                     </button>
+                                                                 </div>
+                                                             </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="line-clamp-6 leading-relaxed font-medium text-slate-700">@plan.ActionPlanText</div>
+                                                        <div class="text-[9px] text-slate-400 mt-2 font-semibold flex items-center justify-between">
+                                                            <span>Created by: @(plan.Created_By ?? "System")</span>
+                                                            @if (plan.Status == "Submitted")
+                                                            {
+                                                                <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Awaiting Approval</span>
+                                                            }
+                                                            else if (plan.Status == "Approved")
+                                                            {
+                                                                <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Approved</span>
+                                                            }
+                                                            else if (plan.Status == "Revised")
+                                                            {
+                                                                <span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Revised</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">@plan.Status</span>
+                                                            }
+                                                        </div>
+                                                        if (plan.Status == "Approved" && isPlanOwner)
+                                                        {
+                                                            <div class="mt-3 pt-2 border-t border-slate-100 flex justify-start">
+                                                                <button onclick="insertInlineTodo(@plan.ID)" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ngk-primaryLight hover:bg-ngk-primary/20 text-ngk-primaryDark rounded-lg text-[10px] font-bold cursor-pointer transition-all border-0 shadow-sm">
+                                                                    <i class="fas fa-plus text-[8px]"></i> Add Task
+                                                                </button>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </td>
+                                                isFirstPlanRow = false;
+                                            }
+
+                                            @if (todo != null)
+                                            {
+                                                <td class="align-top p-3 border-r border-b border-slate-300">
+                                                    @if (canManageTodos)
+                                                    {
+                                                        <textarea id="todo-text-@todo.ID" class="w-full bg-slate-50/80 border border-slate-200 hover:border-slate-300 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary p-2 transition-all rounded-xl text-xs resize-none h-14 outline-none leading-relaxed"
+                                                                  onchange="saveTodo(@todo.ID, @plan.ID)"
+                                                                  placeholder="Enter To Do list item...">@todo.TodoText</textarea>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="line-clamp-4 leading-relaxed font-medium text-slate-700">@todo.TodoText</div>
+                                                    }
+
+                                                    @if (todo.Status == "Pending" && !string.IsNullOrEmpty(todo.PendingNote))
+                                                    {
+                                                        <div class="mt-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[10.5px] font-medium leading-relaxed text-left">
+                                                            <span class="font-extrabold uppercase text-[9px] block mb-0.5 text-amber-700">
+                                                                <i class="fas fa-exclamation-circle mr-1"></i>Pending Note:
+                                                            </span>
+                                                            "@todo.PendingNote"
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300">
+                                                    @if (canManageTodos)
+                                                    {
+                                                        <select id="todo-pic-@todo.ID" class="pic-select2 w-full bg-slate-50/80 border border-slate-200 hover:border-slate-300 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary p-2 transition-all rounded-xl text-xs cursor-pointer h-10 outline-none"
+                                                                onchange="saveTodo(@todo.ID, @plan.ID)">
+                                                            @foreach (var org in orgList)
+                                                            {
+                                                                <option value="@org.NIK.Trim()" @(org.NIK.Trim() == todo.PIC_NIK.Trim() ? "selected" : "")>@org.Name (@org.BCP_Role)</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="flex items-center gap-2.5">
+                                                            <div class="w-7 h-7 rounded-full bg-sky-50 text-sky-700 font-extrabold text-[10px] flex items-center justify-center border border-sky-100 shrink-0 uppercase">
+                                                                @(todo.PIC_Name.Length > 2 ? todo.PIC_Name.Substring(0, 2) : "PI")
+                                                            </div>
+                                                            <div class="text-left">
+                                                                <div class="font-bold text-slate-700 leading-tight">@todo.PIC_Name</div>
+                                                                <div class="text-[9px] text-slate-400 font-semibold mt-0.5">@todo.PIC_NIK</div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300 text-center">
+                                                    @if (canManageTodos)
+                                                    {
+                                                        <input id="todo-date-@todo.ID" type="date" class="w-full bg-slate-50/80 border border-slate-200 hover:border-slate-300 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary p-2 transition-all rounded-xl text-xs text-center cursor-pointer h-10 outline-none"
+                                                               value="@todo.DueDate.ToString("yyyy-MM-dd")"
+                                                               onchange="saveTodo(@todo.ID, @plan.ID)" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold mt-1">
+                                                            <i class="far fa-calendar-alt text-slate-400 text-[10px]"></i>
+                                                            @todo.DueDate.ToString("dd MMM yyyy")
+                                                        </span>
+                                                    }
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300 text-center">
+                                                    <div class="flex flex-col items-center justify-center gap-1.5 mt-1">
+                                                        @if (canChangeStatus)
+                                                        {
+                                                            <select onchange="onTodoStatusChange(@todo.ID, this)" data-current-duedate="@todo.DueDate.ToString("yyyy-MM-dd")" data-previous-status="@todo.Status" class="rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider border cursor-pointer transition-all shadow-sm outline-none w-full text-center
+                                                                @(todo.Status == "Complete" ? "bg-emerald-50 text-emerald-700 border-emerald-300" 
+                                                                  : todo.Status == "Pending" ? "bg-amber-50 text-amber-700 border-amber-300"
+                                                                  : "bg-blue-50 text-blue-700 border-blue-300")">
+                                                                <option value="On Progress" @(todo.Status == "On Progress" ? "selected" : "")>On Progress</option>
+                                                                <option value="Pending" @(todo.Status == "Pending" ? "selected" : "")>Pending</option>
+                                                                <option value="Complete" @(todo.Status == "Complete" ? "selected" : "")>Complete</option>
+                                                            </select>
+                                                            if (canManageTodos)
+                                                            {
+                                                                <button onclick="deleteTodo(@todo.ID)" class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border-0 bg-transparent cursor-pointer flex items-center justify-center transition-all mt-1" title="Delete Task">
+                                                                    <i class="fas fa-trash text-xs"></i>
+                                                                </button>
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="px-2.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border block text-center w-full
+                                                                @(todo.Status == "Complete" ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                                                  : todo.Status == "Pending" ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                  : "bg-blue-50 text-blue-700 border-blue-200")">
+                                                                @todo.Status
+                                                            </span>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                <td colspan="4" class="text-slate-400 italic text-center align-middle bg-slate-50/40 py-5 border-r border-b border-slate-300">
+                                                    No to-do list items added yet. Click "+ To Do" on the left to add.
+                                                 </td>
+                                            }
+                                        </tr>
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-14 text-slate-400 font-medium">
+                                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <i class="fas fa-clipboard-list text-2xl text-slate-300"></i>
+                                    </div>
+                                    <p class="m-0 text-sm font-bold text-slate-500">No Recovery Plan records found</p>
+                                    @if (isReviewer)
+                                    {
+                                        <p class="m-0 text-xs text-slate-400 mt-1">Click the "New Action Plan" button above to start planning recovery steps.</p>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+<!-- Assessment Details Modal -->
+<div id="detailsModal" class="fixed inset-0 z-[2000] hidden overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] md:max-h-[85vh] overflow-hidden flex flex-col fade-up">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 bg-ngk-primary text-white flex justify-between items-center border-b border-ngk-primaryDark">
+            <div>
+                <h3 id="modalAreaTitle" class="text-base sm:text-lg font-black m-0">Assessment Details</h3>
+                <p class="text-[10px] sm:text-xs text-ngk-primaryLight mt-1 m-0">Assessed by <span id="modalAssessorName" class="font-bold text-white"></span> on <span id="modalSubmittedAt" class="font-bold text-white"></span></p>
+            </div>
+            <button type="button" id="btnCloseModal" class="text-white hover:text-ngk-primaryLight bg-transparent border-0 cursor-pointer text-xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 overflow-y-auto space-y-6">
+            <!-- Impact Status -->
+            <div class="p-5 rounded-2xl border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 border-slate-200">
+                <div class="flex items-center gap-4">
+                    <div id="modalImpactIconWrapper" class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
+                        <i id="modalImpactIcon" class="fas text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400">Impact Assessment Status</span>
+                        <h4 id="modalImpactStatus" class="font-black text-slate-800 m-0 text-base"></h4>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Weighted Yield Score</span>
+                    <h3 id="modalTotalScore" class="text-3xl font-black text-slate-800 m-0">0.00 <span class="text-sm text-slate-400 font-medium">/ 5.00</span></h3>
+                </div>
+            </div>
+
+            <!-- Qualitative Description -->
+            <div id="modalDescriptionSection" class="hidden">
+                <h5 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><i class="fas fa-quote-left text-ngk-primary mr-1"></i> Qualitative Description</h5>
+                <div class="p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <p id="modalImpactDescription" class="text-sm text-slate-700 m-0 italic font-medium leading-relaxed"></p>
+                </div>
+            </div>
+
+            <!-- Criteria Details -->
+            <div id="modalDetailsSection" class="space-y-4">
+                <h5 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><i class="fas fa-list-check text-ngk-primary mr-1"></i> Quantitative Breakdowns</h5>
+                <div id="modalCriteriaList" class="space-y-4">
+                    <!-- populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <button type="button" id="btnCloseModalFooter" class="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl border-0 cursor-pointer text-sm">
+                Close details
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        function submitReview() {
+            var decision = $('input[name="Decision"]:checked').val();
+            var note     = $('#ReviewNote').val().trim();
+
+            if (!note) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Comment Required',
+                    text: 'Please provide an executive comment for your decision.',
+                    confirmButtonColor: '#007581'
+                });
+                return;
+            }
+
+            var actionLabel   = decision === 'EscalateToPresdir' ? 'ESCALATE TO FINAL DECISION' : 'ERT ONLY';
+            var confirmColor  = decision === 'EscalateToPresdir' ? '#e11d48' : '#d97706';
+            var actionIcon    = decision === 'EscalateToPresdir' ? 'warning' : 'question';
+            var actionDesc    = decision === 'EscalateToPresdir'
+                ? 'Keputusan ini akan dikirimkan ke Presdir / Authorized Delegate untuk penetapan final aktivasi BCP.'
+                : 'Keputusan ini hanya akan mengaktifkan Emergency Response Team (ERT), tanpa aktivasi BCP penuh.';
+
+            Swal.fire({
+                title: '<span style="font-weight:900">Confirm: ' + actionLabel + '</span>',
+                html: '<p style="color:#64748b;font-size:13px">' + actionDesc + '</p>',
+                icon: actionIcon,
+                showCancelButton: true,
+                confirmButtonColor: confirmColor,
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Submit'
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    Swal.showLoading();
+                    $.post('@Url.Action("SubmitReview", "BCP")', {
+                        IncidentID: @(incident != null ? incident.ID : 0),
+                        Decision:   decision,
+                        ReviewNote: note
+                     }, function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Decision Submitted',
+                                text: res.message,
+                                confirmButtonColor: '#007581'
+                            }).then(function() {
+                                window.location.href = '@Url.Action("Dashboard", "BCP")';
+                            });
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    }).fail(function() {
+                        Swal.fire('Error', 'Koneksi gagal. Coba lagi.', 'error');
+                    });
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            initSelect2();
+            // Open modal on view button click
+            $(document).on('click', '.view-detail-btn', function() {
+                var areaId = $(this).data('area-id');
+                var areaName = $(this).data('area-name');
+                var incidentId = @(incident != null ? incident.ID : 0);
+
+                Swal.fire({
+                    title: 'Loading assessment details...',
+                    html: 'Please wait while we query BCP records.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("GetAreaAssessmentDetails", "BCP")',
+                    type: 'GET',
+                    data: { incidentId: incidentId, areaId: areaId },
+                    success: function(res) {
+                        Swal.close();
+                        if (res.status === 'success') {
+                            $('#modalAreaTitle').text('Assessment Details: ' + areaName);
+                            $('#modalAssessorName').text(res.assessorName || 'System');
+                            $('#modalSubmittedAt').text(res.submittedAt || '-');
+                            $('#modalTotalScore').html((res.totalScore || 0).toFixed(2) + ' <span class="text-sm text-slate-400 font-medium">/ 5.00</span>');
+
+                            if (res.isImpacted) {
+                                $('#modalImpactIconWrapper').removeClass('bg-emerald-100 text-emerald-600').addClass('bg-rose-100 text-rose-500');
+                                $('#modalImpactIcon').removeClass('fa-shield-check').addClass('fa-heart-broken');
+                                $('#modalImpactStatus').text('DISRUPTED / IMPACTED').removeClass('text-emerald-700').addClass('text-rose-700');
+                                $('#modalImpactDescription').text(res.impactDescription || 'No description provided.');
+                                $('#modalDescriptionSection').removeClass('hidden');
+                                $('#modalDetailsSection').removeClass('hidden');
+                            } else {
+                                $('#modalImpactIconWrapper').removeClass('bg-rose-100 text-rose-500').addClass('bg-emerald-100 text-emerald-600');
+                                $('#modalImpactIcon').removeClass('fa-heart-broken').addClass('fa-shield-check');
+                                $('#modalImpactStatus').text('OPERATIONAL / NOT IMPACTED').removeClass('text-rose-700').addClass('text-emerald-700');
+                                $('#modalDescriptionSection').addClass('hidden');
+                                $('#modalDetailsSection').addClass('hidden');
+                            }
+
+                            let criteriaHtml = '';
+                            if (res.details && res.details.length > 0) {
+                                res.details.forEach(function(crit) {
+                                    let critScore = (crit.AverageScore || 0).toFixed(2);
+                                    let scoreColor = crit.AverageScore >= 4.5 ? 'bg-rose-500' :
+                                                     crit.AverageScore >= 3.5 ? 'bg-orange-500' :
+                                                     crit.AverageScore >= 2.5 ? 'bg-yellow-500' :
+                                                     crit.AverageScore >= 1.5 ? 'bg-blue-500' : 'bg-emerald-500';
+
+                                    let qHtml = '';
+                                    if (crit.Questions && crit.Questions.length > 0) {
+                                        crit.Questions.forEach(function(q) {
+                                            qHtml += `
+                                                <div class="py-2 border-b border-slate-100 last:border-b-0">
+                                                    <div class="flex justify-between items-start gap-4">
+                                                        <p class="text-xs text-slate-700 font-semibold leading-relaxed m-0">${q.QuestionText}</p>
+                                                        <span class="text-xs font-bold shrink-0 bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Score ${q.Score}</span>
+                                                    </div>
+                                                    ${q.ChoiceText ? `<p class="text-[10px] text-slate-500 mt-1 m-0 italic">"${q.ChoiceText}"</p>` : ''}
+                                                </div>
+                                            `;
+                                        });
+                                    }
+
+                                    criteriaHtml += `
+                                        <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                            <div class="px-4 py-3 bg-slate-50 flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-100">
+                                                <div>
+                                                    <h6 class="text-xs font-black text-slate-700 uppercase tracking-wider m-0">${crit.CriteriaName} <span class="text-slate-400 font-medium">(${crit.CriteriaWeight}%)</span></h6>
+                                                    <p class="text-[10px] text-slate-500 m-0 mt-0.5 leading-tight">${crit.Description}</p>
+                                                </div>
+                                                <div class="flex items-center gap-2 shrink-0">
+                                                    <span class="text-[10px] font-bold text-slate-400">Score:</span>
+                                                    <span class="text-xs font-black text-slate-700 bg-slate-200 px-2 py-0.5 rounded">${critScore}</span>
+                                                </div>
+                                            </div>
+                                            <div class="p-4 space-y-3">
+                                                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                                                    <div class="${scoreColor} h-1.5 rounded-full" style="width: ${crit.AverageScore * 20}%"></div>
+                                                </div>
+                                                ${crit.Notes ? `
+                                                    <div class="p-2.5 bg-yellow-50/50 border border-yellow-100 rounded-lg">
+                                                        <span class="text-[9px] font-bold text-amber-600 block uppercase">Notes:</span>
+                                                        <p class="text-xs text-slate-600 mt-0.5 m-0 italic">"${crit.Notes}"</p>
+                                                    </div>
+                                                ` : ''}
+                                                <div class="mt-3 pt-3 border-t border-slate-100">
+                                                    <span class="text-[9px] font-bold text-slate-400 block uppercase mb-2">Question Details:</span>
+                                                    <div class="space-y-1 bg-slate-50/50 rounded-xl p-3 border border-slate-100">
+                                                        ${qHtml}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            $('#modalCriteriaList').html(criteriaHtml);
+
+                            $('#detailsModal').removeClass('hidden');
+                            $('body').addClass('overflow-hidden');
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.close();
+                        Swal.fire('Error', 'Failed to fetch details.', 'error');
+                    }
+                });
+            });
+
+            // Close modal handlers
+            $('#btnCloseModal, #btnCloseModalFooter').click(function() {
+                $('#detailsModal').addClass('hidden');
+                $('body').removeClass('overflow-hidden');
+            });
+            $('#detailsModal').click(function(e) {
+                if (e.target === this) {
+                    $('#detailsModal').addClass('hidden');
+                    $('body').removeClass('overflow-hidden');
+                }
+            });
+        });
+
+        // ── RECOVERY PLAN COLLABORATIVE SCRIPTS ──
+        
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+
+        function showModernToast(message, type = 'success') {
+            let container = document.getElementById('modern-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'modern-toast-container';
+                container.className = 'fixed bottom-5 right-5 z-[9999] flex flex-col gap-2.5 pointer-events-none';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = 'flex items-center gap-3 px-4 py-3.5 rounded-2xl shadow-xl transition-all duration-300 transform translate-y-2 opacity-0 text-xs font-semibold pointer-events-auto min-w-[280px] bg-white border';
+            
+            if (type === 'success') {
+                toast.className += ' text-emerald-800 border-emerald-100 bg-emerald-50/90 backdrop-blur-md';
+                toast.innerHTML = `
+                    <div class="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                        <i class="fas fa-check text-[10px]"></i>
+                    </div>
+                    <div class="flex-1">${message}</div>
+                `;
+            } else if (type === 'error') {
+                toast.className += ' text-rose-800 border-rose-100 bg-rose-50/90 backdrop-blur-md';
+                toast.innerHTML = `
+                    <div class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0">
+                        <i class="fas fa-times text-[10px]"></i>
+                    </div>
+                    <div class="flex-1">${message}</div>
+                `;
+            } else {
+                toast.className += ' text-slate-800 border-slate-100 bg-slate-50/90 backdrop-blur-md';
+                toast.innerHTML = `
+                    <div class="w-5 h-5 rounded-full bg-slate-500 text-white flex items-center justify-center shrink-0">
+                        <i class="fas fa-info text-[10px]"></i>
+                    </div>
+                    <div class="flex-1">${message}</div>
+                `;
+            }
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-[-10px]', 'opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                    if (container.children.length === 0) {
+                        container.remove();
+                    }
+                }, 300);
+            }, 3500);
+        }
+
+        function initSelect2() {
+            if (typeof $.fn.select2 !== 'undefined') {
+                $('.pic-select2').select2({
+                    placeholder: "-- Select PIC --",
+                    width: '100%'
+                });
+                $('.select2-simple').select2({
+                    placeholder: "-- Select Critical Issue --",
+                    width: '100%'
+                });
+            }
+        }
+
+        function refreshRecoveryPlanTable() {
+            const cacheBuster = (location.href.indexOf('?') >= 0 ? '&' : '?') + '_=' + new Date().getTime();
+            $.get(location.href + cacheBuster, function (html) {
+                const newBody = $(html).find('#recoveryPlanTableBody').html();
+                $('#recoveryPlanTableBody').html(newBody);
+                initSelect2();
+            }).fail(function () {
+                showModernToast("Failed to refresh table", "error");
+            });
+        }
+
+        function showAutosaveToast() {
+            showModernToast('Changes saved automatically', 'success');
+        }
+
+        function showErrorToast(msg) {
+            showModernToast(msg || 'Error saving changes', 'error');
+        }
+
+        function toggleQuickAddForm() {
+            const form = document.getElementById('quickAddForm');
+            form.classList.toggle('hidden');
+        }
+
+        function submitQuickActionPlan() {
+            const critId = $('#quickCritSelect').val();
+            const actionText = $('#quickActionText').val().trim();
+
+            if (!critId) {
+                showModernToast("Please select a Critical Issue", "error");
+                return;
+            }
+            if (!actionText) {
+                showModernToast("Please enter Action Plan description", "error");
+                return;
+            }
+
+            $.post('@Url.Action("SaveRecoveryPlan", "BCP")', {
+                IncidentID: @(incident != null ? incident.ID : 0),
+                CriteriaID: critId,
+                ActionPlanText: actionText
+            }, function (res) {
+                if (res.status === 'success') {
+                    showModernToast("Action Plan added successfully", "success");
+                    refreshRecoveryPlanTable();
+                    toggleQuickAddForm();
+                    $('#quickActionText').val('');
+                    $('#quickCritSelect').val('').trigger('change');
+                } else {
+                    showModernToast(res.message || "Failed to save plan", "error");
+                }
+            }).fail(function() {
+                showModernToast("Network connection error", "error");
+            });
+        }
+
+        function insertInlineActionPlan(critId) {
+            $.post('@Url.Action("SaveRecoveryPlan", "BCP")', {
+                IncidentID: @(incident != null ? incident.ID : 0),
+                CriteriaID: critId,
+                ActionPlanText: "New Action Plan description (click to edit)..."
+            }, function (res) {
+                if (res.status === 'success') {
+                    showModernToast("New Action Plan created", "success");
+                    refreshRecoveryPlanTable();
+                } else {
+                    showErrorToast(res.message);
+                }
+            }).fail(function() {
+                showErrorToast("Network connection error");
+            });
+        }
+
+        function insertInlineTodo(planId) {
+            const today = new Date().toISOString().split('T')[0];
+            const defaultPic = "@(orgList.Any() ? orgList.First().NIK.Trim() : "")";
+
+            $.post('@Url.Action("SaveRecoveryTodo", "BCP")', {
+                RecoveryPlanID: planId,
+                TodoText: "New To Do list item (click to edit)...",
+                PIC_NIK: defaultPic,
+                DueDate: today
+            }, function (res) {
+                if (res.status === 'success') {
+                    showModernToast("New task added to list", "success");
+                    refreshRecoveryPlanTable();
+                } else {
+                    showErrorToast(res.message);
+                }
+            }).fail(function() {
+                showErrorToast("Network connection error");
+            });
+        }
+
+        function updateActionPlan(planId, criteriaId, value) {
+            const trimmed = value.trim();
+            if (!trimmed) {
+                showErrorToast("Action Plan cannot be empty");
+                return;
+            }
+
+            $.post('@Url.Action("SaveRecoveryPlan", "BCP")', {
+                ID: planId,
+                IncidentID: @(incident != null ? incident.ID : 0),
+                CriteriaID: criteriaId,
+                ActionPlanText: trimmed
+            }, function (res) {
+                if (res.status === 'success') {
+                    showAutosaveToast();
+                } else {
+                    showErrorToast(res.message);
+                }
+            }).fail(function() {
+                showErrorToast("Network connection error");
+            });
+        }
+
+        function saveTodo(todoId, planId) {
+            const text = $('#todo-text-' + todoId).val();
+            const pic = $('#todo-pic-' + todoId).val();
+            const date = $('#todo-date-' + todoId).val();
+
+            if (text === undefined || text === null || text.trim() === '') {
+                showErrorToast("To Do text cannot be empty");
+                return;
+            }
+
+            $.post('@Url.Action("SaveRecoveryTodo", "BCP")', {
+                ID: todoId,
+                RecoveryPlanID: planId,
+                TodoText: text.trim(),
+                PIC_NIK: pic,
+                DueDate: date
+            }, function (res) {
+                if (res.status === 'success') {
+                    showAutosaveToast();
+                } else {
+                    showErrorToast(res.message);
+                }
+            }).fail(function() {
+                showErrorToast("Network connection error");
+            });
+        }
+
+        function onTodoStatusChange(todoId, selectElement) {
+            var newStatus = selectElement.value;
+            var currentDueDate = $(selectElement).data('current-duedate');
+            var previousStatus = $(selectElement).data('previous-status') || 'On Progress';
+
+            if (newStatus === 'Pending') {
+                Swal.fire({
+                    title: '<span class="font-black text-slate-800 text-base">Mark Task as Pending</span>',
+                    html: `
+                        <div class="text-left mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Pending Reason / Note <span class="text-rose-500">*</span></label>
+                            <textarea id="swal-pending-note" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-ngk-primary/20 focus:border-ngk-primary focus:bg-white transition-all outline-none resize-none" placeholder="Provide a reason or note for this pending status..."></textarea>
+                        </div>
+                        <div class="text-left">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">New Due Date <span class="text-rose-500">*</span></label>
+                            <input type="date" id="swal-pending-duedate" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-ngk-primary/20 focus:border-ngk-primary focus:bg-white transition-all outline-none" value="${currentDueDate}">
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#007581',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Submit Status',
+                    cancelButtonText: 'Cancel',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const note = Swal.getPopup().querySelector('#swal-pending-note').value.trim();
+                        const dueDate = Swal.getPopup().querySelector('#swal-pending-duedate').value;
+                        if (!note) {
+                            Swal.showValidationMessage('Pending note is required');
+                            return false;
+                        }
+                        if (!dueDate) {
+                            Swal.showValidationMessage('Due date is required');
+                            return false;
+                        }
+                        return { note: note, dueDate: dueDate };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.showLoading();
+                        $.post('@Url.Action("UpdateTodoStatus", "BCP")', {
+                            TodoID: todoId,
+                            Status: 'Pending',
+                            PendingNote: result.value.note,
+                            DueDate: result.value.dueDate
+                        }, function (res) {
+                            if (res.status === 'success') {
+                                showModernToast(`Task status updated to Pending`, 'success');
+                                refreshRecoveryPlanTable();
+                            } else {
+                                showErrorToast(res.message);
+                                $(selectElement).val(previousStatus);
+                            }
+                        }).fail(function() {
+                            showErrorToast("Network connection error");
+                            $(selectElement).val(previousStatus);
+                        });
+                    } else {
+                        $(selectElement).val(previousStatus);
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Update Task Status?',
+                    text: `Are you sure you want to update this task status to "${newStatus}"?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#007581',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, update'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.showLoading();
+                        $.post('@Url.Action("UpdateTodoStatus", "BCP")', {
+                            TodoID: todoId,
+                            Status: newStatus
+                        }, function (res) {
+                            if (res.status === 'success') {
+                                showModernToast(`Task status updated to ${newStatus}`, 'success');
+                                refreshRecoveryPlanTable();
+                            } else {
+                                showErrorToast(res.message);
+                                $(selectElement).val(previousStatus);
+                            }
+                        }).fail(function() {
+                            showErrorToast("Network connection error");
+                            $(selectElement).val(previousStatus);
+                        });
+                    } else {
+                        $(selectElement).val(previousStatus);
+                    }
+                });
+            }
+        }
+
+        function submitActionPlan(planId) {
+            Swal.fire({
+                title: "Submit Action Plan?",
+                text: "Once submitted, you cannot edit this action plan or its tasks until it is reviewed by the President Director.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#007581",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, submit it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("SubmitRecoveryPlan", "BCP")', {
+                        PlanID: planId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            showModernToast("Action Plan submitted successfully", "success");
+                            refreshRecoveryPlanTable();
+                        } else {
+                            showModernToast(res.message || "Failed to submit Action Plan", "error");
+                        }
+                    }).fail(function() {
+                        showModernToast("Network connection error", "error");
+                    });
+                }
+            });
+        }
+
+        function submitAllActionPlans() {
+            Swal.fire({
+                title: "Submit All Action Plans?",
+                text: "Once submitted, you cannot edit these action plans or their tasks until they are reviewed by the President Director.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#007581",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, submit all"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.showLoading();
+                    $.post('@Url.Action("SubmitAllRecoveryPlans", "BCP")', {
+                        IncidentID: @(incident != null ? incident.ID : 0)
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            showModernToast("All Action Plans submitted successfully", "success");
+                            location.reload();
+                        } else {
+                            showModernToast(res.message || "Failed to submit Action Plans", "error");
+                        }
+                    }).fail(function() {
+                        showModernToast("Network connection error", "error");
+                    });
+                }
+            });
+        }
+
+        function deleteActionPlan(planId) {
+            Swal.fire({
+                title: "Delete Action Plan?",
+                text: "Deleting this action plan will permanently remove all associated To Do items.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#e11d48",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, delete it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("DeleteRecoveryPlan", "BCP")', {
+                        PlanID: planId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            showModernToast("Action Plan deleted successfully", "success");
+                            refreshRecoveryPlanTable();
+                        } else {
+                            showModernToast(res.message || "Failed to delete Action Plan", "error");
+                        }
+                    }).fail(function() {
+                        showModernToast("Network connection error", "error");
+                    });
+                }
+            });
+        }
+
+        function deleteTodo(todoId) {
+            Swal.fire({
+                title: "Delete To Do?",
+                text: "Are you sure you want to delete this To Do list item?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#e11d48",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, delete it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("DeleteRecoveryTodo", "BCP")', {
+                        TodoID: todoId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            showModernToast("Task deleted successfully", "success");
+                            refreshRecoveryPlanTable();
+                        } else {
+                            showModernToast(res.message || "Failed to delete task", "error");
+                        }
+                    }).fail(function() {
+                        showModernToast("Network connection error", "error");
+                    });
+                }
+            });
+        }
+    </script>
+}

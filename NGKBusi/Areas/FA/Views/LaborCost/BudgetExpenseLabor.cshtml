@@ -1,0 +1,130 @@
+﻿
+@{
+    ViewBag.Title = "Budget Expense Labor";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Year;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/BudgetExpenseLabor.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    Budget Expense Labor
+    <form action="@Url.Action("generateBEL", "LaborCost", new { area = "FA" })" method="post" style="display:inline-block;">
+        <select id="selLCBudgetExpenseLaborPeriod" name="iLCBudgetExpenseLaborPeriod" class="form-control selLCBudgetExpenseLaborPeriod" style="width:125px; display:inline-block;">
+            @for (var z = beginYear; z <= endYear; z++)
+            {
+                <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+            }
+        </select>
+        <button id="btnLCGenerateBEL" class="btnGenerate btn btn-success" title="Generate BEL" onclick="return confirm('Generate Budget Expense Labor ?')">Generate BEL</button>
+    </form>
+    <button id="btnDownload" class="btn btn-default" style="z-index:99;">Download</button>
+</h2>
+<div id="tblLCBudgetExpenseLaborWrapper" style="overflow-x:auto;">
+    <table id="tblLCBudgetExpenseLabor" class="tablesorter">
+        <thead>
+            <tr>
+                <th class="filter-select" data-placeholder="-BEL-">BEL</th>
+                <th class="filter-select" data-placeholder="-Period-">Period</th>
+                <th class="filter-select" data-placeholder="-Category-">Category</th>
+                <th>NIK</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="-Section-">Section</th>
+                <th class="filter-select" data-placeholder="-Position-">Position</th>
+                <th class="filter-select" data-placeholder="-Status-">Status</th>
+                <th>Basic Salary</th>
+                <th>Transportion</th>
+                <th>Medical</th>
+                <th>Daily Transport</th>
+                <th>Job Allowance</th>
+                <th>Shift</th>
+                <th>Insentive Kehadiran</th>
+                <th>Insentive 2S3G</th>
+                <th>Meal Allowance</th>
+                <th>Skill Allowance</th>
+                <th>ATM</th>
+                <th>Tax Allowance</th>
+                <th>BPSJ Kesehatan</th>
+                <th>BPSJ (JKK + JK)</th>
+                <th>JSHK</th>
+                <th>BPJS_JHT</th>
+                <th>BPJS_JP</th>
+                <th>THR</th>
+                <th>APLHA</th>
+                <th>TAT</th>
+                <th>Overtime Hour</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.BEL)
+            {
+                <tr>
+                    <td>@(item.BEL)</td>
+                    <td>@("FY1" + (Int32.Parse(item.Period.ToString().Substring(item.Period.ToString().Length - 2, 2)) + 1))</td>
+                    <td>@(item.Category)</td>
+                    <td>@(item.OTP_NIK)</td>
+                    <td>@(item.Name)</td>
+                    <td>@(item.Section)</td>
+                    <td>@(item.Position)</td>
+                    <td>@(item.Status)</td>
+                    <td>@(item.Basic_Salary?.ToString("N0"))</td>
+                    <td>@(item.Transportation?.ToString("N0"))</td>
+                    <td>@(item.Medical?.ToString("N0"))</td>
+                    <td>@(item.Transportation_Daily?.ToString("N0"))</td>
+                    <td>@(item.Allowance_Job?.ToString("N0"))</td>
+                    <td>@(item.Shift?.ToString("N0"))</td>
+                    <td>@(item.Insentive_Kehadiran?.ToString("N0"))</td>
+                    <td>@(item.Insentive_2S3G?.ToString("N0"))</td>
+                    <td>@(item.Allowance_Meal?.ToString("N0"))</td>
+                    <td>@(item.Allowance_Skill?.ToString("N0"))</td>
+                    <td>@(item.ATM?.ToString("N0"))</td>
+                    <td>@(item.Tax_Allowance?.ToString("N0"))</td>
+                    <td>@(item.BPJS_Kesehatan?.ToString("N0"))</td>
+                    <td>@(item.BPJS_JKK_JK?.ToString("N0"))</td>
+                    <td>@(item.JSHK?.ToString("N0"))</td>
+                    <td>@(item.BPJS_JHT?.ToString("N0"))</td>
+                    <td>@(item.BPJS_JP?.ToString("N0"))</td>
+                    <td>@(item.THR?.ToString("N0"))</td>
+                    <td>@(item.ALPHA?.ToString("N0"))</td>
+                    <td>@(item.TAT?.ToString("N0"))</td>
+                    <td>@(item.Overtime_Hour?.ToString("N0"))</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="dark-row">
+                <th colspan="29">
+                    <div class="pager">
+                        <button type="button" class="first"><<</button>
+                        <button type="button" class="prev"><</button>
+                        <span class="pagedisplay"></span>
+                        <button type="button" class="next">></button>
+                        <button type="button" class="last">>></button>
+                        <select class="pagesize" title="Select page size" style="color:black;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                        </select>
+                        <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>

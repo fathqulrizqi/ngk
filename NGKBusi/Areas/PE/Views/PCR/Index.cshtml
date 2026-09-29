@@ -1,0 +1,1234 @@
+﻿@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string currentUserNik = ViewBag.CurrentUserNik as string;
+
+    bool isPEUser = ViewBag.UserPEList != null &&
+((IEnumerable<dynamic>)ViewBag.UserPEList).Any(u => u.NIK == currentUserNik);
+    bool isBuIspri = currentUserNik == "793.03.18";
+    bool isPakDolly = currentUserNik == "719.04.15";
+    bool isPakGilang = currentUserNik == "857.06.22";
+
+    var qm = ViewBag.QMManager;
+    var plant = ViewBag.PlantManager;
+    var gm = ViewBag.ProductionGM;
+
+    bool isManager = false;
+
+    if ((qm != null && qm.NIK == currentUserNik) ||
+        (plant != null && plant.NIK == currentUserNik) ||
+        (gm != null && gm.NIK == currentUserNik))
+    {
+        isManager = true;
+    }
+
+    bool isLogin = (System.Web.HttpContext.Current.User != null) && System.Web.HttpContext.Current.User.Identity.IsAuthenticated;
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.0/css/dataTables.bootstrap5.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        table.dataTable td, table.dataTable th {
+            padding: 0.75rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Custom DataTable Styling */
+        .dataTables_wrapper .dataTables_length,
+        .dataTables_wrapper .dataTables_filter,
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            margin: 1rem 0;
+        }
+
+            .dataTables_wrapper .dataTables_paginate .paginate_button {
+                padding: 0.5rem 0.75rem;
+                margin: 0 0.25rem;
+                border-radius: 0.5rem;
+            }
+
+        /* Badge Styling */
+        .badge {
+            padding: 0.5rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        /* Progress Bar Animation */
+        .progress-bar {
+            transition: width 0.6s ease-in-out;
+        }
+
+        /* Button Hover Effects */
+        .btn-hover-scale:hover {
+            transform: scale(1.05);
+        }
+
+        /* Card Shadow */
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .select2-container .select2-selection--single {
+            height: 2.25rem !important; /* match Tailwind h-9 */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 1px solid #d1d5db; /* border-gray-300 */
+            padding: 0.25rem 0.5rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered,
+        .select2-selection__placeholder {
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* semibold */
+            color: #374151; /* text-gray-700 */
+            line-height: 2rem;
+        }
+    </style>
+}
+
+@section scriptHead {
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.bootstrap5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+
+    <script>
+
+        $(document).ready(function () {
+            var currentUserNik = '@currentUserNik';
+            var IsBuIspri = currentUserNik === "793.03.18";
+            var IsPakDolly = currentUserNik === "719.04.15";
+            var IsPakGilang = currentUserNik === "857.06.22";
+
+            var isPEUser = @Html.Raw(Json.Encode(isPEUser));
+            var isManager = @Html.Raw(Json.Encode(isManager));
+            var defaultUrl = '';
+
+            if (isManager) {
+                defaultUrl = '@Url.Action("GetPcrByApprover", "PCR", new { area = "PE" })';
+            } else if (isPEUser || IsBuIspri || IsPakDolly || IsPakGilang) {
+    defaultUrl = '@Url.Action("GetAllPcrData", "PCR", new { area = "PE" })';
+} else {
+    defaultUrl = '@Url.Action("GetPcrDataById", "PCR", new { area = "PE" })';
+}
+//            var hideColumns = [];
+
+//            if (!isPEUser) {
+//                hideColumns = [7, 8, 9, 10];
+//            }
+
+            var table = $("#pcrTable").DataTable({
+                orderCellsTop: true,
+                paging: true,
+                ajax: {
+                    url: defaultUrl,
+                    type: "GET",
+                    dataSrc: function (json) {
+                        if (json.success) return json.data;
+                        return [];
+                    }
+                },
+                //columnDefs: [
+                //    {
+                //        targets: hideColumns,
+                //        visible: false,
+                //    }
+                //],
+
+                columns: [
+                    // 1. Date Issued
+                    {
+                        data: 'Date_Issued',
+                        title: 'Date Issued',
+                        className: 'text-sm w-24',
+                        render: {
+                            display: function (data) {
+                                if (!data) return '';
+                                const match = /\/Date\((\d+)\)\//.exec(data);
+                                if (!match) return '';
+                                return moment(parseInt(match[1])).format("DD/MM/YYYY");
+                            },
+                            filter: function (data) {
+                                if (!data) return '';
+                                const match = /\/Date\((\d+)\)\//.exec(data);
+                                if (!match) return data; // fallback
+                                return moment(parseInt(match[1])).format("DD/MM/YYYY");
+                            }
+                        }
+                    },
+
+                    // 2. Doc No
+                    {
+                        data: 'Doc_No',
+                        title: 'Doc No',
+                        className: 'w-36',
+                        render: function (data) {
+                            if (!data || data.trim() === '') {
+                                return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Filled by PE</span>';
+                            }
+                            return `<span class="font-medium text-sm text-gray-900">${data}</span>`;
+                        }
+                    },
+
+                    // 3. Title
+                    {
+                        data: 'Title',
+                        title: 'Title',
+                        className: 'w-[200px]',
+                        render: function (data) {
+                            return data && data.trim() !== ''
+                                ? `<span class="text-gray-900 text-sm">${data}</span>`
+                                : '<span class="text-gray-500 italic">No Title</span>';
+                        }
+                    },
+
+                    // 4. Dept
+                    {
+                        data: 'Dept',
+                        title: 'Dept',
+                        render: function (data) {
+                            return `<span class="inline-flex items-center px-2.5 py-0.5 text-sm font-medium">${data}</span>`;
+                        }
+                    },
+
+                    // 5. Originator
+                    {
+                        data: 'First_Issued_Name',
+                        title: 'Originator',
+                        render: function (data) {
+                            return `<span class="text-gray-900 text-sm font-medium">${data || '-'}</span>`;
+                        }
+                    },
+                    {
+                        data: 'Plan',
+                        title: 'Plan Date',
+                        render: function (data) {
+                            if (!data) return '-';
+
+                            // handle format "2025-10-22" atau "/Date(1761550151603)/"
+                            let date;
+
+                            if (data.includes('/Date(')) {
+                                const timestamp = parseInt(data.match(/\d+/)[0]);
+                                date = moment(timestamp).format('DD-MM-YYYY');
+                            } else {
+                                date = moment(data).format('DD-MM-YYYY');
+                            }
+
+                            return `<span class="text-gray-900 text-sm font-medium">${date}</span>`;
+                        }
+                    },
+                    {
+                        data: 'Actual',
+                        title: 'Finish Date',
+                        render: function (data) {
+                            if (!data) return '-';
+
+                            let date;
+
+                            if (data.includes('/Date(')) {
+                                const timestamp = parseInt(data.match(/\d+/)[0]);
+                                date = moment(timestamp).format('DD-MM-YYYY');
+                            } else {
+                                date = moment(data).format('DD-MM-YYYY');
+                            }
+
+                            return `<span class="text-gray-900 text-sm font-medium">${date}</span>`;
+                        }
+                    },
+
+
+
+                    {
+                        data: 'Plan',
+                        title: 'Counting Date',
+                        render: function (start, type, row) {
+                            if (!start) return '<span class="text-gray-400 italic">-</span>';
+
+                            // === Start Date (Plan) ===
+                            let startDate = new Date(start);
+
+                            // === End Date (Actual) dari ManagerApproval[0].Date ===
+                            let endDate = null;
+                            if (row.ManagerApproval && row.ManagerApproval.length > 0 && row.ManagerApproval[0].Date) {
+                                const endMatch = /\/Date\((\d+)\)\//.exec(row.ManagerApproval[0].Date);
+                                endDate = endMatch ? new Date(parseInt(endMatch[1])) : new Date(row.ManagerApproval[0].Date);
+                            }
+
+                            if (isNaN(startDate.getTime())) return '<span class="text-gray-400 italic">-</span>';
+
+                            const today = new Date();
+                            const effectiveEnd = endDate || today;
+                            const durationDays = Math.ceil((effectiveEnd - startDate) / (1000 * 60 * 60 * 24));
+
+                            // === Tentukan warna ===
+                            let colorClass = '';
+                            if (endDate) {
+                                colorClass = 'text-green-600'; // ✅ plan & actual ada
+                            } else if (durationDays >= 0) {
+                                colorClass = 'text-red-500'; // ❌ belum selesai
+                            } else {
+                                colorClass = 'text-black'; // fallback
+                            }
+
+                            // === UI ===
+                            if (!endDate) {
+                                return `
+              <div class="flex items-center space-x-2">
+                <div class="flex flex-col">
+                  <span class="font-semibold ${colorClass}">${durationDays} days</span>
+                  <span class="text-xs text-yellow-600 italic">(on process)</span>
+                </div>
+              </div>
+            `;
+                            } else {
+                                return `<span class="font-semibold ${colorClass}">${durationDays} days</span>`;
+                            }
+                        }
+                    },
+
+                    // 8. Duration Date (Start–End)
+                    {
+                        data: 'Date_Issued',
+                        title: 'Duration Date',
+                        render: function (value, type, row) {
+
+                            // --- Ambil Date_Issued ---
+                            if (!row.Date_Issued)
+                                return '<span class="text-gray-400 italic">-</span>';
+
+                            let issueDate;
+
+                            // JSON Date format: /Date(123456789)/
+                            const match = /\/Date\((\d+)\)\//.exec(row.Date_Issued);
+                            if (match) {
+                                issueDate = new Date(parseInt(match[1]));
+                            } else {
+                                issueDate = new Date(row.Date_Issued);
+                            }
+
+                            // Jika date tidak valid
+                            if (isNaN(issueDate.getTime())) {
+                                return '<span class="text-gray-400 italic">-</span>';
+                            }
+
+                            // --- Hitung dari Date_Issued ke Hari Ini ---
+                            const today = new Date();
+                            const diffMs = today - issueDate;
+                            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+                            // --- Tentukan warna ---
+                            //const colorClass = diffDays > 0 ? 'text-red-500' : 'text-black';
+
+                            // --- Output ---
+                            return `
+    <div class="flex items-center space-x-2">
+        <div class="flex flex-col">
+            <span class="font-semibold text-black">${diffDays} days</span>
+            <span class="text-xs text-yellow-600 italic">(since issued)</span>
+        </div>
+    </div>
+`;
+                        }
+                    },
+                    // 8. Classification
+                    {
+                        data: 'Classification',
+                        title: 'Rank',
+                        render: {
+                            _: function (data) {
+                                // tampilan di UI
+                                if (!data)
+                                    return '<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Filled by PE</span>';
+
+                                let badgeColor = '';
+                                switch (data.toUpperCase()) {
+                                    case 'A':
+                                        badgeColor = 'bg-red-100 text-red-800 border border-red-200';
+                                        break;
+                                    case 'B':
+                                        badgeColor = 'bg-blue-100 text-blue-800 border border-blue-200';
+                                        break;
+                                    case 'C':
+                                        badgeColor = 'bg-orange-100 text-orange-800 border border-orange-200';
+                                        break;
+                                    case 'D':
+                                        badgeColor = 'bg-green-100 text-green-800 border border-green-200';
+                                        break;
+                                    default:
+                                        badgeColor = 'bg-gray-100 text-gray-800 border border-gray-200';
+                                        break;
+                                }
+
+                                return `<span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${badgeColor}">${data}</span>`;
+                            },
+                            sort: 'Classification', // nilai asli buat sorting
+                            filter: function (data) {
+                                // kalau null, jangan ikut filter
+                                return data || '';
+                            }
+                        }
+                    },
+
+                    // 9. Cost Impact
+                    {
+                        data: 'CostImpact',
+                        title: 'Cost Impacted',
+                        render: function (data) {
+                            return `<span class="inline-flex items-center px-2.5 py-0.5 text-sm font-medium">${data}</span>`;
+                        }
+                    },
+
+                    // 10. Status
+                    {
+                        data: null,
+                        title: 'Status',
+                        render: {
+                            display: function (row) {
+                                let status = mapStatusCategory(row.Approval_ID);
+                                let badgeClass = '';
+
+                                const lastManager = row.ManagerApproval?.slice().reverse().find(m => m.Status === 2);
+                                if (lastManager && lastManager.Level === 1) {
+                                    status = "PCR Complete";
+                                }
+
+                                switch (status) {
+                                    case "Concern Points Progress":
+                                        badgeClass = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+                                        break;
+                                    case "Approval Progress":
+                                        badgeClass = 'bg-purple-100 text-purple-800 border border-purple-200';
+                                        break;
+                                    case "PCR Complete":
+                                        badgeClass = 'bg-green-100 text-green-800 border border-green-200';
+                                        break;
+                                    default:
+                                        badgeClass = 'bg-orange-100 text-orange-800 border border-orange-200';
+                                }
+
+                                return `
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                                ${status}
+                            </span>`;
+                            },
+
+                            filter: function (row) {
+                                return mapStatusCategory(row.Approval_ID);
+                            },
+
+                            sort: function (row) {
+                                return mapStatusCategory(row.Approval_ID);
+                            }
+                        }
+                    },
+
+                    {
+                        data: null,
+                        width: 150,
+                        title: 'Progress',
+                        render: function (data, type, row) {
+                            if (row.Approval_Name === "Concern Points Progress") {
+
+                                const concerns = row.DepartmentApprovals || [];
+                                const concernTotal = row.DepartmentApprovals.length;
+                                const concernCount = concerns.filter(a => a.StatusID >= 2).length;
+
+                                let currentStep = 6;
+
+                                if (concernCount === 0) {
+                                    const percentage = ((6 / 10) * 100).toFixed(0);
+                                    return `
+<div class="flex flex-col items-center space-y-2">
+    <span class="text-sm font-semibold text-gray-700">7 / 10 (${percentage}%)</span>
+    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full"
+             style="width: ${percentage}%"></div>
+    </div>
+</div>`;
+                                }
+                                const totalSteps = 6 + concernTotal + 3;
+                                currentStep = 6 + concernCount;
+
+                                if (currentStep > totalSteps) currentStep = totalSteps;
+
+                                const percentage = ((currentStep / totalSteps) * 100).toFixed(0);
+
+                                return `
+<div class="flex flex-col items-center space-y-2">
+    <span class="text-sm font-semibold text-gray-700">${currentStep} / ${totalSteps} (${percentage}%)</span>
+    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-full"
+             style="width: ${percentage}%"></div>
+    </div>
+</div>`;
+                            }
+
+
+
+                            if (row.Approval_Name === "Approval Progress") {
+
+                                const managers = row.ManagerApproval || [];
+                                const concernTotal = row.DepartmentApprovals?.length || 0;
+
+                                let totalSteps = 6 + concernTotal + 3;
+                                let currentStep = 6 + concernTotal;
+                                let progressColor = 'from-purple-400 to-purple-500';
+                                let statusText = '';
+                                let colorText = 'text-purple-600';
+
+                                if (managers.length > 0) {
+                                    const reject = managers.find(m => m.Status === 3);
+                                    if (reject) {
+                                        // PERBAIKAN: Karena Level 3 = Step 1, Level 2 = Step 2, Level 1 = Step 3
+                                        // Maka perhitungan stepnya adalah (4 - reject.Level)
+                                        currentStep = 6 + concernTotal + (4 - reject.Level);
+                                        progressColor = 'from-red-400 to-red-500';
+                                        colorText = 'text-red-500';
+                                        switch (reject.Level) {
+                                            case 1: statusText = 'Production GM Rejected'; break;
+                                            case 2: statusText = 'Plant Manager Rejected'; break;
+                                            case 3: statusText = 'QM Manager Rejected'; break;
+                                            default: statusText = `Rejected by ${reject.Name}`; break;
+                                        }
+                                    } else {
+                                        // Hitung jumlah manager signed (Status = 2)
+                                        const signedCount = managers.filter(m => m.Status === 2).length;
+                                        currentStep = 6 + concernTotal + signedCount;
+
+                                        // Cari manager terakhir yang Signed
+                                        const lastSigned = [...managers].reverse().find(m => m.Status === 2);
+                                        if (lastSigned) {
+                                            switch (lastSigned.Level) {
+                                                case 1: statusText = 'Production GM Signed'; break; // DIPERBAIKI
+                                                case 2: statusText = 'Plant Manager Signed'; break;
+                                                case 3: statusText = 'QM Manager Signed'; break;    // DIPERBAIKI
+                                            }
+                                        }
+
+                                        if (currentStep >= totalSteps) progressColor = '#22c55e';
+                                    }
+                                }
+
+                                if (currentStep > totalSteps) currentStep = totalSteps;
+                                const percentage = ((currentStep / totalSteps) * 100).toFixed(0);
+
+                                // Sekarang kondisi ini hanya akan jalan jika BENAR-BENAR Level 1 (GM) yang Sign
+                                if (statusText === 'Production GM Signed') {
+                                    return `
+        <div class="flex flex-col items-center space-y-2">
+            <span class="text-sm font-semibold text-gray-700">100%</span>
+            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500 ease-out"
+                     style="width: 100%"></div>
+            </div>
+            <span class="text-xs font-medium text-green-600">Complete</span>
+        </div>`;
+                                }
+
+                                return `
+    <div class="flex flex-col items-center space-y-2">
+        <span class="text-sm font-semibold text-gray-700">${currentStep} / ${totalSteps} (${percentage}%)</span>
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div class="h-full bg-gradient-to-r ${progressColor} rounded-full"
+                 style="width: ${percentage}%"></div>
+        </div>
+        ${statusText ? `<span class="text-xs font-medium ${colorText}">${statusText}</span>` : ''}
+    </div>`;
+                            }
+
+                            else if (row.Approval_Name === "PCR Complete") {
+                                return `
+<div class="flex flex-col items-center space-y-2">
+    <span class="text-sm font-semibold text-gray-700">100%</span>
+    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all duration-500 ease-out"
+             style="width: 100%"></div>
+    </div>
+    <span class="text-xs font-medium text-green-600">Complete</span>
+</div>`;
+                            }
+                            else {
+                                const { currentStep, totalSteps, percentage, progressColor, statusText } = getDocumentPCRProgress(row);
+
+                                return `
+<div class="flex flex-col items-center space-y-2">
+    <span class="text-sm font-semibold text-gray-700">
+         ${currentStep} / ${totalSteps}
+    </span>
+    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+        <div class="h-full bg-gradient-to-r ${progressColor} rounded-full transition-all duration-500 ease-out"
+             style="width: ${percentage}%"></div>
+    </div>
+    ${statusText ? `<span class="text-xs font-medium text-orange-600">${statusText}</span>` : ''}
+</div>`;
+                            }
+                        }
+                    },
+
+                    // 10. Action
+                    {
+                        data: null,
+                        title: 'Action',
+                        width: 150,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            const detailBtn = `
+            <button title="Open File"
+                class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 go-detail mr-2"
+                data-headid="${row.ID}" data-docno="${row.Doc_No}">
+                <i class="fas fa-file mr-1"></i> Open
+            </button>`;
+
+                            const canDelete = (isPEUser === true || isPEUser === "true" || row.Approval_ID == 1);
+                            console.log("isPEUser", isPEUser)
+                            const deleteBtn = canDelete
+                                ? `<button class="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 deleteBtn"
+            type="button" data-headid="${row.ID}">
+            <i class="fa-solid fa-trash"></i>
+        </button>`
+                                : '';
+
+                            return `<div class="flex flex-nowrap">${detailBtn}${deleteBtn}</div>`;
+                        }
+                    }
+                ],
+                order: [[0, 'desc']],
+                initComplete: function () {
+                    const api = this.api();
+
+                    // input filters
+                    $('#pcrTable thead tr.search-row input').on('keyup change', function () {
+                        const colIndex = $(this).data('column');
+                        api.column(colIndex).search(this.value).draw();
+                    });
+
+                    $('#pcrTable thead tr.search-row select').each(function () {
+                        const $select = $(this);
+
+                        // initial color for placeholder
+                        if ($select.val() === '') {
+                            $select.addClass('text-gray-400').removeClass('text-black');
+                        } else {
+                            $select.addClass('text-black').removeClass('text-gray-400');
+                        }
+
+                        $select.on('change', function () {
+                            const colIndex = $(this).data('column');
+                            const val = $(this).val();
+
+                            // pastikan datanya udah load
+                            const tableData = api.rows({ page: 'current' }).data().toArray();
+                            const rowExample = tableData.length ? tableData[0] : '(no data yet)';
+
+                            // ubah warna text
+                            if (val === '') {
+                                $(this).addClass('text-gray-400').removeClass('text-black');
+                            } else {
+                                $(this).addClass('text-black').removeClass('text-gray-400');
+                            }
+
+                            // apply filter
+                            api.column(colIndex).search(val || '', false, false).draw();
+
+                        });
+
+                    });
+
+                    // disable sorting on filter row
+                    $('#pcrTable thead tr.search-row th').off('click');
+                }
+            });
+
+            new $.fn.dataTable.FixedHeader(table, {
+                header: true,
+                footer: false,
+                headerOffset: 0
+            });
+
+            function getManagerApprovalProgress(managerArr, concernTotal = 0) {
+                const totalSteps = 6 + concernTotal + 3;
+                let currentStep = 6 + concernTotal; // default kalau null/empty
+
+                let progressColor = 'from-purple-400 to-purple-500';
+                let statusText = '';
+                let colorText = 'text-purple-600';
+
+                if (!managerArr || managerArr.length === 0) {
+                    // manager null → pakai default step
+                    const percentage = ((currentStep / totalSteps) * 100).toFixed(0);
+                    return { currentStep, totalSteps, percentage, progressColor, statusText, colorText };
+                }
+
+                const reject = managerArr.find(m => m.Status === 3);
+                if (reject) {
+                    currentStep = 6 + concernTotal + reject.Level;
+                    progressColor = 'from-red-400 to-red-500';
+                    colorText = 'text-red-500';
+                    switch (reject.Level) {
+                        case 3: statusText = 'QM Manager Rejected'; break;
+                        case 2: statusText = 'Plant Manager Rejected'; break;
+                        case 1: statusText = 'Production GM Rejected'; break;
+                        default: statusText = `Rejected by ${reject.Name}`; break;
+                    }
+                } else {
+                    managerArr.forEach(m => {
+                        if (m.Status === 2) {
+                            // Level 1 = QM Manager, Level 2 = Plant Manager, Level 3 = Production GM
+                            currentStep = Math.max(currentStep, 6 + concernTotal + m.Level);
+                            switch (m.Level) {
+                                case 1: statusText = 'Production GM Signed'; break;
+                                case 2: statusText = 'Plant Manager Signed'; break;
+                                case 3: statusText = 'QM Manager Signed'; break;
+                            }
+                        }
+                    });
+                    if (currentStep >= totalSteps) progressColor = '#22c55e';
+                }
+
+                const percentage = ((currentStep / totalSteps) * 100).toFixed(0);
+                return { currentStep, totalSteps, percentage, progressColor, statusText, colorText };
+            }
+
+            function getDocumentPCRProgress(row) {
+                const totalSteps = 10;
+                let currentStep = 0;
+                let progressColor = 'from-orange-400 to-orange-500';
+                let statusText = '';
+
+                const id = row.Approval_ID;
+
+                switch (id) {
+                    case 1: // Prepare
+                        currentStep = 1;
+                        break;
+                    case 2: // Signed by Issuer 1
+                        currentStep = 2;
+                        break;
+                    case 3: // Signed by Issuer 2
+                    case 4: // No Issuer 2
+                        currentStep = 3;
+                        break;
+                    case 5: // Signed by Approver
+                        currentStep = 4;
+                        break;
+                    case 6: // PE Filled
+                        currentStep = 5;
+                        break;
+                    case 7: // PE Manager Approved
+                        currentStep = 6;
+                        break;
+                    case 8: // PE Manager Rejected
+                        currentStep = 6; // berhenti di PE Manager
+                        progressColor = 'from-red-400 to-red-500'; // merah
+                        break;
+                    case 9: // PE Manager Hold
+                        currentStep = 6;
+                        progressColor = 'from-orange-400 to-orange-500'; // oren
+                        break;
+                    case 10: // Rejected by Approver
+                        currentStep = 4; // berhenti di Approver
+                        progressColor = 'from-red-400 to-red-500'; // merah
+                        break;
+                    case 13: // PCR Complete
+                        currentStep = totalSteps;
+                        progressColor = '#22c55e'; // hijau
+                        break;
+                    default:
+                        currentStep = 0;
+                }
+
+                statusText = row.Approval_Name || '';
+
+                const percentage = ((currentStep / totalSteps) * 100).toFixed(0);
+                return { currentStep, totalSteps, percentage, progressColor, statusText };
+            }
+
+            function mapStatusCategory(id) {
+                if (id === 13) return "PCR Complete";
+                if (id === 11) return "Concern Points Progress";
+                if (id === 12) return "Approval Progress";
+
+                return "Document PCR Progress";
+            }
+
+            // Event handlers remain the same...
+            $('#pcrFilter').on('change', function () {
+                const val = $(this).val();
+                let url = '';
+
+                switch(val) {
+                    case 'all':
+                        url = '@Url.Action("GetAllPcrData", "PCR", new { area = "PE" })';
+                        break;
+                    case 'your':
+                        url = '@Url.Action("GetPcrDataById", "PCR", new { area = "PE" })';
+                        break;
+                    case 'concern':
+                        url = '@Url.Action("GetConcernDataByDept", "PCR", new { area = "PE" })';
+                        break;
+                    case 'dept':
+                        url = '@Url.Action("GetPcrDataByDept", "PCR", new { area = "PE" })';
+                        break;
+                    case 'manager':
+                        url = '@Url.Action("GetPcrByApprover", "PCR", new { area = "PE" })';
+                        break;
+                    default:
+                        url = '@Url.Action("GetPcrDataById", "PCR", new { area = "PE" })';
+                }
+
+                table.ajax.url(url).load();
+            });
+
+           $(document).on('click', '.go-detail', function () {
+                const headId = $(this).data('headid');
+                const docNo = $(this).data('docno');
+
+                const baseUrl = '@Url.Action("_Create", "PCR", new { area = "PE" })';
+                window.location.href = `${baseUrl}?headId=${encodeURIComponent(headId)}`;
+            });
+
+            $(document).on('click', '#createPcr', function () {
+                const baseUrl = '@Url.Action("_Create", "PCR", new { area = "PE" })';
+                window.location.href = baseUrl;
+            });
+
+
+            $(document).on('click', '.deleteBtn', function () {
+                const headId = $(this).closest('tr').find('.go-detail').data('headid');
+
+                if (!headId) {
+                    Swal.fire('Error', 'Invalid document for deletion.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "This document will be permanently deleted!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeletePcr", "PCR", new { area = "PE" })',
+                            type: 'POST',
+                            data: { headId: headId },
+                            success: function(res) {
+                                if (res.success) {
+                                    Swal.fire('Success!', res.message, 'success')
+                                        .then(() => {
+                                            $('#pcrTable').DataTable().ajax.reload();
+                                        });
+                                } else {
+                                    Swal.fire('Error!', res.message, 'error');
+                                }
+                            },
+                            error: function() {
+                                Swal.fire('Error!', 'An error occurred on the server.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $(document).on('click', '#statusInfoBtn', function () {
+                const $container = $('#statusInfoContainer');
+
+                if ($container.is(':visible')) {
+                    $container.slideUp(200, () => $container.addClass('hidden'));
+                } else {
+                    $container.removeClass('hidden').hide().slideDown(200);
+                }
+            });
+
+            $('#DownloadSummary').on('click', function () {
+                $.ajax({
+                    url: '/PE/PCR/DownloadPcrSummary',
+                    type: 'GET',
+                    xhrFields: {
+                        responseType: 'blob'
+                    },
+                    success: function (data, status, xhr) {
+                        // Cek jika response mengandung error JSON
+                        const contentType = xhr.getResponseHeader('Content-Type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const reader = new FileReader();
+                            reader.onload = function () {
+                                try {
+                                    const json = JSON.parse(reader.result);
+                                    Swal.fire('Error', json.error || 'Unknown error occurred', 'error');
+                                } catch {
+                                    Swal.fire('Error', 'Failed to parse server response.', 'error');
+                                }
+                            };
+                            reader.readAsText(data);
+                            return;
+                        }
+
+                        // Jika bukan JSON, maka lanjut download
+                        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                        const link = document.createElement('a');
+                        const url = window.URL.createObjectURL(blob);
+                        link.href = url;
+                        link.download = 'PCR_Summary.xlsx';
+                        document.body.appendChild(link);
+                        link.click();
+                        window.URL.revokeObjectURL(url);
+                        link.remove();
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Error', 'Download failed: ' + error, 'error');
+                    }
+                });
+            });
+
+
+        });
+    </script>
+}
+
+@if (isLogin)
+{
+    <!-- Header Section -->
+    <div class="p-4 mb-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div class="flex items-center space-x-4">
+                <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+                <h1 class="text-2xl font-bold text-gray-50">Process Change Request (PCR)</h1>
+
+            </div>
+            <button id="createPcr"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <i class="fas fa-plus mr-2"></i>
+                Create New PCR
+            </button>
+        </div>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="bg-white rounded-xl p-2 mb-2 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+            <!-- Filter Section -->
+            <div class="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <label for="pcrFilter" class="flex items-center text-sm font-semibold text-gray-700 whitespace-nowrap">
+                    <i class="fas fa-filter mr-2 text-blue-600"></i>Filter By:
+                </label>
+
+                <select id="pcrFilter"
+                        class="block w-full sm:w-auto px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors duration-200">
+                    @if (isPEUser || isBuIspri || isPakDolly || isPakGilang)
+                    {
+                        <option value="all">📋 All PCR</option>
+                        <option value="your">👤 Your PCR</option>
+                        <option value="manager">✅ Approval</option>
+                        <option value="dept">🏢 Division</option>
+                        <option value="concern">⚠️ Concern Points</option>
+                    }
+                    else if (isManager)
+                    {
+                        <option value="manager">✅ Approval</option>
+                        <option value="all">📋 All PCR</option>
+                        <option value="your">👤 Your PCR</option>
+                        <option value="dept">🏢 Division</option>
+                        <option value="concern">⚠️ Concern Points</option>
+                    }
+                    else
+                    {
+                        <option value="your">👤 Your PCR</option>
+                        <option value="dept">🏢 Division</option>
+                        <option value="concern">⚠️ Concern Points</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Status Info Button -->
+            <div class="flex items-center space-x-3">
+                @if (isPEUser || isBuIspri)
+                {
+                    <a href="@Url.Action("DownloadPcrSummary", "PCR", new { area = "PE" })"
+                       target="_blank"
+                       class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-green-500 border border-transparent rounded-lg hover:from-green-500 hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200 transform hover:scale-105">
+                        <i class="fa-solid fa-file-excel mr-2"></i>
+                        Summary
+                    </a>
+                }
+                else
+                {
+                    <p></p>
+                }
+                <button id="statusInfoBtn"
+                        class="inline-flex items-center px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 border border-transparent rounded-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    View Status Guide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Info Container -->
+    <div id="statusInfoContainer" class="bg-white rounded-xl p-6 mb-6 card-shadow hidden border-l-4 border-blue-500">
+        <div class="flex flex-col items-center gap-6 w-full p-2">
+
+            <!-- Document PCR Progress -->
+            <div id="pcr-document-progress-card" class="bg-white/90 rounded-xl py-2 px-5 shadow-xs w-full">
+                <div class="text-center mb-4">
+                    <h2 class="text-lg font-bold text-orange-800 flex items-center gap-2">
+                        PHASE 1
+                    </h2>
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-file-alt text-orange-500"></i>
+                        DOCUMENT PCR PROGRESS
+                    </h2>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap justify-center">
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-1 mb-1 text-orange-500"></i>
+                        <p>Prepare</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-orange-500"></i>
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-2 mb-1 text-orange-500"></i>
+                        <p>Issuer 1 / Originator Approval</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-orange-500"></i>
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-3 mb-1 text-orange-500"></i>
+                        <p>Issuer 2 Approval</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-orange-500"></i>
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-4 mb-1 text-orange-500"></i>
+                        <p>Dept. Manager Approval</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-orange-500"></i>
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-5 mb-1 text-orange-500"></i>
+                        <p>Filled the Doc (PE)</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-orange-500"></i>
+                    <div class="bg-orange-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-orange-200 flex flex-col items-center">
+                        <i class="fa-solid fa-6 mb-1 text-orange-500"></i>
+                        <p>PE Manager Approval</p>
+                    </div>
+                </div>
+            </div>
+            <span class="block w-full h-[1px] bg-gray-200 my-2 rounded-full"></span>
+            <!-- Concern Points Progress -->
+            <div id="pcr-concern-progress-card" class="bg-white/90 rounded-xl px-5 w-full">
+                <div class="text-center mb-4">
+                    <h2 class="text-lg font-bold text-orange-800 flex items-center gap-2">
+                        PHASE 2
+                    </h2>
+                    <h2 class="text-lg font-bold text-gray-800 flex gap-2">
+                        <i class="fas fa-exclamation-triangle items-center text-yellow-600"></i>
+                        CONCERN POINTS PROGRESS
+                    </h2>
+                </div>
+
+                <div class="bg-yellow-50/70 rounded-lg p-2 text-center border border-yellow-200">
+                    <div class="text-sm p-2 font-semibold text-gray-800">
+                        Department Filled the Concern Points
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manager Approval -->
+            <div id="pcr-manager-approval-card" class="bg-white/90 rounded-xl px-5 w-full">
+                <div class="text-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center justify-start gap-2">
+                        <i class="fas fa-user-check text-purple-600"></i>
+                        APPROVAL PROGRESS
+                    </h2>
+                </div>
+
+                <div class="flex items-center gap-2 w-full justify-center flex-wrap">
+                    <div class="bg-purple-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-purple-200 w-full max-w-[250px] flex flex-col items-center">
+                        <i class="fa-solid fa-1 mb-1 text-purple-600"></i>
+                        <p>QM Approval</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-purple-600"></i>
+                    <div class="bg-purple-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-purple-200 w-full max-w-[250px] flex flex-col items-center">
+                        <i class="fa-solid fa-2 mb-1 text-purple-600"></i>
+                        <p>DGM Approval</p>
+                    </div>
+                    <i class="fa-solid fa-angle-right text-purple-600"></i>
+                    <div class="bg-purple-50/70 rounded-lg p-3 text-center text-xs font-medium text-gray-700 border border-purple-200 w-full max-w-[250px] flex flex-col items-center">
+                        <i class="fa-solid fa-3 mb-1 text-purple-600"></i>
+                        <p>Plant Approval</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-table mr-2 text-blue-600"></i>
+                PCR Records
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto p-2">
+            <table id="pcrTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Issued</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doc No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Originator</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Finish Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Counting Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost Impacted</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+
+                    <!-- 🔍 Search Row (aligned properly) -->
+                    <tr class="search-row bg-gray-25">
+                        <th class="px-6 py-2">
+                            <input data-column="0" placeholder="🔍 Search Date" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="1" placeholder="🔍 Search Doc No" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="2" placeholder="🔍 Search Title" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="3" placeholder="🔍 Search Dept" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="4" placeholder="🔍 Search Originator" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="5" placeholder="🔍 Search Plan Date" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="6" placeholder="🔍 Search Finish Date" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="7" placeholder="🔍 Search Duration" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="8" placeholder="🔍 Search Duration" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <select data-column="9" class="rankFilter text-gray-400 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">🔍 Select Rank</option>
+                                <option class="text-black" value="A">A</option>
+                                <option class="text-black" value="B">B</option>
+                                <option class="text-black" value="C">C</option>
+                                <option class="text-black" value="D">D</option>
+                            </select>
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="10" placeholder="🔍 Search Cost Impacted" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <select data-column="11" class="statusFilter text-gray-400 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">🔍 Select Status</option>
+                                <option class="text-black" value="Document PCR Progress">Document PCR Progress</option>
+                                <option class="text-black" value="Concern Points Progress">Concern Points Progress</option>
+                                <option class="text-black" value="Approval Progress">Approval Progress</option>
+                                <option class="text-black" value="PCR Complete">PCR Complete</option>
+                            </select>
+                        </th>
+                        <th class="px-6 py-2"></th>
+                        <th class="px-6 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Data populated by DataTables -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span>Use search filters above to find specific records</span>
+                </div>
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <i class="fas fa-clock mr-1"></i>
+                    <span>Last updated: <span id="lastUpdated">Just now</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Access Denied Section -->
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-pink-50">
+        @Html.Partial("Partial/_Access")
+    </div>
+}
+
+<script>
+    // Update last updated time
+    $(document).ready(function () {
+        sessionStorage.removeItem('activePhase');
+        function updateLastUpdated() {
+            $('#lastUpdated').text(new Date().toLocaleTimeString());
+        }
+
+        // Update every minute
+        setInterval(updateLastUpdated, 60000);
+
+        // Update when table reloads
+        $('#pcrTable').on('xhr.dt', function () {
+            setTimeout(updateLastUpdated, 500);
+        });
+    });
+</script>
+

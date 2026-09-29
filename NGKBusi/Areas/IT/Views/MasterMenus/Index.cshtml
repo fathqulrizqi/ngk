@@ -1,0 +1,1985 @@
+﻿@{
+    ViewBag.Title = "Master Menus";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+    <style>
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
+
+        .is-invalid {
+            border-color: #dc3545;
+        }
+
+        .select2-container .select2-selection--single.is-invalid {
+            border-color: #dc3545;
+        }
+
+        body.modal-open {
+            /* Mencegah halaman melompat saat scrollbar disembunyikan */
+            overflow-y: scroll !important;
+            padding-right: 0 !important;
+        }
+        /* Parent Detection Styles */
+        .is-invalid {
+            border-color: #ef4444 !important; /* Tailwind's red-500 */
+            box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+
+        .drag-over-parent > .item-card {
+            background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%) !important;
+            border: 3px solid #4caf50 !important;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+            transform: scale(1.02) !important;
+        }
+
+            .drag-over-parent > .item-card::after {
+                content: "📁 Will become parent";
+                position: absolute;
+                top: -30px;
+                right: 0;
+                background: linear-gradient(135deg, #4caf50, #66bb6a);
+                color: white;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+            }
+
+        /* Base Styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            padding: 0 !important;
+        }
+
+        .page-content {
+            padding-top: 0 !important;
+        }
+
+        .menu-container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        /* Sortable List Styles */
+        .sortable-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            overflow: hidden;
+            min-height: 10px;
+        }
+
+            .sortable-list .sortable-list {
+                padding-left: 20px;
+                margin-top: 8px;
+            }
+
+            .sortable-list.collapsed {
+                max-height: 0;
+                opacity: 0;
+            }
+
+        /* Item Styles */
+        .sortable-item {
+            margin-bottom: 8px;
+            transition: transform 0.2s ease-in-out;
+            position: relative;
+        }
+
+        .item-card {
+            border: 1px solid #e2e2e2;
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        /* Sortable States - NO ROTATION */
+        .sortable-enabled .item-card {
+            cursor: grab;
+        }
+
+            .sortable-enabled .item-card:active {
+                cursor: grabbing;
+            }
+
+            .sortable-enabled .item-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+            }
+
+        /* CHOSEN STATE - Orange/Yellow */
+        .sortable-chosen {
+            opacity: 1;
+            z-index: 1000;
+        }
+
+            .sortable-chosen .item-card {
+                background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%) !important;
+                border: 3px solid #ff9800 !important;
+                box-shadow: 0 8px 25px rgba(255, 152, 0, 0.5) !important;
+                color: #e65100 !important;
+                font-weight: bold !important;
+            }
+
+        /* GHOST STATE - Blue */
+        .sortable-ghost {
+            background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%) !important;
+            border: 3px dashed #2196f3 !important;
+            visibility: visible !important;
+            opacity: 0.8;
+        }
+
+            .sortable-ghost .item-card {
+                background: transparent !important;
+                box-shadow: none !important;
+                border: none !important;
+                color: #1976d2 !important;
+                font-weight: bold !important;
+            }
+
+        /* DRAG STATE - Purple */
+        .sortable-drag {
+            opacity: 1;
+            z-index: 9999;
+        }
+
+            .sortable-drag .item-card {
+                background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%) !important;
+                border: 3px solid #9c27b0 !important;
+                box-shadow: 0 15px 35px rgba(156, 39, 176, 0.5) !important;
+                color: #4a148c !important;
+                font-weight: bold !important;
+            }
+
+        /* Toggle Icon */
+        .toggle-icon {
+            cursor: pointer;
+            margin-right: 10px;
+            transform: rotate(0deg);
+            transition: transform 0.2s ease-in-out;
+        }
+
+            .toggle-icon.rotated {
+                transform: rotate(90deg);
+            }
+
+        /* Input Styles */
+        .input-style {
+            background-color: #fff;
+            border: 1px solid #d1d5db;
+            color: #111827;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            height: 42px;
+        }
+
+        /* Enhanced hover effects */
+        .sortable-enabled .sortable-item:hover {
+            transform: translateY(-1px);
+        }
+
+            .sortable-enabled .sortable-item:hover .item-card {
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+                border-color: #00b0ff;
+            }
+
+        /* Drop zone indicators */
+        .sortable-enabled .sortable-list:empty {
+            min-height: 40px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+            transition: all 0.3s ease;
+        }
+
+            .sortable-enabled .sortable-list:empty:hover {
+                border-color: #00b0ff;
+                background: linear-gradient(135deg, #e3f2fd 0%, #f0f9ff 100%);
+                box-shadow: inset 0 0 20px rgba(33, 150, 243, 0.1);
+            }
+
+        /* State Labels */
+        .state-label {
+            position: absolute;
+            top: -25px;
+            right: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 1001;
+            color: white;
+        }
+
+        .chosen-label {
+            background: #ff9800;
+        }
+
+        .ghost-label {
+            background: #2196f3;
+        }
+
+        .drag-label {
+            background: #9c27b0;
+        }
+    </style>
+}
+
+@section scriptHead {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.3/jquery.validate.min.js"></script>
+    <script src="~/Content/Login_v18/vendor/select2/select2.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            const $modal = $("#menuModal");
+            const $rolesModal = $("#menuRolesModal");
+
+            // Fungsi untuk membuka modal
+            function openModal() {
+                $modal.modal('show');
+            }
+
+            // Fungsi untuk menutup modal
+            function closeModal() {
+                $modal.modal('hide');
+                resetMenuForm();
+            }
+
+            // Reset form ke kondisi awal, termasuk menyembunyikan tombol delete
+            function resetMenuForm() {
+                $('#addMenuForm')[0].reset();
+                $('#menuId').val('');
+                $('#modalTitle').text('Add New Menu');
+                $('#saveButtonText').text('Save Menu');
+                $('#linkController').prop('checked', true);
+                $('#linkRedirect').prop('checked', false);
+                $('#controllerFields').show();
+                $('#redirectFields').hide();
+                $('#parentMenuId').val('');
+                $('#deleteMenuBtn').addClass('hidden'); // Sembunyikan tombol delete
+                $('.input-style').removeClass('border-red-500 ring-red-500');
+                $('.error-message').remove();
+            }
+
+            // Event handler untuk tombol X
+            $("#XBtn, #cancelBtn").on("click", function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeModal();
+            });
+
+            // Event handler untuk Bootstrap modal events
+            $modal.on('hidden.bs.modal', function () {
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
+                resetMenuForm();
+            });
+
+            // Prevent modal from closing when clicking inside modal content
+            $modal.find('.modal-content').on('click', function (e) {
+                e.stopPropagation();
+            });
+
+            // Event handler untuk perubahan link type
+            $('input[name="linkType"]').on('change', function () {
+                if ($(this).val() === 'controller') {
+                    $('#controllerFields').show();
+                    $('#redirectFields').hide();
+                } else if ($(this).val() === 'redirect') {
+                    $('#controllerFields').hide();
+                    $('#redirectFields').show();
+                }
+            });
+
+            let sortableInstances = new Map();
+            let currentDraggedItem = null;
+            let lastOverlappedItem = null;
+            let hoverTimer = null; // Timer untuk hover
+            let hoverStartTime = null; // Waktu mulai hover
+
+            function destroyAllSortables() {
+                sortableInstances.forEach((instance) => {
+                    if (instance && typeof instance.destroy === 'function') {
+                        try {
+                            instance.destroy();
+                        } catch (e) {
+                            console.warn('Error destroying sortable instance:', e);
+                        }
+                    }
+                });
+                sortableInstances.clear();
+            }
+
+            function makeParent($dragged, $target) {
+                if (!$dragged.is(':visible') || !$target.is(':visible') || $dragged.is($target)) {
+                    return;
+                }
+                const $oldParent = $dragged.parent().closest('.sortable-item');
+                destroyAllSortables();
+                $dragged.detach();
+                let $nestedList = $target.find('> .sortable-list');
+                if ($nestedList.length === 0) {
+                    $nestedList = $('<ul>').addClass('sortable-list');
+                    $target.append($nestedList);
+                }
+                const $card = $target.find('> .item-card');
+                if ($card.find('.toggle-icon').length === 0) {
+                    const $toggleIcon = $('<i>').addClass('toggle-icon fa-xl fas fa-caret-down p-2');
+                    $card.prepend($toggleIcon);
+                }
+                $nestedList.append($dragged);
+                if ($oldParent.length > 0) {
+                    const $oldNestedList = $oldParent.find('> .sortable-list');
+                    if ($oldNestedList.length > 0 && $oldNestedList.children('.sortable-item').length === 0) {
+                        $oldNestedList.remove();
+                        $oldParent.find('> .item-card .toggle-icon').remove();
+                    }
+                }
+                enableSortable();
+            }
+
+            function enableSortable() {
+                destroyAllSortables();
+                const nestedSortables = document.querySelectorAll('.sortable-list');
+                nestedSortables.forEach(function (el) {
+                    const sortableInstance = new Sortable(el, {
+                        group: {
+                            name: 'nested-menus',
+                            pull: true,
+                            put: true,
+                            revertClone: false
+                        },
+                        animation: 300,
+                        fallbackOnBody: true,
+                        swapThreshold: 0.65,
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        onStart: function (evt) {
+                            currentDraggedItem = $(evt.item);
+                            console.log('Drag started:', evt.item);
+                            $('.sortable-list.collapsed').removeClass('collapsed');
+                            $('.toggle-icon').removeClass('fa-caret-right').addClass('fa-caret-down');
+
+                            // Reset timer saat mulai drag
+                            clearTimeout(hoverTimer);
+                            hoverTimer = null;
+                            hoverStartTime = null;
+                        },
+                        onMove: function (evt, originalEvent) {
+                            const draggedElement = evt.dragged;
+                            const relatedElement = evt.related;
+
+                            clearAllVisualStates();
+
+                            // Clear timer jika pindah ke element lain
+                            clearTimeout(hoverTimer);
+                            hoverTimer = null;
+
+                            if (draggedElement === relatedElement ||
+                                $(draggedElement).has(relatedElement).length ||
+                                $(relatedElement).has(draggedElement).length) {
+                                lastOverlappedItem = null;
+                                return;
+                            }
+
+                            const rect = relatedElement.getBoundingClientRect();
+                            const mouseY = originalEvent.clientY;
+                            const isOverTarget = mouseY > rect.top && mouseY < rect.bottom;
+
+                            if (isOverTarget) {
+                                const $relatedItem = $(relatedElement).closest('.sortable-item');
+                                if ($relatedItem.length > 0) {
+                                    // Jika ini adalah item yang sama dengan sebelumnya, lanjutkan timer
+                                    if (lastOverlappedItem && lastOverlappedItem.is($relatedItem)) {
+                                        // Item yang sama, timer sudah berjalan
+                                        return;
+                                    }
+
+                                    // Item baru, mulai timer baru
+                                    lastOverlappedItem = $relatedItem;
+                                    hoverStartTime = Date.now();
+
+                                    // Tambahkan visual indicator untuk countdown
+                                    $relatedItem.addClass('drag-over-parent');
+
+                                    // Mulai timer 3 detik
+                                    hoverTimer = setTimeout(function () {
+                                        if (currentDraggedItem && lastOverlappedItem &&
+                                            currentDraggedItem.is(':visible') && lastOverlappedItem.is(':visible')) {
+
+                                            console.log('3 seconds hover completed - making parent');
+
+                                            // Tambahkan efek visual sebelum membuat parent
+                                            lastOverlappedItem.addClass('becoming-parent');
+
+                                            setTimeout(function () {
+                                                makeParent(currentDraggedItem, lastOverlappedItem);
+                                                lastOverlappedItem.removeClass('becoming-parent');
+                                            }, 200);
+                                        }
+                                    }, 3000); // 3 detik
+
+                                    // Optional: Tambahkan progress indicator
+                                    showHoverProgress($relatedItem);
+                                }
+                            } else {
+                                // Tidak hover di atas target, clear timer
+                                clearTimeout(hoverTimer);
+                                hoverTimer = null;
+                                lastOverlappedItem = null;
+                                hoverStartTime = null;
+                            }
+                        },
+                        onEnd: function (evt) {
+                            console.log('Drag ended.');
+
+                            // Clear semua timer dan state
+                            clearTimeout(hoverTimer);
+                            hoverTimer = null;
+                            hoverStartTime = null;
+
+                            clearAllVisualStates();
+                            currentDraggedItem = null;
+                            lastOverlappedItem = null;
+
+                            // Clear progress indicators
+                            $('.hover-progress').remove();
+                            $('.becoming-parent').removeClass('becoming-parent');
+
+                            $('.sortable-item').each(function () {
+                                const $item = $(this);
+                                const $nestedList = $item.find('> .sortable-list');
+                                if ($nestedList.length > 0 && $nestedList.children('.sortable-item').length === 0) {
+                                    $nestedList.remove();
+                                    $item.find('> .item-card .toggle-icon').remove();
+                                }
+                            });
+                            updateMenuVisuals();
+                        }
+                    });
+                    sortableInstances.set(el, sortableInstance);
+                });
+                $('#sortable-root').addClass('sortable-enabled');
+            }
+
+            function showHoverProgress($item) {
+                // Remove existing progress indicator
+                $('.hover-progress').remove();
+
+                // Create progress bar
+                const $progressBar = $('<div class="hover-progress"></div>');
+                $progressBar.css({
+                    'position': 'absolute',
+                    'bottom': '0',
+                    'left': '0',
+                    'height': '3px',
+                    'background-color': '#10b981',
+                    'width': '0%',
+                    'transition': 'width 3s linear',
+                    'z-index': '1000'
+                });
+
+                $item.css('position', 'relative').append($progressBar);
+
+                // Start animation
+                setTimeout(function () {
+                    $progressBar.css('width', '100%');
+                }, 10);
+            }
+
+            // Modifikasi fungsi clearAllVisualStates untuk membersihkan progress juga
+            function clearAllVisualStates() {
+                $('.sortable-item').removeClass('drag-over-parent becoming-parent');
+                $('.hover-progress').remove();
+            }
+
+            function disableSortable() {
+                try {
+                    // Clear timer saat disable sortable
+                    clearTimeout(hoverTimer);
+                    hoverTimer = null;
+                    hoverStartTime = null;
+
+                    destroyAllSortables();
+                    clearAllVisualStates();
+                    $('#sortable-root').removeClass('sortable-enabled');
+                } catch (e) {
+                    console.error('Error in disableSortable:', e);
+                }
+            }
+
+            function setupToggleHandlers() {
+                $(document).off('click', '.toggle-icon').on('click', '.toggle-icon', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const $icon = $(this);
+                    const $item = $icon.closest('.sortable-item');
+                    const $nestedList = $item.find('> .sortable-list');
+                    if ($nestedList.length > 0) {
+                        if ($nestedList.hasClass('collapsed')) {
+                            $nestedList.removeClass('collapsed');
+                            $icon.removeClass('fa-caret-right').addClass('fa-caret-down');
+                        } else {
+                            $nestedList.addClass('collapsed');
+                            $icon.removeClass('fa-caret-down').addClass('fa-caret-right');
+                        }
+                    }
+                });
+            }
+
+            function updateMenuVisuals() {
+                try {
+                    const colors = [
+                        "bg-green-700 hover:bg-green-500 text-white",
+                        "bg-blue-600 hover:bg-blue-400 text-white",
+                        "bg-purple-600 hover:bg-purple-400 text-white",
+                        "bg-pink-600 hover:bg-pink-400 text-white",
+                        "bg-yellow-600 hover:bg-yellow-400 text-black"
+                    ];
+                    function updateLevel(container, level = 0) {
+                        $(container).children('.sortable-item').each(function () {
+                            const $item = $(this);
+                            const $card = $item.find('> .item-card');
+                            colors.forEach(color => {
+                                $card.removeClass(color);
+                            });
+                            const colorClass = colors[level % colors.length];
+                            $card.addClass(colorClass);
+                            const $nestedList = $item.find('> .sortable-list');
+                            if ($nestedList.length > 0) {
+                                updateLevel($nestedList[0], level + 1);
+                            }
+                        });
+                    }
+                    const rootElement = document.getElementById('sortable-root');
+                    if (rootElement) {
+                        updateLevel(rootElement);
+                    }
+                } catch (e) {
+                    console.error('Error in updateMenuVisuals:', e);
+                }
+            }
+
+            function renderMenus(menus, container, level = 0) {
+                try {
+                    const colors = [
+                        "bg-green-700 hover:bg-green-500 text-white",
+                        "bg-blue-600 hover:bg-blue-400 text-white",
+                        "bg-purple-600 hover:bg-purple-400 text-white",
+                        "bg-pink-600 hover:bg-pink-400 text-white",
+                        "bg-yellow-600 hover:bg-yellow-400 text-black"
+                    ];
+                    $.each(menus, function (index, menu) {
+                        const listItem = $('<li>').addClass('sortable-item');
+                        const itemCard = $('<div>')
+                            .addClass('item-card')
+                            .attr('data-id', menu.Id);
+                        const colorClass = colors[level % colors.length];
+                        itemCard.addClass(colorClass);
+
+                        // Tambahkan ikon toggle untuk menu yang memiliki anak
+                        if (menu.Children && menu.Children.length > 0) {
+                            const toggleIcon = $('<i>').addClass('toggle-icon fa-xl fas fa-caret-down p-2');
+                            itemCard.append(toggleIcon);
+                        }
+
+                        // Tambahkan ikon menu
+                        if (menu.Icon && menu.Icon.trim() !== "") {
+                            const menuIcon = $('<i>').addClass(menu.Icon).css('margin-right', '10px');
+                            itemCard.append(menuIcon);
+                        }
+
+                        // Tambahkan judul menu
+                        const menuTitle = $('<span>').text(menu.Title);
+                        itemCard.append(menuTitle);
+
+                        const userButton = $('<button>')
+                            .addClass('py-1 px-2 ml-auto text-white rounded transition duration-200')
+                            .html('<i class="fa-regular fa-circle-user"></i>')
+                            .attr('title', 'Menu Roles'); // Tambahkan tooltip untuk UX yang lebih baik
+
+                        itemCard.append(userButton);
+
+                        listItem.append(itemCard);
+                        if (menu.Children && menu.Children.length > 0) {
+                            const nestedList = $('<ul>').addClass('sortable-list');
+                            renderMenus(menu.Children, nestedList, level + 1);
+                            listItem.append(nestedList);
+                        }
+                        container.append(listItem);
+                    });
+                } catch (e) {
+                    console.error('Error in renderMenus:', e);
+                }
+            }
+
+            function updateParentDropdown(menus, parentSelect, prefix = "") {
+                try {
+                    $.each(menus, function (index, menu) {
+                        const iconHtml = (menu.Icon && menu.Icon.trim() !== "") ? ` <i class="${menu.Icon}"></i>` : '';
+                        parentSelect.append($('<option>', {
+                            value: menu.Id,
+                            html: `${prefix} ${iconHtml} ${menu.Title}`
+                        }));
+                        if (menu.Children && menu.Children.length > 0) {
+                            updateParentDropdown(menu.Children, parentSelect, prefix + "-- ");
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error in updateParentDropdown:', e);
+                }
+            }
+
+$(document).on('click', '.item-card .fa-regular.fa-circle-user', function (e) {
+        e.stopPropagation();
+        const menuId = $(this).closest('.item-card').attr('data-id');
+
+        if (menuId) {
+            // Tampilkan loading state di dalam modal
+            const $modalContent = $rolesModal.find('.modal-content');
+            $modalContent.html(`
+                <div class="text-center p-5">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p class="mt-2">Loading user permissions...</p>
+                </div>
+            `);
+            $rolesModal.modal('show');
+
+            // Lakukan AJAX call untuk mendapatkan data JSON
+            $.ajax({
+                url: '@Url.Action("GetMenuRoles", "MasterMenus", new { area = "IT" })',
+                type: 'GET',
+                dataType: 'json',
+                data: { id: menuId },
+                success: function (data) {
+                    populateRolesModal(data);
+
+                    $('#addRoleUserNIK').select2({
+                        dropdownParent: $rolesModal,
+                        theme: 'bootstrap-5',
+                        placeholder: 'Select a User',
+                        width: '100%',
+                        minimumResultsForSearch: 0
+                    });
+
+                    $('#addRoleUser').select2({
+                        dropdownParent: $rolesModal,
+                        multiple: true,
+                        theme: 'bootstrap-5',
+                        placeholder: 'Select a Role',
+                        width: '100%',
+                        minimumResultsForSearch: 0
+                    });
+
+                    $('#editRoleSelect').select2({
+                        multiple: true,
+                        dropdownParent: $rolesModal,
+                        theme: 'bootstrap-5',
+                        placeholder: 'Select a Role',
+                        width: '100%',
+                        minimumResultsForSearch: 0
+                    });
+
+                },
+                error: function () {
+                    Swal.fire('Error', 'Failed to load user roles.', 'error');
+                    $rolesModal.modal('hide');
+                }
+            });
+        } else {
+            Swal.fire("Failed!", "Failed to get menu ID.", "error");
+        }
+});
+
+            // Fungsi untuk mengisi modal dengan data dari JSON
+            function populateRolesModal(data) {
+                const $modalContent = $rolesModal.find('.modal-content');
+                const menuDetails = data.menuDetails;
+                const userPermissions = data.userPermissions;
+
+                const menuUrl = menuDetails.redirect || (menuDetails.area ? menuDetails.area + '/' : '') + menuDetails.controller + '/' + menuDetails.action;
+
+                // Bangun HTML untuk User Permissions Table
+                let userPermissionsHtml = '';
+                if (userPermissions && userPermissions.length > 0) {
+                    $.each(userPermissions, function (index, user) {
+                        userPermissionsHtml += `
+                        <tr data-nik="${user.userNIK}" 
+    data-menu-id="${menuDetails.id}" 
+    data-role-ids="${Array.isArray(user.roleIds) ? user.roleIds.join(',') : user.roleIds || ''}">
+
+                    <td class="px-6 py-2 whitespace-nowrap">${user.userNIK}</td>
+                    <td class="px-6 py-2 whitespace-nowrap">${user.name || 'N/A'}</td>
+                    <td class="role-read-mode px-6 py-2 whitespace-nowrap">${user.roleNames || user.roleName}</td>
+                    <td class="role-edit-mode px-6 py-2 whitespace-nowrap hidden">
+                    <div>
+                        <select id="editRoleSelect_${user.userNIK}" name="roleIDs" multiple
+                        class="block w-full focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style user-role-select">
+                            @if (ViewBag.UserRoleList != null)
+                            {
+                                foreach (var role in ViewBag.UserRoleList)
+                                {
+                                    <option value="@role.id">@role.name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    </td>
+                    <td class="px-6 py-2 whitespace-nowrap text-center">
+                        <input type="checkbox" id="allowView"  name="allowView" class="form-checkbox text-green-600 rounded" ${user.allowView ? 'checked' : ''} disabled>
+                    </td>
+                    <td class="px-6 py-2 whitespace-nowrap text-center">
+                        <input type="checkbox" id="allowInsert"  name="allowInsert" class="form-checkbox text-green-600 rounded" ${user.allowInsert ? 'checked' : ''} disabled>
+                    </td>
+                    <td class="px-6 py-2 whitespace-nowrap text-center">
+                        <input type="checkbox" id="allowUpdate" name="allowUpdate" class="form-checkbox text-blue-600 rounded" ${user.allowUpdate ? 'checked' : ''} disabled>
+                    </td>
+                    <td class="px-6 py-2 whitespace-nowrap text-center">
+                        <input type="checkbox" id="allowDelete" name="allowDelete" class="form-checkbox text-red-600 rounded" ${user.allowDelete ? 'checked' : ''} disabled>
+                    </td>
+                    <td class="px-6 py-2 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <div class="action-read-mode">
+                            <button type="button" class="py-1 px-3 text-white bg-yellow-600 hover:bg-yellow-700 update-user-role-btn rounded-lg">Edit</button>
+                            <button type="button" class="py-1 px-3 text-white bg-red-600 hover:bg-red-700 delete-user-role-btn rounded-lg">Delete</button>
+                        </div>
+                        <div class="action-edit-mode hidden space-x-2">
+                            <button type="button" class="py-1 px-3 text-white bg-green-600 hover:bg-green-700 rounded-lg save-user-role-btn">Save</button>
+                            <button type="button" class="py-1 px-3 text-white bg-gray-500 hover:bg-gray-600 rounded-lg cancel-user-role-btn">Cancel</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+                    });
+                } else {
+                    userPermissionsHtml = '<tr><td colspan="6" class="px-6 py-4 text-center text-gray-500">No users found for this menu.</td></tr>';
+                }
+
+                // Gabungkan semua HTML untuk mengisi modal
+                $modalContent.html(`
+        <div class="modal-header px-2 items-center rounded-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-xl p-2">
+            <h5 class="font-bold text-xl px-2">
+                <i class="fas fa-user-shield mr-2"></i>Menu Roles for "<span id="rolesMenuTitle">${menuDetails.name}</span>"
+            </h5>
+            <button type="button" class="text-white opacity-100 px-2 text-4xl" data-bs-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="modal-body p-6 bg-gray-50">
+            <div class="bg-white p-4 rounded-xl border border-gray-200 mb-6">
+                <h6 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">User Permissions</h6>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIK</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow View</th>
+                                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Insert</th>
+                                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Update</th>
+                                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Delete</th>
+                                <th class="px-2 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userPermissionsTableBody" class="bg-white divide-y divide-gray-200">
+                            ${userPermissionsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+         <div class="bg-white p-4 rounded-xl border border-gray-200">
+            <h6 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Add New User Permission</h6>
+            <form id="addRoleForm" class="space-y-4">
+                <input type="hidden" id="addRoleMenuId" name="addRoleMenuId" value="${menuDetails.id}">
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label for="addRoleUserNIK" class="block text-sm font-semibold text-gray-600">User NIK</label>
+                        <select id="addRoleUserNIK" name="userNik" class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style">
+                            <option value="">Select User</option>
+                            @if (ViewBag.UserList != null)
+                            {
+                                foreach (var user in ViewBag.UserList)
+                                {
+                                    <option value="@user.NIK">@user.NIK - @user.Name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="addRoleUser" class="block text-sm font-semibold text-gray-600">User Role</label>
+                        <select id="addRoleUser" multiple name="roleID" class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style">
+                            <option value="">Select Role</option>
+                            @if (ViewBag.UserRoleList != null)
+                            {
+                                foreach (var role in ViewBag.UserRoleList)
+                                {
+                                    <option value="@role.id">@role.name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-1">
+                        <div class="flex flex-col md:flex-row space-x-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="allowInsert" class="form-checkbox text-green-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700 font-medium whitespace-nowrap">Insert</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="allowUpdate" class="form-checkbox text-blue-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700 font-medium whitespace-nowrap">Update</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="allowDelete" class="form-checkbox text-red-600 rounded">
+                                <span class="ml-2 text-sm text-gray-700 font-medium whitespace-nowrap">Delete</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="button" id="saveNewUserBtn" class="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition duration-200">
+                            <i class="fas fa-plus mr-2"></i>Add User
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="modal-footer flex justify-end p-6 bg-white border-t border-gray-200 rounded-b-xl space-x-4">
+            <button type="button" class="py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl shadow-md transition duration-200" data-bs-dismiss="modal">
+                <i class="fas fa-times mr-2"></i>Close
+            </button>
+        </div>
+    `);
+
+                // Pastikan modal muncul
+                $rolesModal.modal('show');
+            }
+
+            // Handler untuk tombol "Edit" di tabel (menggunakan event delegation)
+            $(document).on('click', '.update-user-role-btn', function () {
+                const $row = $(this).closest('tr');
+
+                // ubah ke mode edit
+                $row.find('.action-read-mode').addClass('hidden');
+                $row.find('.action-edit-mode').removeClass('hidden');
+                $row.find('.role-read-mode').addClass('hidden');
+                $row.find('.role-edit-mode').removeClass('hidden');
+                $row.find('input[type="checkbox"]').prop('disabled', false);
+
+                // ambil select di row ini
+                const $select = $row.find('.user-role-select');
+
+                // aktifkan select2 multiple
+                $select.select2({
+                    dropdownParent: $rolesModal,
+                    theme: 'bootstrap-5',
+                    placeholder: 'Select Roles',
+                    width: '100%',
+                    minimumResultsForSearch: 0
+                });
+
+                // ambil roleIds dari atribut row → split ke array
+                const roleIds = ($row.data('role-ids') || "").toString().split(',').filter(Boolean);
+
+                // set value terpilih di select2
+                if (roleIds.length > 0) {
+                    $select.val(roleIds).trigger('change');
+                }
+            });
+
+            // Handler untuk tombol "Cancel" di mode edit
+            $(document).on('click', '.cancel-user-role-btn', function () {
+                const $row = $(this).closest('tr');
+
+                // Tampilkan kembali mode baca dan sembunyikan mode edit
+                $row.find('.action-read-mode').removeClass('hidden');
+                $row.find('.action-edit-mode').addClass('hidden');
+                $row.find('.role-read-mode').removeClass('hidden');
+                $row.find('.role-edit-mode').addClass('hidden');
+
+                // Kembalikan atribut disabled ke semua checkbox
+                $row.find('input[type="checkbox"]').prop('disabled', true);
+            });
+        // Handler untuk tombol "Save" di mode edit
+$(document).on('click', '.save-user-role-btn', function () {
+    const $row = $(this).closest('tr');
+    const nik = $row.data('nik');
+    const menuId = $row.data('menu-id');
+    const roleIds = ($row.find('.user-role-select').val() || []).join(',');
+    const allowInsert = $row.find('input[name="allowInsert"]').is(':checked');
+    const allowUpdate = $row.find('input[name="allowUpdate"]').is(':checked');
+    const allowDelete = $row.find('input[name="allowDelete"]').is(':checked');
+    const allowView = $row.find('input[name="allowView"]').is(':checked');
+
+    if (isNaN(menuId) || menuId === 0) {
+        Swal.fire('Error', 'Invalid Menu ID. Cannot save.', 'error');
+        return;
+    }
+
+    // Tampilkan loading state pada tombol
+    const $button = $(this);
+    const originalText = $button.html();
+    $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Saving...');
+
+    // Lakukan AJAX call untuk menyimpan perubahan
+    $.ajax({
+        url: '@Url.Action("UpdateUserRole", "MasterMenus", new { area = "IT" })',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            menuId: menuId,
+            userNik: nik,
+            roleIds: roleIds,
+            allowInsert: allowInsert,
+            allowUpdate: allowUpdate,
+            allowDelete: allowDelete,
+            allowView: allowView
+        }),
+        success: function (res) {
+            if (res.success) {
+                Swal.fire('Success!', 'User permission updated successfully.', 'success')
+                    .then(() => {
+                        loadMenuRoles(menuId); // reload modal setelah user klik OK
+                    });
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Error', 'Failed to update user permission.', 'error');
+        },
+        complete: function() {
+            $button.prop('disabled', false).html(originalText);
+        }
+    });
+});
+
+    // Handler untuk tombol "Delete"
+$(document).on('click', '.delete-user-role-btn', function () {
+    const $row = $(this).closest('tr');
+    const userNik = $row.data('nik');
+    const menuIdStr = $row.data('menu-id');
+    const menuId = parseInt(menuIdStr, 10);
+
+    if (isNaN(menuId) || menuId === 0) {
+        Swal.fire('Error', 'Invalid Menu ID. Cannot delete.', 'error');
+        return;
+    }
+
+    // Konfirmasi dulu
+    Swal.fire({
+        title: 'Are you sure?',
+        text: `Delete role for user ${userNik}?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+
+            // Tampilkan loading state
+            const $button = $row.find('.delete-user-role-btn');
+            const originalText = $button.html();
+            $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...');
+
+            // AJAX call untuk delete
+            $.ajax({
+                url: '@Url.Action("DeleteUserRole", "MasterMenus", new { area = "IT" })',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    menuId: menuId,
+                    userNik: userNik
+                }),
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Deleted!', 'User role has been removed.', 'success')
+                            .then(() => {
+                                loadMenuRoles(menuId); // refresh modal
+                            });
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Failed to delete user role.', 'error');
+                },
+                complete: function () {
+                    $button.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+    });
+});
+
+
+    function loadMenuRoles(menuId) {
+    $.ajax({
+        url: '@Url.Action("GetMenuRoles", "MasterMenus", new { area = "IT" })',
+        type: 'GET',
+        dataType: 'json',
+        data: { id: menuId },
+        success: function (data) {
+            populateRolesModal(data); // refresh isi modal
+        },
+        error: function () {
+            Swal.fire('Error', 'Failed to reload user roles.', 'error');
+        }
+    });
+}
+
+
+            function loadMenusAndDropdown() {
+                $.ajax({
+                    url: '@Url.Action("GetMenus", "MasterMenus")',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        try {
+                            const rootList = $('#sortable-root');
+                            rootList.empty();
+                            renderMenus(data, rootList);
+                            setupToggleHandlers();
+                            const parentSelect = $('#parentMenuId');
+                            parentSelect.find('option:not(:first)').remove();
+                            updateParentDropdown(data, parentSelect);
+                        } catch (e) {
+                            console.error('Error processing menu data:', e);
+                        }
+                    },
+                    error: function (error) {
+                        console.log('Error fetching menu data:', error);
+                    }
+                });
+            }
+
+            function collectMenuData(container, parentId = null) {
+                const items = [];
+                try {
+                    const directChildren = $(container).children('.sortable-item');
+                    directChildren.each(function (index) {
+                        const $item = $(this);
+                        const $card = $item.find('> .item-card');
+                        const menuId = parseInt($card.attr('data-id'));
+                        if (isNaN(menuId)) {
+                            console.warn('Invalid menu ID found:', $card.attr('data-id'));
+                            return;
+                        }
+                        const $nestedList = $item.find('> .sortable-list');
+                        const itemData = {
+                            Id: menuId,
+                            ParentId: parentId,
+                            Order: index + 1
+                        };
+                        items.push(itemData);
+                        if ($nestedList.length > 0 && $nestedList.children('.sortable-item').length > 0) {
+                            const childItems = collectMenuData($nestedList[0], menuId);
+                            items.push(...childItems);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error in collectMenuData:', e);
+                }
+                return items;
+            }
+
+            // Function to populate form for edit mode
+            window.populateEditForm = function (menuData) {
+                // Isi field input dan select
+                $('#menuId').val(menuData.Id);
+                $('#menuName').val(menuData.Title);
+                $('#menuIcon').val(menuData.Icon);
+                $('#parentMenuId').val(menuData.ParentId);
+
+                // Atur jenis tautan (Controller atau Redirect)
+                if (menuData.Redirect) {
+                    $('input[name="linkType"][value="redirect"]').prop('checked', true);
+                    $('#controllerFields').hide();
+                    $('#redirectFields').show();
+                    $('#menuRedirect').val(menuData.Redirect);
+                } else {
+                    $('input[name="linkType"][value="controller"]').prop('checked', true);
+                    $('#controllerFields').show();
+                    $('#redirectFields').hide();
+                    $('#menuController').val(menuData.Controller);
+                    $('#menuAction').val(menuData.Action);
+                    $('#menuArea').val(menuData.Area);
+                }
+
+                // =========================================================
+                // BARIS BARU: Mengatur status checkbox berdasarkan data server
+                // =========================================================
+                $("#isActive").prop("checked", menuData.IsActive);
+                $("#isGlobal").prop("checked", menuData.IsGlobal);
+                $("#isShow").prop("checked", menuData.IsShow);
+
+                // Perbarui judul modal dan tombol
+                $('#modalTitle').html('<i class="fas fa-edit mr-2"></i>Edit Menu');
+                $('#saveButtonText').text('Update Menu');
+                $('#deleteMenuBtn').removeClass('hidden');
+            };
+
+            // Function to reset form for create mode
+            window.resetCreateForm = function () {
+                $('#addMenuForm')[0].reset();
+                $('#menuId').val('');
+                $('input[name="linkType"][value="controller"]').prop('checked', true);
+                $('#controllerFields').show();
+                $('#redirectFields').hide();
+                $('#modalTitle').html('<i class="fas fa-plus-circle mr-2"></i>Add New Menu');
+                $('#saveButtonText').text('Save Menu');
+                $('#deleteMenuBtn').addClass('hidden'); // Sembunyikan tombol delete
+            };
+
+            // SORT ORDER BUTTON FUNCTIONALITY
+            $('#sortOrderBtn').on('click', function () {
+                try {
+                    if ($('#sortable-root').hasClass('sortable-enabled')) {
+                        disableSortable();
+                        $(this).text('Sort Order').removeClass('bg-red-600 hover:bg-red-700').addClass('bg-blue-600 hover:bg-blue-700');
+                        $('#saveOrderBtn').addClass('hidden');
+                        $('#dragState').addClass('hidden');
+                    } else {
+                        enableSortable();
+                        $(this).text('Cancel Sort').removeClass('bg-blue-600 hover:bg-blue-700').addClass('bg-red-600 hover:bg-red-700');
+                        $('#saveOrderBtn').removeClass('hidden');
+                        $('#dragState').removeClass('hidden');
+                    }
+                } catch (e) {
+                    console.error('Error in sortOrderBtn click:', e);
+                }
+            });
+
+            // MODAL AND FORM LOGIC
+            // Handle link type change
+            $('input[name="linkType"]').on('change', function () {
+                if ($(this).val() === "controller") {
+                    $("#controllerFields").show();
+                    $("#redirectFields").hide();
+                } else {
+                    $("#controllerFields").hide();
+                    $("#redirectFields").show();
+                }
+            });
+
+            // Handle create menu button click
+            $('#createMenuBtn').on('click', function () {
+                window.resetCreateForm();
+                $('#menuModal').modal('show');
+            });
+
+            // Handle item-card click for editing
+            $(document).on('click', '.sortable-item > .item-card', function (e) {
+                e.stopPropagation();
+                // Check if sorting is enabled. If not, open the modal.
+                if (!$('#sortable-root').hasClass('sortable-enabled')) {
+                    const menuId = $(this).attr('data-id');
+                    if (menuId) {
+                        $.ajax({
+                            url: '@Url.Action("GetMenuById", "MasterMenus", new { area = "IT" })',
+                            type: 'GET',
+                            data: { id: menuId },
+                            success: function (menuData) {
+                                window.populateEditForm(menuData);
+                                $('#menuModal').modal('show');
+                            },
+                            error: function () {
+                                Swal.fire('Error', 'Failed to load menu data', 'error');
+                            }
+                        });
+                    }
+                }
+            });
+
+           $('#saveMenuBtn').on('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Jalankan validasi menggunakan jQuery Validate
+        // .form() akan mengembalikan true jika valid
+        if (!menuFormValidate.form()) {
+            return;
+        }
+
+        const isEdit = $('#menuId').val() !== '' && $('#menuId').val() !== '0';
+        const $button = $(this);
+        const originalText = $button.html();
+        $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Saving...');
+
+        const linkType = $("input[name='linkType']:checked").val();
+        let data = {
+            id: $('#menuId').val() || 0,
+            name: $("#menuName").val(),
+            parentID: $("#parentMenuId").val() || null,
+            icon: $("#menuIcon").val(),
+            controller: linkType === "controller" ? $("#menuController").val() : null,
+            action: linkType === "controller" ? $("#menuAction").val() : null,
+            area: linkType === "controller" ? $("#menuArea").val() : null,
+            redirect: linkType === "redirect" ? $("#menuRedirect").val() : null,
+            isActive: $("#isActive").prop("checked"),
+            isGlobal: $("#isGlobal").prop("checked"),
+            isShow: $("#isShow").prop("checked"),
+        };
+
+        if (isEdit) {
+            data.UpdatedBy = '@ViewBag.UserNik';
+        } else {
+            data.CreatedBy = '@ViewBag.UserNik';
+        }
+
+        const url = isEdit
+            ? '@Url.Action("UpdateMenu", "MasterMenus", new { area = "IT" })'
+            : '@Url.Action("SaveMenu", "MasterMenus", new { area = "IT" })';
+
+        $.ajax({
+            url: url,
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify(data),
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({
+                        title: "Success!",
+                        text: isEdit ? "Menu has been updated!" : "Menu has been added!",
+                        icon: "success",
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    $('#menuModal').modal('hide');
+                    loadMenusAndDropdown();
+                    location.reload();
+                } else {
+                    Swal.fire("Error", res.message || "Failed to save", "error");
+                }
+            },
+            error: function (xhr) {
+                Swal.fire("Error", "Something went wrong!", "error");
+                console.log(xhr.responseText);
+            },
+            complete: function () {
+                $button.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+
+
+            $('#menuModal').on('hidden.bs.modal', function () {
+                menuFormValidate.resetForm();
+                $('#addMenuForm')[0].reset();
+                // Pastikan kelas is-invalid juga di-reset
+                $("#addMenuForm .input-style, #addMenuForm select").removeClass("is-invalid");
+            });
+
+            // FUNGSI BARU UNTUK DELETE MENU
+            $('#deleteMenuBtn').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const menuId = $('#menuId').val();
+                if (!menuId || menuId === '0') {
+                    Swal.fire('Error', 'Invalid menu ID to delete.', 'error');
+                    return;
+                }
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You won't be able to revert this!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const $button = $(this);
+                        const originalText = $button.html();
+                        $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...');
+
+                        $.ajax({
+                            url: '@Url.Action("DeleteMenu", "MasterMenus", new { area = "IT" })',
+                            type: 'POST',
+                            data: { id: menuId },
+                            success: function (res) {
+                                if (res.success) {
+                                    Swal.fire('Deleted!', res.message, 'success');
+                                    $('#menuModal').modal('hide');
+                                    loadMenusAndDropdown();
+                                } else {
+                                    Swal.fire('Error', res.message || 'Failed to delete menu', 'error');
+                                }
+                            },
+                            error: function (xhr) {
+                                Swal.fire('Error', 'Something went wrong!', 'error');
+                                console.log(xhr.responseText);
+                            },
+                            complete: function () {
+                                $button.prop('disabled', false).html(originalText);
+                            }
+                        });
+                    }
+                });
+            });
+
+
+            // Fungsi validasi form dengan SweetAlert
+            function validateMenuForm() {
+                // Clear previous errors
+                $('.input-style').removeClass('border-red-500');
+
+                // Validasi Menu Name (wajib)
+                if (!$("#menuName").val().trim()) {
+                    Swal.fire({
+                        title: "Validation Error",
+                        text: "Menu Name is required!",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                    $("#menuName").focus().addClass('border-red-500');
+                    return false;
+                }
+
+                // Validasi Parent Menu ID (boleh null, tidak perlu validasi)
+                // Validasi Icon (tidak wajib)
+
+                // Cek link type yang dipilih
+                const linkType = $("input[name='linkType']:checked").val();
+
+                if (!linkType) {
+                    Swal.fire({
+                        title: "Validation Error",
+                        text: "Please select Link Type (Controller or Redirect)!",
+                        icon: "warning",
+                        confirmButtonText: "OK"
+                    });
+                    return false;
+                }
+
+                // Validasi berdasarkan link type
+                if (linkType === "controller") {
+                    // Validasi Controller (wajib jika link type = controller)
+                    if (!$("#menuController").val().trim()) {
+                        Swal.fire({
+                            title: "Validation Error",
+                            text: "Controller is required when Link Type is Controller!",
+                            icon: "warning",
+                            confirmButtonText: "OK"
+                        });
+                        $("#menuController").focus().addClass('border-red-500');
+                        return false;
+                    }
+
+                    // Validasi Action (wajib jika link type = controller)
+                    if (!$("#menuAction").val().trim()) {
+                        Swal.fire({
+                            title: "Validation Error",
+                            text: "Action is required when Link Type is Controller!",
+                            icon: "warning",
+                            confirmButtonText: "OK"
+                        });
+                        $("#menuAction").focus().addClass('border-red-500');
+                        return false;
+                    }
+
+                    // Area boleh kosong, tidak perlu validasi khusus
+                    // redirect harus null
+                } else if (linkType === "redirect") {
+                    // Validasi Redirect URL (wajib jika link type = redirect)
+                    if (!$("#menuRedirect").val().trim()) {
+                        Swal.fire({
+                            title: "Validation Error",
+                            text: "Redirect URL is required when Link Type is Redirect!",
+                            icon: "warning",
+                            confirmButtonText: "OK"
+                        });
+                        $("#menuRedirect").focus().addClass('border-red-500');
+                        return false;
+                    }
+
+                    // Validasi format URL (opsional, tapi bagus untuk UX)
+                    const redirectUrl = $("#menuRedirect").val().trim();
+                    const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$|^\/[\w\/-]*$/;
+
+                    if (!urlPattern.test(redirectUrl)) {
+                        Swal.fire({
+                            title: "Validation Error",
+                            text: "Please enter a valid URL format for Redirect!",
+                            icon: "warning",
+                            confirmButtonText: "OK"
+                        });
+                        $("#menuRedirect").focus().addClass('border-red-500');
+                        return false;
+                    }
+                    // controller, action, area harus null
+                }
+
+                // Jika semua validasi lolos
+                return true;
+            }
+
+        // Perbarui handler tombol "Add User" untuk menggunakan validasi
+$(document).on('click', '#saveNewUserBtn', function (e) {
+    e.preventDefault();
+
+    // Panggil validasi form
+    if (!$("#addRoleForm").valid()) {
+        return;
+    }
+
+    const menuId = $('#addRoleMenuId').val();
+    const userNik = $('#addRoleUserNIK').val().trim();
+    const selectedRoleIds = $('#addRoleUser').val();
+
+    if (!userNik || userNik.length === 0) {
+        Swal.fire('Error', 'Please select user.', 'error');
+        return;
+    }
+    // Cek apakah ada role yang dipilih
+    if (!selectedRoleIds || selectedRoleIds.length === 0) {
+        Swal.fire('Error', 'Please select at least one role.', 'error');
+        return;
+    }
+
+    // Perbaikan: gunakan selector yang lebih spesifik untuk checkbox
+    const allowInsert = $('#addRoleForm input[name="allowInsert"]').is(':checked');
+    const allowView = $('#addRoleForm input[name="allowView"]').is(':checked');
+    const allowUpdate = $('#addRoleForm input[name="allowUpdate"]').is(':checked');
+    const allowDelete = $('#addRoleForm input[name="allowDelete"]').is(':checked');
+
+    // Debug: log nilai checkbox
+    console.log('Checkbox values:', {
+        allowInsert: allowInsert,
+        allowUpdate: allowUpdate,
+        allowDelete: allowDelete,
+        allowView: allowView
+    });
+
+    const $button = $(this);
+    const originalText = $button.html();
+    $button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Adding...');
+
+    const roleIds = selectedRoleIds.join(",");
+
+    $.ajax({
+        url: '@Url.Action("AddUserRole", "MasterMenus", new { area = "IT" })',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            menuId: menuId,
+            userNik: userNik,
+            roleIds: roleIds,
+            allowInsert: allowInsert,
+            allowUpdate: allowUpdate,
+            allowDelete: allowDelete,
+            allowView: allowView
+        }),
+        success: function (res) {
+            if (res.success) {
+                Swal.fire('Success!', 'User permissions added successfully.', 'success');
+                loadMenuRoles(menuId);
+                $('#addRoleForm')[0].reset();
+                $('#addRoleUserNIK').val(null).trigger('change');
+                $('#addRoleUser').val(null).trigger('change');
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+        error: function (xhr, status, error) {
+            console.error('AJAX Error:', xhr.responseText);
+            Swal.fire('Error', 'Failed to add user permissions.', 'error');
+        },
+        complete: function () {
+            $button.prop('disabled', false).html(originalText);
+        }
+    });
+});
+
+        const userRolesList = @Html.Raw(Json.Encode(ViewBag.UserRoleList));
+            // Optional: Tambahkan validasi real-time saat user mengetik
+            $(document).ready(function () {
+                $("#menuName").on('blur', function () {
+                    if (!$(this).val().trim()) {
+                        $(this).addClass('border-red-500');
+                    } else {
+                        $(this).removeClass('border-red-500');
+                    }
+                });
+                $("#menuIcon").on('blur', function () {
+                    if (!$(this).val().trim()) {
+                        $(this).addClass('border-red-500');
+                    } else {
+                        $(this).removeClass('border-red-500');
+                    }
+                });
+                $("#menuController").on('blur', function () {
+                    const linkType = $("input[name='linkType']:checked").val();
+                    if (linkType === "controller" && !$(this).val().trim()) {
+                        $(this).addClass('border-red-500');
+                    } else {
+                        $(this).removeClass('border-red-500');
+                    }
+                });
+                $("#menuAction").on('blur', function () {
+                    const linkType = $("input[name='linkType']:checked").val();
+                    if (linkType === "controller" && !$(this).val().trim()) {
+                        $(this).addClass('border-red-500');
+                    } else {
+                        $(this).removeClass('border-red-500');
+                    }
+                });
+                $("#menuRedirect").on('blur', function () {
+                    const linkType = $("input[name='linkType']:checked").val();
+                    if (linkType === "redirect" && !$(this).val().trim()) {
+                        $(this).addClass('border-red-500');
+                    } else {
+                        $(this).removeClass('border-red-500');
+                    }
+                });
+                $('input[name="linkType"]').on('change', function () {
+                    $('.border-red-500').removeClass('border-red-500');
+                });
+            });
+
+            // Save order button
+            $('#saveOrderBtn').on('click', function () {
+                const $button = $(this);
+                const originalText = $button.text();
+                $button.prop('disabled', true).text('Saving...');
+                try {
+                    const rootContainer = document.getElementById('sortable-root');
+                    if (!rootContainer) {
+                        Swal.fire('Error', 'Menu container not found', 'error');
+                        $button.prop('disabled', false).text(originalText);
+                        return;
+                    }
+                    const menuData = collectMenuData(rootContainer);
+                    if (menuData.length === 0) {
+                        Swal.fire('Warning', 'No menu data to save', 'warning');
+                        $button.prop('disabled', false).text(originalText);
+                        return;
+                    }
+                    $.ajax({
+                        url: '@Url.Action("SaveOrder", "MasterMenus", new { area = "IT" })',
+                        type: 'POST',
+                        contentType: 'application/json; charset=utf-8',
+                        data: JSON.stringify({ items: menuData }),
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire('Success', response.message, 'success');
+                                disableSortable();
+                                $('#sortOrderBtn').text('Sort Order').removeClass('bg-red-600 hover:bg-red-700').addClass('bg-blue-600 hover:bg-blue-700');
+                                $('#saveOrderBtn').addClass('hidden');
+                                $('#dragState').addClass('hidden');
+                                setTimeout(() => {
+                                    loadMenusAndDropdown();
+                                }, 1000);
+                            } else {
+                                Swal.fire('Error', response.message || 'Failed to save menu order', 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('Save error:', xhr.responseText);
+                            Swal.fire('Error', 'Failed to save menu order: ' + error, 'error');
+                        },
+                        complete: function () {
+                            $button.prop('disabled', false).text(originalText);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error collecting menu data:', error);
+                    Swal.fire('Error', 'Error processing menu data', 'error');
+                    $button.prop('disabled', false).text(originalText);
+                }
+            });
+
+            // Initial state setup
+            $('#saveOrderBtn').addClass('hidden');
+            $('#dragState').addClass('hidden');
+            loadMenusAndDropdown();
+        });
+    </script>
+}
+
+<div class="d-flex align-items-center rounded" style="color: #2C3E50;">
+    <span style="color: #F6AA04; font-weight: bold; font-size: 20px; margin: 20px;">|</span>
+    <h2 style="font-weight: bold; margin: 0; font-size: 25px">Master Menus</h2>
+    <button id="createMenuBtn" type="button"
+            class="py-2 px-4 m-4 items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition duration-200">
+        Create Menu
+    </button>
+</div>
+
+<div class="menu-container max-w-5xl mx-auto">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-bold text-gray-800">📋 Menu Structure</h3>
+        <div class="space-x-3">
+            <button id="sortOrderBtn" type="button"
+                    class="py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md transition duration-200">
+                Sort Order
+            </button>
+            <button id="saveOrderBtn" type="button"
+                    class="py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition duration-200 hidden">
+                Save Order
+            </button>
+        </div>
+    </div>
+
+    <div id="dragState" class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-4">
+        <h4 class="font-semibold text-gray-700 mb-2">Drag States:</h4>
+        <div class="flex flex-wrap gap-4 text-sm">
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded mr-2" style="background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%); border: 2px solid #ff9800;"></div>
+                <span>Selected (Orange)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded mr-2" style="background: linear-gradient(135deg, #e3f2fd 0%, #90caf9 100%); border: 2px dashed #2196f3;"></div>
+                <span>Drop Zone (Blue)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded mr-2" style="background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%); border: 2px solid #9c27b0;"></div>
+                <span>Dragging (Purple)</span>
+            </div>
+            <div class="flex items-center">
+                <div class="w-4 h-4 rounded mr-2" style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); border: 2px solid #4caf50;"></div>
+                <span>Will Become Parent (Green)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+        <ul id="sortable-root" class="sortable-list">
+        </ul>
+    </div>
+</div>
+
+<div class="modal fade" id="menuModal" tabindex="-1" role="dialog" aria-labelledby="menuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header px-2 items-center rounded-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-xl p-2">
+                <h5 class="font-bold text-xl px-2" id="menuModalLabel">
+                    <span id="modalTitle">Add New Menu</span>
+                </h5>
+                <button id="XBtn" type="button" class="text-white opacity-100 px-2 text-4xl" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body p-6 bg-gray-50">
+                <form id="addMenuForm" class="space-y-6">
+                    <input type="hidden" id="menuId" name="menuId" value="" />
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label for="menuName" class="block text-sm font-semibold text-gray-600">
+                                <i class="fas fa-tag mr-1"></i>Menu Name
+                            </label>
+                            <input type="text" id="menuName" name="menuName" required
+                                   class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                   placeholder="e.g., Dashboard" />
+                        </div>
+                        <div>
+                            <label for="parentMenuId" class="block text-sm font-semibold text-gray-600">
+                                <i class="fas fa-sitemap mr-1"></i>Parent Menu
+                            </label>
+                            <select id="parentMenuId" name="parentMenuId"
+                                    class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style">
+                                <option value="">Choose Parent (Root)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="menuIcon" class="block text-sm font-semibold text-gray-600">
+                                <i class="fas fa-icons mr-1"></i>Icon
+                            </label>
+                            <input type="text" id="menuIcon" name="menuIcon"
+                                   class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                   placeholder="fa-solid fa-chevron-right" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-600 mb-3">
+                                <i class="fas fa-link mr-1"></i>Link Type
+                            </label>
+                            <div class="flex items-center space-x-6">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="linkType" value="controller" class="form-radio text-indigo-600" id="linkController" checked>
+                                    <span class="ml-2 text-gray-700 font-medium">
+                                        <i class="fas fa-cogs mr-1"></i>Controller
+                                    </span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="linkType" value="redirect" class="form-radio text-indigo-600" id="linkRedirect">
+                                    <span class="ml-2 text-gray-700 font-medium">
+                                        <i class="fas fa-external-link-alt mr-1"></i>URL Redirect
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded-xl border border-gray-200">
+                            <label class="block text-sm font-semibold text-gray-600 mb-3">
+                                <i class="fas fa-toggle-on mr-1"></i>Menu Status
+                            </label>
+                            <div class="flex items-center space-x-6">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="isActive" name="isActive" class="form-checkbox text-green-600 rounded" checked>
+                                    <span class="ml-2 text-gray-700 font-medium">
+                                        <i class="fas fa-power-off mr-1"></i>Active
+                                    </span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="isGlobal" name="isGlobal" class="form-checkbox text-blue-600 rounded" checked>
+                                    <span class="ml-2 text-gray-700 font-medium">
+                                        <i class="fas fa-globe mr-1"></i>Global
+                                    </span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="checkbox" id="isShow" name="isShow" class="form-checkbox text-purple-600 rounded" checked>
+                                    <span class="ml-2 text-gray-700 font-medium">
+                                        <i class="fas fa-eye mr-1"></i>Show
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="controllerFields" class="bg-white p-4 rounded-xl border border-gray-200">
+                        <div class="border-b pb-3 mb-4">
+                            <h6 class="text-lg font-semibold text-gray-700">
+                                <i class="fas fa-code mr-1"></i>Controller Configuration
+                            </h6>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label for="menuController" class="block text-sm font-semibold text-gray-600">Controller</label>
+                                <input type="text" id="menuController" name="menuController"
+                                       class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                       placeholder="e.g., Home" />
+                            </div>
+                            <div>
+                                <label for="menuAction" class="block text-sm font-semibold text-gray-600">Action</label>
+                                <input type="text" id="menuAction" name="menuAction"
+                                       class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                       placeholder="e.g., Index" />
+                            </div>
+                            <div>
+                                <label for="menuArea" class="block text-sm font-semibold text-gray-600">Area</label>
+                                <input type="text" id="menuArea" name="menuArea"
+                                       class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                       placeholder="e.g., Admin (optional)" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="redirectFields" class="bg-white p-4 rounded-xl border border-gray-200 hidden">
+                        <div class="border-b pb-3 mb-4">
+                            <h6 class="text-lg font-semibold text-gray-700">
+                                <i class="fas fa-external-link-alt mr-1"></i>URL Configuration
+                            </h6>
+                        </div>
+                        <div>
+                            <label for="menuRedirect" class="block text-sm font-semibold text-gray-600">Redirect URL</label>
+                            <input type="url" id="menuRedirect" name="menuRedirect"
+                                   class="mt-1 block w-full rounded-xl focus:ring-indigo-500 focus:border-indigo-500 shadow-sm px-3 py-2 input-style"
+                                   placeholder="https://example.com" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer flex justify-end p-6 bg-white border-t border-gray-200 rounded-b-xl space-x-4">
+                <button type="button" id="deleteMenuBtn" class="py-2 px-6 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl shadow-md transition duration-200 hidden">
+                    <i class="fas fa-trash-alt mr-2"></i>Delete
+                </button>
+                <button id="cancelBtn" type="button" class="py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl shadow-md transition duration-200" data-dismiss="modal">
+                    <i class="fas fa-times mr-2"></i>Cancel
+                </button>
+                <button type="button" id="saveMenuBtn" class="py-2 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition duration-200">
+                    <i class="fas fa-save mr-2"></i>
+                    <span id="saveButtonText">Save Menu</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-container-roles">
+    <div class="modal fade" id="menuRolesModal" tabindex="-1" role="dialog" aria-labelledby="menuRolesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header px-2 items-center rounded-sm bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-xl p-2">
+                    <h5 class="font-bold text-xl px-2" id="menuRolesModalLabel">
+                        <i class="fas fa-user-shield mr-2"></i>Menu Roles for "<span id="rolesMenuTitle"></span>"
+                    </h5>
+                    <button type="button" class="text-white opacity-100 px-2 text-4xl" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body p-6 bg-gray-50">
+                    @*<div class="bg-white p-4 rounded-xl border border-gray-200 mb-6">
+                            <h6 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Menu Details</h6>
+                            <div id="menuDetailsInfo" class="overflow-x-auto">
+                                <table class="w-full text-left table-auto">
+                                    <thead>
+                                        <tr class="bg-gray-50">
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">URL/Path</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Icon</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="py-2 px-4 text-sm text-gray-800"><span id="detailsMenuId"></span></td>
+                                            <td class="py-2 px-4 text-sm text-gray-800"><span id="detailsMenuName"></span></td>
+                                            <td class="py-2 px-4 text-sm text-gray-800"><span id="detailsMenuUrl"></span></td>
+                                            <td class="py-2 px-4 text-sm text-gray-800"><i id="detailsMenuIcon" class=""></i></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>*@
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 mb-6">
+                        <h6 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">User Permissions</h6>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIK</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Insert</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Update</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Allow Delete</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="userPermissionsTableBody" class="bg-white divide-y divide-gray-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer flex justify-end p-6 bg-white border-t border-gray-200 rounded-b-xl space-x-4">
+                    <button type="button" class="py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-xl shadow-md transition duration-200" data-bs-dismiss="modal">
+                        <i class="fas fa-times mr-2"></i>Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var menuFormValidate = $("#addMenuForm").validate({
+        rules: {
+            menuName: {
+                required: true
+            },
+            menuRedirect: {
+                required: function (element) {
+                    return $('input[name="linkType"]:checked').val() === "redirect";
+                },
+                url: true
+            }
+        },
+        messages: {
+            menuName: {
+                required: "Menu name is required."
+            },
+            menuRedirect: {
+                required: "Redirect URL is required.",
+                url: "Please enter a valid URL."
+            }
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+            // Menempatkan pesan error di dalam parent div
+            // Ini akan bekerja untuk input dan select
+            error.addClass('text-red-500 text-xs mt-1');
+            element.closest('div').append(error);
+        },
+        highlight: function (element) {
+            // Menambahkan kelas is-invalid untuk elemen yang error
+            $(element).addClass('is-invalid');
+        },
+        unhighlight: function (element) {
+            // Menghapus kelas is-invalid jika elemen sudah valid
+            $(element).removeClass('is-invalid');
+        },
+        // ignore: ":hidden" // Ini untuk memastikan field hidden tidak divalidasi
+    });
+
+    var addRoleFormValidate = $("#addRoleForm").validate({
+        rules: {
+            // Aturan validasi untuk select User NIK
+            userNik: { required: true },
+            // Aturan validasi untuk select User Role
+            roleID: { required: true }
+        },
+        messages: {
+            userNik: { required: "Please select a user." },
+            roleID: { required: "Please select a role." }
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            // Logika untuk menempatkan pesan error di bawah Select2
+            if (element.hasClass('select2-hidden-accessible')) {
+                element.next('.select2-container').after(error);
+            } else {
+                error.insertAfter(element);
+            }
+        },
+        highlight: function (element) {
+            $(element).addClass('is-invalid');
+            // Tambahkan kelas is-invalid ke container Select2
+            if ($(element).hasClass('select2-hidden-accessible')) {
+                $(element).next('.select2-container').find('.select2-selection--single').addClass('is-invalid');
+            }
+        },
+        unhighlight: function (element) {
+            $(element).removeClass('is-invalid');
+            // Hapus kelas is-invalid dari container Select2
+            if ($(element).hasClass('select2-hidden-accessible')) {
+                $(element).next('.select2-container').find('.select2-selection--single').removeClass('is-invalid');
+            }
+        }
+    });
+</script>

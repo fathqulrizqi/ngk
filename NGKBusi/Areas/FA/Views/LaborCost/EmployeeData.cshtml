@@ -1,0 +1,45 @@
+﻿
+@{
+    ViewBag.Title = "Employee Data";
+    ViewBag.SideMenuHeader = "Labor Cost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Year;
+    int dateDiff = Math.Abs(12 * (currDate.Year - lastDate.Year) + currDate.Month - lastDate.Month);
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Scripts/jexcel/dist/css/jquery.jexcel.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/jquery.jexcel.js")"></script>
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/jquery.csv.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/jquery.mask.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/EmployeeData.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    Employee Data
+    <button id="btnLCEmployeeDataUpload" class="btn btn-success" title="Upload">Upload</button>
+    <input type="file" id="flLCUpload" name="iLCUpload" value="" style="display:none;" accept=".xls,.xlsx" />
+    <button id="btnLCEmployeeDataSave" class="btn btn-success" title="Save">Save</button>
+    @Html.ActionLink("Download Format", "DownloadEmployeeDataFormat", "LaborCost", null, new { id = "btnLCDownloadFormat", Class = "btn btn-primary" })
+    <input type="file" name="iLCUpload" id="fileLCUpload" style="display:none;" />
+</h2>
+<form action="@Url.Action("EmployeeData", "LaborCost", new { area = "FA" })" method="post" style="display:none;">
+    <select id="selLCEmployeeDataPeriod" name="iLCEmployeeDataPeriod" class="form-control selLCEmployeeDataPeriod" style="width:125px; display:inline-block;">
+        @for (var z = endYear; z <= endYear; z++)
+        {
+            <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+        }
+    </select>
+    <button type="submit" id="btnLCEmployeeDataLevel" style="display:none;">Submit</button>
+</form>
+<div style="overflow-x:auto;">
+    <div id="divEmployeeData"></div>
+</div>

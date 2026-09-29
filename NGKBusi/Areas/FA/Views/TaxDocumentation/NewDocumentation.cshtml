@@ -1,0 +1,810 @@
+﻿
+@{
+    ViewBag.Title = "Request Sparepart";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+
+}
+@section scriptHead{
+    <link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+    <link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+    <!--   Fonts and icons   -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+    <link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
+    <style>
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        table td {
+            position: relative;
+        }
+
+            table td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+            table td .form-control {
+                position: absolute;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+    </style>
+}
+
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-toolbar.min.js")"</script>
+<script src="@Url.Content("~/Content/bootstrap-table/tableExport.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-export.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-filter-control.min.js")"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style type="text/css">
+    .card {
+        text-align: left;
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+        .card img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+        }
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inherit;
+        }
+            .card .card-header .bg-default {
+                color: black;
+            }
+
+    #txtQuantity-error {
+        font-size: 18px;
+    }
+
+    fieldset.scheduler-border {
+        border: 1px groove #ddd !important;
+        padding: 0 1.4em 1.4em 1.4em !important;
+        margin: 0 0 1.5em 0 !important;
+        -webkit-box-shadow: 0px 0px 0px 0px #000;
+        box-shadow: 0px 0px 0px 0px #000;
+    }
+
+    legend.scheduler-border {
+        font-size: 1.2em !important;
+        font-weight: bold !important;
+        text-align: left !important;
+        width: auto;
+        padding: 0 10px;
+        border-bottom: none;
+    }
+</style>
+<div class="row">
+    <div class="col-sm-12">
+        <div class="card">
+            <div class="card-header bg-primary">
+                <div class="button-prev"></div>
+                Tax Documentation Header
+            </div>
+            <form action="@Url.Action("SubmitDocumentation", "TaxDocumentation", new { area = "FA" })" id="formAddDocumentation" name="formAddDocumentation">
+                <div class="card-body">
+                    <h5 class="card-title"> </h5>
+                    <div class="form-group row has-error">
+                        <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Documentation Title</label>
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-sm" id="txtDocumentationTitle" name="DocumentationTitle" placeholder="input Title" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="selDocumentationType" class="col-md-4 col-form-label">Type</label>
+                        <div class="col-md-8">
+                            <select class="form-control selectpicker form-control-sm select2" data-live-search="true" name="Type" id="selDocumentationType" data-placeholder="Select Type" required>
+                                <option value="all">-- All Item Group --</option>
+                                <option value="AllTax">All Tax</option>
+                                <option value="Objection"> Objection</option>
+                                <option value="Others"> Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtAuditDate" class="col-md-4 col-form-label">Tax Audit Date</label>
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-sm" id="txtAuditDate" name="TaxAuditDate" placeholder="input Date" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtFinalDiscussionDate" class="col-md-4 col-form-label">Final Discussion Date</label>
+                        <div class="col-md-8">
+                            <input name="FinalDiscussionDate" type="text" class="form-control form-control-sm" id="txtFinalDiscussionDate" placeholder="input Date" required>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtTotalClaim" class="col-md-4 col-form-label">Total Claim</label>
+                        <div class="col-md-8">
+                            <input name="TotalClaim" type="text" class="form-control form-control-sm" " id="txtTotalClaim" placeholder="Input Amount" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary" id="btnAddDocumentation">Save</button> <button type="submit" class="btn btn-danger">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-sm-12">
+        <div class="card">
+            <div class="card-header bg-primary">Documentation Detail</div>
+            <div class="card-body">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th style="width:40%">Correction List</th>
+                            <th style="width:20%">Before SPHP</th>
+                            <th style="width:20%">SPHP</th>
+                            <th style="width:20%">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Corporate Income Tax</strong></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Revenue</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Cost Of Good Sold</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Other Income</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Fiscal Correction</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Prepaid Tax</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp; &nbsp; Penalty</td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WHT 21</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WHT 23</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WHT 26</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WHT 4.2</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>VAT</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Others</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Grand Total</strong></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                            <td><input type="text" placeholder="0" class="form-control"></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td></td>
+                            <td>
+                                <button class="btn btn-primary">Submit</button>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary">Submit</button>
+                            </td>
+                            <td>
+                                <button class="btn btn-primary">Submit</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row mt-3">
+    <div class="col-sm-12">
+        <div class="card">
+            <div class="card-header bg-primary">Document Upload</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-12 d-flex justify-content-center">
+                        <button class="btn btn-success m-1">SP2</button>
+                        <button class="btn btn-success m-1">Before SPHP</button>
+                        <button class="btn btn-success m-1">SPHP</button>
+                        <button class="btn btn-success m-1">Tanggapan SPHP</button>
+                        <button class="btn btn-success m-1">Undangan Pembahasan</button>
+                        <button class="btn btn-success m-1">Risalah Pembahasan (Result)</button>
+                        <button class="btn btn-success m-1">SKP</button>
+                        <button class="btn btn-success m-1">Permintaan Rekening</button>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-sm-12">
+                        <div class="form-group row">
+                            <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Select Document</label>
+                            <div class="col-md-8">
+                                <input type="file" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selDocumentationType" class="col-md-4 col-form-label">Type Document</label>
+                            <div class="col-md-8">
+                                <select class="form-control selectpicker form-control-sm" " data-live-search="true" name="DocumentationType" id="selDocumentationType" data-placeholder="Select Type" required>
+                                    <option value="all">SP2</option>
+                                    <option value="AllTax">Before SPHP</option>
+                                    <option value="Objection"> SPHP</option>
+                                    <option value="Others"> Tanggapan SPHP</option>
+                                    <option value="Others"> Undangan Pembahasan</option>
+                                    <option value="">Risalah Pembahasan (Result)</option>
+                                    <option value="">SKP</option>
+                                    <option value="">Permintaan Rekening</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selDocumentationType" class="col-md-4 col-form-label"></label>
+                            <div class="col-md-8">
+                                <button type="submit" class="btn btn-primary">Save</button>
+                                <button type="reset" class="btn btn-danger">Reset</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var validateDocumentationtHeader =
+        $("form[name='formAddDocumentation']").validate({
+            // Specify validation rules
+            rules: {
+                DocumentationTitle: {
+                    required: true
+                },
+                Type: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                DocumentationTitle: {
+                    required: "Please Input Title"
+
+                },
+                Type: {
+                    required: "Please select section"
+                }
+            },
+            submitHandler: function (form) {
+                var url = $('#formAddDocumentation').attr('action');
+                ConfirmAddDocumentation(url);
+            }
+        });
+
+    $(function () {
+        var $auditDate = $('#txtAuditDate');
+        var $endDate = $('#txtFinalDiscussionDate');
+
+        $auditDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+
+        $endDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+    })
+    function ConfirmAddDocumentation(Link) {
+        swal({
+            title: "Are you sure?",
+            text: "Add Documentation",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Save it!",
+            closeOnConfirm: false,
+            closeOnCancel: false
+        }, function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: $('#formAddDocumentation').serialize(),
+                    success: function (json) {
+                        if (json.status == 1) {
+
+                            swal("Success!", json.msg, "success");
+                            displayList();
+                            $('#formAddDocumentation')[0].reset();
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Deactivate!", Link, "error");
+                    }
+                })
+            } else {
+                swal("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+    $(document).on('click', '#btnAddDocumentation', function (e) {
+
+        var url = $('#formAddDocumentation').attr('action');
+        validateDocumentationtHeader.form();
+
+    });
+</script>
+
+@*<div class="row mt-3">
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-header bg-success">Before SPHP <br /> (Approved)</div>
+                <div class="card-body">
+                    <h5 class="card-title"> </h5>
+                    <form action="@Url.Action("AddRequestList", "TaxDocumentation", new { area = "FA" })" id="formRequestList" name="formAddItem">
+                        <fieldset class="scheduler-border">
+                            <legend class="scheduler-border">Corporate Income Tax</legend>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Revenue</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Cost Of Good Sold</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Other Income</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Fiscal Correction</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Prepaid Tax</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Penalty</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 21</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 23</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 26</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 4.2</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>VAT</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Others</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Grand Total</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value="-" readonly>
+                            </div>
+                        </div>
+                </div>
+            </form>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-header bg-warning">SPHP<br /> ( waitinng Approval)</div>
+                <div class="card-body">
+                    <h5 class="card-title"> </h5>
+                    <form action="@Url.Action("AddRequestList", "TaxDocumentation", new { area = "FA" })" id="formRequestList" name="formAddItem">
+                        <fieldset class="scheduler-border">
+                            <legend class="scheduler-border">Corporate Income Tax</legend>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Revenue</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value=" 1.968.878.040" required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Cost Of Good Sold</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value=" 6.740.617.250 " required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Other Income</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Fiscal Correction</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Prepaid Tax</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Penalty</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value=" 750.771.176" required>
+                                </div>
+                            </div>
+
+                        </fieldset>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 21</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 23</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 26</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 4.2</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>VAT</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" value=" 2.487.567.625" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Others</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" required>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Grand Total</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" readonly>
+                            </div>
+                        </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary" id="approveData">Approve</button> <button type="submit" class="btn btn-danger" id="addData">Reject</button>
+                </div>
+
+                </form>
+            </div>
+
+
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+                <div class="card-header bg-default" style="color:black">Result</div>
+                <div class="card-body">
+                    <h5 class="card-title"> </h5>
+                    <form action="@Url.Action("AddRequestList", "TaxDocumentation", new { area = "FA" })" id="formRequestList" name="formAddItem">
+                        <fieldset class="scheduler-border">
+                            <legend class="scheduler-border">Corporate Income Tax</legend>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Revenue</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Cost Of Good Sold</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Other Income</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Fiscal Correction</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Prepaid Tax</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label">Penalty</label>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+                                <label for="inputPassword" class="col-md-4 col-form-label"><strong>Correction Name</strong></label>
+                                <label for="inputPassword" class="col-md-4 col-form-label"><strong>Amount</strong></label>
+                            </div>
+                            <div class="form-group row">
+
+                                <div class="col-md-4">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Correction Name" disabled>
+                                </div>
+                                <div class="col-md-8">
+
+                                    <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+
+
+                                <div class="col-md-12">
+
+                                    <button class="btn btn-primary" id="addList" disabled><span><i class="fa fa-plus"></i></span> Add Correction List</button>
+                                </div>
+                            </div>
+                        </fieldset>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 21</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 23</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 26</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>WHT 4.2</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>VAT</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Others</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" disabled>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+
+                            <label for="inputPassword" class="col-md-4 col-form-label"><strong>Grand Total</strong></label>
+                            <div class="col-md-8">
+
+                                <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Amount" readonly>
+                            </div>
+                        </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary" id="addData" disabled>Submit</button> <button type="submit" class="btn btn-danger" id="addData" disabled>Cancel</button>
+                </div>
+
+                </form>
+            </div>
+
+
+        </div>
+    </div>*@

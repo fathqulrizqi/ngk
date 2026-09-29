@@ -1,0 +1,580 @@
+﻿
+@{
+    ViewBag.Title = "Plug Cap Palet Records";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+}
+
+@section scriptHead{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.0/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+}
+@{
+    var fgTag = ViewBag.FGTag as NGKBusi.Areas.Production.Models.Production_PlugCap_Tag_FG;
+    var partList = ViewBag.PartTagList as List<NGKBusi.Areas.Production.Models.Production_PlugCap_Tag_Part> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCap_Tag_Part>();
+
+    var currentQty = partList.Sum(x => x.qty);
+    var targetQty = fgTag.qty;
+    var isMatch = currentQty == targetQty;
+}
+
+<style>
+    .datatable-input {
+        border: 1px solid #d1d5db;
+        background-color: white;
+        border-radius: 0.5rem;
+        outline: none;
+    }
+
+
+        .datatable-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+</style>
+<body class="min-h-screen font-sans text-gray-800 bg-gray-50">
+
+    @if (fgTag != null)
+    {
+        <div class="p-6">
+
+            <div class="mb-6 flex justify-between items-center border-b pb-4">
+                <h1 class="text-3xl font-extrabold text-blue-700">
+                    <i class="fa-solid fa-pallet-boxes mr-2"></i>Pallet Detail
+                </h1>
+                <a href="@Url.Action("Index", "PlugCapPaletRecord")" class="text-sm text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-left"></i> Back to List
+                </a>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-100">
+                <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-list text-blue-500"></i> FG Tag
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="flex flex-col bg-blue-50 p-4 rounded-lg">
+                        <span class="text-sm font-semibold text-blue-600">Pallet No</span>
+                        <span class="text-xl font-extrabold text-blue-900">@fgTag.pallet_no</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                        <span class="text-sm font-semibold text-gray-600">Part No</span>
+                        <span class="text-lg font-bold">@fgTag.part_no</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                        <span class="text-sm font-semibold text-gray-600">Type</span>
+                        <span class="text-lg font-bold">@fgTag.type</span>
+                    </div>
+                    @if (currentQty != 0)
+                    {
+                        <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                            <span class="text-sm font-semibold text-gray-600">Total Qty /  Scanned Qty </span>
+                            <span class="text-lg font-bold @(isMatch ? "text-green-600" : "text-red-600")">
+                                @targetQty / @currentQty @(isMatch ? "" : "(Not Match)")
+                            </span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                            <span class="text-sm font-semibold text-gray-600">Total Qty</span>
+                            <span class="text-lg font-bold text-green-600">
+                                @targetQty
+                            </span>
+                        </div>
+                    }
+
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                        <span class="text-sm font-semibold text-gray-600">Lot No (FG)</span>
+                        <span class="text-lg font-bold">@fgTag.lot_no</span>
+                    </div>
+
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg">
+                        <span class="text-sm font-semibold text-gray-600">Created At</span>
+                        <span class="text-lg font-bold text-gray-600">@(fgTag.created_at?.ToString("dd MMM yyyy HH:mm") ?? "-")</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+                <div class="flex justify-between items-center ">
+                    <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-boxes text-blue-500"></i> Part List in Pallet
+                    </h2>
+                    <button onclick="openQrModal()" class="group bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition-all duration-200 flex items-center gap-2">
+                        <i class="fa-solid fa-qrcode group-hover:scale-110 transition-transform"></i>
+                        <span>Scan QR / Input</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="partTable" class="w-full text-sm text-left bg-white border">
+                        <thead class="bg-blue-50 text-blue-700 font-semibold uppercase">
+                            <tr>
+                                <th class="p-3">No</th>
+                                <th class="p-3">Part No</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Qty</th>
+                                <th class="p-3">Lot Prod</th>
+                                <th class="p-3">Tgl Repacking</th>
+                                <th class="p-3">BN</th>
+                                <th class="p-3">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @{ var rowNumber = 1; }
+                            @if (partList.Any())
+                            {
+                                foreach (var item in partList)
+                                {
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="p-3 font-medium text-gray-600">@(rowNumber++)</td>
+                                        <td class="p-3">@item.part_no</td>
+                                        <td class="p-3">@item.type</td>
+                                        <td class="p-3 font-bold text-green-700">@item.qty</td>
+                                        <td class="p-3">@item.lot_prod</td>
+                                        <td class="p-3 text-gray-500">@item.tgl_repacking.ToString("dd MMM yyyy")</td>
+                                        <td class="p-3">@item.BN</td>
+                                        <td class="flex justify-center gap-2">
+                                            <button onclick="confirmDelete('@item.id')" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-all" title="Delete">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="8" class="p-4 text-center text-gray-500 italic">
+                                        No Part Records found for this pallet.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    }
+    else
+    {
+        <div class="p-6 text-center text-red-600 bg-white m-6 rounded-xl shadow">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+            <h1 class="text-xl font-bold">Error 404: Pallet Not Found</h1>
+            <p class="text-gray-600 mt-2">The requested pallet record could not be found in the database.</p>
+        </div>
+    }
+
+    <div id="qrModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-80 transition-opacity backdrop-blur-sm"></div>
+
+        <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4">
+
+                <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all w-full max-w-4xl">
+
+                    <div class="flex justify-between items-center bg-gray-50 px-6 py-4 border-b border-gray-100">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-blue-600"></i> Batch Input Pallet
+                        </h3>
+                        <button onclick="closeQrModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="px-6 py-6">
+                        <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Scan QR / Manual Input</label>
+                            <div class="flex gap-2">
+                                <div class="relative w-full">
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                        <i class="fa-solid fa-keyboard text-gray-400"></i>
+                                    </div>
+                                    <input type="text" id="qrInput"
+                                           class="block w-full pl-10 pr-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                           placeholder="Klik disini sebelum scan" autocomplete="off">
+                                </div>
+                                <button onclick="addLocalItem()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-plus"></i> Add
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">*Input akan ditampung di tabel bawah terlebih dahulu.</p>
+                        </div>
+
+                        <div class="border rounded-lg overflow-hidden">
+                            <div class="bg-gray-100 px-4 py-2 border-b flex justify-between items-center">
+                                <span class="font-semibold text-gray-700">List Data yang akan disimpan</span>
+                                <span id="counterBadge" class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded border border-blue-400">0 Items</span>
+                            </div>
+                            <div class="overflow-y-auto max-h-64">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-700 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2">Pallet No</th>
+                                            <th class="px-4 py-2">Part No</th>
+                                            <th class="px-4 py-2">Type</th>
+                                            <th class="px-4 py-2">Lot</th>
+                                            <th class="px-4 py-2 text-right">Qty</th>
+                                            <th class="px-4 py-2 text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tempTableBody" class="divide-y divide-gray-100">
+                                        <tr id="emptyRow">
+                                            <td colspan="6" class="px-4 py-8 text-center text-gray-400 italic">
+                                                Belum ada data yang di-scan.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 flex justify-between items-center border-t border-gray-100">
+                        <button type="button" onclick="clearList()" class="text-red-600 hover:text-red-800 text-sm font-medium hover:underline">
+                            Reset List
+                        </button>
+                        <div class="flex gap-3">
+                            <button type="button" onclick="closeQrModal()" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">
+                                Cancel
+                            </button>
+                            <button type="button" onclick="submitBatchData()" id="btnSubmitBatch" disabled class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold text-sm transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Simpan Data
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <script>
+
+    let tempDataList = [];
+    const modal = document.getElementById('qrModal');
+    const qrInput = document.getElementById('qrInput');
+
+    // --- Inisialisasi DataTable Utama ---
+    document.addEventListener("DOMContentLoaded", function () {
+        if (document.getElementById("partTable") && @partList.Any().ToString().ToLower()) {
+             new simpleDatatables.DataTable("#partTable", {
+                searchable: true, fixedHeight: false, perPage: 10
+            });
+        }
+    });
+
+    // --- Modal Functions ---
+    function openQrModal() {
+        modal.classList.remove('hidden');
+        qrInput.value = '';
+        qrInput.focus();
+        // Reset list jika ingin setiap buka modal mulai dari kosong (opsional)
+         clearList();
+    }
+
+    function closeQrModal() {
+        modal.classList.add('hidden');
+    }
+
+    // --- Logic 1: Tambah ke List Sementara (Client Side) ---
+    function addLocalItem() {
+        const rawCode = qrInput.value;
+
+        if (!rawCode || rawCode.trim() === "") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Input Kosong',
+                text: 'Silakan scan atau ketik data terlebih dahulu.',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            return;
+        }
+
+        // Split string berdasarkan spasi (logic sama dengan controller)
+        // Membersihkan spasi ganda menjadi satu spasi
+        const code_baru = rawCode.replace(" -", "-")
+        let cleanCode = code_baru.replace(/\s+/g, ' ').trim();
+        let parts = cleanCode.split(' ');
+
+        if (parts.length < 5) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Format Salah',
+            text: `Format QR tidak lengkap. Terdeteksi: ${parts.length} bagian. Minimal 5.`,
+        });
+        return;
+    }
+
+    // B. Ambil Pallet & Part
+    let scannedPallet = parts[0];
+    let scannedPart = parts[1];
+
+    // C. Ambil Type & Lot (Logika Cerdas)
+    // Kita ambil dari index 2 sampai sebelum 2 angka terakhir (Qty)
+    // parts.slice(2, -2) artinya: ambil dari index 2, buang 2 item terakhir dari array
+    let combinedTypeLot = parts.slice(2, parts.length - 2).join(' ');
+
+    let scannedType = "";
+    let scannedLot = "";
+
+    // Potong 4 karakter terakhir sebagai LOT
+    if (combinedTypeLot.length > 4) {
+        scannedLot = combinedTypeLot.slice(-4); // Ambil 4 char dari belakang
+        scannedType = combinedTypeLot.slice(0, -4).trim(); // Sisanya adalah Type
+    } else {
+        scannedLot = combinedTypeLot;
+        scannedType = "-";
+    }
+
+    // --- 3. VALIDASI LOGIC (MENGGUNAKAN HASIL PARSING DI ATAS) ---
+
+    // Bandingkan Part No dan Type hasil parsing dengan data dari Server (@fgTag)
+    if ('@fgTag.part_no' != scannedPart || '@fgTag.type' != scannedType) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Data tidak sesuai',
+            html: `Part atau Type tidak match.<br>
+                   <b>Scan:</b> ${scannedPart} / ${scannedType}<br>
+                   <b>Ref:</b> @fgTag.part_no / @fgTag.type`,
+            timer: 3000 // Sedikit diperlama agar user sempat baca
+        });
+        qrInput.value = '';
+        return;
+    }
+
+    // Validasi Header (Pallet No tidak boleh sama dengan Header saat ini)
+    if ('@fgTag.pallet_no' == scannedPallet) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Input Data Header',
+            text: 'Data header tidak boleh di input kembali.',
+            timer: 2000
+        });
+        qrInput.value = '';
+        return;
+    }
+
+    // --- 4. CEK DUPLIKAT (LOGIKA TETAP) ---
+
+    const savedPallets = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(partList.Select(x => x.pallet_no)));
+
+    let isDuplicateLocal = tempDataList.some(row => row[0] === scannedPallet); // Cek list sementara
+    let isDuplicateServer = savedPallets.includes(scannedPallet); // Cek list database
+
+    if (isDuplicateLocal || isDuplicateServer) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Duplikat',
+            text: `Pallet No ${scannedPallet} sudah ada di list antrian.`,
+            timer: 2000
+        });
+        qrInput.value = '';
+        return;
+    }
+
+    // --- 5. SIMPAN KE ARRAY SEMENTARA ---
+            // Simpan parts asli atau hasil olahan sesuai kebutuhan sistem Anda
+        let new_format = [parts[0], parts[1], scannedType, scannedLot, parts[parts.length - 1]]
+        tempDataList.push(new_format);
+
+        // Update Tampilan Tabel
+        renderTempTable();
+
+        // Reset Input & Fokus kembali untuk scan berikutnya
+        qrInput.value = '';
+        qrInput.focus();
+
+        // Toast notification kecil
+        const Toast = Swal.mixin({
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 1000,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        })
+        Toast.fire({ icon: 'success', title: 'Ditambahkan ke list' })
+    }
+
+    // Handle Enter Key di Input
+    qrInput.addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            addLocalItem();
+        }
+    });
+
+    // --- Logic 2: Render Tabel Sementara ---
+    function renderTempTable() {
+        const tbody = document.getElementById('tempTableBody');
+        const counter = document.getElementById('counterBadge');
+        const btnSubmit = document.getElementById('btnSubmitBatch');
+
+        tbody.innerHTML = ''; // Clear table
+
+        if (tempDataList.length === 0) {
+            tbody.innerHTML = `
+                <tr id="emptyRow">
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-400 italic">
+                        Belum ada data yang di-scan.
+                    </td>
+                </tr>`;
+            btnSubmit.disabled = true;
+            counter.innerText = "0 Items";
+            return;
+        }
+
+        btnSubmit.disabled = false;
+        counter.innerText = tempDataList.length + " Items";
+
+        // Loop array dan buat row HTML
+        // Ingat urutan array: 0=Pallet, 1=Part, 2=Type1, 3=Type2, 4=Lot, 5=Qty
+        console.log(tempDataList);
+        tempDataList.forEach((row, index) => {
+            let tr = document.createElement('tr');
+            tr.className = "hover:bg-blue-50 transition-colors border-b border-gray-100";
+
+            tr.innerHTML = `
+                <td class="px-4 py-2 font-medium text-blue-900">${row[0]}</td>
+                <td class="px-4 py-2">${row[1]}</td>
+                <td class="px-4 py-2">${row[2]}</td>
+                <td class="px-4 py-2">${row[3]}</td>
+                <td class="px-4 py-2 text-right font-bold text-green-600">${parseInt(row[4])}</td>
+                <td class="px-4 py-2 text-center">
+                    <button onclick="removeFromList(${index})" class="text-red-500 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-colors" title="Hapus">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // Scroll ke bawah otomatis agar scan terbaru terlihat
+        tbody.parentElement.scrollTop = tbody.parentElement.scrollHeight;
+    }
+
+    // --- Logic 3: Hapus Item dari List ---
+    function removeFromList(index) {
+        tempDataList.splice(index, 1);
+        renderTempTable();
+    }
+
+    function clearList() {
+        tempDataList = [];
+        renderTempTable();
+    }
+
+    function submitBatchData() {
+        if (tempDataList.length === 0) return;
+
+        Swal.fire({
+            title: 'Simpan Data?',
+            text: `Anda akan menyimpan ${tempDataList.length} item ke database.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Ya, Simpan!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                Swal.fire({
+                    title: 'Menyimpan...',
+                    text: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading() }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("inputPartTag", "PlugCapPaletRecord")',
+                    type: 'POST',
+                    data: {
+                        dataArray: tempDataList,
+                        id: @fgTag.id
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: response.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload(); // Refresh halaman untuk melihat data di tabel utama
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Error System', error, 'error');
+                    }
+                });
+            }
+        });
+        }
+    function confirmDelete(id) {
+        Swal.fire({
+            title: 'Hapus Part?',
+            text: "Apakah Anda yakin ingin menghapus item ini dari pallet?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33', // Merah untuk tombol hapus
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                // Tampilkan Loading
+                Swal.fire({
+                    title: 'Menghapus...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading() }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("deletePartTag", "PlugCapPaletRecord")',
+                    type: 'POST',
+                    data: { id: id },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Terhapus!',
+                                text: response.message,
+                                timer: 1000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+                    }
+                });
+            }
+        });
+    }
+    </script>
+</body>

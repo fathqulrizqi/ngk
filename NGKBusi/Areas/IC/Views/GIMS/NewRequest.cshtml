@@ -1,0 +1,520 @@
+﻿@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.IC.Controllers;
+
+@{
+    ViewBag.Title = "Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var GIMS = ViewContext.Controller as GIMSController;
+    DefaultConnection db = new DefaultConnection();
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = _currUser.GetUserId();
+    var currUserSectName = _currUser.FindFirstValue("sectName");
+    var currUserCostName = _currUser.FindFirstValue("CostName");
+    var currData = ViewBag.CurrRequest;
+    var currDataLines = ViewBag.CurrRequestLines;
+    var currDataList = ViewBag.RequestList;
+    var currApproval = ViewBag.CurrApproval;
+    List<string> salesTeam = new List<string> { "SALES - OEM", "SALES - OES", "SALES - IAM", "MARKETING" };
+    List<string> categoryList = new List<string> { "ASSEMBLED", "BENDED", "BODY ASSY", "BODY COMPONENT", "BOX CONTAINER", "CENTER OIL", "CENTRE ELECTRODE", "CHUCKERED NON-SE", "CHUCKERED WITH SE", "CONNECTOR", "CONTACT SPRING", "CORRUGATED BOX", "PLUG CAP", "FORGED", "GASKET", "GUME TAPE", "HANGER CONTAINER", "HANGER EMPTY", "INNER BOX", "INSULATOR (CE)", "INSULATOR (NON-CE)", "METAL SHELL", "NICKLE ALOY", "OTHER PACKING", "OUTER BOX", "PLASTIC COVER", "PLASTIC SLEEVE", "PLATED", "RESIN-PHENOLIC", "RUBBER-CAP BODY", "RUBBER-SEAL", "RUBBER-WP", "SENSOR OXYGEN", "SHEET PACKING", "SPARK PLUG", "STICKER", "STRUCTBOND", "STYROFOAM EMPTY", "TALC POWDER", "TALC RING", "TERMINAL NUT", "TERMINAL STUD", "WIP SETSUGO", "WIRE PACKING" };
+    List<string> businessChannel = new List<string> { "OEM-Passthrough", "OEM-Local", "OES-Passthrough", "OES-Local", "AMP-Passthrough", "AMP-Local" };
+    if (salesTeam.Contains(currUserCostName))
+    {
+        categoryList = new List<string> { "SPARK PLUG", "PLUG CAP", "SENSOR OXYGEN", "KNOCK SENSOR", "2W PLATFORM" };
+    }
+    else if (currUserCostName == "INVENTORY CONTROL")
+    {
+        categoryList.Add("KNOCK SENSOR");
+        categoryList.Add("2W PLATFORM");
+    }
+
+    var isAllowEdit = Request["addNew"] != null || currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub ? true : false;
+    var isAllowSign = currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub ? true : false;
+}
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .tblSign thead th, .tblAddEmployee thead th {
+            background-color: #1F4E78 !important;
+            color: white;
+        }
+    </style>
+
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".tblRequestList").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+            $(".btnReqLineAdd").click(function () {
+                var tr = $(".tblNewRequest tbody tr:first").clone();
+                tr.find("input").val("");
+                $(".tblNewRequest tbody").append(tr);
+            });
+
+            $(document).on("click", ".btnReqLineDelete", function () {
+                var tr = $(this).closest("tr");
+                if ($(".tblNewRequest tbody tr").length == 1) {
+                    tr.find("input").val("");
+                } else {
+                    tr.remove();
+                }
+            });
+
+
+            $("#selGIMSFilterStatus,#selGIMSFilterYear,#selGIMSFilterLevel").change(function () {
+                $(".btnGIMSFilter").click();
+            });
+
+        });
+    </script>
+}
+
+    <h2>
+        Request
+
+        @if (Request["addNew"] == null && Request["ReqNumber"] == null)
+        {
+            <a href="@Url.Action("NewRequest", "GIMS", new { area = "IC", addNew = "addNew" })" class="btn btn-primary">Create Request</a>
+            <a href="@Url.Action("Progress", "GIMS", new { area = "IC" })" target="_blank" class="btn btn-success">Go to Progress List</a>
+        }
+        else
+        {
+            <a href="@Url.Action("NewRequest", "GIMS", new { area = "IC" })" class="btn btn-success">Back to Request List</a>
+        }
+    </h2>
+
+<div class="divGIMSFilter @(Request["ReqNumber"] == null && Request["addNew"] == null ? "":"d-none")">
+    <form action="@Url.Action("NewRequest", "GIMS", new { area = "IC" })" method="post">
+        <select id="selGIMSFilterYear" class="form-control" name="iGIMSFilterYear">
+            <option value="">-Year-</option>
+            @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selGIMSFilterStatus" class="form-control" name="iGIMSFilterStatus">
+            <option value="">-Status-</option>
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.currUserLevels).Count() > 1)
+        {
+            <select id="selGIMSFilterLevel" class="form-control" name="iGIMSFilterLevel">
+                <option value="">-Level-</option>
+                @foreach (var data in ((IEnumerable<dynamic>)ViewBag.currUserLevels).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.UserLevel + "|" + ViewBag.UserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnGIMSFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <table class="table table-bordered tblRequestList">
+        <thead>
+            <tr>
+                <th>ReqNumber</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Request By</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in currDataList)
+            {
+                <tr>
+
+                    <td>
+                        <a target="_blank" href="@Url.Action("NewRequest", "GIMS", new { area = "IC", ReqNumber = data.ReqNumber })">@(data.ReqNumber)</a>
+                    </td>
+                    <td>@(data.Created_At.ToString("dd-MM-yyyy"))</td>
+                    <td>@(data.Description)</td>
+                    <td>@(data.Creator.Name)</td>
+                    <td class="text-center">
+                        @if (!data.Is_Reject)
+                        {
+                            <span class="badge badge-info">@(GIMS.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub))</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">Rejected</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <div class="container-fluid" style="overflow:auto;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="@Url.Action((currData != null ? "NewRequestEdit" : "NewRequestAdd"), "GIMS", new { area = "IC", ReqNumber = currData?.ReqNumber })" method="post" enctype="multipart/form-data">
+                            <div class="form-group row">
+                                <label for="txtDate" class="col-sm-2 col-form-label">Date</label>
+                                <div class="col-sm-10">
+                                    <input type="text" id="txtDate" name="iDate" placeholder="Date" class="form-control txtDate" autocomplete="off" readonly value="@(currData?.Created_At.ToString("dd-MM-yyyy") ?? DateTime.Now.ToString("dd-MM-yyyy"))" required @(isAllowEdit ? "" : "disabled") />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDescription" class="col-sm-2 col-form-label">Description</label>
+                                <div class="col-sm-10">
+                                    <textarea id="txtDescription" name="iDescription" placeholder="Description" class="form-control txtDescription" required @(currData?.Approval >= 2 ? "readonly" : "")>@(currData?.Description)</textarea>
+                                </div>
+                            </div>
+                            <table class="table table-bordered table-striped tblNewRequest">
+                                <thead>
+                                    <tr class="bg-info text-bg-info">
+                                        <th>Item</th>
+                                        <th>Category</th>
+                                        <th class="@(salesTeam.Contains(currUserCostName) || currUserCostName == "INVENTORY CONTROL" ? "":"d-none")">Business Channel</th>
+                                        <th>Unit</th>
+                                        <th>Usage</th>
+                                        @if (currData?.Approval >= 2)
+                                        {
+                                            <th>GIMS</th>
+                                        }
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (currData == null)
+                                    {
+                                    <tr>
+                                        <td><input type="text" class="form-control txtItem" name="iItem[]" placeholder="item" required/></td>
+                                        <td>
+                                            <select class="form-control selCategory" name="iCategory[]" required>
+                                                <option value="">-Select-</option>
+                                                @foreach (var selOption in categoryList)
+                                                {
+                                                    <option value="@(selOption)">@(selOption)</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td class="@(salesTeam.Contains(currUserCostName) || currUserCostName == "INVENTORY CONTROL" ? "":"d-none")">
+                                            <select class="form-control selBusinessChannel" name="iBusinessChannel[]" required>
+                                                <option value="">-Select-</option>
+                                                @foreach (var selOption in businessChannel)
+                                                {
+                                                    <option value="@(selOption)">@(selOption)</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select class="form-control selUnit" name="iUnit[]" required>
+                                                <option value="">-Select-</option>
+                                                <option value="GR">GR</option>
+                                                <option value="PCS">PCS</option>
+                                            </select>
+                                        </td>
+                                        <td><input type="number" step="any" name="iUsage[]" style="width:75px;" class="form-control txtUsage" min="0" value="0" required/></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-danger btn-sm btnReqLineDelete @(isAllowEdit ? "" : "d-none")" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    }
+                                    else
+                                    {
+                                        foreach (var data in currDataLines)
+                                        {
+                                        <tr>
+                                            <td><input type="text" class="form-control txtItem" name="iItem[]" placeholder="item" value="@(data?.Item)" @(!isAllowEdit ? "readonly" : "") /></td>
+                                            <td>
+                                                <select class="form-control selCategory" name="iCategory[]"  @(!isAllowEdit ? "readonly" : "")>
+                                                    <option value="" @(!isAllowEdit ? "disabled" : "")>-Select-</option>
+                                                    @foreach (var selOption in categoryList)
+                                                    {
+                                                        <option value="@(selOption)" @(data.Category == selOption ? "Selected" : "") @(!isAllowEdit && data.Category != selOption  ? "disabled" : "")>@(selOption)</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td class="@(salesTeam.Contains(currUserCostName) || currUserCostName == "INVENTORY CONTROL" ? "":"d-none")">
+                                                <select class="form-control selBusinessChannel" name="iBusinessChannel[]"  @(!isAllowEdit ? "readonly" : "")>
+                                                    <option value="" @(!isAllowEdit ? "disabled" : "")>-Select-</option>
+                                                    @foreach (var selOption in businessChannel)
+                                                    {
+                                                        <option value="@(selOption)" @(data.Business_Channel == selOption ? "Selected" : "") @(!isAllowEdit && data.Business_Channel != selOption  ? "disabled" : "")>@(selOption)</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select class="form-control selUnit" name="iUnit[]" @(!isAllowEdit ? "readonly" : "")>
+                                                    <option value="" @(!isAllowEdit ? "disabled" : "")>-Select-</option>
+                                                    <option value="GR" @(data.Unit == "GR" ? "Selected" : "") @(!isAllowEdit && data.Unit != "GR" ? "disabled" : "")>GR</option>
+                                                    <option value="PCS" @(data.Unit == "PCS" ? "Selected" : "") @(!isAllowEdit && data.Unit != "PCS" ? "disabled" : "")>PCS</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="number" step="any" name="iUsage[]" style="width:75px;" class="form-control txtUsage" min="0" value="@(data.Usage ?? 0)" @(!isAllowEdit ? "readonly" : "") /></td>
+
+                                            @if (currData?.Approval >= 2)
+                                            {
+                                                <td><input type="text" class="form-control txtGIMS" name="iGIMS[]" placeholder="GIMS" value="@(data?.GIMS)"  @(!isAllowEdit ? "readonly" : "")/></td>
+                                            }
+
+                                            <td class="text-center">
+                                                @if (currData?.Created_By == currUserID || (currData?.Approval == 2 && currUserCostName == "INVENTORY CONTROL"))
+                                                {
+                                                    <button type="button" class="btn btn-danger btn-sm btnReqLineDelete @(isAllowEdit ? "" : "d-none")" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button>
+                                                }
+                                            </td>
+                                        </tr>
+                                        }
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="@(currData?.Approval >= 2 ?"5":(salesTeam.Contains(currUserCostName) || currUserCostName == "INVENTORY CONTROL" ? "6" : "5"))">
+                                            @if (isAllowEdit || currData == null)
+                                            {
+                                                <button type="button" class="btn btn-success form-control btnReqLineAdd @(isAllowEdit ? "" : "d-none")">+</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    @if (isAllowEdit)
+                                    {
+                                        <button type="submit" class="btn btnReqSubmit btn-primary form-control" onclick="return confirm('Are you sure want to save this Request?')">Save</button>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                        @if (Request["addNew"] == null)
+                        {
+                            <table class="table table-bordered tblSign mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">Inventory Control</th>
+                                        <th class="text-center" colspan="2">Department</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-center">Handled By</th>
+                                        <th class="text-center">Approved By</th>
+                                        <th class="text-center">Prepared By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 0 && currData.Is_Reject == false && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post" class="formRequestSign">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary btnSign" onclick="return confirm('Are you sure want to sign this request ?');">Sign</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                if (currData != null && (currData.Approval >= 3 && currData.Approval_Sub >= 0) || currData.Approval > 2)
+                                                {
+                                                    string currReqNumber = currData.ReqNumber.ToString();
+                                                    var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 128 && w.Document_Id == 1 && w.Reveral_ID == currReqNumber && w.Approval == 2 && w.Approval_Sub == 0).FirstOrDefault();
+
+                                                    if (checkHistory != null && checkHistory.IsReject == true)
+                                                    {
+                                                        <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                    }
+                                                }
+                                            }
+                                        </td>
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 1 && currData.Is_Reject == false && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post" class="formRequestSign">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary btnSign" onclick="return confirm('Are you sure want to sign this request ?');">Sign</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 0) || currData.Approval > 1)
+                                                {
+                                                    string currReqNumber = currData.ReqNumber.ToString();
+                                                    var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 128 && w.Document_Id == 1 && w.Reveral_ID == currReqNumber && w.Approval == 2 && w.Approval_Sub == 0).FirstOrDefault();
+
+                                                    if (checkHistory != null && checkHistory.IsReject == true)
+                                                    {
+                                                        <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                    }
+                                                }
+                                            }
+                                        </td>
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Approval == 1 && currData.Is_Reject == false && currData.Approval_Sub == 0 && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("newRequestSign", "GIMS", new { area = "IC" })" method="post" class="formFirstSign formRequestSign">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary btnFirstSign btnSign" onclick="return confirm('Are you sure want to sign this request ?');">Sign</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                                {
+                                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 3 && currData.Approval_Sub >= 0) || currData.Approval > 2))
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 3, 0, 1));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 1))
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 2, 0, 1));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 1, 1, 1));
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 3 && currData.Approval_Sub >= 0) || currData.Approval > 2))
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 3, 0, 2));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 1))
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 2, 0, 2));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                            {
+                                                @(GIMS.ApprovalHistory(currData.ReqNumber, 1, 1, 2));
+                                            }
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,261 @@
+﻿@using NGKBusi.Models;
+
+@{
+    ViewBag.Title = "DataList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    var yearStart = 2021;
+    var yearEnd = DateTime.Now.Month < 9 ? DateTime.Now.Year - 1 : DateTime.Now.Year;
+    var currYear = DateTime.Now.Year;
+    var _Period = ViewBag.Period.Split('|');
+    string _Period_FY = _Period[0].ToString();
+    int _Period_Year = int.Parse(_Period[1]);
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            if ($("#tblBudgetStatus").length) {
+                $("#tblBudgetStatus").tablesorter({
+                    theme: "bootstrap",
+                    widthFixed: true,
+                    widgets: ['zebra', 'columns', 'filter', 'stickyHeaders', 'reflow'],
+                    widgetOptions: {
+                        filter_saveFilters: true,
+                        stickyHeaders_xScroll: "#DivStatusWrapper",
+                        filter_cssFilter: [
+                            'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control'
+                        ],
+                        filter_excludeFilter: {
+                            // zero-based column index
+                            1: 'range'
+                        }
+                    }
+                }).tablesorterPager({
+                    cssNext: '.tblBudgetStatus-next', // next page arrow
+                    cssPrev: '.tblBudgetStatus-prev', // previous page arrow
+                    cssFirst: '.tblBudgetStatus-first', // go to first page arrow
+                    cssLast: '.tblBudgetStatus-last', // go to last page arrow
+                    cssPageDisplay: '.tblBudgetStatus-pagedisplay', // location of where the "output" is displayed
+                    cssPageSize: '.tblBudgetStatus-pagesize', // page size selector - select dropdown that sets the "size" option
+                    cssGoto: '.tblBudgetStatus-pagenum',
+                    container: $(".tblBudgetStatus-pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: 10
+                });
+            }
+
+            $("#selPeriod").change(function () {
+                $("#formSummarizeBudget").submit();
+            });
+        });
+    </script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialBudgetSystem")
+}
+
+    <h2>
+        Summarize Budget
+        <button type="button" id="btnBudgetReturn" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">
+            Return
+        </button>
+        <form method="post" action="@Url.Action("ListAssetPlanDownloadData", "BudgetSystem", new { area = "FA" })" style="display:inline-block;">
+            <button type="submit" id="btnBudgetListAssetPlanDownload" class="btn btn-success btnDownload">List Asset Plan</button>
+            <input type="hidden" id="hfListAssetPlanDownloadPeriod" name="iDownloadPeriod" value="@(ViewBag.Period)" />
+        </form>
+        <form method="post" action="@Url.Action("ListExpensesPlanDownloadData", "BudgetSystem", new { area = "FA" })" style="display:inline-block;">
+            <button type="submit" id="btnBudgetExpenseDownload" class="btn btn-success btnDownload">List Expenses Plan</button>
+            <input type="hidden" id="hfBudgetExpenseDownloadPeriod" name="iDownloadPeriod" value="@(ViewBag.Period)" />
+        </form>
+        <form method="post" action="@Url.Action("ListGLDownloadData", "BudgetSystem", new { area = "FA" })" style="display:inline-block;">
+            <button type="submit" id="btnBudgetGLDownload" class="btn btn-success btnDownload">List GL</button>
+            <input type="hidden" id="hfBudgetGLDownloadPeriod" name="iDownloadPeriod" value="@(ViewBag.Period)" />
+        </form>
+
+        <button type="button" class="btn btn-success" data-toggle="modal" data-target="#DivStatusWrapper">Approval Status</button>
+    </h2>
+@*<h3 class="hDownload">Downloading Data...Please Wait.. <i class="fas fa-sync fa-spin"></i></h3>*@
+<input type="file" name="iUpload" id="fUpload" class="d-none" />
+<div class="upload-wrap" style="display:none;">
+    <h3>Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+    </div>
+    <hr />
+</div>
+<form id="formSummarizeBudget" method="post" action="@Url.Action("SummarizeBudget", "BudgetSystem", new { area = "FA" })">
+    <select id="selPeriod" name="iPeriod" class="form-control">
+        @for (var i = yearStart; i <= yearEnd; i++)
+        {
+            var fy = "FY1" + (i + 2).ToString().Substring(2, 2);
+            <option value="@(fy+"|"+i)" @(ViewBag.Period == fy+"|"+i ? "selected":"")>@(fy)</option>
+        }
+    </select>
+</form> 
+<hr />
+
+
+@{
+    ICollection<FA_Section> currFASection = ViewBag.StatusSection;
+    var app1 = currFASection.Where(w => w.labor_cost_approval != null).Count();
+    var app2 = currFASection.Where(w => w.labor_cost_approval2 != null).Count();
+    var app3 = currFASection.Where(w => w.labor_cost_approval3 != null).Count();
+}
+<div id="DivStatusWrapper" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table id="tblBudgetStatus" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filter-select" data-placeholder="-Type-">Budget Type</th>
+                            <th class="filter-select" data-placeholder="-Section-">Section</th>
+                            <th class="filter-select" data-placeholder="-Level 1-">Level 1</th>
+                            @if (app1 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 2-">Level 2</th>
+                            }
+                            @if (app2 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 3-">Level 3</th>
+                            }
+                            @if (app3 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 4-">Level 4</th>
+                            }
+                            <th class="filter-select" data-placeholder="@(app3 > 0 ? "-Level 5-": (app2  > 0 ? "-Level 4-":(app1 > 0 ? "Level 3" : "Level 2")))">@(app3 > 0 ? "Level 5" : (app2 > 0 ? "Level 4" : (app1 > 0 ? "Level 3" : "Level 2")))</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.StatusData)
+                        {
+                            string currSect = item.Section_Name;
+                            var sect = db.FA_Section.Where(w => w.Section_Name == currSect && w.Period == _Period_Year).FirstOrDefault();
+
+                            var sign = sect.sign?.Name;
+                            var approval = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval?.Name;
+                            var approval2 = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval2?.Name;
+                            var approval3 = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval3?.Name;
+                            <tr>
+                                <td class="text-nowrap">@(item.Budget_Type)</td>
+                                <td class="text-nowrap">@(currSect)</td>
+                                <td class="text-center">
+                                    <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(sign)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "Done" : "On Progress")</span>
+                                </td>
+                                @if (app1 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                @if (app2 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval2 != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval2)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                @if (app3 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval3 != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? " btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval3)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? " fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                <td class="text-center">
+                                    <button class="@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? " btn btn-sm btn-success":"btn btn-sm btn-danger")" title="FINANCE ACCOUNTING"><i class="@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? " fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? "Done" : "On Progress")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="7" class="tblBudgetStatus-pager pager">
+                                <div class="form-inline">
+                                    <div class="btn-group btn-group-sm mx-1" role="group">
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-first first" title="first">⇤</button>
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-prev prev" title="previous">←</button>
+                                    </div>
+                                    <span class="tblBudgetStatus-pagedisplay pagedisplay"></span>
+                                    <div class="btn-group btn-group-sm mx-1" role="group">
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-next next" title="next">→</button>
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-last last" title="last">⇥</button>
+                                    </div>
+                                    <select class="form-control-sm custom-select px-4 tblBudgetStatus-pagesize pagesize" title="Select page size">
+                                        <option selected="selected" value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <select class="form-control-sm custom-select px-4 mx-1 tblBudgetStatus-pagenum pagenum" title="Select page number"></select>
+                                </div>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnModalLabel">Return Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="@Url.Action("ExpenseReturn", "BudgetSystem", new { area = "FA" })">
+                <div class="modal-body">
+                    <select id="selSectionReturn" name="iReturnSection" class="form-control" required>
+                        <option value="">-Choose-</option>
+                        @foreach (var data in ViewBag.ReturnSectionList)
+                        {
+                            <option value="@(data.Section_From_Code)" @(ViewBag.SectionChoose == data.Section_From_Code ? "selected" : "")>@(data.Section_From_Code + " - " + data.Section_From_Name)</option>
+                        }
+                    </select>
+                    <input type="hidden" name="iReturnPeriod" value="@(ViewBag.Period)" />
+                    <input type="hidden" name="iReturnVersion" value="@(ViewBag.Version)" />
+                    <input type="hidden" name="iReturnLevel" value="@(ViewBag.Level)" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure want to return this data ?')">Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

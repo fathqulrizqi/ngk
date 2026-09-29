@@ -1,0 +1,245 @@
+﻿
+@{
+    ViewBag.Title = "Adjustment Price";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css" />
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        input[aria-controls="AdjustmentTable"],
+        select[aria-controls="AdjustmentTable"],
+        #dt-search-0,
+        #dt-length-0 {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            margin-bottom: 5px;
+            border: 1px solid #DEE2E6 !important;
+            border-radius: 0.5rem !important;   
+            padding: 0.4rem 0.8rem !important;
+            transition: all 0.2s ease;
+        }
+    </style>
+}
+
+
+@section scriptHead {
+    <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+
+    <script>
+        var currUser = "@(ViewBag.UserNik)"
+        console.log("currUser", currUser)
+
+    </script>
+    <script>
+        $(document).ready(function () {
+            document.getElementById("createAdjustmentBtn").onclick = function () {
+                window.location.href = '@Url.Action("CreateInventoryAdjustment", "Inventory", new { area = "HC" })';
+            };
+
+            const table = $("#AdjustmentTable").DataTable({
+                orderCellsTop: true,
+                paging: true,
+
+                ajax: {
+                    url: "@Url.Action("GetAdjustment", "Inventory", new { area = "HC" })",
+                    type: "GET",
+                    dataSrc: json => json.data || []
+                },
+
+                order: [[0, "desc"]],
+
+                columns: [
+                    // 1. Date Issued
+                    {
+                        data: "Date_Issued",
+                        title: "Date Issued",
+                        className: "text-sm w-32",
+                        render: function (data, type) {
+                            if (!data) return "-";
+
+                            const timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, "$1"));
+                            const d = new Date(timestamp);
+
+                            const formatted =
+                                d.getFullYear() + "/" +
+                                String(d.getMonth() + 1).padStart(2, "0") + "/" +
+                                String(d.getDate()).padStart(2, "0");
+
+                            if (type === "sort") return timestamp;
+                            return formatted;
+                        }
+                    },
+
+                    // 2. Request No
+                    {
+                        data: "Request_No",
+                        title: "Request No",
+                        render: data => `
+                        <span class="font-medium text-gray-800">${data}</span>
+                    `
+                    },
+
+                    // 3. Subject
+                    {
+                        data: "Subject",
+                        title: "Subject",
+                        render: data => `
+                        <span class="text-gray-600">${data ?? "-"}</span>
+                    `
+                    },
+
+                    // 4. Item Name
+                    {
+                        data: "Item_Name",
+                        title: "Item Name",
+                        render: data => `
+                        <span class="text-gray-600">${data ?? "-"}</span>
+                    `
+                    },
+
+                    // 5. Qty Before
+                    {
+                        data: "Qty_Before",
+                        title: "Qty Before",
+                        className: "text-center",
+                        render: data => `
+                        <span class="text-gray-700">${data}</span>
+                    `
+                    },
+
+                    // 6. Qty After
+                    {
+                        data: "Qty_After",
+                        title: "Qty After",
+                        className: "text-center font-bold",
+                        render: data => `
+                        <span class="text-blue-600">${data}</span>
+                    `
+                    },
+
+                    // 7. Creator
+                    {
+                        data: "Creator",
+                        title: "Creator",
+                        render: data => `
+                        <span class="text-xs text-gray-500">${data}</span>
+                    `
+                    }
+                ],
+
+                initComplete: function () {
+                    const api = this.api();
+
+                    $('#AdjustmentTable thead tr.search-row input')
+                        .on('keyup change', function () {
+                            api.column($(this).data('column'))
+                                .search(this.value)
+                                .draw();
+                        });
+
+                    $('#AdjustmentTable thead tr.search-row th').off('click');
+                }
+            });
+        })
+    </script>
+}
+
+<div class="min-h-screen">
+    <div class="p-4 mb-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div class="flex items-center space-x-4">
+                <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+                <h1 class="text-2xl font-bold text-gray-50">Inventory Adjustment</h1>
+
+            </div>
+            <button id="createAdjustmentBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <i class="fas fa-plus mr-2"></i>
+                Create Adjustment
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-table mr-2 text-blue-600"></i>
+                Adjustment Records
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto p-2">
+            <table id="AdjustmentTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Issued</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Before</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty After</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Creator</th>
+                    </tr>
+
+                    <tr class="search-row bg-gray-25">
+                        <th class="px-6 py-2">
+                            <input data-column="0" placeholder="🔍 Search Date" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="1" placeholder="🔍 Search Request No" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="2" placeholder="🔍 Search Request No" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="3" placeholder="🔍 Search Item Name" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="4" placeholder="🔍 Search Qty Before" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="5" placeholder="🔍 Search Qty After" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="6" placeholder="🔍 Search Creator" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span>Use search filters above to find specific records</span>
+                </div>
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <i class="fas fa-clock mr-1"></i>
+                    <span>Last updated: <span id="lastUpdated">Just now</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>

@@ -1,0 +1,532 @@
+﻿@{
+    ViewBag.Title = "Manage Inventory";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+
+<!-- Add DataTables CSS -->
+<link rel="stylesheet" href="@Url.Content("~/Content/dataTables/jquery.dataTables.min.css")" />
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Customize scrollbar to match the theme */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(37, 99, 235, 0.3);
+        border-radius: 10px;
+    }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(37, 99, 235, 0.5);
+        }
+
+    /* --- DATATABLES TAILWIND CUSTOMIZATION --- */
+    .dataTables_wrapper {
+        padding: 1rem;
+    }
+
+        .dataTables_wrapper .dataTables_filter input {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            margin-left: 0.5rem;
+            outline: none;
+            background-color: white;
+        }
+
+            .dataTables_wrapper .dataTables_filter input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            }
+
+        .dataTables_wrapper .dataTables_length select {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.25rem 2rem 0.25rem 0.5rem;
+            outline: none;
+            background-color: white;
+        }
+
+        .dataTables_wrapper .dataTables_info,
+        .dataTables_wrapper .dataTables_paginate {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: #475569;
+        }
+
+            .dataTables_wrapper .dataTables_paginate .paginate_button {
+                border-radius: 0.5rem !important;
+                border: 1px solid transparent !important;
+                padding: 0.3rem 0.8rem !important;
+                margin-left: 2px;
+            }
+
+                .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+                    background: #eff6ff !important;
+                    border-color: #bfdbfe !important;
+                    color: #1d4ed8 !important;
+                    font-weight: bold;
+                }
+
+                .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+                    background: #e2e8f0 !important;
+                    border: 1px solid #cbd5e1 !important;
+                    color: #0f172a !important;
+                }
+
+    table.dataTable.no-footer {
+        border-bottom: 1px solid #e2e8f0;
+    }
+</style>
+
+<div class="min-h-screen">
+    <div class="mx-auto max-w-7xl">
+
+        <!-- Header Page -->
+        <div class="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Workshop Inventory Data</h1>
+                <p class="mt-1 text-sm text-blue-100">Manage item and material stock for workshop needs.</p>
+            </div>
+            <div>
+                <button type="button" onclick="showModal()" class="inline-flex items-center gap-2 rounded bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-opacity text-white px-4 py-2.5 flex items-center font-semibold shadow-sm">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Inventory
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Card (Glassmorphism effect) -->
+        <div class="rounded-xl border border-slate-200 bg-white/95 backdrop-blur-sm shadow-xl shadow-blue-900/5 overflow-hidden">
+            <!-- Table Container -->
+            <div class="overflow-x-auto w-full">
+                <table class="w-full text-left text-sm whitespace-nowrap" id="tableInventory">
+                    <thead class="bg-gradient-to-r from-blue-100/50 to-white border-b-2 border-blue-200 text-blue-900">
+                        <tr>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px]">No.</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px]">Image</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px]">Category</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px]">Inventory Name</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px] text-center">Qty</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px] text-center">Created At</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px] text-center">Updated At</th>
+                            <th class="px-4 py-4 font-extrabold uppercase tracking-wider text-[11px] text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyInventory" class="divide-y divide-slate-100 bg-white">
+                        <!-- Data loaded via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Form Create / Update -->
+<div id="modalInventory" class="fixed inset-0 z-50 hidden items-center justify-center bg-blue-950/40 p-4 backdrop-blur-md transition-opacity" aria-labelledby="modalInventoryLabel" role="dialog" aria-modal="true">
+    <div class="relative w-full max-w-lg transform overflow-hidden rounded-3xl border border-white/60 bg-white/90 backdrop-blur-2xl shadow-2xl transition-all">
+        <form id="formInventory" enctype="multipart/form-data">
+
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-white/50 bg-white/50 px-4 p-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/30">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-blue-950" id="modalInventoryLabel">Inventory Form</h3>
+                </div>
+                <button type="button" onclick="closeModal()" class="rounded-full p-2 text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition-colors">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="px-4 py-6 space-y-5">
+                <input type="hidden" id="inventory_id" name="inventory_id" value="0" />
+
+                <!-- Inventory Name -->
+                <div>
+                    <label for="name" class="block text-sm font-bold text-blue-900 mb-1.5">
+                        Inventory Name <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="name" name="name" required placeholder="e.g., M8 x 20mm Bolt"
+                           class="block w-full rounded-xl border border-blue-100 bg-white/80 px-4 py-2.5 text-sm text-blue-950 placeholder-blue-300 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label for="category" class="block text-sm font-bold text-blue-900 mb-1.5">Category</label>
+                    <select id="category" name="category" class="w-full" style="width:100%;">
+                        <option value="">-- Select or type a new category --</option>
+                    </select>
+                </div>
+
+                <!-- Qty -->
+                <div>
+                    <label for="Qty" class="block text-sm font-bold text-blue-900 mb-1.5">
+                        Quantity (Qty) <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="number" id="Qty" name="Qty" required value="0" min="0"
+                           class="block w-full rounded-xl border border-blue-100 bg-white/80 px-4 py-2.5 text-sm text-blue-950 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+                </div>
+
+                <!-- Upload File -->
+                <div>
+                    <label for="image_file" class="block text-sm font-bold text-blue-900 mb-1.5">
+                        Upload Image
+                        <span class="text-xs font-normal text-blue-600/70">(Leave blank if unchanged)</span>
+                    </label>
+                    <input type="file" id="image_file" name="image_file" accept="image/*"
+                           class="block w-full text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-100 file:px-4 file:py-2.5 file:text-sm file:font-bold file:text-blue-700 hover:file:bg-blue-200 cursor-pointer transition-colors" />
+
+                    <div id="image_preview_container" class="mt-4 hidden">
+                        <p class="text-xs font-semibold text-blue-800 mb-2">Current Image Preview:</p>
+                        <div class="h-24 w-24 overflow-hidden rounded-xl border-2 border-white shadow-sm bg-white/50 p-1">
+                            <img id="image_preview" src="" alt="Current Image" class="h-full w-full rounded-lg object-cover" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end gap-3 border-t border-white/50 bg-white/50 px-4 p-4">
+                <button type="button" onclick="closeModal()" class="rounded-xl border border-blue-200 bg-white px-5 py-2.5 text-sm font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">
+                    Cancel
+                </button>
+                <button type="submit" id="btnSave" class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 hover:-translate-y-0.5">
+                    Save Data
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+
+    <!-- Select2 Script -->
+    <script src="@Url.Content("~/Content/select2/select2.min.js")"></script>
+    <script src="@Url.Content("~/Content/dataTables/jquery.dataTables.min.js")"></script>
+    <script src="@Url.Content("~/Content/select2/select2.min.css")"  rel="stylesheet"></script>
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2@11.js")"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#category').select2({
+                tags: true,
+                placeholder: "Select or type a new category...",
+                allowClear: true,
+                dropdownParent: $('#modalInventory')
+            });
+
+            loadData();
+            loadCategories();
+
+            $('#formInventory').on('submit', function (e) {
+                e.preventDefault();
+                saveData();
+            });
+
+            $('#image_file').on('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#image_preview').attr('src', e.target.result);
+                        $('#image_preview_container').show();
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+
+        // ==================================
+        // 1. GET DATA TABLE (Without Category Grouping)
+        // ==================================
+        function loadData() {
+            $.ajax({
+                url: '@Url.Action("GetInventory", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    if (res.success) {
+                        if ($.fn.DataTable.isDataTable('#tableInventory')) {
+                            $('#tableInventory').DataTable().destroy();
+                        }
+
+                        var html = '';
+                        if (res.data && res.data.length > 0) {
+                            $.each(res.data, function (i, item) {
+                                // Aesthetically pleasing hover row colors
+                                html += '<tr class="transition-all duration-200 hover:bg-blue-50/80 group border-b border-blue-50/50">';
+                                html += '<td class="px-4 py-3 text-blue-900/60 font-bold text-center">' + (i + 1) + '</td>';
+
+                                // Image with shadow and white border
+                                var imgRender = item.url_image
+                                    ? '<img src="' + item.url_image + '" class="h-14 w-14 rounded-lg object-cover border-2 border-white shadow-md group-hover:scale-105 transition-transform" alt="Item" />'
+                                    : '<div class="flex h-14 w-14 items-center justify-center rounded-lg bg-blue-50 border border-blue-100 shadow-sm"><span class="text-[10px] text-blue-300 font-bold">N/A</span></div>';
+
+                                html += '<td class="px-4 py-3">' + imgRender + '</td>';
+
+                                // Category column shown normally
+                                html += '<td class="px-4 py-3 text-slate-600 font-medium">' + (item.category || 'Uncategorized') + '</td>';
+
+                                // Item name set to darker & bold
+                                html += '<td class="px-4 py-3 text-slate-800 font-bold">' + item.name + '</td>';
+
+                                // Qty styling using Badges
+                                var qtyColor = item.Qty <= 0
+                                    ? 'bg-rose-50 text-rose-600 border-rose-200 shadow-rose-100'
+                                    : 'bg-gradient-to-tr from-blue-100 to-cyan-50 text-blue-700 border-blue-200 shadow-blue-100';
+
+                                html += '<td class="px-4 py-3 text-center">' +
+                                            '<span class="inline-flex min-w-[3rem] justify-center items-center rounded-lg border px-2.5 py-1 text-sm font-extrabold shadow-sm ' + qtyColor + '">' +
+                                                item.Qty +
+                                            '</span>' +
+                                        '</td>';
+
+                                // Created At Column (No Badge)
+                                html += '<td class="px-4 py-3 text-center text-xs font-medium text-slate-500">' +
+                                    formatDate(item.created_at) +
+                                    '</td>';
+
+                                // Updated At Column (No Badge)
+                                html += '<td class="px-4 py-3 text-center text-xs font-medium text-slate-500">' +
+                                    formatDate(item.updated_at) +
+                                    '</td>';
+
+                                // Action Buttons with gradient and glow on hover
+                                html += '<td class="px-4 py-3 text-right space-x-2">';
+
+                                // Edit Button
+                                html += '<button onclick="editData(' + item.inventory_id + ', \'' + escapeHtml(item.name) + '\', \'' + escapeHtml(item.category) + '\', ' + item.Qty + ', \'' + escapeHtml(item.url_image) + '\')" class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-amber-600 shadow-sm border border-amber-200 transition-all hover:bg-amber-50 hover:border-amber-300 hover:shadow-amber-500/20 hover:-translate-y-0.5">' +
+                                            '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg> Edit' +
+                                        '</button>';
+
+                                // Delete Button
+                                html += '<button onclick="deleteData(' + item.inventory_id + ')" class="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-rose-600 shadow-sm border border-rose-200 transition-all hover:bg-rose-50 hover:border-rose-300 hover:shadow-rose-500/20 hover:-translate-y-0.5">' +
+                                            '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Delete' +
+                                        '</button>';
+
+                                html += '</td></tr>';
+                            });
+                        }
+
+                        $('#tbodyInventory').html(html);
+
+                        $('#tableInventory').DataTable({
+                            "language": {
+                                "search": "Search:",
+                                "lengthMenu": "Show _MENU_ entries",
+                                "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                                "infoEmpty": "Showing 0 entries",
+                                "infoFiltered": "(filtered from _MAX_ total entries)",
+                                "zeroRecords": "No matching records found",
+                                "paginate": {
+                                    "first": "First",
+                                    "last": "Last",
+                                    "next": "Next",
+                                    "previous": "Previous"
+                                }
+                            },
+                            "pageLength": 10,
+                            // Default sort changed to inventory name (column index 3) for a more natural order
+                            "order": [[3, 'asc']],
+                            "columnDefs": [
+                                // { "visible": false, "targets": 2 } removed to show Category column normally
+                                { "orderable": false, "targets": [1, 7] }, // Images & Actions cannot be sorted
+                                { "className": "text-center align-middle", "targets": [0, 1, 4, 5, 6] }
+                            ]
+                        });
+                    }
+                }
+            });
+        }
+
+        // ==================================
+        // 2. LOAD CATEGORIES INTO SELECT2
+        // ==================================
+        function loadCategories() {
+            $.ajax({
+                url: '@Url.Action("GetCategories", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    if (res.success) {
+                        $('#category').empty().append('<option value="">-- Select or type a category --</option>');
+                        $.each(res.data, function (i, item) {
+                            $('#category').append(new Option(item, item, false, false));
+                        });
+                        $('#category').trigger('change');
+                    }
+                }
+            });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+
+            var date;
+
+            if (typeof dateString === 'string' && dateString.indexOf('/Date(') === 0) {
+                var milliseconds = parseInt(dateString.replace(/\/Date\((-?\d+)\)\//, '$1'));
+                date = new Date(milliseconds);
+            } else {
+                date = new Date(dateString);
+            }
+
+            if (isNaN(date.getTime())) return dateString;
+
+            return new Intl.DateTimeFormat('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date).replace(',', '');
+        }
+
+        function showModal() {
+            $('#formInventory')[0].reset();
+            $('#inventory_id').val(0);
+            $('#category').val(null).trigger('change');
+            $('#image_preview_container').hide();
+            $('#image_preview').attr('src', '');
+            $('#modalInventoryLabel').text('Add Inventory');
+            $('#modalInventory').removeClass('hidden').addClass('flex');
+        }
+
+        function editData(id, name, category, qty, url_image) {
+            $('#formInventory')[0].reset();
+            $('#inventory_id').val(id);
+            $('#name').val(name !== 'null' ? name : '');
+            $('#Qty').val(qty);
+
+            if (category && category !== 'null' && category !== '-') {
+                if ($('#category').find("option[value='" + category + "']").length) {
+                    $('#category').val(category).trigger('change');
+                } else {
+                    var newOption = new Option(category, category, true, true);
+                    $('#category').append(newOption).trigger('change');
+                }
+            } else {
+                $('#category').val(null).trigger('change');
+            }
+
+            if (url_image && url_image !== 'null' && url_image !== '') {
+                $('#image_preview').attr('src', url_image);
+                $('#image_preview_container').show();
+            } else {
+                $('#image_preview_container').hide();
+            }
+
+            $('#modalInventoryLabel').text('Edit Inventory');
+            $('#modalInventory').removeClass('hidden').addClass('flex');
+        }
+
+        function closeModal() {
+            $('#modalInventory').addClass('hidden').removeClass('flex');
+        }
+
+        function saveData() {
+            var id = $('#inventory_id').val();
+            var urlPost = (id == 0 || id == "0")
+                ? '@Url.Action("CreateInventory", "BMS", new { area = "PE" })'
+                : '@Url.Action("UpdateInventory", "BMS", new { area = "PE" })?id=' + id;
+
+            var formData = new FormData();
+            formData.append("name", $('#name').val());
+            formData.append("category", $('#category').val());
+            formData.append("Qty", $('#Qty').val());
+
+            var fileInput = $('#image_file')[0].files[0];
+            if (fileInput) {
+                formData.append("image_file", fileInput);
+            }
+
+            var btnSave = $('#btnSave');
+            var originalText = btnSave.html();
+            btnSave.prop('disabled', true).html('<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...');
+
+            $.ajax({
+                url: urlPost,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Success!', 'Inventory data saved successfully.', 'success');
+                        closeModal();
+                        loadData(); // Reload loadData function (also refreshes DataTable)
+                        loadCategories();
+                    } else {
+                        Swal.fire('Error!', res.message, 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error!', 'An unexpected error occurred.', 'error');
+                },
+                complete: function () {
+                    btnSave.prop('disabled', false).html(originalText);
+                }
+            });
+        }
+
+        function deleteData(id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You want to delete this inventory item?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48', // rose-600
+                cancelButtonColor: '#64748b', // slate-500
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteInventory", "BMS", new { area = "PE" })',
+                        type: 'POST',
+                        data: { id: id },
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire('Deleted!', 'The inventory item has been deleted.', 'success');
+                                loadData(); // Reload loadData function (also refreshes DataTable)
+                            } else {
+                                Swal.fire('Error!', res.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error!', 'An unexpected error occurred.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+}

@@ -1,0 +1,199 @@
+﻿@{
+    Layout = null;
+    var allPdfData = ViewBag.PdfData != null ? ((IEnumerable<NGKBusi.Areas.IT.Models.IT_Wastehandover_Detail>)ViewBag.PdfData).ToList() : new List<NGKBusi.Areas.IT.Models.IT_Wastehandover_Detail>();
+    int pageSize = 15;
+    int totalPages = (int)Math.Ceiling((double)allPdfData.Count / pageSize);
+    if (totalPages == 0) { totalPages = 1; }
+    int globalNo = 1;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Serah Terima Limbah IT</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 9px;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .page-container {
+            width: 100%;
+            page-break-after: always;
+            break-after: page;
+        }
+
+            .page-container:last-child {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+
+        @@media print {
+            @@page {
+                size: A4 landscape;
+                margin: 5mm;
+            }
+
+            .page-container {
+                page-break-after: always;
+                break-after: page;
+            }
+        }
+
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #000;
+            margin-bottom: 3px;
+        }
+
+            .form-table td, .form-table th {
+                border: 1px solid #000;
+                padding: 2px 3px;
+                vertical-align: middle;
+            }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .header-title {
+            font-size: 10.5px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .header-subtitle {
+            font-size: 9.5px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .logo-cell {
+            width: 140px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid #000;
+            margin-top: 2px;
+        }
+
+            .data-table th {
+                border: 1px solid #000;
+                padding: 2px 2px;
+                text-align: center;
+                background-color: #f2f2f2;
+                font-size: 8.5px;
+            }
+
+            .data-table td {
+                border: 1px solid #000;
+                padding: 1.5px 2px;
+                font-size: 8.5px;
+                vertical-align: middle;
+                line-height: 1.1;
+            }
+    </style>
+</head>
+<body>
+    @if (allPdfData.Any())
+    {
+        for (int pageIndex = 0; pageIndex < totalPages; pageIndex++)
+        {
+            var pageItems = allPdfData.Skip(pageIndex * pageSize).Take(pageSize).ToList();
+
+            <div class="page-container">
+                <table class="form-table">
+                    <tr>
+                        <td class="logo-cell" rowspan="2">
+                            <img src="@Url.Content("~/Content/images/niterra-logo.jpg")" alt="Niterra Logo" style="max-width: 110px; height: auto; display: block; margin: 0 auto;" />
+                        </td>
+                        <td class="text-center">
+                            <div class="header-title">FORMULIR INTEGRASI</div>
+                            <div class="header-subtitle">SERAH TERIMA LIMBAH IT</div>
+                        </td>
+                        <td style="padding: 0; width: 180px;">
+                            <table style="width: 100%; border-collapse: collapse; font-size: 8.5px;">
+                                <tr>
+                                    <td style="border: none; border-bottom: 1px solid #000; border-right: 1px solid #000; padding: 2px 3px; width: 45%;">No. Dok.</td>
+                                    <td style="border: none; border-bottom: 1px solid #000; padding: 2px 3px;">PMLK3-IT-01/L28</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: none; border-bottom: 1px solid #000; border-right: 1px solid #000; padding: 2px 3px;">Revisi</td>
+                                    <td style="border: none; border-bottom: 1px solid #000; padding: 2px 3px;">00</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: none; border-bottom: 1px solid #000; border-right: 1px solid #000; padding: 2px 3px;">Tanggal</td>
+                                    <td style="border: none; border-bottom: 1px solid #000; padding: 2px 3px;">05-Apr-23</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: none; border-right: 1px solid #000; padding: 2px 3px;">Halaman</td>
+                                    <td style="border: none; padding: 2px 3px;">@(pageIndex + 1) dari @totalPages</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="margin-bottom: 3px; font-weight: bold; font-size: 9px;">
+                    @if (!string.IsNullOrEmpty(ViewBag.DateFrom) && !string.IsNullOrEmpty(ViewBag.DateTo) && ViewBag.DateFrom != "-" && ViewBag.DateTo != "-")
+                    {
+                        @:Period : @ViewBag.DateFrom s/d @ViewBag.DateTo
+                    }
+                    else
+                    {
+                        @:Period : All Period
+                    }
+                </div>
+
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 3%;">No</th>
+                            <th style="width: 18%;">Items</th>
+                            <th style="width: 16%;">TYPE<br><span style="font-size: 6.5px; font-weight: normal;">(Monitor, Mouse, Keyboard, Etc)</span></th>
+                            <th style="width: 16%;">CONDITION<br><span style="font-size: 6.5px; font-weight: normal;">(Old / Repaired / Damaged / Etc)</span></th>
+                            <th style="width: 5%;">Quantity</th>
+                            <th style="width: 17%;">Name</th>
+                            <th style="width: 13%;">Dept</th>
+                            <th style="width: 6%;">Sign</th>
+                            <th style="width: 6%;">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in pageItems)
+                        {
+                            <tr>
+                                <td class="text-center">@(globalNo++)</td>
+                                <td>@item.items</td>
+                                <td>@item.type</td>
+                                <td>@item.condition</td>
+                                <td class="text-center">@item.quantity</td>
+                                <td>@item.creator_name</td>
+                                <td>@(item.IT_Disposal_Master != null ? item.IT_Disposal_Master.department : "-")</td>
+                                <td></td>
+                                <td class="text-center">@item.created_date.ToString("dd/MM/yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+
+    <script>
+        window.onload = function () {
+            window.print();
+        };
+    </script>
+</body>
+</html>

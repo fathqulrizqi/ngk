@@ -1,0 +1,748 @@
+
+@{
+    ViewBag.Title = "Request Sparepart";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+        .card {
+            text-align: left;
+            box-shadow: 0 5px 10px rgba(0,0,0,.2);
+        }
+
+        .card img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+            }
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inherit;
+        }
+        #txtQuantity-error {
+            font-size:18px;
+        }   
+    </style>
+}
+    @section scriptHead{
+        <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+        <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    }
+<div class="row">
+    <div class="col-sm-4">
+        <div class="card">
+            <div class="card-header bg-success">Request Form</div>
+            <form action="@Url.Action("AddRequestList", "Sparepart", new { area = "SCM" })" id="formRequestList" name="formAddItem">
+                <input type="hidden" name="userRequest" value="@(currUser.NIK)" />
+                <div class="card-body">
+                    <h5 class="card-title"> </h5>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="selItem">Sparepart @(ViewBag.Role)</label>
+                            <select id="selItem" name="ITEMID" class="select2 form-control" required>
+                                <option value="">-SELECT ITEM-</option>
+                                @foreach (var item in ViewBag.SparepartList)
+                                {
+                                   
+                                        <option value="@(item.ITEMID)" data-category="@(item.ProductCategory)" data-image="@item.Image" data-stock="@item.Stock">@(item.ProductName + " | " + item.ITEMID)</option>                                   
+
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <div id="StockInfo"></div>
+                            <a href="#" class="imageItem"><img id="blah" src="#" alt="your image" height="150" style="display:none" align="middle" class="imageItem" /></a>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-12">
+                            <label for="txtQuantity">Request Quantity</label>
+                            <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Input Quantity" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary" id="addData">Add Item</button>
+                </div>
+            </form>
+        </div>
+        <div class="modal fade bd-example-modal-lg" id="imagemodal" tabindex="-1" aria-labelledby="my-modalLabel" aria-hidden="true" role="dialog">
+            <div class="modal-dialog modal-lg">
+
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <img src="" id="imagepreview" style="width: 750px; height: auto">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="EditQuantityModal" class="modal fade">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" action="@Url.Action("EditQuantityItem", "Sparepart", new { area = "SCM" })" id="formUpdateQuantity" name="formUpdateQuantity">
+                        <div class="modal-header">
+                            <h4 class="modal-title">Edit Item Quantity</h4>
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="ITEMID">Id</label>
+                                <input name="ITEMID" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="">Name</label>
+                                <input name="ProductName" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="">Available Stock</label>
+                                <input name="Stock" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="txtQty">Request Quantity</label>
+                                <input name="quantity" id="txtQty" type="text" class="form-control" required="required" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                            <input type="Submit" class="btn btn-info" value="Save" id="updateQuantity" />
+                            <input type="hidden" id="id" name="ITEMID" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-8">
+        <div class="card">
+            <div class="card-header bg-danger" style="color:white; font-weight:bold">Request List</div>
+            <div class="card-body">
+                <table class='table table-sm' id='TransTable'>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th></th>
+                            <th>ITEMID</th>
+                            <th>Product Name</th>
+                            <th>Qty</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+
+                </table>
+                <div class="spinner-border" style="width: 3rem; height: 3rem; display:none" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <form name="formHeaderRequest" action="@Url.Action("CreateRequest", "Sparepart", new { area = "SCM" })" target="_blank" id="formHeaderRequest" method="post">
+
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-4 col-form-label text-right">Remark</label>
+                        <div class="col-sm-8">
+                            <textarea class="form-control" name="Remark"></textarea>
+                        </div>
+                    </div>
+                    @{
+                        if ((ViewBag.sectionCreator == "MAINTENANCE" || ViewBag.sectionCreator == "PRODUCTION ENGINEERING" || ViewBag.sectionCreator == "INFORMATION TECHNOLOGY") && ViewBag.Role != "UserSparepart")
+                        {
+
+                            <div class="form-group row">
+                                <label for="staticEmail" class="col-sm-4 col-form-label text-right">Section To </label>
+                                <div class="col-sm-8">
+                                    <select id="selItem" name="COSTNAME" class="select2 form-control" required>
+                                        <option value="">-SELECT Section-</option>
+                                        @foreach (var sec in ViewBag.Section)
+                                        {
+                                            <option value="@sec.COSTNAME">@sec.COSTNAME</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                        }
+                        if ((ViewBag.Role == "UserSparepart") && (ViewBag.sectionCreator != "MAINTENANCE" || ViewBag.sectionCreator != "PRODUCTION ENGINEERING" || ViewBag.sectionCreator != "INFORMATION TECHNOLOGY"))
+                        {                            
+                            <div class="form-group row">
+                                <label for="staticEmail" class="col-sm-4 col-form-label text-right">Section To </label>
+                                <div class="col-sm-8">
+                                    <select id="selItem" name="COSTNAME" class="select2 form-control" required>
+                                        <option value="">-SELECT Section-</option>
+                                        
+                                        @foreach (var sec in ViewBag.userCost)
+                                        {
+                                            <option value="@sec.COSTNAME">@sec.COSTNAME</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                        }
+                    }
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-4 col-form-label text-right">Maintenance Type </label>
+                        <div class="col-sm-8">
+                            <input type="radio" name="MaintenanceType" value="planned" required /> Planned <br />
+                            <input type="radio" name="MaintenanceType" value="unplanned" required /> Unplanned
+                        </div>
+                    </div>
+</div>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary" id="btnSendRequest">Send Request</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+
+
+    $(document).ready(function () {
+
+        displayList();
+
+        // --------------------- request header validation --------------------------  // 
+
+        var validateRequestHeader =
+            $("form[name='formHeaderRequest']").validate({
+                // Specify validation rules
+                rules: {
+                    
+                    MaintenanceType: {
+                        required: true
+                    },
+                    COSTNAME: {
+                        required: true
+                    }
+
+                },
+                // Specify validation error messages
+                messages: {
+                    MaintenanceType: {
+                        required: "Please select maintenance type"
+
+                    },
+                    COSTNAME: {
+                        required: "Please select section"
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+                    var elem = $(element);
+                    
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    var url = $('#formHeaderRequest').attr('action');
+                    ConfirmSendRequest(url);
+                }
+            });
+
+
+        //$('#updateQuantity').click(function () {
+        //    validateUpdateQuantity.form();
+
+        //});
+
+        $(document).on('click', '#btnSendRequest', function (e) {
+
+            var url = $('#formHeaderRequest').attr('action');
+            validateRequestHeader.form();
+            //ConfirmSendRequest(url);
+
+        });
+
+        //showSuccessMessage("test");
+        function ConfirmSendRequest(Link) {
+            // convert old swal callback pattern to SweetAlert2
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Send Request Data",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Send it!",
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: $('#formHeaderRequest').serialize(),
+                        success: function (json) {
+                            if (json.status == 1) {
+
+                                Swal.fire({
+                                    title: "Success!",
+                                    text: json.msg,
+                                    icon: "success"
+                                }).then(function () {
+                                    displayList();
+                                    $('#formHeaderRequest')[0].reset();
+                                });
+
+                            } else if (json.status == 2) {
+                                var msg = "Stok Tidak cukup, silahkan cek stok untuk item berikut " + json.itemidminus;
+                                Swal.fire({
+                                    title: "Failed!",
+                                    text: msg,
+                                    icon: "error"
+                                }).then(function () {
+                                    displayList();
+                                    $('#formHeaderRequest')[0].reset();
+                                });
+
+                            } else {
+                                Swal.fire({
+                                    title: "Failed!",
+                                    text: json.msg,
+                                    icon: "error"
+                                });
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({
+                                title: "Deactivate!",
+                                text: Link,
+                                icon: "error"
+                            });
+                        }
+
+                    })
+                } else {
+                    Swal.fire({
+                        title: "Cancelled",
+                        text: "Request Not Send",
+                        icon: "error"
+                    });
+                }
+            });
+        }
+
+        function confirmDelete(Link, id) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Delete This Data!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "Yes, delete it!",
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { itemid: id },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                displayList();
+                                Swal.fire({
+                                    title: "Deleted!",
+                                    text: "Your imaginary file has been deleted.",
+                                    icon: "success"
+                                });
+
+                            } else {
+                                Swal.fire({
+                                    title: "Deleted!",
+                                    text: "Your imaginary file has been deleted.",
+                                    icon: "error"
+                                });
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({
+                                title: "Deleted!",
+                                text: Link,
+                                icon: "error"
+                            });
+                        }
+
+                    })
+                } else {
+                    Swal.fire({
+                        title: "Cancelled",
+                        text: "Your imaginary file is safe :)",
+                        icon: "error"
+                    });
+                }
+            });
+        }
+
+        function displayList() {
+            $("#TransTable tbody tr").remove();
+            var urlString = "@Url.Action("RequestList", "Sparepart", new { area = "SCM" })";
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                dataType: 'json',
+                beforeSend: function () {
+                    $('.spinner-border').css("display", "");
+                },
+                success: function (response) {
+                    $('.spinner-border').css("display", "none");
+                    if (response) {
+                        var len = response.length;
+                        var txt = "";
+                        if (len > 0) {
+                            var NO = 1;
+                            for (var i = 0; i < len; i++) {
+
+                                if (response[i].ITEMID && response[i].Quantity) {
+                                    var urlImage = '@Url.Content("~/Files/SCM/Sparepart/Images/")' + response[i].Image;
+                                    txt += "<tr><td>" + NO + "</td><td><a href='#' class='imageItem'><img src='" + urlImage + "' height='50px' /></a></td><td>" + response[i].ITEMID + "</td><td>" + response[i].ProductName + "</td><td>" + response[i].Quantity + "</td><td><a href='#EditQuantityModal' data-toggle='modal' data-id='" + response[i].ITEMID + "' data-stock='" + response[i].Stock + "'  title='Edit Quantity' class='btnEdit btn btn-warning'><i class='fa fa-edit'></i></a> <a href='#' data-id='" + response[i].ITEMID + "' title='delete item' class='btnDelete btn btn-danger'><i class='fa fa-trash'></i></a></td></tr>";
+                                }
+                                NO++;
+                            }
+                            if (txt != "") {
+                                $("#TransTable tbody").html(txt);
+                            }
+                        }
+                    }
+
+                }
+            });
+        }
+
+        $(document).on('click', '.btnDelete', function (e) {
+            e.preventDefault();
+            var itemid = $(this).attr("data-id");
+            console.log(itemid);
+            var urlString = "@Url.Action("RemoveList", "Sparepart", new { area = "SCM" })";
+            confirmDelete(urlString, itemid);
+        });
+
+        $(document).on('click', '.btnEdit', function (e) {
+            e.preventDefault();
+
+            var urlString = "@Url.Action("EditQuantityItem", "Sparepart", new { area = "SCM" })";
+            var itemid = $(this).attr("data-id");
+            console.log(urlString, itemid);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { itemid: itemid },
+                success: function (response) {
+                    console.log(response);
+                    $('#EditQuantityModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityModal input[name="quantity"]').val(response[0].Quantity);
+                    $('#EditQuantityModal input[name="Stock"]').val(response[0].Stock);
+                    var selStock = response[0].Stock;
+                    $('#txtQty').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "Stock Available " + selStock
+                        }
+                    });
+                }
+            });
+
+        });
+
+        $('#updateQuantity').click(function () {
+            validateUpdateQuantity.form();
+
+        });
+
+        var validateUpdateQuantity =
+            $("form[name='formUpdateQuantity']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    quantity: {
+                        required: true,
+                        min: 1
+                    }
+                },
+                // Specify validation error messages
+                messages: {
+                    quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    updateQuantity();
+                }
+            });
+
+        function updateQuantity() {
+            $.ajax({
+                url: $('#formUpdateQuantity').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantity').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-right';
+                        toastr.success(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                        displayList();
+                    }
+                    else {
+                        toastr.error(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                    }
+                }
+            });
+        }
+
+        //$('#formHeaderRequest').submit(function (e) {
+        //    e.preventDefault();
+
+        //    if (confirm("Are you sure you want to submit request ?")) {
+        //        return true;
+        //    }
+        //    else {
+        //        event.preventDefault();
+        //        return false;
+        //    }
+
+        //});
+
+        function removeList(itemid) {
+            var urlString = "@Url.Action("RemoveList", "Sparepart", new { area = "SCM" })";
+
+            $.ajax({
+                url: urlString,
+                type: "POST",
+                cache: false,
+                data: { itemid: itemid },
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.success(json.msg);
+                        displayList();
+                    }
+                    else {
+
+                        toastr.error(json.msg);
+                    }
+                }
+            });
+        }
+
+        function addList() {
+            var stock = $("#selItem").find(':selected').data('stock');
+            // console.log(stock);
+                $.ajax({
+                    url: $('#formRequestList').attr('action'),
+                    type: "POST",
+                    cache: false,
+                    data: $('#formRequestList').serialize(),
+                    dataType: 'json',
+                    beforeSend: function () {
+                        $('#addData').prop('disabled', true);
+                    },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            // $('#ResponseInput').html(json.pesan);
+                            toastr.options.positionClass = 'toast-bottom-center';
+                            toastr.success(json.msg);
+                            $('#selItem').val("");
+                            $('#selItem').trigger('change');
+                            $('#formRequestList')[0].reset();
+                            $('#addData').prop('disabled', false);
+                            $('#blah').attr("src", '');
+                            document.getElementById("blah").style.setProperty('display', 'none');
+                            $("#StockInfo").html('');
+                            displayList();
+                        }
+                        else {
+                            toastr.error(json.msg);
+                            $('#item').val("");
+                            $('#item').trigger('change');
+                            $('#formRequestList')[0].reset();
+                        }
+                    }
+                });
+        }
+
+        $('#selItem').change(function () {
+
+            var selStock = $(this).find(':selected').data('stock');
+            var InfoStock = '<div class="alert alert-info">Available Stock ' + selStock + '</div >';
+            $('#txtQuantity').rules('add', {
+                max: selStock,
+                messages: {
+                    max: "Stock Available " +selStock
+                }
+            });
+
+            var ImageItem = $(this).find(':selected').data('image');
+            var file = "@Url.Content("~/Files/SCM/Sparepart/Images/")" + ImageItem;
+            console.log(file);
+            console.log(ImageItem);
+
+            if (file) {
+                document.getElementById("blah").style.setProperty('display', '');
+                $('#blah').attr("src", file);
+                $("#StockInfo").html(InfoStock);
+            }
+            //if (selStock >= 0) {
+            //    $('#txtQuantity').attr('max', selStock);
+            //} else {
+            //    $('#txtQuantity').attr('max', '0');
+            //}
+        });
+
+
+        var formValidate =
+
+            $("form[name='formAddItem']").validate({
+
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    quantity: {
+                        required: true,
+                        min: 1
+                    },
+                    ITEMID:"required"
+                },
+                // Specify validation error messages
+                messages: {
+                    quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+                    },
+                    ITEMID: "Please select an item"
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    addList();
+                }
+            });
+
+        $('#addData').click(function (e) {
+            //e.preventDefault();
+            formValidate.form();
+        });
+
+        $(".select2").on("select2:close", function (e) {
+            $(this).valid();
+        });
+
+        $(document).on('click', '.blah', function (e) {
+            var a = $('.imageItem').data('id');
+            $('#imagepreview').attr('src', a); // here asign the image to the modal when the user click the enlarge link
+            $('#imagemodal').modal('show'); // imagemodal is the id attribute assigned to the bootstrap modal, then i use the show function
+        });
+
+        
+
+        toastr.options = {
+            "closeButton": false,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": false,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+
+        //imgInp.onchange = evt => {
+        //    const [file] = imgInp.files
+        //    if (file) {
+        //        document.getElementById("blah").style.setProperty('display', '');
+        //        blah.src = URL.createObjectURL(file)
+        //    }
+        //}
+
+    });
+
+    // image item preview zoom
+    $(document).on('click', '.imageItem', function (e) {
+        var a = $(this).find('img').attr('src')
+        $('#imagepreview').attr('src', a); // here asign the image to the modal when the user click the enlarge link
+        $('#imagemodal').modal('show'); // imagemodal is the id attribute assigned to the bootstrap modal, then i use the show function
+    });
+</script>
+

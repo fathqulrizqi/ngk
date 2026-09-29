@@ -1,0 +1,100 @@
+﻿
+@model IEnumerable<NGKBusi.Areas.HPM.Models.HPM_GenerateQR_Items>
+
+@{
+    ViewBag.Title = "Manajemen Data QR";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@* Menambahkan Tailwind CSS ke head layout *@
+@section scriptHead{
+    <script src="https://cdn.tailwindcss.com"></script>
+}
+
+<div class="bg-gray-100 flex flex-col items-center justify-start min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+
+    @* Card untuk Form Upload *@
+    <div class="w-full max-w-2xl p-8 space-y-6 bg-white rounded-lg shadow-md mb-8">
+        <h3 class="text-2xl font-bold text-center text-gray-800">Unggah Data untuk QR Code</h3>
+        <p class="text-center text-gray-600">
+            @* STEP 2: Sesuaikan instruksi format sesuai dengan data QR *@
+            Silakan unggah file <strong>.txt</strong> dengan format 16 kolom per baris:
+            <code class="bg-gray-200 text-red-600 p-1 rounded">from to supply_address ms_id ... (dan seterusnya)</code>
+        </p>
+        <hr />
+
+        @* STEP 3: Arahkan form ke Action 'readTxt' di Controller 'GenerateQR' *@
+        @using (Html.BeginForm("readTxt", "GenerateQR", FormMethod.Post, new { enctype = "multipart/form-data", @class = "space-y-6" }))
+        {
+            @Html.AntiForgeryToken()
+            <div>
+                <label for="file" class="block mb-2 text-sm font-medium text-gray-700">Pilih File TXT</label>
+                <input type="file" name="file" id="file"
+                       class="w-full px-3 py-2 text-gray-700 border border-gray-300 rounded-md file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                       accept=".txt" required />
+            </div>
+
+            <div>
+                <button type="submit" class="w-full px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 ease-in-out">
+                    Unggah dan Proses File
+                </button>
+            </div>
+        }
+    </div>
+
+    @* Bagian untuk menampilkan pesan status dari proses upload (Tidak perlu diubah) *@
+    @if (TempData["StatusMessages"] != null)
+    {
+        <div class="w-full max-w-2xl p-4 mb-8 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg shadow-md">
+            <h5 class="text-lg font-semibold text-blue-800">Status Proses Unggah</h5>
+            <ul class="mt-2 list-disc list-inside text-sm text-blue-700">
+                @foreach (var message in (List<string>)TempData["StatusMessages"])
+                {
+                    <li>@message</li>
+                }
+            </ul>
+        </div>
+    }
+
+    @* Card untuk Tabel Daftar Data QR *@
+    <div class="w-full max-w-6xl p-8 space-y-6 bg-white rounded-lg shadow-md">
+        <h3 class="text-2xl font-bold text-center text-gray-800">Daftar Data QR Saat Ini</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead class="bg-gray-800 text-white">
+                    <tr>
+                        @* STEP 4: Sesuaikan header tabel dengan kolom dari Item_Detail *@
+                        <th class="px-4 py-2 text-left">Nama File TXT</th>
+                        <th class="px-4 py-2 text-left">Download File</th>
+                        <th class="px-4 py-2 text-left">Detail QR</th>
+                        <th class="px-4 py-2 text-left">Tanggal Dibuat</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-700">
+                    @* Gunakan 'Model' yang dikirim dari Controller *@
+                    @foreach (var item in Model)
+                    {
+                        <tr class="border-b border-gray-200 hover:bg-gray-100">
+                            @* STEP 5: Tampilkan data sesuai dengan properti model Item_Detail *@
+                            <td class="px-4 py-2">@Html.DisplayFor(modelItem => item.filename)</td>
+                            <td class="px-4 py-2">@Html.DisplayFor(modelItem => item.path)</td>
+                            <td class="px-4 py-2">@Html.DisplayFor(modelItem => item.created_at)</td>
+                        </tr>
+                    }
+
+                    @* Pengecekan jika Model kosong *@
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            @* STEP 6: Sesuaikan colspan dengan jumlah kolom di tabel (ada 6) *@
+                            <td colspan="6" class="px-4 py-4 text-center text-gray-500">
+                                Belum ada data QR yang tersimpan.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewBag.Title</title>
+    <link rel="shortcut icon" href="@Url.Content("~/Content/Images/favicon.ico")" />
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    @Styles.Render("~/Content/styles")
+    @Scripts.Render("~/bundles/modernizr")
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/jqueryval")
+    @Scripts.Render("~/bundles/bootstrap")
+    @RenderSection("scripts", required: false)
+    @if (IsSectionDefined("cssHead"))
+    {
+        @RenderSection("cssHead", required: false)
+    }
+    @if (IsSectionDefined("scriptHead"))
+    {
+        @RenderSection("scriptHead", required: false)
+    }
+    <style>
+        .icon:hover {
+            background-color: blue;
+        }
+    </style>
+</head>
+<body>
+    @{
+        string Navbar = Session["NavBar"] as string;
+    }
+    @if (!string.IsNullOrEmpty(Navbar))
+    {
+        // <p>Halo, @Navbar!</p>
+    }
+    else
+    {
+        // <p>Silakan login untuk melihat pesan selamat datang.</p>
+    }
+    <div class="page-wrapper chiller-theme sidebar-bg bg5 @(@ViewBag.NavHide != null?"":"toggled")">
+        @if (@ViewBag.NavDisabled == null)
+        {
+            <a id="show-sidebar" class="btn btn-sm btn-dark fixed top-4 left-4 z-50 shadow-md" href="#">
+                <i class="fas fa-bars"></i>
+            </a>
+            <nav id="sidebar" class="sidebar-wrapper d-flex flex-column" style="height: 100vh;">
+
+                <div class="sidebar-content flex-grow-1 overflow-auto" style="max-height: none !important; height: auto !important;">
+                    <div class="sidebar-brand border-bottom" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+                        <a href="@Url.Action("Index", "Home", new { area = "" })" style="">
+                            <img src="~/Images/niterra-logo-font-white.png" class="img-fluid d-inline-block" style="height:25px;" /> Portal
+                        </a>
+                        <div id="close-sidebar">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+
+                    @Html.Partial("_LoginPartialNew", new NGKBusi.Models.Users())
+
+                    @if (IsSectionDefined("sideMenu"))
+                    {
+                        <div class="sidebar-menu keep">
+                            <ul>
+                                <li class="header-menu keep">
+                                    <span>@ViewBag.SideMenuHeader</span>
+                                </li>
+                                <li class="sidebar-dropdown keep">
+                                    <div class="sidebar-submenu keep" style="display: block;">
+                                        @RenderSection("sideMenu")
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    }
+
+                    @Html.Action("mainMenu", "Home", new { area = "" })
+                </div>
+
+                <div class="w-100 p-2 mt-auto flex-shrink-0">
+                    <div class="p-3 d-flex flex-column align-items-center justify-content-center position-relative overflow-hidden text-center shadow-lg"
+                         style="background: linear-gradient(to bottom right, #0f172a, #1e293b); border-radius: 0.5rem;">
+
+                        <div class="position-absolute w-100" style="top: 0; left: 0; height: 4px; background: linear-gradient(to right, #ef4444, #f97316, #eab308); opacity: 0.8;"></div>
+
+                        <p class="text-uppercase font-weight-bold mb-1" style="font-size: 10px; color: #94a3b8; letter-spacing: 0.1em;">
+                            Whistleblower System
+                        </p>
+
+                        <p class="mb-2" style="font-size: 10px; color: #cbd5e1; line-height: 1.4;">
+                            Saluran Pengaduan Pelanggaran Anti Persaingan Usaha Tidak Sehat dan Anti Korupsi
+                        </p>
+
+                        <button onclick="window.open('https://forms.office.com/Pages/ResponsePage.aspx?id=IDr1UI_Qck6wlggdPyGI9YLRakx_7Q9Plz_YIFVMyT1UM01JWFVNUFdOTEZGQzVES0dJN0w0Sk0yMi4u', '_blank')"
+                                class="btn text-white shadow font-weight-bold px-4 py-2"
+                                style="font-size: 12px; border-radius: 50px; background: linear-gradient(to right, #ef4444, #f97316); border: none; transition: transform 0.2s ease-in-out;"
+                                onmouseover="this.style.transform='scale(1.05)'"
+                                onmouseout="this.style.transform='scale(1)'">
+                            Submit Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sidebar-footer flex-shrink-0 position-relative d-flex justify-content-around" style="bottom: auto; z-index: 10; ">
+                    @if (Request.IsAuthenticated)
+                    {
+                        <div class="dropdown" style="z-index: 10;">
+                            <a href="#" class="" id="dropdownMenuNotification" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-bell"></i>
+                                <span id="notifBadge" class="badge badge-pill badge-warning notification" style="display:none;">0</span>
+                            </a>
+                            <div class="dropdown-menu notifications" aria-labelledby="dropdownMenuNotification">
+                                <div class="notifications-header">
+                                    <i class="fa fa-bell"></i>
+                                    Notifications
+                                </div>
+                                <div class="dropdown-divider"></div>
+
+                                <div id="notifContainer" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="text-center py-3 text-muted small">Loading...</div>
+                                </div>
+
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item text-center" href="#">View all notifications</a>
+                            </div>
+                        </div>
+
+                        <div class="dropdown" style="z-index: 10;">
+                            <a href="#" class="" id="dropdownMenuSettings" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa fa-cog"></i>
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="dropdownMenuSettings">
+                                <a class="dropdown-item" href="/NGKBusi/User/ChangePassword">Change Password</a>
+                            </div>
+                        </div>
+
+                        <div style="z-index: 10;">
+                            <a href="@Url.Action("Logout", "User", new { area = "" })" title="Logout">
+                                <i class="fa fa-power-off"></i> Logout
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="z-index: 10;">
+                            <a href="@Url.Action("Login", "User", new { area = "" })">Login Page</a>
+                        </div>
+                    }
+                </div>
+            </nav>
+        }
+        @if (ViewBag.Swal != null)
+        {
+            <span id="globalSwal" class="d-none" data-icon="@ViewBag.Swal.Icon" data-title="@ViewBag.Swal.Title" data-text="@ViewBag.Swal.Text"></span>
+        }
+        <main class="page-content d-flex flex-column">
+
+            <div class="container-fluid flex-grow-1 !p-3 sm:!p-5 md:!p-8">
+                <div class="row">
+                    <div class="form-group col-md-12">
+                        @RenderBody()
+                    </div>
+                </div>
+            </div>
+
+            <footer class="mt-auto w-100 layout-modern-bg" style="background-color: white; border-top: 1px solid rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center justify-content-center py-2 m-0" style="font-size: 14px; gap: 8px; color: #94a3b8;">
+                    Copyright &copy; @DateTime.Now.Year
+                    <img src="~/Content/Images/Indonesia_horizontal.png"
+                         alt="Niterra Logo"
+                         style="height: 20px;" />
+                </div>
+            </footer>
+        </main>
+    </div>
+</body>
+
+<script src="@Url.Content("~/Scripts/jquery.signalR-2.4.3.min.js")"></script>
+<script src="@Url.Content("~/signalr/js")"></script>
+<script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+<script>
+    // SweetAlert2 compatibility shim for legacy SweetAlert v1 calls
+    if (typeof Swal !== 'undefined') {
+        window.swal = window.sweetalert = function (...args) {
+            let callback = null;
+            if (args.length > 0 && typeof args[args.length - 1] === 'function') {
+                callback = args.pop();
+            }
+
+            if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+                const options = { ...args[0] };
+                if (options.type && !options.icon) {
+                    options.icon = options.type;
+                }
+                return Swal.fire(options).then((result) => {
+                    if (callback) {
+                        callback(result.isConfirmed);
+                    }
+                    return result;
+                });
+            }
+
+            return Swal.fire(...args).then((result) => {
+                if (callback) {
+                    callback(result.isConfirmed);
+                }
+                return result;
+            });
+        };
+    }
+</script>
+
+<script>
+    // --- FUNGSI NOTIFIKASI SIGNALR (DITAMBAHKAN DARI KODE KEDUA) ---
+    $(document).ready(function () {
+
+        if ($.connection === undefined) {
+            console.error("SignalR Library belum terload!");
+            return;
+        }
+
+        var notifHub = $.connection.notificationHub;
+
+        if (notifHub === undefined) {
+            console.error("Hub 'notificationHub' tidak ditemukan! Cek Startup.cs atau HubName.");
+            return;
+        }
+
+        // --- A. FUNGSI RENDER HTML ---
+        function renderList(data) {
+            var html = '';
+
+            if (data.length === 0) {
+                html = '<div class="text-center py-3 text-muted small">No notifications</div>';
+            } else {
+                $.each(data, function (i, item) {
+
+                    var date = new Date(parseInt(item.CreatedDate.substr(6)));
+                    var timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    var iconHtml = '';
+                    var msgLower = item.Message.toLowerCase();
+
+                    // Tambahkan style CSS flexbox & ukuran statis agar icon presisi di tengah border
+                    var centerStyle = 'display: inline-flex; align-items: center; justify-content: center;';
+
+                    if (msgLower.includes("approve") || msgLower.includes("complete")) {
+                        iconHtml = '<i class="fas fa-check text-success border border-success" style="' + centerStyle + '"></i>';
+                    } else if (msgLower.includes("return") || msgLower.includes("revisi")) {
+                        iconHtml = '<i class="fas fa-exclamation-triangle text-warning border border-warning" style="' + centerStyle + '"></i>';
+                    } else {
+                        iconHtml = '<i class="fas fa-exclamation text-info border border-info" style="' + centerStyle + '"></i>';
+                    }
+
+                    var bgStyle = item.IsRead ? '' : 'background-color: #e1f5fe;';
+
+                    html += `
+                    <a class="dropdown-item" href="javascript:void(0)" onclick="readAndRedirect(${item.ID}, '${item.LinkUrl}')" style="${bgStyle}; white-space: normal;">
+                        <div class="notification-content d-flex align-items-start">
+                            <div class="icon mr-2 mt-1">
+                                ${iconHtml}
+                            </div>
+                            <div class="content">
+                                <div class="notification-detail" style="font-size: 12px; line-height: 1.2;">
+                                    <span class="font-weight-bold text-dark d-block mb-1">${item.senderNIK}</span>
+                                    ${item.Message}
+                                </div>
+                                <div class="notification-time text-muted mt-1" style="font-size: 10px;">
+                                    ${timeStr}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                    <div class="dropdown-divider m-0"></div>`;
+                });
+            }
+
+            $('#notifContainer').html(html);
+        }
+
+        // --- B. UPDATE ANGKA BADGE ---
+        function updateBadge(count) {
+            var badge = $('#notifBadge');
+            if (count > 0) {
+                badge.text(count).show();
+            } else {
+                badge.hide();
+            }
+        }
+
+        // --- C. LOAD DATA DARI SERVER ---
+        function loadNotifications() {
+            $.get('@Url.Action("GetNotifications", "Notification", new { area = "" })', function (res) {
+                updateBadge(res.count);
+                renderList(res.data);
+            });
+        }
+
+        // --- D. SIGNALR REALTIME SETUP ---
+        try {
+            var notifHub = $.connection.notificationHub;
+
+            // Request Notification Permission on load
+            if (window.Notification && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+
+            function showHTML5Notification(title, message, url) {
+                if (window.Notification && Notification.permission === "granted") {
+                    var options = {
+                        body: message,
+                        icon: '/ngk-portal/favicon.ico', // Default app favicon path
+                        silent: true
+                    };
+                    var notification = new Notification(title, options);
+                    notification.onclick = function (event) {
+                        event.preventDefault();
+                        window.focus();
+                        if (url) {
+                            window.location.href = url;
+                        }
+                    };
+                }
+            }
+
+            function playNotificationSound() {
+                try {
+                    var audio = new Audio('@Url.Content("~/Sound/mixkit-software-interface-remove-2576.wav")');
+                    var playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(function(error) {
+                            console.warn("Audio playback blocked by browser autoplay policy:", error);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Audio playback error:", e);
+                }
+            }
+
+            notifHub.client.broadcastNotif = function (sender, message, url) {
+                console.log("🔥 PESAN DITERIMA DARI SERVER (broadcastNotif)!", { sender, message });
+
+                loadNotifications();
+
+                const Toast = Swal.mixin({
+                    toast: true, position: 'top-end', showConfirmButton: false, timer: 10000
+                });
+                Toast.fire({ icon: 'info', title: sender + ' : '  + message });
+
+                showHTML5Notification(sender, message, url);
+                playNotificationSound();
+            };
+
+            notifHub.client.receiveNotification = function (message) {
+                console.log("🔥 PESAN DITERIMA DARI SERVER (receiveNotification)!", message);
+
+                loadNotifications();
+
+                const Toast = Swal.mixin({
+                    toast: true, position: 'top-end', showConfirmButton: false, timer: 10000
+                });
+                Toast.fire({ icon: 'info', title: 'New System Request : ' + message });
+
+                showHTML5Notification("Portal Notification", message, "/ngk-portal/IT/RequestSystem/RequestList");
+                playNotificationSound();
+            };
+
+            $.connection.hub.logging = true;
+
+            $.connection.hub.start()
+                .done(function () { console.log("✅ SignalR TERHUBUNG! Connection ID: " + $.connection.hub.id); })
+                .fail(function (err) { console.error("❌ SignalR GAGAL KONEK: " + err); });
+
+        } catch (e) {
+            console.error("SignalR Error: ", e);
+        }
+
+        // --- E. EVENT LISTENER ---
+        loadNotifications();
+
+        $('#dropdownMenuNotification').click(function() {
+            loadNotifications();
+        });
+
+        window.readAndRedirect = function(id, url) {
+            $.post('@Url.Action("MarkAsRead", "Notification", new { area = "" })', { id: id }, function() {
+                window.location.href = url;
+            });
+        };
+    });
+
+    // --- FUNGSI JAVASCRIPT ORIGINAL BAWAAN (DIKEMBALIKAN KE VERSI AWAL) ---
+    //// Fungsi untuk menyimpan tab yang dipilih
+    //$(document).ready(function () {
+    //    // Cek apakah ada tab yang dipilih sebelumnya di localStorage
+    //    console.log(localStorage.getItem('sidebarToggled'));
+    //    if (localStorage.getItem('sidebarToggled') === 'true') {
+    //        // Jika ya, tambahkan kelas 'toggled' ke elemen .page-wrapper
+    //        $('.page-wrapper').addClass('toggled');
+    //    }
+    //});
+    //$('#close-sidebar').click(function () {
+    //    // Toggle kelas 'toggled' pada elemen dengan kelas .page-wrapper
+    //    //$('.page-wrapper').toggleClass('toggled');
+
+    //    // Simpan status perubahan kelas 'toggled' ke localStorage
+    //    if ($('.page-wrapper').hasClass('toggled')) {
+    //        $('.page-wrapper').removeClass('toggled')
+    //        localStorage.setItem('sidebarToggled', 'false');
+    //    } else {
+    //        $('.page-wrapper').addClass('toggled');
+    //        localStorage.setItem('sidebarToggled', 'true');
+    //    }
+
+    //    console.log(localStorage.getItem('sidebarToggled'));
+    //});
+
+    $('.btnFavorite').click(function () {
+        var id = $(this).attr('id');
+        console.log(id);
+    });
+
+    $('#close-sidebar').click(function () {
+        var id = $(this).attr('id');
+        setSessionData('Navbar', 'false');
+    });
+
+    $('#show-sidebar').click(function () {
+        var id = $(this).attr('id');
+        console.log(id);
+        setSessionData('Navbar', 'true');
+    })
+
+    function setSessionData(key, value) {
+        var urlString = "/ngk-portal/Home/RemoveFavoriteMenu";
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("SetSessionData", "Home", new { area = "" })',
+            data: { key: key, value: value },
+            success: function (result) {
+                console.log("Session data berhasil diatur.");
+            },
+            error: function (xhr, status, error) {
+                console.error("Gagal mengatur session data: " + error);
+            }
+        });
+
+        $(window).resize(function () {
+    if ($(window).width() <= 768) {
+        $(".page-wrapper").removeClass("toggled");
+    } else {
+        // Kembalikan ke state awal jika kembali ke layar besar (Laptop)
+        @if(ViewBag.NavHide == null) {
+            <text>$(".page-wrapper").addClass("toggled");</text>
+        }
+    }
+});
+    }
+    if (window.innerWidth <= 768) {
+        document.querySelector('.page-wrapper').classList.remove('toggled');
+    }
+
+
+</script>
+</html>

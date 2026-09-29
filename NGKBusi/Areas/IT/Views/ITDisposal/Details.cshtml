@@ -1,0 +1,474 @@
+﻿﻿@{
+    ViewBag.Title = "Detail Pengajuan IT Disposal";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var header = ViewBag.Header;
+    var details = ViewBag.Details;
+    bool isEditable = header != null &&
+    (header.status == "ReturnedByApprover" ||
+     header.status == "ReturnedByChecker");
+    bool isRejected = header != null &&
+    (header.status == "RejectedByChecker" || header.status == "RejectedByApprover");
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Judul di sebelah kiri -->
+        <h4 class="mb-0">Detail Pengajuan: @(header != null ? header.header_id : "Data tidak ditemukan")</h4>
+
+        <!-- Container tombol di sebelah kanan dengan jarak (gap-3) -->
+        <div class="d-flex align-items-center gap-3">
+            <!-- Tombol Excel disembunyikan (style="display: none;") -->
+            <div>
+                <a href="@Url.Action("ExportToExcel", "ITDisposal", new { id = header?.header_id })" class="btn btn-success btn-sm">
+                    <i class="fa fa-file-excel-o"></i> Export to Excel
+                </a>
+            </div>
+
+            <!-- Tombol Export to PDF menggunakan Container (html2pdf) -->
+            <div style="display: none;">
+                <button type="button" id="btnExportPdf" class="btn btn-danger btn-sm">
+                    <i class="fa fa-file-pdf-o"></i> Export to PDF
+                </button>
+            </div>
+
+            <a href="@Url.Action("Index", "ITDisposal", new { area = "IT" })" class="btn btn-secondary btn-sm">
+                ← Kembali ke list
+            </a>
+        </div>
+    </div>
+
+    @if (header == null)
+    {
+        <div class="alert alert-danger">Data tidak ditemukan.</div>
+        return;
+    }
+
+    <!-- BAGIAN ALERT PESAN -->
+    @if (!string.IsNullOrEmpty(ViewBag.LatestMessage))
+    {
+        string feedbackStatus = ViewBag.FeedbackStatus as string ?? header.status;
+        string alertClass = feedbackStatus.Contains("Rejected") ? "alert-danger" : "alert-warning";
+
+        <div class="alert @alertClass">
+            <strong>Catatan (@feedbackStatus) :</strong> @ViewBag.LatestMessage
+        </div>
+    }
+
+    <!-- ================================================================= -->
+    <!-- CONTAINER UTAMA UNTUK EXPORT PDF (PERSIS SEPERTI GAMBAR PDF)      -->
+    <!-- ================================================================= -->
+    <div id="pdf-container" style="background: white; padding: 15px; font-family: Arial, sans-serif; font-size: 11px; color: #000;">
+
+        <!-- KOP DOKUMEN RESMI -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px;">
+            <tr>
+                <td style="width: 20%; vertical-align: middle; text-align: center; border: 1px solid #000; padding: 5px;">
+                    <img src="~/Content/images/niterra-logo.jpg" alt="Niterra" style="max-height: 35px;" />
+                </td>
+                <td style="width: 50%; vertical-align: middle; text-align: center; border: 1px solid #000; font-weight: bold; font-size: 13px;">
+                    FORMULIR INTEGRASI<br />
+                    <span style="font-size: 11px;">IT DISPOSAL</span>
+                </td>
+                <td style="width: 30%; vertical-align: middle; border: 1px solid #000; padding: 0;">
+                    <table style="width: 100%; font-size: 9px; border-collapse: collapse;">
+                        <tr><td style="padding: 2px 5px; border-bottom: 1px solid #000;">No.Dok.</td><td style="padding: 2px 5px; border-bottom: 1px solid #000; border-left: 1px solid #000;">PMLK3-IT-01/L13</td></tr>
+                        <tr><td style="padding: 2px 5px; border-bottom: 1px solid #000;">Revisi</td><td style="padding: 2px 5px; border-bottom: 1px solid #000; border-left: 1px solid #000;">00</td></tr>
+                        <tr><td style="padding: 2px 5px; border-bottom: 1px solid #000;">Tanggal</td><td style="padding: 2px 5px; border-bottom: 1px solid #000; border-left: 1px solid #000;">05-Apr-23</td></tr>
+                        <tr><td style="padding: 2px 5px;">Halaman</td><td style="padding: 2px 5px; border-left: 1px solid #000;">1 of 1</td></tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- INFORMASI DEPARTEMEN -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; margin-bottom: 10px;">
+            <tr>
+                <td style="padding: 6px; font-weight: bold; border: 1px solid #000;">
+                    Departement : @header.department
+                </td>
+            </tr>
+        </table>
+
+        <!-- TABEL DETAIL ASET (BERSIH TANPA KOTAK INPUT SAAT DICETAK PDF) -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: center; margin-bottom: 15px;">
+            <thead style="background-color: #f2f2f2; font-weight: bold;">
+                <tr>
+                    <th style="border: 1px solid #000; padding: 6px;">NO</th>
+                    <th style="border: 1px solid #000; padding: 6px;">ITEMS</th>
+                    <th style="border: 1px solid #000; padding: 6px;">QUANTITY & UNIT</th>
+                    <th style="border: 1px solid #000; padding: 6px;">ASSET NO</th>
+                    <th style="border: 1px solid #000; padding: 6px;">TYPE<br /><span style="font-size: 8px; font-weight: normal;">(Laptop/PC/Server / Storage / Other)</span></th>
+                    <th style="border: 1px solid #000; padding: 6px;">CONDITION<br /><span style="font-size: 8px; font-weight: normal;">(New/Old/Repaired / Damaged)</span></th>
+                    <th style="border: 1px solid #000; padding: 6px;">ACTIONS<br /><span style="font-size: 8px; font-weight: normal;">(Auctioned / Donated / Destroyed)</span></th>
+                    <th style="border: 1px solid #000; padding: 6px;">CONFIDENTIALITY<br /><span style="font-size: 8px; font-weight: normal;">(Public / Internal / Confidential)</span></th>
+                    <th style="border: 1px solid #000; padding: 6px;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int noPdf = 1; }
+                @if (details != null)
+                {
+                    foreach (var item in details)
+                    {
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 5px;">@(noPdf++)</td>
+                            <td style="border: 1px solid #000; padding: 5px; text-align: left;">@item.items</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.quantity @item.unit</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.asset_no</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.type</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.condition</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.actions</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@item.confidentiality</td>
+                            <td style="border: 1px solid #000; padding: 5px;">@(item.created_date != null ? item.created_date.ToString("dd-MM-yyyy") : "-")</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        <!-- KOTAK TANDA TANGAN (SIGNATURE BLOCK) -->
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; text-align: center;">
+            <tr style="background-color: #2c5e85; color: white; font-weight: bold;">
+                <td style="border: 1px solid #000; padding: 6px; width: 33%;">Approved By</td>
+                <td style="border: 1px solid #000; padding: 6px; width: 33%;">Checked By</td>
+                <td style="border: 1px solid #000; padding: 6px; width: 34%;">PIC IT</td>
+            </tr>
+            <tr>
+                <!-- Approved By Signature -->
+                <td style="border: 1px solid #000; padding: 10px; vertical-align: middle; height: 50px;">
+                    @if (!string.IsNullOrEmpty(header.ApprovedBy))
+                    {
+                        <div style="color: rgb(0, 128, 0);"><strong>✔ Approved</strong></div>
+                        <div><strong>@header.ApprovedBy</strong></div>
+                        <div><small>@(header.ApprovedDate != null ? header.ApprovedDate.ToString("dd MMM yyyy") : "")</small></div>
+                    }
+                    else
+                    {
+                        <span style="color: #888;">-</span>
+                    }
+                </td>
+
+                <!-- Checked By Signature -->
+                <td style="border: 1px solid #000; padding: 10px; vertical-align: middle; height: 50px;">
+                    @if (!string.IsNullOrEmpty(header.CheckedBy))
+                    {
+                        <div style="color: rgb(0, 128, 0);"><strong>✔ Checked</strong></div>
+                        <div><strong>@header.CheckedBy</strong></div>
+                        <div><small>@(header.CheckedDate != null ? header.CheckedDate.ToString("dd MMM yyyy") : "")</small></div>
+                    }
+                    else
+                    {
+                        <span style="color: #888;">-</span>
+                    }
+                </td>
+
+                <!-- Created By Signature -->
+                <td style="border: 1px solid #000; padding: 10px; vertical-align: middle; height: 50px;">
+                    <div style="color: rgb(0, 128, 0);"><strong>✔ Created</strong></div>
+                    <div><strong>@header.requester_name</strong></div>
+                    <div><small>@(ViewBag.CreatedDate != null ? ((DateTime)ViewBag.CreatedDate).ToString("dd MMM yyyy") : "")</small></div>
+                </td>
+            </tr>
+        </table>
+
+    </div> <!-- END OF PDF CONTAINER -->
+    <!-- ================================================================= -->
+    <!-- TAMPILAN INTERAKTIF WEB (DENGAN INPUT EDIT DAN TOMBOL APPROVAL)    -->
+    <!-- ================================================================= -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <div><strong>Department:</strong> @header.department</div>
+            <span class="badge bg-secondary">@header.status</span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-bordered mb-0">
+                <thead class="bg-light text-center">
+                    <tr><th>Items</th><th>Qty</th><th>Unit</th><th>Asset No</th><th>Type</th><th>Condition</th><th>Actions</th><th>Confidentiality</th></tr>
+                </thead>
+                <tbody id="details-table-body">
+                    @if (details != null)
+                    {
+                        foreach (var item in details)
+                        {
+                            <tr data-id="@item.detail_id">
+                                <td><input type="text" class="form-control form-control-sm edit-items" value="@item.items" disabled></td>
+                                <td><input type="number" class="form-control form-control-sm edit-qty" value="@item.quantity" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-unit" value="@item.unit" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-asset" value="@item.asset_no" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-type" value="@item.type" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-cond" value="@item.condition" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-act" value="@item.actions" disabled></td>
+                                <td><input type="text" class="form-control form-control-sm edit-conf" value="@item.confidentiality" disabled></td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (ViewBag.IsCreator == true && isEditable && isRejected)
+        {
+            <div class="card-footer text-end">
+                <button id="btnEdit" class="btn btn-warning">Edit</button>
+                <button id="btnSaveResubmit" class="btn btn-success" style="display:none;">Save &amp; Resubmit</button>
+            </div>
+        }
+        else if (ViewBag.IsCreator == true && isRejected)
+        {
+            <div class="card-footer text-end">
+                <span class="text-danger"><strong>Document Rejected</strong></span>
+            </div>
+        }
+    </div>
+
+    <!-- Tampilkan Tombol Approval Interaktif Hanya di Web (Bukan di PDF) -->
+    <div class="card shadow-sm mb-4 mt-4">
+        <table class="table table-bordered text-center mb-0">
+            <thead class="text-white" style="background-color: #2c5e85;">
+                <tr><th>Approved By</th><th>Checked By</th><th>Created By</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="align-middle">
+                        @if (!string.IsNullOrEmpty(header.ApprovedBy) || header.status == "ReturnedByApprover" || header.status == "RejectedByApprover")
+                        {
+                            string statusColor = header.status.Contains("Approved") ? "rgb(116, 192, 252)" : (header.status.Contains("Returned") ? "rgb(255, 212, 59)" : "rgb(255, 59, 59)");
+                            string iconClass = header.status.Contains("Approved") ? "fa-circle-check" : (header.status.Contains("Returned") ? "fa-rotate" : "fa-circle-xmark");
+                            string statusLabel = header.status.Contains("Approved") ? "Approved" : (header.status.Contains("ReturnedByApprover") ? "Returned" : (header.status.Contains("RejectedByApprover") ? "Rejected" : ""));
+
+                            <i class="fa-solid @iconClass" style="color: @statusColor; font-size: 40px;"></i>
+                            <div style="color: @statusColor;"><strong>@statusLabel</strong></div>
+                            <div><strong>@header.ApprovedBy</strong></div>
+                            <div><small>@(header.ApprovedDate != null ? header.ApprovedDate.ToString("dd MMM yyyy") : "")</small></div>
+                        }
+                        else if (header.status == "RejectedByChecker")
+                        {
+                            <span class="text-danger"><strong>Process Terminated</strong></span>
+                        }
+                        else if (ViewBag.IsApprover == true && !string.IsNullOrEmpty(header.CheckedBy))
+                        {
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary status-btn" data-id="@header.header_id" data-status="Approved"><i class="fa-solid fa-circle-check"></i> Approve</button>
+                                <button class="btn btn-sm btn-outline-warning status-btn" data-id="@header.header_id" data-status="ReturnedByApprover"><i class="fa-solid fa-rotate"></i> Return</button>
+                                <button class="btn btn-sm btn-outline-danger status-btn" data-id="@header.header_id" data-status="RejectedByApprover"><i class="fa-solid fa-circle-xmark"></i> Reject</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@(ViewBag.IsApprover == true ? "Waiting for Checker..." : "-" )</span>
+                        }
+                    </td>
+
+                    <td class="align-middle">
+                        @if (!string.IsNullOrEmpty(header.CheckedBy) || header.status == "ReturnedByChecker" || header.status == "RejectedByChecker")
+                        {
+                            string statusColor = (header.status == "RejectedByChecker") ? "rgb(255, 59, 59)" : (header.status == "ReturnedByChecker") ? "rgb(255, 212, 59)" : "rgb(116, 192, 252)";
+                            string iconClass = (header.status == "RejectedByChecker") ? "fa-circle-xmark" : (header.status == "ReturnedByChecker") ? "fa-rotate" : "fa-circle-check";
+                            string statusLabel = (header.status == "RejectedByChecker") ? "Rejected" : (header.status == "ReturnedByChecker") ? "Returned" : "Checked";
+
+                            <i class="fa-solid @iconClass" style="color: @statusColor; font-size: 40px;"></i>
+                            <div style="color: @statusColor;"><strong>@statusLabel</strong></div>
+                            <div><strong>@header.CheckedBy</strong></div>
+                            <div><small>@(header.CheckedDate != null ? header.CheckedDate.ToString("dd MMM yyyy") : "")</small></div>
+                        }
+                        else if (ViewBag.IsChecker == true)
+                        {
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary status-btn" data-id="@header.header_id" data-status="Checked"><i class="fa-solid fa-circle-check"></i> Sign</button>
+                                <button class="btn btn-sm btn-outline-warning status-btn" data-id="@header.header_id" data-status="ReturnedByChecker"><i class="fa-solid fa-rotate"></i> Return</button>
+                                <button class="btn btn-sm btn-outline-danger status-btn" data-id="@header.header_id" data-status="RejectedByChecker"><i class="fa-solid fa-circle-xmark"></i> Reject</button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Waiting for Checker...</span>
+                        }
+                    </td>
+
+                    <td class="align-middle">
+                        <i class="fa-solid fa-circle-check" style="color: rgb(116, 192, 252); font-size: 40px;"></i>
+                        <div style="color: rgb(116, 192, 252);"><strong>Created</strong></div>
+                        <div><strong>@header.requester_name</strong></div>
+                        <div><small>@(ViewBag.CreatedDate != null ? ((DateTime)ViewBag.CreatedDate).ToString("dd MMM yyyy") : "")</small></div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Modal Return & Reject -->
+<div class="modal fade" id="returnModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Return</h5></div>
+            <div class="modal-body">
+                <textarea id="returnTextArea" class="form-control"></textarea>
+                <span id="returnError" class="text-danger" style="display:none;">Alasan harus diisi!</span>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button id="btnSubmitReturn" class="btn btn-warning">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Reject</h5></div>
+            <div class="modal-body">
+                <textarea id="rejectTextArea" class="form-control"></textarea>
+                <span id="rejectError" class="text-danger" style="display:none;">Alasan harus diisi!</span>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button id="btnSubmitReject" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SCRIPT PUSTAKA HTML2PDF & EVENT HANDLER -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // Sembunyikan elemen pdf-container dari layar biasa, hanya dimunculkan saat dicetak ke PDF
+        $('#pdf-container').hide();
+
+        $('#btnExportPdf').on('click', function () {
+            const element = document.getElementById('pdf-container');
+            $(element).show(); // Munculkan sebentar untuk di-render
+
+            const options = {
+                margin:       5,
+                filename:     'IT_Disposal_@(header != null ? header.header_id : "Document").pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().from(element).set(options).save().then(function () {
+                $(element).hide(); // Sembunyikan kembali setelah selesai diunduh
+            });
+        });
+
+        // Setup SweetAlert & Handler AJAX yang sudah ada sebelumnya
+        const swalWithBootstrapButtons = Swal.mixin({
+            customClass: { confirmButton: "btn btn-success me-2", cancelButton: "btn btn-danger" },
+            buttonsStyling: false
+        });
+
+        $(document).on('click', '.status-btn', function (e) {
+            e.preventDefault();
+            if ($(this).prop('disabled')) return;
+            var $btn = $(this);
+            var headerId = $btn.data('id');
+            var status = $btn.data('status');
+
+            if (status.includes("Returned")) {
+                $('#returnModal').modal({ backdrop: 'static', keyboard: false }).modal('show');
+                $('#returnModal').data('headerId', headerId).data('status', status);
+                return;
+            }
+            if (status.includes("Rejected")) {
+                $('#rejectModal').modal({ backdrop: 'static', keyboard: false }).modal('show');
+                $('#rejectModal').data('headerId', headerId).data('status', status);
+                return;
+            }
+
+            swalWithBootstrapButtons.fire({
+                title: "Process this document?",
+                text: "You won't be able to revert this!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, proceed!",
+                cancelButtonText: "No, cancel!",
+                reverseButtons: true,
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    return new Promise((resolve, reject) => {
+                        $.post('@Url.Action("UpdateStatus", "ITDisposal", new { area = "IT" })', {
+                            id: headerId, newStatus: status, message: "Processed"
+                        }).done(function (res) {
+                            if (res.success) { resolve(res); } else { reject(new Error(res.message)); }
+                        }).fail(function () { reject(new Error("Request failed.")); });
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    location.reload();
+                }
+            });
+        });
+
+        $('#btnSubmitReturn').on('click', function (e) {
+            e.preventDefault();
+            var reason = $('#returnTextArea').val();
+            var headerId = $('#returnModal').data('headerId');
+            var status = $('#returnModal').data('status');
+            if (!reason) { $('#returnError').show(); return; }
+            $('#returnModal').modal('hide');
+
+            $.post('@Url.Action("UpdateStatus", "ITDisposal", new { area = "IT" })', {
+                id: headerId, newStatus: status, message: reason
+            }, function (res) {
+                if (res.success) { location.reload(); }
+            });
+        });
+
+        $('#btnSubmitReject').on('click', function (e) {
+            e.preventDefault();
+            var reason = $('#rejectTextArea').val();
+            var headerId = $('#rejectModal').data('headerId');
+            var status = $('#rejectModal').data('status');
+            if (!reason) { $('#rejectError').show(); return; }
+            $('#rejectModal').modal('hide');
+
+            $.post('@Url.Action("UpdateStatus", "ITDisposal", new { area = "IT" })', {
+                id: headerId, newStatus: status, message: reason
+            }, function (res) {
+                if (res.success) { location.reload(); }
+            });
+        });
+
+        $('#btnEdit').on('click', function (e) {
+            e.preventDefault();
+            $('#details-table-body input').prop('disabled', false);
+            $(this).hide();
+            $('#btnSaveResubmit').show();
+        });
+
+        $('#btnSaveResubmit').on('click', function (e) {
+            e.preventDefault();
+            var headerId = '@(header != null ? header.header_id : "")';
+            var detailsList = [];
+
+            $('#details-table-body tr').each(function () {
+                var row = $(this);
+                detailsList.push({
+                    id: row.data('id'),
+                    items: row.find('.edit-items').val(),
+                    quantity: row.find('.edit-qty').val(),
+                    unit: row.find('.edit-unit').val(),
+                    asset_no: row.find('.edit-asset').val(),
+                    type: row.find('.edit-type').val(),
+                    condition: row.find('.edit-cond').val(),
+                    actions: row.find('.edit-act').val(),
+                    confidentiality: row.find('.edit-conf').val()
+                });
+            });
+
+            $.post('@Url.Action("SaveAndResubmit", "ITDisposal", new { area = "IT" })', {
+                headerId: headerId,
+                detailsJson: JSON.stringify(detailsList)
+            }, function (res) {
+                if (res.success) { location.reload(); }
+                else { alert(res.message); }
+            });
+        });
+    });
+</script>

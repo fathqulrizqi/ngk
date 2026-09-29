@@ -1,0 +1,534 @@
+﻿@{
+    ViewBag.Title = "View";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    // Counter untuk membuat ID unik pada setiap halaman
+    int pageCounter = 0;
+    int cardCounter = 0;
+    int cardByPage = 0;
+}
+
+@section scriptHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+    <style>
+        .main-barcode, .hanko-barcode {
+            width: 100%;
+            height: auto;
+        }
+
+        td {
+            padding: 0;
+        }
+
+        /* Styling untuk Slider */
+        #slider-container {
+            width: 21cm;
+            overflow: hidden;
+            margin: auto;
+            padding: 0;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        #slider-wrapper {
+            display: flex;
+            transition: transform 0.5s ease-in-out; /* Animasi geser */
+        }
+
+        .printable-page {
+            flex-shrink: 0; /* Mencegah slide menyusut */
+            width: 100%;
+        }
+
+        /* Sembunyikan tombol navigasi dan print saat mencetak */
+        @@media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            #slider-container {
+                /* Hapus overflow hidden agar semua halaman terlihat saat print */
+                overflow: visible !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            #slider-wrapper {
+                /* **INI KUNCI UTAMANYA** */
+                /* Ubah dari flex (menyamping) menjadi block (ke bawah) */
+                display: block !important;
+                /* Hapus efek geser dari JavaScript */
+                transform: none !important;
+            }
+
+            .printable-page {
+                width: 21cm;
+                height: 29.7cm;
+                padding: 1.2cm;
+                page-break-after: always;
+            }
+        }
+    </style>
+}
+
+<body class="bg-gray-50 flex flex-col justify-center items-center py-8">
+
+    <div class="no-print w-[21cm] flex justify-between items-center mb-4">
+        <button id="prev-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-l shadow-lg">
+            &lt; Prev
+        </button>
+        <div class="text-center">
+            <span id="page-counter" class="text-lg font-semibold"></span>
+            <button id="print-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg mx-4">
+                🖨️ Cetak Label
+            </button>
+        </div>
+        <button id="next-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-r shadow-lg">
+            Next &gt;
+        </button>
+    </div>
+
+    <div id="slider-container">
+        <div id="slider-wrapper">
+            @foreach (var items in ViewBag.detail)
+            {
+                pageCounter++;
+                cardByPage = 0;
+                <div class="printable-page bg-white border flex flex-col gap-5 m-0" style="width: 21cm; height: 29.7cm; padding: 1.2cm;">
+
+                    @foreach (dynamic item in items)
+                    {
+                        cardCounter++;
+                        cardByPage++;
+                        <div class="card-label border-2 border-black min-h-[23.6%] w-full">
+                            <table class="w-full" style="font-family: 'Courier New', Courier, monospace;">
+                                <tbody>
+                                    <tr>
+                                        <td class="col-3 p-0"> </td>
+                                        <td class="col-6 text-center p-0" style="font-size: 16px;">Parts Contents Card</td>
+                                        <td class="col-3 p-0">
+                                            @if (cardByPage == 1)
+                                            {
+                                                <table class="text-right" style="font-size:10px;">
+                                                    <colgroup>
+                                                        <col style="width: 59.9%;">
+                                                        <col style="width: 0.2%;">
+                                                        <col style="width: 39.9%;">
+                                                    </colgroup>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td class="px-1">PAGE</td>
+                                                            <td>:</td>
+                                                            <td class="px-[20px]">@pageCounter</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3" class="col-12 p-0">
+                                            <div class="flex">
+                                                <div class="px-1 pt-0 pb-1 w-[31%] relative">
+                                                    <div class="flex flex-col gap-2">
+                                                        <table class="w-full border border-black rounded-lg border-separate border-spacing-0" style="border: 1px solid black !important">
+                                                            <colgroup>
+                                                                <col style="width: 30%;">
+                                                                <col style="width: 27%;">
+                                                                <col style="width: 43%;">
+                                                            </colgroup>
+
+                                                            <tbody>
+                                                                <tr class="p-0">
+                                                                    <td class="pt-0 pl-2 pr-0 border-b border-black" style="font-size: 8px; padding-bottom: 18.5px !important;">
+                                                                        FROM:
+                                                                    </td>
+                                                                    <td class="pt-0 px-0 border-b border-black" style="font-size: 10px; padding-bottom: 18.5px;">
+                                                                        @item.from_1
+                                                                    </td>
+                                                                    <td class="pt-0 px-0 border-b border-black" style="font-size: 10px; padding-bottom: 18.5px;">
+                                                                        - @item.from_2
+                                                                    </td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td class="pt-0 pl-2 pr-0 border-black" style="font-size: 8px; padding-bottom: 18.5px !important;">
+                                                                        TO:
+                                                                    </td>
+                                                                    <td class=" pt-0  px-0 border-black" style="font-size: 10px; padding-bottom: 18.5px;">
+                                                                        @item.to_1
+                                                                    </td>
+                                                                    <td class=" pt-0 px-0 border-black" style="font-size: 10px; padding-bottom: 18.5px;">
+                                                                        - @item.to_2
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <div>
+                                                            <table class="w-full border border-black rounded-lg border-separate border-spacing-0" style="border: 1px solid black !important">
+                                                                <colgroup>
+                                                                    <col style="width: 50%;">
+                                                                    <col style="width: 50%;">
+                                                                </colgroup>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 8px">Supply Address</td>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 10px">@item.supply_address</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 8px">Next Supply Address</td>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 10px"> </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 8px">M/S ID</td>
+                                                                        <td class="pt-1 pl-2 pr-0 border-b border-black" style="font-size: 10px">@item.ms_id</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="pt-1 pl-2 pr-0 border-r border-black" style="font-size: 8px">Inventory Category</td>
+                                                                        <td class="pt-1 pl-2 pr-0 border-black" style="font-size: 8px">Part weight</td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td class="py-0 pl-2 pr-0 border-r border-black" style="font-size: 10px">@item.inventory_category</td>
+                                                                        <td class="py-0 pl-2 pr-0 border-black" style="font-size: 10px"> </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                            <table class="w-full border-separate border-spacing-0 pt-1">
+                                                                <colgroup>
+                                                                    <col style="width: 70%;">
+                                                                    <col style="width: 30%;">
+                                                                </colgroup>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td style="font-size: 14px; font-family: 'Arial Narrow', Arial, sans-serif; font-weight: 550 !important; " class="px-1 pt-1">
+                                                                            <span style="display: block; line-height: 1;">HPM</span>
+                                                                            <span style="display: block; line-height: 1; padding-top: 2px;">Honda Prospect Motor</span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <div id="qrcode-container-@cardCounter" class="flex justify-center items-center"></div>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                                <div class="w-[69%] px-1 relative" colspan="2">
+                                                    <table class="w-[64%] border border-black rounded-lg border-separate border-spacing-0 absolute" style="border: 1px solid black !important">
+                                                        <tr>
+                                                            <td colspan="2" class="pl-2 pr-0 border-b border-black pt-[2px]" style="font-size: 13px;">@item.mid_coloum_1</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td colspan="2" class="pl-2 pr-0 border-b border-black pt-[3px]" style="font-size: 10px;">@item.mid_coloum_2</td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td class="w-[35%] pl-2 pr-0  py-[2px]" style="font-size: 8.5px;">Part Color Code:</td>
+                                                            <td class="w-[70%]  pl-2 pr-0  py-[2px]"> </td>
+                                                        </tr>
+                                                    </table>
+                                                    <table class="w-[55%] top-[32%] border border-black rounded-lg border-separate border-spacing-0 absolute" style="border: 1px solid black !important">
+                                                        <tbody>
+                                                            <tr class="d-flex w-full">
+                                                                <td class="w-[38%] pl-2 pr-0 border-b border-r border-black pt-[2px] d-flex flex-col leading-none">
+                                                                    <span class="py-[2px]" style="font-size: 8px;">
+                                                                        P/S Code
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+                                                                        @item.ps_code
+                                                                    </span>
+                                                                </td>
+                                                                <td class="w-[30%] border-b border-r border-black pt-[2px] d-flex flex-col leading-none" style="font-size: 13px;">
+                                                                    <span class="py-[2px] text-center" style="font-size: 8px;">
+                                                                        Order Class
+                                                                    </span>
+                                                                    <span class="py-[2px] text-center" style="font-size: 10px;">
+                                                                        @item.order_class
+                                                                    </span>
+                                                                </td>
+                                                                <td class="w-[32%] pl-2 pr-0 border-b border-black pt-[2px] d-flex flex-col leading-none" style="font-size: 13px;">
+                                                                    <span class="py-[2px]" style="font-size: 8px;">
+                                                                        SP Order No.
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td colspan="3" class="pl-2 pr-0 border-b border-black pt-[2px] d-flex flex-col leading-none">
+                                                                    <span class="py-[2px]" style="font-size: 8px;">
+                                                                        Production SEQ No.
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+                                                                        @item.production_seq_no
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td colspan="3" class="pl-2 pr-0 border-black pt-[2px] d-flex flex-col leading-none">
+                                                                    <span class="pt-[2px]" style="font-size: 8px;">
+                                                                        KD Lot No.
+                                                                    </span>
+                                                                    <span class="pb-[4px]" style="font-size: 14px;">
+                                                                        @item.kd_lot_no
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+
+                                                    </table>
+                                                    <div class="border border-black pr-2 pl-1 rounded-lg border-separate border-spacing-0 w-[31.5%] end-[1.5%] d-flex justify-content-between absolute" style="border: 1px solid black !important">
+                                                        <span style="font-size: 8px;" class="pt-[3px]">
+                                                            ship
+                                                        </span>
+                                                        <span> @item.ship</span>
+                                                    </div>
+                                                    <table class="border-separate border-spacing-0 w-[28.5%] end-[1.5%] top-[12.5%] absolute">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed border-r-0"> </td>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed border-r-0"> </td>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed border-r-0"> </td>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed border-r-0"> </td>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed border-r-0"> </td>
+                                                                <td class="px-[11px] py-[12.5px] border-2 border-gray-400 border-dashed"> </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <table class="border-separate border-spacing-0 w-[31.5%] end-[1.5%] top-[27%] absolute">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td colspan="2" style="width: 38%" class="border-r-2 border-gray-400 border-dashed leading-none p-0">
+                                                                    <span style="font-size: 8px;">
+                                                                        Date :
+                                                                    </span>
+                                                                    <br />
+                                                                    <span style="font-size: 14px;">@item.date</span>
+                                                                </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                    <table class="border-separate border-spacing-0 w-[31.5%] end-[1.5%] top-[41%] absolute">
+                                                        <tbody>
+                                                            <tr>
+                                                                <td colspan="2" style="width: 38%" class="border-r-2 border-gray-400 border-dashed leading-none p-0">
+                                                                    <span style="font-size: 8px;">
+                                                                        Time :
+                                                                    </span>
+                                                                    <br />
+                                                                    <span style="font-size: 14px;">@item.time</span>
+                                                                </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+
+                                                    <table class="w-[41%] top-[56%] end-[1.5%] border border-black rounded-lg border-separate border-spacing-0 absolute" style="border: 1px solid black !important">
+                                                        <tbody>
+                                                            <tr class="d-flex w-full">
+                                                                <td class="w-[16%] pr-0 border-r border-black pt-[2px] d-flex flex-col leading-none text-center">
+                                                                    <span class="py-[2px]" style="font-size: 8px;">
+                                                                        HNS
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+                                                                        @item.hns
+                                                                    </span>
+                                                                </td>
+                                                                <td class="w-[37%] border-r border-black pt-[2px] d-flex flex-col leading-none" style="font-size: 13px;">
+                                                                    <span class="py-[2px] " style="font-size: 8px;">
+                                                                        Production day
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+
+                                                                    </span>
+                                                                </td>
+                                                                <td class="w-[47%] pl-1 pr-0 border-black pt-[2px] d-flex flex-col leading-none" style="font-size: 13px;">
+                                                                    <span class="py-[2px]" style="font-size: 8px;">
+                                                                        Production
+                                                                    </span>
+                                                                    <span class="py-[2px]" style="font-size: 10px;">
+
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+
+                                                    </table>
+                                                    <div class="d-flex flex-col leading-none w-[10.5%] end-[32%] top-[71%] absolute">
+                                                        <span style="font-size: 8px;">DCC Date</span>
+                                                        <table class="border-separate border-spacing-0 ">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="d-flex flex-col leading-none w-[10.5%] end-[11.5%] top-[71%] absolute">
+                                                        <span style="font-size: 8px;">DCC Time</span>
+                                                        <table class="border-separate border-spacing-0 ">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="d-flex leading-none w-[42.5%] end-[1.2%] top-[87.5%] absolute">
+                                                        <div style="font-size: 7px;" class="mr-[2px]">Ship Quantity</div>
+                                                        <table class="border-separate border-spacing-0 ">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                    <td class="p-[11px] border-2 border-gray-400 border-dashed border-l-0"> </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    <div class="d-flex flex-col leading-none w-[55%] top-[75%] absolute pt-[2.5px]">
+                                                        <svg id="barcode-generator-@cardCounter"></svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            const slides = $('.printable-page');
+            const totalSlides = slides.length;
+            let currentIndex = 0;
+
+            const sliderWrapper = $('#slider-wrapper');
+            const pageCounter = $('#page-counter');
+            const prevButton = $('#prev-button');
+            const nextButton = $('#next-button');
+
+            function showSlide(index) {
+                // Pindahkan wrapper sejauh -index * 100%
+                sliderWrapper.css('transform', `translateX(-${index * 100}%)`);
+                // Perbarui text counter
+                pageCounter.text(`Halaman ${index + 1} dari ${totalSlides}`);
+
+                // Atur visibilitas tombol prev/next
+                prevButton.prop('disabled', index === 0);
+                nextButton.prop('disabled', index === totalSlides - 1);
+            }
+
+            // Inisialisasi slider
+            showSlide(currentIndex);
+
+            // Event listener untuk tombol next
+            nextButton.on('click', function () {
+                if (currentIndex < totalSlides - 1) {
+                    currentIndex++;
+                    showSlide(currentIndex);
+                }
+            });
+
+            // Event listener untuk tombol prev
+            prevButton.on('click', function () {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    showSlide(currentIndex);
+                }
+            });
+
+            // Logika untuk generate QR Code dan Barcode untuk setiap halaman
+           let cardCounter = 0;
+
+        // Ambil semua data dari ViewBag dalam bentuk array JSON
+        const allData = @Html.Raw(Json.Encode(ViewBag.detail));
+
+        // Loop setiap halaman/slide
+        $('.printable-page').each(function(pageIndex) {
+            // Loop setiap 'card-label' di dalam halaman ini
+            $(this).find('.card-label').each(function (cardIndexInPage) {
+                cardCounter++; // Naikkan counter agar sinkron dengan ID di HTML
+
+                // Ambil data yang sesuai untuk kartu ini
+                const itemData = allData[pageIndex][cardIndexInPage];
+
+                const qrcodeContainer = $(`#qrcode-container-${cardCounter}`);
+                if (qrcodeContainer.length && itemData.qr_code) {
+                    new QRCode(qrcodeContainer[0], {
+                        text: itemData.qr_code,
+                        width: 37.5,
+                        height: 37.5,
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                }
+
+                // --- Generate Barcode ---
+                const barcodeElement = $(`#barcode-generator-${cardCounter}`);
+                if (barcodeElement.length && itemData.barcode_no) {
+                    console.log('✅ Mencoba generate barcode...');
+                    try {
+                        JsBarcode(barcodeElement[0], itemData.barcode_no, {
+                            format: "CODE39",
+                            mod43: true,
+                            width: 0.635,
+                            height: 35,
+                            displayValue: true,
+                            text: itemData.barcode_no,
+                            fontSize: 12,
+                            textAlign: "center",
+                            margin: 0
+                        });
+                    } catch (e) {
+                        console.error('❌ JsBarcode GAGAL:', e); // Menangkap error spesifik dari JsBarcode
+                    }
+                }
+            });
+        });
+
+            // Logika Tombol Cetak
+            $('#print-button').on('click', function () {
+
+                $('#slider-wrapper').printThis({
+                    importCSS: true,
+                    importStyle: true,
+                    loadCSS: "",
+                    pageTitle: "Parts Contents Card",
+                });
+            });
+        });
+    </script>
+</body>

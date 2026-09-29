@@ -1,0 +1,664 @@
+﻿@{
+    ViewBag.Title = "Stationery Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.tailwindcss.css" />
+    <link href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6.3.7/dist/tippy.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+
+    <style>
+        div.dt-length label {
+            margin-left: 0.5rem; /* jarak antara select dan label */
+        }
+
+        input[aria-controls="itemRequest"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+        select[aria-controls="itemRequest"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+            select[aria-controls="itemRequest"]:focus {
+                border-color: #3b82f6; /* focus:border-blue-500 */
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus:ring */
+            }
+
+        .page-content {
+            padding-top: 0 !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 2rem;
+            border-color: #DEE2E6 !important;
+            padding: 0.25rem;
+            width: auto !important;
+            display: inline-block;
+        }
+
+        .select2-selection__rendered {
+            word-wrap: break-word !important;
+            text-overflow: inherit !important;
+            white-space: normal !important;
+        }
+
+        table.dataTable td,
+        table.dataTable th {
+            padding: 0.5rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+
+}
+
+
+@section scriptHead {
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.tailwindcss.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.print.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+
+}
+
+
+<div class="d-flex align-items-center rounded" style="color: #2C3E50;">
+    <span style="color: #F6AA04; font-weight: bold; font-size: 20px; margin: 20px;">|</span>
+    <h2 style="font-weight: bold; margin: 0; font-size: 25px">
+        Item Request
+    </h2>
+</div>
+
+<div class="flex flex-col md:flex-row gap-2">
+    <div class="w-full bg-white p-6 rounded-xl shadow-lg h-fit">
+
+        @Html.Partial("Partial/_Request")
+
+    </div>
+</div>
+<script src="~/Scripts/moment.min.js"></script>
+<script>
+
+$(document).ready(function () {
+const table = $('#itemRequest').DataTable({
+    orderCellsTop: true,
+    order: [[1, 'desc']],
+    responsive: true,
+    autoWidth: true,
+    fixedHeader: true,
+    ajax: {
+        url: '@Url.Action("GetAllHistory", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        dataSrc: ''
+    },
+    columns: [
+        {
+            className: 'dt-control',
+            orderable: false,
+            data: null,
+            defaultContent: '',
+        },
+        {
+            data: 'Timestamps',
+            width: '120px',
+            render: {
+                display: function (data) {
+                    return moment(data).format('DD MMM YYYY');
+                },
+                filter: function (data) {
+                    return moment(data).format('DD MMMM YYYY');
+                }
+            }
+        },
+        { data: 'Request_No', orderable: true },
+        {
+            data: 'User_Name',
+            render: data => data || '-'
+        },
+        {
+            data: 'Dept_Name',
+            render: data => data || '-'
+        },
+        {
+            data: 'Status',
+            render: function (data) {
+                if (!data) return '-';
+
+                let displayText = data;
+                if (data === 'Approved' || data === 'Order Complete') {
+                    displayText = 'Need to Be Processed';
+                }
+                if (data === 'Need to Be Order') {
+                    displayText = 'Need to Be Order';
+                }
+
+                const statusColors = {
+                    'On Order': 'bg-yellow-300 text-yellow-900',
+                    'Rejected': 'bg-red-400 text-white',
+                    'On Prepare': 'bg-blue-400 text-white',
+                    'Pending': 'text-orange-600',
+                    'Ready to Pick': 'bg-orange-400 text-white',
+                    'Complete': 'bg-green-500 text-white',
+                    'Approved': 'bg-purple-500 text-white',
+                    'Need to Be Processed': 'bg-purple-500 text-white',
+                    'Need to Be Order': 'bg-pink-500 text-white'
+                };
+                const colorClass = statusColors[displayText] || 'bg-gray-200 text-gray-800';
+
+                return `<span class="px-2 py-1 text-sm rounded ${colorClass}">${displayText}</span>`;
+            }
+        },
+    ],
+    initComplete: function () {
+        const api = this.api();
+
+        $('#itemRequest thead tr.search-row input').on('keyup change', function () {
+            const colIndex = $(this).data('column');
+            api.column(colIndex).search(this.value).draw();
+        });
+
+        // Disable sorting on the search row
+        $('#itemRequest thead tr.search-row th').off('click');
+
+        // --- Initialize the tooltip ---
+        $('[data-toggle="tooltip"]').tooltip();
+        // --- End of tooltip initialization ---
+    }
+});
+
+$('#itemRequest tbody').on('click', 'td.dt-control', function (e) {
+    const tr = $(this).closest('tr');
+    const row = table.row(tr);
+
+    if (row.child.isShown()) {
+        row.child.hide();
+        tr.removeClass('shown');
+        return;
+    }
+
+    const cartNos = (row.data().Cart_Nos || []).map(c => c.Cart_No);
+
+    if (cartNos.length === 0) return;
+
+    const requestNo = row.data().Request_No;
+    const subject = row.data().Subject ?? '-';
+    const dueDate = row.data().Due_Date;
+    const message = row.data().Message || '';
+    const dueDateFormatted = moment(dueDate).format('D MMMM YYYY');
+
+    // Tampilkan detail child
+    const childContent = `
+        <div class="p-4 border border-gray-200 text-xs w-full overflow-x-auto space-y-3">
+
+            <!-- Header Info -->
+            <div class="px-2 text-sm text-gray-800">
+                <strong>Detail Request (${requestNo})</strong><br>
+                <div><span class="font-semibold">Subject:</span> ${subject}</div>
+                <div><span class="font-semibold">Due Date:</span> ${dueDateFormatted}</div>
+            </div>
+
+            <!-- Item Table -->
+            <table class="w-full text-sm border-collapse border border-gray-200 child-cart-table">
+                <thead>
+                    <tr class="bg-gray-100 text-center uppercase text-xs">
+                        <th class="py-2 px-2 border">No</th>
+                        <th class="py-2 px-2 border">Item</th>
+                        <th class="py-2 px-2 border">Qty</th>
+                        <th class="py-2 px-2 border">Budget</th>
+                        <th class="py-2 px-2 border">Qty Acc</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <!-- Status Buttons -->
+            <div class="flex flex-wrap items-center gap-2 text-xs font-bold" data-request-no="${requestNo}">
+                <button class="px-3 py-1 rounded-2xl bg-red-600 text-white status-btn" data-status="reject">Rejected</button>
+                <div class="w-px h-5 bg-gray-400 mx-2"></div>
+                <button class="px-3 py-1 rounded-2xl bg-blue-500 text-white status-btn" data-status="prepare">On Prepare</button>
+                <i class="fa-solid fa-chevron-right text-gray-500"></i>
+                <button class="px-3 py-1 rounded-2xl bg-orange-500 text-white status-btn" data-status="ready">Ready to Pick</button>
+            </div>
+
+            ${message ? `<div class="px-2 mt-2 text-sm text-red-600 italic"><span class="font-semibold">Message:</span> ${message}</div>` : ''}
+        </div>
+    `;
+
+    row.child(childContent).show();
+    tr.addClass('shown');
+
+    const currentStatus = (row.data().Status || '').toLowerCase();
+    const $child = row.child();
+
+    // Handle Status Button Enable/Highlight
+    const $buttons = $child.find('.status-btn');
+    $buttons.prop('disabled', true).addClass('opacity-50 cursor-not-allowed').removeClass('bg-green-600');
+
+    const enableButton = (status) => {
+        $child.find(`[data-status="${status}"]`).prop('disabled', false).removeClass('opacity-50 cursor-not-allowed');
+    };
+
+    const highlightButton = (status) => {
+        $child.find(`[data-status="${status}"]`).addClass('bg-green-600');
+    };
+    switch (currentStatus) {
+        case 'pending':
+        case '':
+            enableButton('reject');
+            break;
+
+        case 'approved': // <--- TAMBAHKAN INI
+            enableButton('reject');
+            enableButton('prepare'); // ini harus sama kayak data-status-nya
+            enableButton('process');
+            break;
+
+        case 'order complete': // <--- TAMBAHKAN INI
+            enableButton('reject');
+            enableButton('prepare'); // ini harus sama kayak data-status-nya
+            enableButton('process');
+            break;
+
+        case 'waiting for approval': // <--- TAMBAHKAN INI
+            enableButton('reject');
+            break;
+
+
+        case 'on prepare':
+            enableButton('ready');
+            enableButton('reject');
+            enableButton('process');
+            break;
+
+        case 'ready to pick':
+            enableButton('complete');
+            break;
+
+        case 'complete':
+            highlightButton('complete');
+            break;
+
+        case 'on order':
+            enableButton('prepare');
+            enableButton('reject');
+            break;
+
+        case 'ask':
+            $child.find('#longnameapproved, #approved').removeClass('hidden');
+            $child.find('#approvalbtn').prop('disabled', false);
+            break;
+    }
+
+    // Fetch Cart Details
+$.ajax({
+    url: '@Url.Action("GetCartByCartNos","Inventory", new { area = "HC" })',
+    type: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(cartNos),
+    success: function (res) {
+        const $tbody = $child.find('table.child-cart-table tbody');
+        let num = 1;
+
+        res.forEach(cart => {
+            const isInputAllowed = currentStatus === 'approved' || currentStatus === 'order complete';
+
+            let qtyAccContent;
+            // Get the unit, and trim any whitespace
+            const unit = cart.Unit_Request ? cart.Unit_Request.trim() : '';
+
+            if (isInputAllowed) {
+                const qtyPreviewSafe = parseInt(cart.Qty_Preview) || 0;
+                const qtyRequestSafe = parseInt(cart.Qty_Request) || 0;
+                const stockLeft = qtyPreviewSafe - qtyRequestSafe;
+                const stockLeftColor = stockLeft < 0 ? 'text-red-500' : 'text-green-600';
+
+                qtyAccContent = `
+                    <div class="flex flex-col items-center">
+                        <div class="flex items-center">
+                            <input type="number"
+                                value="${qtyRequestSafe}"
+                                class="qty-acc-input border rounded p-1 w-16 text-center"
+                                data-cartno="${cart.Cart_No}"
+                                data-itemid="${cart.Item_Id}"
+                                data-originalqty="${qtyRequestSafe}"
+                                data-stock="${qtyPreviewSafe}">
+                            <span class="ml-1">${unit}</span>
+                        </div>
+                        <p class="stock-left text-sm text-left mt-1">
+                            Stock Left: <span class="stock-value ${stockLeftColor}">${stockLeft}</span>
+                        </p>
+                    </div>
+                `;
+            } else if (currentStatus === 'need to be order') {
+                const qtyRequestSafe = parseInt(cart.Qty_Request) || 0;
+                const qtyPreviewSafe = parseInt(cart.Qty_Preview) || 0;
+                const stockLeft = qtyPreviewSafe - qtyRequestSafe;
+                const stockLeftColor = stockLeft < 0 ? 'text-red-500' : 'text-green-600';
+
+                qtyAccContent = `
+                    <div class="flex flex-col items-center">
+                        <p class="qty-acc-text font-semibold" data-cartno="${cart.Cart_No}" data-itemid="${cart.Item_Id}" data-originalqty="${qtyRequestSafe}">
+                            ${qtyRequestSafe} ${unit}
+                        </p>
+                        <p class="stock-left text-sm text-left mt-1">
+                            Stock Left: <span class="stock-value ${stockLeftColor}">${stockLeft}</span>
+                        </p>
+                    </div>
+                `;
+            } else {
+                // Default logic for other statuses, including 'Rejected', 'On Prepare', etc.
+                const displayQty = (cart.Qty_Acc ? parseInt(cart.Qty_Acc) : null) ?? cart.Qty_Request;
+
+                qtyAccContent = `
+                    <p class="qty-acc-text font-semibold"
+                       data-cartno="${cart.Cart_No}"
+                       data-itemid="${cart.Item_Id}"
+                       data-originalqty="${cart.Qty_Request}">
+                        ${displayQty} ${unit}
+                    </p>
+                `;
+            }
+
+            $tbody.append(`
+                <tr class="border-b">
+                    <td class="py-2 px-2 border text-center">${num++}</td>
+                    <td class="py-2 px-2 border whitespace-normal font-medium break-words">
+                        ${cart.Item_Name}</br>
+                        <span class="text-gray-700 font-light">Notes: ${cart.Notes || '-'}</span>
+                    </td>
+                    <td class="py-2 px-2 border text-center">${cart.Qty}</td>
+                    <td class="py-2 px-2 border whitespace-normal break-words">${cart.Budget}</td>
+                    <td class="py-2 px-2 border text-center">
+                        ${qtyAccContent}
+                    </td>
+                </tr>
+            `);
+        });
+
+        $tbody.find('.qty-acc-input').each(function () {
+            $(this).trigger('input');
+        });
+    }
+});
+// CALCULATE QTY PREVIEW
+    $(document).on('input', '.qty-acc-input', function () {
+        const $input = $(this);
+        const stock = parseInt($input.data('stock')) || 0;
+        const value = parseInt($input.val()) || 0;
+        const remaining = stock - value;
+
+        $input.closest('td').find('.stock-value')
+            .text(remaining)
+            .toggleClass('text-red-500', remaining < 0)
+            .toggleClass('text-green-600', remaining >= 0);
+    });
+
+
+  const currUser = {
+  name: '@ViewBag.UserName'.split(' ')[0],
+  nik: '@ViewBag.UserNIK',
+  username: '@ViewBag.username',
+  today: '@ViewBag.Now'
+};
+
+$('#itemRequest tbody').on('click', '.status-btn', function () {
+    const $button = $(this);
+    const rawStatus = $button.data('status');
+    const statusMap = {
+        'ask': 'Ask for Manager Approval',
+        'prepare': 'On Prepare',
+        'ready': 'Ready to Pick',
+        'complete': 'Complete',
+        'process': 'On Order',
+        'reject': 'Rejected'
+    };
+
+    const status = statusMap[rawStatus] || '';
+    const $childRow = $button.closest('tr');
+    const $parentRow = $childRow.prev('tr');
+    const table = $('#itemRequest').DataTable();
+    const rowData = table.row($parentRow).data();
+
+    const requestNo = rowData.Request_No;
+    const userNik = rowData.User_NIK || '';
+    const userNikAcc = '@ViewBag.UserNik';
+    const userNikAccName = '@ViewBag.UserName';
+
+    const itemsToSend = [];
+
+     if (status === 'Rejected') {
+        Swal.fire({
+            title: 'Reject Confirmation',
+            input: 'text',
+            inputLabel: 'Message',
+            inputPlaceholder: 'Enter reason for rejection',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Message is required!';
+                }
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Reject',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            const message = result.value;
+
+            const itemsToSend = [];
+
+            // Ambil semua item di baris ini (bisa 1 atau banyak)
+            $childRow.find('.qty-acc-input, .qty-acc-text').each(function () {
+                const $el = $(this);
+                const isInput = $el.is('input');
+
+                const qtyAcc = isInput ? parseInt($el.val()) || 0 : parseInt($el.text()) || 0;
+                const cartNo = $el.data('cartno') || '';
+                const itemId = $el.data('itemid') || 0;
+                const qtyRequest = $el.data('originalqty') || 0;
+
+                itemsToSend.push({
+                    Request_No: requestNo,
+                    Cart_No: cartNo,
+                    Item_Id: itemId,
+                    Qty_Request: qtyRequest,
+                    Qty_Acc: qtyAcc,
+                    Status: status,
+                    User_NIK: userNik,
+                    User_NIK_Acc: userNikAcc,
+                    Message: message,
+                });
+            });
+
+            if (itemsToSend.length === 0) {
+                Swal.fire('No Data', 'No item(s) found to reject.', 'info');
+                return;
+            }
+
+            const ajaxCalls = itemsToSend.map(item =>
+                $.ajax({
+                    url: '@Url.Action("SaveRequestConfirmation", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: item
+                })
+            );
+
+            Promise.all(ajaxCalls).then((results) => {
+                const successCount = results.filter(r => r.success).length;
+
+                Swal.fire({
+                    title: 'Rejected',
+                    text: `${successCount} item(s) rejected`,
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                }).then(() => location.reload());
+            });
+        });
+
+        return;
+    }
+    if (status === 'On Prepare') {
+        // 1. Cek semua stock-left, kalau ada yang minus, tolak
+        const $stocks = $childRow.find('.stock-value');
+        let hasNegativeStock = false;
+
+        $stocks.each(function () {
+            const val = parseInt($(this).text()) || 0;
+            if (val < 0) {
+                hasNegativeStock = true;
+                return false; // break loop
+            }
+        });
+
+        if (hasNegativeStock) {
+            Swal.fire('Negative Stock', 'One or more items have negative stock. Please adjust Item Stock.', 'warning');
+            return; // stop lanjut proses
+        }
+
+        // 2. Lanjut collect items
+        $childRow.find('.qty-acc-input').each(function () {
+            const $el = $(this);
+            const qtyAcc = parseInt($el.val()) || 0;
+            const cartNo = $el.data('cartno');
+            const itemId = $el.data('itemid');
+            const qtyRequest = $el.data('originalqty');
+
+            itemsToSend.push({
+                Request_No: requestNo,
+                Cart_No: cartNo,
+                Item_Id: itemId,
+                Item_Name: '',
+                Qty_Request: qtyRequest,
+                Qty_Acc: qtyAcc,
+                Status: status,
+                User_NIK: userNik,
+                User_NIK_Acc: userNikAcc
+            });
+        });
+    } else if (status === 'Complete') {
+        // Ambil dari p tag (karena sudah On Prepare sebelumnya)
+        $childRow.find('.qty-acc-text').each(function () {
+            const $p = $(this);
+            const qtyAcc = parseInt($p.text()) || 0;
+            const cartNo = $p.data('cartno');
+            const itemId = $p.data('itemid');
+            const qtyRequest = $p.data('originalqty');
+
+            if (!cartNo || !itemId) return;
+
+            itemsToSend.push({
+                Request_No: requestNo,
+                Cart_No: cartNo,
+                Item_Id: itemId,
+                Item_Name: '',
+                Qty_Request: qtyRequest,
+                Qty_Acc: qtyAcc,
+                Status: status,
+                User_NIK: userNik,
+                User_NIK_Acc: userNikAcc
+            });
+        });
+    }
+
+    const isReadyToPick = status === 'Ready to Pick';
+
+    Swal.fire({
+        title: `Confirm ${status}?`,
+        text: isReadyToPick
+            ? `You are about to mark Request ${requestNo} as '${status}'.`
+            : `You are about to update ${itemsToSend.length} item(s) in Request ${requestNo}.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'OK',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        if (isReadyToPick) {
+            $.ajax({
+                url: '@Url.Action("UpdateRequestStatusOnly", "Inventory", new { area = "HC" })',
+                type: 'POST',
+                data: {
+                    requestNo: requestNo,
+                    status: status
+                },
+                success: function (res) {
+                    Swal.fire({
+                        title: res.success ? 'Success' : 'Error',
+                        text: res.message,
+                        icon: res.success ? 'success' : 'error',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        if (res.success) location.reload();
+                    });
+                },
+                error: function () {
+                    Swal.fire('Error', 'Update failed.', 'error');
+                }
+            });
+        } else {
+            if (itemsToSend.length === 0) {
+                Swal.fire('No Data', 'No valid item(s) to update.', 'info');
+                return;
+            }
+
+            let successCount = 0;
+            const isProcess = rawStatus === 'process';
+            const url = '@Url.Action("SaveRequestConfirmation", "Inventory", new { area = "HC" })';
+            const ajaxCalls = itemsToSend.map(item =>
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: item
+                })
+            );
+
+            Promise.all(ajaxCalls).then((results) => {
+                const successCount = results.filter(res => res.success).length;
+
+                Swal.fire({
+                    title: 'Success',
+                    text: `${successCount} item(s) updated to "${status}"`,
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                }).then(() => location.reload());
+            });
+
+        }
+    });
+});
+
+
+
+});
+
+</script>

@@ -1,0 +1,161 @@
+﻿
+@{
+    ViewBag.Title = "CreateRequest";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>CreateRequest</h2>
+<style>
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        width: 100%;
+    }
+
+    /* CSS untuk elemen <select> dalam tabel agar lebar tetap */
+    table.table select.item-name-select {
+        width: 100%;
+    }
+</style>
+<div class="container mt-5">
+    <h2>Form Dinamis dengan Baris Tabel, Select Options dari Database, dan Validasi</h2>
+    <table class="table table-bordered" id="itemTable">
+        <thead>
+            <tr>
+                <th width="30%">Item Name</th>
+                <th>Item ID</th>
+                <th>Category</th>
+                <th>Quantity</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <select class="form-control item-name-select" name="items[0].itemName">
+                        <option value="">Pilih Item</option>
+                    </select>
+                </td>
+                <td><input type="text" class="form-control item-id" name="items[0].itemId"></td>
+                <td><input type="text" class="form-control category" name="items[0].category"></td>
+                <td><input type="text" class="form-control" name="items[0].quantity"></td>
+                <td><button type="button" class="btn btn-danger delete-row">Hapus</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-success" id="add-row">Tambah Baris</button>
+    <button type="button" class="btn btn-primary" id="submit-form">Submit Form</button>
+</div>
+
+
+<script>
+    $(document).ready(function () {
+            // Fungsi untuk mengambil data dari server
+            function fetchDataAndPopulateSelect(selectElement) {
+                $.ajax({
+                    url: "@Url.Action("GetProducts", "MatProm", new { area = "Marketing" })", // Ganti 'ControllerName' dengan nama controller Anda
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        selectElement.empty();
+                        selectElement.append($('<option>', {
+                            value: "",
+                            text: "Pilih Item"
+                        }));
+                        $.each(data, function (index, item) {
+                            selectElement.append($('<option>', {
+                                value: item.Value,
+                                text: item.Text,
+                                "data-item-id": item.itemid, // Menambahkan data-item-id ke opsi
+                                "data-category": item.itemGroup // Menambahkan data-category ke opsi
+                            }));
+                        });
+
+                        // Inisialisasi ulang Select2 setelah data ditambahkan
+                        selectElement.select2();
+                    },
+                    error: function (error) {
+                        console.error(error);
+                    }
+                });
+            }
+
+            // Inisialisasi Select2 pada elemen <select> pertama
+            $(".item-name-select").select2();
+
+            var rowCount = 0;
+
+            // Tambahkan baris
+            $("#add-row").click(function () {
+                rowCount++;
+                var newRow = $("<tr>");
+                var cols = "";
+
+                cols += '<td><select class="form-control item-name-select" name="items[' + rowCount + '].itemName">';
+                cols += '<option value="">Pilih Item</option>';
+                cols += '</select></td>';
+                cols += '<td><input type="text" class="form-control item-id" name="items[' + rowCount + '].itemId"></td>';
+                cols += '<td><input type="text" class="form-control category" name="items[' + rowCount + '].category"></td>';
+                cols += '<td><input type="text" class="form-control" name="items[' + rowCount + '].quantity"></td>';
+                cols += '<td><button type="button" class="btn btn-danger delete-row">Hapus</button></td>';
+
+                newRow.append(cols);
+                $("#itemTable tbody").append(newRow);
+
+                // Mengambil data dari server dan mengisi elemen select saat baris baru ditambahkan
+                var newItemNameSelect = newRow.find(".item-name-select");
+                fetchDataAndPopulateSelect(newItemNameSelect);
+
+                // Event handler saat opsi dipilih
+                newItemNameSelect.on("change", function () {
+                    var selectedOption = $(this).find("option:selected");
+                    var itemIDInput = $(this).closest("tr").find(".item-id");
+                    var categoryInput = $(this).closest("tr").find(".category");
+
+                    if (selectedOption.val() !== "") {
+                        // Mengisi nilai item code dan category dari data opsi yang dipilih
+                        itemIDInput.val(selectedOption.data("item-id"));
+                        categoryInput.val(selectedOption.data("category"));
+                    } else {
+                        // Mengosongkan nilai item code dan category jika opsi "Pilih Item" dipilih
+                        itemIDInput.val("");
+                        categoryInput.val("");
+                    }
+                });
+            });
+
+            // Hapus baris
+            $("#itemTable").on("click", ".delete-row", function () {
+                $(this).closest("tr").remove();
+            });
+
+            // Validasi pemilihan opsi yang sama pada baris-baris yang ada
+            $("#itemTable").on("change", ".item-name-select", function () {
+                var selectedValue = $(this).val();
+                var allSelects = $(".item-name-select");
+                allSelects.each(function () {
+                    if (this !== $(this)[0]) {
+                        var otherValue = $(this).val();
+                        if (selectedValue === otherValue) {
+                            alert("Opsi ini sudah dipilih pada baris lain.");
+                            $(this).val("").trigger("change");
+                        }
+                    }
+                });
+            });
+
+            // Mengambil data dari server dan mengisi elemen select saat dokumen siap
+            $(".item-name-select").each(function () {
+                fetchDataAndPopulateSelect($(this));
+            });
+
+            // Contoh penanganan saat form disubmit
+            $("#submit-form").click(function () {
+                var formData = $("#itemTable").serialize();
+                console.log(formData); // Lakukan sesuatu dengan data ini, seperti mengirimkannya ke server.
+            });
+        });
+</script>
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />

@@ -1,0 +1,544 @@
+﻿@{
+    ViewBag.Title = "Check Sheet Machine Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+
+}
+
+
+@section cssHead{
+
+    <link href="https://cdn.jsdelivr.net/npm/gijgo@1.9.14/css/gijgo.min.css" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .TblForm tr {
+            padding: 20px;
+        }
+
+        .TblSign {
+            border-collapse: collapse;
+        }
+
+        @@page {
+            size: landscape;
+            margin: 0;
+        }
+
+        @@media print {
+            #sidebar {
+                display: none;
+            }
+
+            footer {
+                display: none;
+            }
+
+            #printarea {
+                display: block;
+            }
+
+            #contentPrint, #contentPrint * {
+                display: block;
+            }
+        }
+
+        #tblMScheduleHeader tbody {
+            padding-left: 20px;
+        }
+
+        input[type="checkbox"] {
+            width: 2em;
+            height: 2em;
+        }
+    </style>
+}
+<style>
+    @@media print {
+        .sidebar {
+            display: none;
+        }
+
+        #btnPrint {
+            display: none;
+        }
+
+        #printarea {
+            display: block;
+        }
+
+        #contentPrint, #contentPrint * {
+            display: block;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/gijgo@1.9.14/js/gijgo.min.js" type="text/javascript"></script>
+<table style="margin-bottom:20px">
+    <tr>
+        <td><a href="@Url.Action("RequestList", "RequestSystem", new { area = "IT" })" class="btn btn-danger"><span><i class="fa fa-arrow-circle-left"></i> Back To List</span></a></td>
+        <td>@*<button id="btnPrint" class="btn btn-primary"><span><i class="fa fa-print"></i> Download PDF</span></button>*@</td>
+        <td style="float:right;">@if (ViewBag.header.Status == "draft")
+        {<button id="btnSave" class="btn btn-success" value="saveOnly"><span><i class="fa fa-save"></i> Save</span></button>}</td>
+    </tr>
+</table>
+<div id="content">
+    <table id="tblMScheduleHeader" border="1" style="width:100%" class="contentPrint">
+        <thead>
+            <tr>
+                <td rowspan="4" style="width:175px;" class="p-2">
+                    <img src="~/Images/niterra-id.png" alt="Alternate Text" class="img-fluid" />
+                </td>
+                <td rowspan="2" class="text-center">FORMULIR INTEGRASI SISTEM MANAJEMEN MUTU, LINGKUNGAN & K3 TERINTEGRASI</td>
+                <td>No. Dok</td>
+                <td class="text-center">PML-IT-01/L9</td>
+            </tr>
+            <tr>
+                <td style="width:75px;">Revisi</td>
+                <td style="width:125px;" class="text-center">00</td>
+            </tr>
+            <tr>
+                <td rowspan="2" class="text-center">PENDAFTARAN DAN PERMINTAAN AKSES IT SYSTEM</td>
+                <td>Tanggal</td>
+                <td class="text-center">5-Apr-23</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td class="text-center">1/1</td>
+            </tr>
+        </thead>
+
+        <tbody style="padding-top:20px">
+            <tr>
+                <td colspan="4">
+                    <form action="@Url.Action("UpdateRequestSystem", "RequestSystem", new { area = "IT" })" id="formRequest">
+                        <table style="margin:2% 2%; width:96%">
+
+                            <input type="hidden" name="ID" value="@(ViewBag.header.ID)" />
+                            <tr>
+                                <td><strong>Employee Name</strong><br /><span style="font-style:italic;font-size:11px">Nama Karyawan</span></td>
+                                <td>:</td>
+                                <td><input type="text" class="form-control" name="EmployeeName" value="@(ViewBag.header.EmployeeName)" @(ViewBag.header.CreateTime != null ? "readonly" : "") /></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Employee ID</strong><br /><span style="font-style:italic;font-size:11px">No ID Karyawan</span></td>
+                                <td>:</td>
+                                <td>
+                                    @*<input type="hidden" name="NIK" />*@
+                                    <input type="text" class="form-control" name="NIK" value="@(ViewBag.header.NIK)" @(ViewBag.header.CreateTime != null ? "readonly" : "") />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Department</strong></td>
+                                <td>:</td>
+                                <td>
+                                    <select class="form-control selMultiple" id="selDepartment" data-live-search="true" name="Department" data-placeholder="Select Department" style="width:100%" required>
+                                        <option></option>
+                                        @foreach (var item in ViewBag.SectionList)
+                                        {
+                                            <option value="@item.COSTNAME" @(ViewBag.header.Department == item.COSTNAME ? "selected='selected'" : "")>@item.COSTNAME</option>
+                                        }
+
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr style="padding-top:20%">
+                                <td colspan="4" style="text-align:center">
+                                    <br />
+                                    <span style="text-decoration:underline;font-weight:bolder;font-size:18px">LIST OF IT SYSTEM ACCESS</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="4">
+                                    @*@{
+                                            var ListLines = ViewBag.Lines as IEnumerable<dynamic>;
+                                            var linesToFind = 1; // NIK yang ingin dicari
+                                            var lines = ListLines?.FirstOrDefault(p => p.ItemID == linesToFind);
+                                        }*@
+
+                                    <table style="width:90%; margin-left:auto;margin-right:auto; margin-top:2%" class="TblForm">
+                                        @foreach (var ln in ViewBag.Lines)
+                                        {
+                                            <tr>
+                                                <td @(ln.ItemID == 2 || ln.ItemID == 3 ? "rowspan=3" : "")>@ln.ItemID</td>
+                                                <td @(ln.ItemID == 2 || ln.ItemID == 3 ? "rowspan=3" : "")>
+                                                    <input name="ItemAccess" type="checkbox" class="form-control" value="@ln.ItemID" @(ln.IsChecked == 1 ? "Checked" : "") @(ViewBag.header.CreateTime != null ? "disabled" : "") />
+                                                </td>
+                                                <td style="width:20%"><span style="font-weight:bolder">@ln.ItemName</span></td>
+                                                <td>
+                                                    @if (ln.ItemID == 2 || ln.ItemID == 3)
+                                                    {
+                                                        <span style="font-style:italic">(if tick please explain details on below)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <input type="text" class="form-control" name="explains[@ln.ItemID]" value="@ln.Explains" @(ViewBag.header.CreateTime != null ? "readonly" : "") data-row="@(ln.ItemID)" />
+                                                    }
+                                                </td>
+                                            </tr>
+                                            if (ln.ItemID == 2)
+                                            {
+                                                foreach (var lns2 in ViewBag.LinesSub2)
+                                                {
+                                                    <tr>
+                                                        <td style="width:20%">
+                                                            <span style="">@lns2.LineSub_Name</span>
+                                                            <input type="hidden" name="LineSub_Name[@lns2.LineItemID]" value="@lns2.LineSub_Name" />
+                                                            <input type="hidden" name="LineItemID[@lns2.LineItemID]" value="@lns2.LineItemID" />
+                                                        </td>
+                                                        <td><input type="text" class="form-control" name="LineSub_Explain[@lns2.LineItemID]" value="@lns2.LineSub_Explain" @(ViewBag.header.CreateTime != null ? "readonly" : "") id="@(lns2.LineItemID == 2 ? "WindowsRole" : "")" @(lns2.LineItemID == 2 ? "readonly" : "") data-row="2"/></td>
+                                                    </tr>
+                                                }
+
+
+                                            }
+                                            if (ln.ItemID == 3)
+                                            {
+                                                foreach (var lns3 in ViewBag.LinesSub3)
+                                                {
+                                                    <tr>
+                                                        <td style="width:20%">
+                                                            <span style="">@lns3.LineSub_Name</span>
+                                                            <input type="hidden" name="LineSub_Name[@lns3.LineItemID]" value="@lns3.LineSub_Name" />
+                                                            <input type="hidden" name="LineItemID[@lns3.LineItemID]" value="@lns3.LineItemID" />
+                                                        </td>
+                                                        <td><input type="text" class="form-control" name="LineSub_Explain[@lns3.LineItemID]" value="@lns3.LineSub_Explain" @(ViewBag.header.CreateTime != null ? "readonly" : "") data-row="3"/></td>
+                                                    </tr>
+                                                }
+
+
+                                            }
+
+                                        }
+
+                                    </table>
+                                </td>
+
+                            </tr>
+
+                    </form>
+
+            <tr>
+                <td colspan="4">
+                    <div style="width:80%;margin-right:auto;margin-left:auto; margin-top:3%; border: 1px dotted #808080; padding:2%; text-align:center">
+                        <span style="font-style:italic">This service request form is provided as an evidence for the person requested and the service chosen. By signing this form, employees have understood and obeyed of the policies and procedures in Niterra Mobility Indonesia.</span>
+                        <hr />
+                        <span>Formulir permintaan layanan ini disediakan sebagai bukti permintaan dan juga layanan yang dipilih. Dengan menandatangani formulir ini, karyawan telah memahami dan mentaati kebijakan dan prosedur di PT. Niterra Mobility Indonesia.</span>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <td colspan="4">
+                    <table style="width:90%; margin-left:auto;margin-right:auto; margin-top:2%; text-align:center" border="1">
+                        <tr>
+                            <td width="20%"><strong>IT STAFF</strong></td>
+                            <td width="20%"><strong>GM IT</strong></td>
+                            <td width="20%"><strong>IT MANAGER</strong></td>
+                            <td width="20%"><strong>REQUESTOR MANAGER</strong></td>
+                            <td width="20%"><strong>REQUESTOR</strong></td>
+                        </tr>
+                        <tr style="height: 70px;">
+                            <td>
+                                @if (ViewBag.header.Status == "Sign GM IT" && ViewBag.StaffIT.Contains(ViewBag.currUser))
+                                {
+                                    <button type="button" class="btn btn-success btnSubmit" value="complete" id="btnSubmit"><i class="fa fa-check"></i> | Complete</button>
+                                }
+                                else if (ViewBag.header.CompleteITStaffTime != null)
+                                {
+                                    <div class="signed">
+                                        <span style="color:green; font-size:40px;"><i class="fa fa-check-circle"></i></span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (ViewBag.header.Status == "Sign IT Manager" && ViewBag.header.SignGMITBy == ViewBag.currUser)
+                                {
+                                    <button type="button" class="btn btn-success btnSubmit" value="SignGMIT" id="btnSubmit"><i class="fa fa-check"></i> | Sign</button>
+                                }
+                                else if (ViewBag.header.SignGMITTime != null)
+                                {
+                                    <div class="signed">
+                                        <span style="color:green; font-size:40px;"><i class="fa fa-check-circle"></i></span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (ViewBag.header.Status == "Sign Requestor Manager" && ViewBag.header.SignITManagerBy == ViewBag.currUser)
+                                {
+                                    <button type="button" class="btn btn-success btnSubmit" value="SignManagerIT" id="btnSubmit"><i class="fa fa-check"></i> | Sign</button>
+                                }
+                                else if (ViewBag.header.SignITManagerTime != null)
+                                {
+                                    <div class="signed">
+                                        <span style="color:green; font-size:40px;"><i class="fa fa-check-circle"></i></span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (ViewBag.header.Status == "submit" && ViewBag.header.SignReqManagerBy == ViewBag.currUser)
+                                {
+                                    <button type="button" class="btn btn-success btnSubmit" value="signReqManager" id="btnSubmit" @(ViewBag.header.Status == "submit" ? "" : "style='display:none'")><i class="fa fa-check"></i> | Sign</button>
+                                }
+                                else if (ViewBag.header.SignReqManagerTime != null)
+                                {
+                                    <div class="signed">
+                                        <span style="color:green; font-size:40px;"><i class="fa fa-check-circle"></i></span>
+                                    </div>
+                                }
+                            </td>
+                            <td>
+                                @if (ViewBag.header.Status == "draft" && ViewBag.header.CreateBy == ViewBag.currUser)
+                                {
+                                    <button type="button" class="btn btn-success btnSubmit" value="Submit" id="btnSubmit" @(ViewBag.header.Status == "draft" ? "" : "style='display:none'")><i class="fa fa-check"></i> | Save & Submit</button>
+                                }
+                                else if (ViewBag.header.CreateTime != null)
+                                {
+                                    <div class="signed">
+                                        <span style="color:green; font-size:40px;"><i class="fa fa-check-circle"></i></span>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>@(ViewBag.header.CompleteITStaffTime != null ? ViewBag.CompleteITStaffByName : "")</td>
+                            <td>@(ViewBag.header.SignGMITTime != null ? ViewBag.SignGMITByName : "")</td>
+                            <td>@(ViewBag.header.SignITManagerTime != null ? ViewBag.SignITManagerByName : "")</td>
+                            <td>@(ViewBag.header.SignReqManagerTime != null ? ViewBag.SignReqManagerByName : "")</td>
+                            <td>@(ViewBag.header.CreateTime != null ? ViewBag.CreateByName : "")</td>
+                        </tr>
+                        <tr>
+                            <td>@(ViewBag.header.CompleteITStaffTime != null ? ViewBag.header.CompleteITStaffTime.ToString("dd MMM yyyy HH:mm") : "")</td>
+                            <td>@(ViewBag.header.SignGMITTime != null ? ViewBag.header.SignGMITTime.ToString("dd MMM yyyy HH:mm") : "")</td>
+                            <td>@(ViewBag.header.SignITManagerTime != null ? ViewBag.header.SignITManagerTime.ToString("dd MMM yyyy HH:mm") : "")</td>
+                            <td>@(ViewBag.header.SignReqManagerTime != null ? ViewBag.header.SignReqManagerTime.ToString("dd MMM yyyy HH:mm") : "")</td>
+                            <td>@(ViewBag.header.CreateTime != null ? ViewBag.header.CreateTime.ToString("dd MMM yyyy HH:mm") : "")</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+    </table>
+    </td>
+
+    </tr>
+
+
+    </tbody>
+    </table>
+
+    <div class="row contentPrint">
+
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        $('#selDepartment').select2({
+            //dropdownParent: $('#modalCreate'),
+            closeOnSelect: true
+        });
+
+        $('#selDepartment').on('change', function () {
+            console.log($('#WindowsRole').val());
+            $('#WindowsRole').val($(this).val());
+        });
+
+        $('.form-control').on('input', function () {
+            // Dapatkan nomor baris dari atribut data-row
+            var row = $(this).data('row');
+
+            // Cari semua textbox di baris yang sama
+            var textboxes = $('.form-control[data-row="' + row + '"]');
+
+            // Periksa apakah setidaknya satu textbox memiliki nilai
+            var hasValue = false;
+            textboxes.each(function () {
+                if ($(this).val().trim() !== '') {
+                    hasValue = true;
+                }
+            });
+
+            // Centang atau uncheck checkbox sesuai kondisi
+            var checkbox = $('input[type="checkbox"][value="' + row + '"]');
+            checkbox.prop('checked', hasValue);
+        });
+
+        $('#btnSave').on('click', function (e) {
+            e.preventDefault(); // Mencegah reload halaman
+
+            let isValid = true;
+            let errorMessage = '';
+
+            // Validasi hanya untuk input yang memiliki atribut required
+            $('#formRequest input[required]').each(function () {
+                if ($(this).val().trim() === '') {
+                    isValid = false;
+                    errorMessage = 'Field yang bertanda wajib harus diisi!';
+                    $(this).css('border', '1px solid red'); // Tambahkan border merah
+                } else {
+                    $(this).css('border', ''); // Hapus border merah jika valid
+                }
+            });
+
+            if (!isValid) {
+                $('#error-message').text(errorMessage).show();
+                return;
+            } else {
+                $('#error-message').hide();
+            }
+
+            // Ambil data dari form
+            var formData = $('#formRequest').serialize();
+            formData += '&submitValue=saveOnly';
+            // Kirim data menggunakan AJAX
+            $.ajax({
+                url: '@Url.Action("UpdateRequestSystem", "RequestSystem", new { area = "IT" })', // Ganti dengan URL endpoint server Anda
+                type: 'POST',
+                data: formData,
+                beforeSend: function () {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', true); // Menonaktifkan tombol setelah diklik
+                    $btn.html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Please Wait ...'
+                    );
+                },
+                success: function (response) {
+                    var $btn = $('#btnSave');
+                    if (response.status == 1) {
+                        $btn.prop('disabled', false);
+                        Swal.fire({
+                            title: "Good job",
+                            text: response.msg,
+                            icon: "success"
+                        });
+                    } else {
+                        Swal.fire({
+                            title: "Error",
+                            text: response.msg,
+                            icon: "error"
+                        });
+                        $btn.prop('disabled', false);
+
+                    }
+                    $btn.html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Sign'
+                    );
+                },
+                error: function (error) {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', false);
+                },
+                complete: function (data) {
+                    var $btn = $('#btnSave');
+                    $btn.prop('disabled', false);
+
+                    $btn.html(
+                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Save'
+                    );
+
+                    location.reload();
+
+                }
+            });
+        });
+        $('.btnSubmit').on('click', function (e) {
+            e.preventDefault(); // Mencegah reload halaman
+
+            let isValid = true;
+            let errorMessage = '';
+
+            // Validasi hanya untuk input yang memiliki atribut required
+            $('#formRequest input[required]').each(function () {
+                if ($(this).val().trim() === '') {
+                    isValid = false;
+                    errorMessage = 'Field yang bertanda wajib harus diisi!';
+                    $(this).css('border', '1px solid red'); // Tambahkan border merah
+                } else {
+                    $(this).css('border', ''); // Hapus border merah jika valid
+                }
+            });
+
+            if (!isValid) {
+                $('#error-message').text(errorMessage).show();
+                return;
+            } else {
+                $('#error-message').hide();
+            }
+
+            var submitValue = $(this).val();
+            // Ambil data dari form
+            var formData = $('#formRequest').serialize();
+                formData += '&submitValue=' + submitValue;
+            $('#btnPrint').click(function () {
+                print();
+            })
+            Swal.fire({
+                    title: "Are you sure ?",
+                    text: "Continue Process Submit or Save Request",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, Confirm",
+                    cancelButtonText: "Close"
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("UpdateRequestSystem", "RequestSystem", new { area = "IT" })', // Ganti dengan URL endpoint server Anda
+                            type: 'POST',
+                            data: formData,
+                            beforeSend: function () {
+                                var $btn = $('.btnSubmit');
+                                $btn.prop('disabled', true); // Menonaktifkan tombol setelah diklik
+                                $btn.html(
+                                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Please Wait ...'
+                                );
+                            },
+                            success: function (response) {
+                                // Tampilkan respon sukses
+                                var $btn = $('.btnSubmit');
+                                if (response.status == 1) {
+                                    $btn.prop('disabled', false);
+                                    Swal.fire({
+                                        title: "Good job",
+                                        text: response.msg,
+                                        icon: "success"
+                                    });
+                                    $btn.html(
+                                        '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Sign'
+                                    );
+                                } else {
+                                    Swal.fire({
+                                        title: "Error",
+                                        text: response.msg,
+                                        icon: "error"
+                                    });
+                                    $btn.prop('disabled', false);
+
+                                }
+                            },
+                            error: function (error) {
+                                var $btn = $('.btnAction');
+                                $btn.prop('disabled', false);
+                            },
+                            complete: function (data) {
+                                var $btn = $('.btnAction');
+                                $btn.prop('disabled', false);
+                                $btn.html(
+                                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> <i class="fa fa-floppy-disk"></i> | Sign'
+                                );
+                                location.reload();
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            title: "Cancelled",
+                            text: "Process Canceled",
+                            icon: "error"
+                        });
+                    }
+                });
+
+
+        });
+        $('#btnPrint').click(function () {
+            print();
+        })
+    });
+</script>

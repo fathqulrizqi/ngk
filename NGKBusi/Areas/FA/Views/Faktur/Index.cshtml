@@ -1,0 +1,441 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <style type="text/css">
+        .dpDelete, .dpDelete i {
+            color: red;
+            cursor: pointer;
+        }
+
+            .dpDelete:hover, .dpDelete i:hover {
+                opacity: .95;
+            }
+
+        .tblFaktur tbody tr:first-child .dpDelete {
+            display: none;
+        }
+
+        .tblFaktur td {
+            position: relative;
+        }
+
+            .tblFaktur td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.qrcode/1.0/jquery.qrcode.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var newRowIndex = 0;
+            $("#btnInvoiceAdd").click(function () {
+                newRowIndex++;
+                var newRow = $("#tblFaktur tbody tr:first()").clone();
+                newRow.find("input").val("");
+                newRow.find("textarea").val("");
+                newRow.find(".select2-container").remove();
+                newRow.find(".select2").select2();
+                newRow.find(".txtRevision").val(0);
+                newRow.find(".selInvoice").attr("id", "selInvoice" + newRowIndex);
+                newRow.find(".selAddress").attr("id", "selAddress" + newRowIndex);
+                newRow.find(".hfRegistrationNumber").attr("id", "hfRegistrationNumber" + newRowIndex);
+                newRow.find(".cbRevision").attr("id", "cbRevision" + newRowIndex).prop("checked", false);
+                newRow.find(".txtRevision").attr("id", "txtRevision" + newRowIndex);
+                newRow.find(".txtDokumenCode").attr("id", "txtDokumenCode" + newRowIndex);
+                newRow.find(".dpDelete").attr("id", "dpDelete" + newRowIndex);
+                $("#tblFaktur tbody").append(newRow);
+            });
+
+            $(document).on("click", ".dpDelete", function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    $(this).closest("tr").remove();
+                }
+            });
+
+            $(document).on("change", ".selInvoice", function () {
+                var invoiceList = $(".selInvoice").map(function () {
+                    return $(this).val();
+                }).get();
+                var resultQr = getQrData(invoiceList);
+                console.log(resultQr);
+                var customerCode = $(":selected", this).data("cust-code");
+                var locationName = $(":selected", this).data("locationname");
+                //alert(customerCode + " " + locationName)
+                $(this).closest("tr").find(".selAddress").val("").change();
+                $(this).closest("tr").find(".selAddress option[data-cust-code = '" + customerCode + "'][data-locationname='" + locationName + "']").prop("selected", true).change();
+            });
+
+            $("#selCustomer").change(function () {
+                var customerCode = $(":selected", this).data("cust-code");
+                $("#tblFaktur tbody tr:first input").val("");
+                $("#tblFaktur tbody tr:first hidden").val("");
+                $("#tblFaktur tbody tr:first checkbox").prop("checked", false);
+                $("#tblFaktur tbody tr:first .txtRevision").val("0");
+                $("#tblFaktur tbody tr:first select").val("").change();
+                $("#tblFaktur tbody tr:not(:first)").remove();
+                $(".selInvoice option[value !='']").prop("disabled", true);
+                $(".selInvoice option[data-cust-code ='" + customerCode + "']").prop("disabled", false);
+                $(".selInvoice").select2("destroy");
+                $(".selInvoice").select2();
+                $(".selAddress option[value !='']").prop("disabled", true).change();
+                $(".selAddress option[data-cust-code ='" + customerCode + "']").prop("disabled", false);
+                $(".selAddress").select2("destroy");
+                $(".selAddress").select2();
+                if ($(this).val() != "") {
+                    $("#tblFaktur").fadeIn();
+                } else {
+                    $("#tblFaktur").fadeOut();
+                }
+            });
+            $(document).on("change", ".selAddress", function () {
+                var npwp = $(":selected", this).data("npwp");
+                $(this).closest("tr").find(".hfRegistrationNumber").val(npwp);
+            });
+            $(document).on("change", ".cbRevision", function () {
+                var isRev = $(this).is(":checked") ? 1 : 0;
+                $(this).closest("tr").find(".txtRevision").val(isRev);
+            });
+
+            $('#salesBIFile').on('change', function (e) {
+                //get the file name
+                var fileName = e.target.files[0] ? e.target.files[0].name : "Choose file";
+                //replace the "Choose a file" label
+                $(this).next('.custom-file-label').html(fileName);
+            });
+
+            $(".btnSubmitFaktur").click(function () {
+                var currAction = $(this).data("action");
+                var currForm = $(this).closest("form");
+                currForm.attr("action", currAction);
+            });
+
+            var _currData;
+            var _len;
+            var _start;
+            $("#formSalesBIUpload").submit(function () {
+                var file_data = $("#salesBIFile").prop('files')[0];
+                var form_data = new FormData();
+                form_data.append('file', file_data);
+                //currCTR.LoadingOverlay("hide");
+                $.ajax({
+                    url: "@Url.Action("getSalesBIData", "Faktur", new { area = "FA" })",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    data: form_data, success: function (data) {
+                        //console.log(jQuery.parseJSON(data));
+                        _currData = jQuery.parseJSON(data);
+                        _len = _currData.length;
+                        _start = 0;
+                        $("#salesBIUploadModal").modal("hide");
+                        uploadData(_currData[_start]);
+                        $(".upload-wrap").fadeIn();
+                        $("#salesBIFile").val("").change();
+                        $(".uploadProgress").attr("aria-valuemax", _len);
+                        $(".uploadProgress").removeClass("bg-success");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#salesBIFile").val("").change();
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+                return false;
+            });
+
+           function uploadData(_data) {
+    console.log("--- uploadData dijalankan ---");
+    console.log("Status Index (_start): " + _start + " | Total Data (_len): " + _len);
+    console.log("Data yang sedang diproses: ", _data);
+
+if (_start < _len) {
+    console.log("Mengirim request AJAX untuk baris ke-" + _start + "...");
+    $.ajax({
+        url: "@Url.Action("UploadSalesBI", "Faktur", new { area = "FA" })",
+        method: "POST",
+        tryCount: 0,
+        tryLimit: 3,
+        data: {
+            uploadData: _data
+        },
+        success: function (data) {
+            console.log("AJAX SUKSES untuk baris ke-" + _start + ". Response server:", data);
+
+            _start++;
+            var completed = "";
+
+            $(".uploadProgress").text((_start) + " of " + (_len) + completed);
+            $(".uploadProgress").attr("aria-valuenow", (_start));
+            $(".uploadProgress").css("width", Math.round(((_start) / (_len)) * 100) + "%");
+
+            if (_start === _len) {
+                completed = " Completed!";
+                $(".uploadProgress").addClass("bg-success").text(_start + " of " + _len + completed);
+
+                console.log("Semua data sukses, me-reload halaman...");
+                setTimeout(function() {
+                    location.reload();
+                }, 1000); 
+            } else {
+                uploadData(_currData[_start]);
+            }
+        },
+        error: function (xhr, textStatus, errorThrown) {
+            console.error("AJAX ERROR pada baris ke-" + _start);
+            console.error("Status: " + textStatus + " | Error: " + errorThrown);
+            console.error("Detail Response: ", xhr.responseText);
+
+            if (textStatus === "timeout" || xhr.status === 500) { 
+                this.tryCount++;
+                if (this.tryCount <= this.tryLimit) {
+                    console.log("Mencoba ulang request... Percobaan ke-" + this.tryCount);
+                    $.ajax(this);
+                    return;
+                }
+            }
+
+            $("#salesBIFile").val("").change();
+            alert("Error Occurred on row " + _start + ": " + errorThrown + ". Please Check Console.");
+        }
+    });
+} else {
+    if (_len === 0) {
+        console.warn("PERINGATAN: Masuk ke 'else' karena Total Data (_len) adalah 0. Tidak ada data yang diproses.");
+    } else {
+        console.log("SUKSES: Semua data selesai diproses! Masuk ke 'else' untuk pindah halaman.");
+    }
+}
+
+    $("#salesBIFile").val("").change();
+}
+            function getQrData(invoiceNumber) {
+
+                $.ajax({
+                    url: "@Url.Action("generateQrInvoice", "Faktur", new { area = "FA" })",
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        invoices: invoiceNumber
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            console.log('Data QR Berhasil Didapat:', response.data);
+                            var $container = $('#qr-container');
+                            $container.empty();
+
+                            if (response.data == null || response.data.length === 0) {
+                                $container.text('Tidak ada data QR untuk ditampilkan.');
+                                return;
+                            }
+                            $.each(response.data, function (index, qrString) {
+
+                                var dataParts = qrString.split('|');
+                                var invoiceLabel = dataParts[2] || 'QR Code';
+
+                                var scale = 2;
+                                var baseSize = 128 * scale;
+                                var labelHeight = 25 * scale;
+                                var fontSize = 13 * scale;
+                                var fontPaddingTop = 16 * scale;
+
+                                var $tempQrDiv = $('<div>').hide();
+                                $tempQrDiv.qrcode({
+                                    width: baseSize,
+                                    height: baseSize,
+                                    text: qrString
+                                });
+                                var qrCanvasElement = $tempQrDiv.find('canvas').get(0);
+                                var finalCanvas = document.createElement('canvas');
+                                finalCanvas.width = baseSize;
+                                finalCanvas.height = baseSize + labelHeight;
+
+                                var ctx = finalCanvas.getContext('2d');
+                                ctx.fillStyle = '#ffffff';
+                                ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                                ctx.drawImage(qrCanvasElement, 0, 0);
+                                ctx.fillStyle = '#000000';
+                                ctx.font = '500 ' + fontSize + 'px Arial';
+                                ctx.textAlign = 'center';
+
+                                ctx.fillText(invoiceLabel, finalCanvas.width / 2, baseSize + (labelHeight / 2) + (fontSize / 3));
+                                var $qrWrapper = $('<div class="qr-item" style="text-align: center; padding: 10px; border: 1px solid #eee; border-radius: 8px;"></div>');
+
+                                $(finalCanvas).css('width', '128px');
+                                $(finalCanvas).css('height', (128 + 25) + 'px');
+
+                                $qrWrapper.append(finalCanvas);
+                                $container.append($qrWrapper);
+                            });
+                        } else {
+                            console.error('API Error:', response.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        $('#qr-result').text('Gagal terhubung ke server. Status: ' + status);
+                    }
+                });
+            }
+        });
+
+
+    </script>
+}
+<h2>
+    E-Faktur
+    <button id="btnUploadSalesBI" class="btn btn-success" data-toggle="modal" data-target="#salesBIUploadModal">Upload Sales BI</button>
+</h2>
+<hr />
+
+<div class="upload-wrap" style="display:none;">
+    <h3>Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+    </div>
+    <hr />
+</div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <form method="post" action="@Url.Action("FakturXML", "Faktur", new { area = "FA" })" enctype="multipart/form-data">
+                <div class="form-group row">
+                    <label for="selCustomer" class="col-sm-2 col-form-label">Customer</label>
+                    <div class="col-sm-10">
+                        <select class="select2" id="selCustomer" name="iCustomer" required>
+                            <option value="">-Customer-</option>
+                            @*@foreach (var item in ViewBag.Customer)
+                                {
+                                    <option data-cust-code="@(item.ACCOUNTNUM)" value="@(item.ACCOUNTNUM + "|" + item.CUSTOMER_NAME)">@(item.ACCOUNTNUM + " | " + item.CUSTOMER_NAME)</option>
+                                }*@
+                            @foreach (var item in ViewBag.Customer)
+                            {
+                                <option data-cust-code="@(item.Customer_code)" value="@(item.Customer_code + "|" + item.Customer_name)">@(item.Customer_code + " | " + item.Customer_name)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="col-12">
+                        <table class="table tblFaktur" id="tblFaktur" style="display:none;">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Alamat</th>
+                                    <th>Revisi</th>
+                                    <th>Kode Dokumen Pendukung</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="width:130px;">
+                                        <select class="select2 selInvoice" id="selInvoice" name="iInvoice[]" style="width:100%" required>
+                                            <option value="">-Invoice-</option>
+                                            @*@foreach (var item in ViewBag.Invoice)
+                                                {
+                                                    <option data-cust-code="@(item.INVOICEACCOUNT)" data-locationname="@(item.INVOICINGNAME)" value="@(item.LEDGERVOUCHER)">@(item.LEDGERVOUCHER)</option>
+                                                }*@
+                                            @foreach (var item in ViewBag.Invoice)
+                                            {
+                                                <option data-cust-code="@(item.Customer_code)" data-locationname="@(item.Invoice_Address)" value="@(item.Invoice)">@(item.Invoice)</option>
+                                            }
+                                        </select>
+                                    </td>
+                                    <td style="min-width:850px;">
+                                        <select class="select2 selAddress" id="selAddress" name="iAddress[]" style="width:100%" required>
+                                            <option value="">-Address-</option>
+                                            @*@foreach (var item in ViewBag.InvoiceAddress)
+                                                {
+                                                    <option data-cust-code="@(item.ACCOUNTNUM)" data-npwp="@(item.REGISTRATIONNUMBER)" data-locationname="@(item.LOCATIONNAME)" value="@(item.LOCATIONNAME + "|" + item.ADDRESS)">@(item.LOCATIONNAME + " | " + item.ADDRESS)</option>
+                                                }*@
+                                            @foreach (var item in ViewBag.InvoiceAddress)
+                                            {
+                                                <option data-cust-code="@(item.Customer_code)" data-npwp="@(item.NPWP)" data-locationname="@(item.Invoice_Address)" value="@(item.Invoice_Address)">@(item.Invoice_Address)</option>
+                                            }
+                                        </select>
+                                        <input type="hidden" name="iRegistrationNumber[]" id="hfRegistrationNumber" class="hfRegistrationNumber" value="" />
+                                    </td>
+                                    <td style="width:75px;" class="text-center align-middle">
+                                        <input class="form-check-input position-static cbRevision" type="checkbox" id="cbRevision" value="0">
+                                        <input type="hidden" class="txtRevision" id="txtRevision" name="iRevision[]" placeholder="Revision" value="0" />
+                                    </td>
+                                    <td>
+                                        <input type="text" name="iDokumenCode[]" id="txtDokumenCode" placeholder="Kode Dokumen Pendukung" value="" />
+                                    </td>
+                                    <td>
+                                        <a class="dpDelete" title="Delete" id="dpDelete" data-toggle="tooltip"><i class="fas fa-trash"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="5">
+                                        <button id="btnInvoiceAdd" type="button" class="btn btn-sm btn-success form-control"><i class="fas fa-plus"></i></button>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btnSubmitFaktur" data-action="@Url.Action("FakturCSVD365", "Faktur", new { area = "FA" })">Download CSV</button>
+                <button type="submit" class="btn btn-primary btnSubmitFaktur" data-action="@Url.Action("FakturXML", "Faktur", new { area = "FA" })">Download XML</button>
+                <h3 class="my-2">Qr Code :</h3>
+                <div class="d-flex flex-wrap"
+                     id="qr-container"
+                     style="gap: 20px; padding: 15px; border: 1px solid #ddd; min-height: 150px; border-radius: 8px;">
+
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="salesBIUploadModal" tabindex="-1" aria-labelledby="salesBIUploadModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="formSalesBIUpload">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Sales BI Upload</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="custom-file">
+                        <input type="file" class="custom-file-input" id="salesBIFile" required>
+                        <label class="custom-file-label" for="salesBIFile">Choose file</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary form-control">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

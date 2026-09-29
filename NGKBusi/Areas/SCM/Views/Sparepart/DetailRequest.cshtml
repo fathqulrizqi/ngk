@@ -1,0 +1,935 @@
+<!doctype html>
+@{
+    ViewBag.Title = "Detail Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/schmich/instascan-builds@master/instascan.min.js"></script>
+<style>
+    #preview {
+        width: 400px;
+        height: 400px;
+        margin: 0px auto;
+    }
+</style>
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+
+        .swal2-popup.loader-di-bawah .swal2-footer {
+            flex-direction: column-reverse; 
+            gap: 1rem;
+        }
+
+
+        .swal2-popup.loader-di-bawah .swal2-loader {
+            margin: 0 auto;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+<div class="row">
+
+    <div class="col-12">
+        @*<nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Home</a></li>
+                    <li class="breadcrumb-item"><a href="#">Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Data</li>
+                </ol>
+            </nav>*@
+        <div class="card shadow-sm  mb-5 bg-white rounded">
+
+            <div class="card-header bg-info" style="color:white; font-weight:bold">
+                <a href="@Url.Action("RequestData", "Sparepart", new { area = "SCM" })" data-tooltip="Previous Pagge" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                    <i class="fa fa-arrow-left"></i>
+                </a>
+                Detail Request
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-3 bold"><strong>Request No</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.RequestNo)</p></div>
+                    <div class="col-3 bold"><strong>Requested Time</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.Create_Time)</p></div>
+                </div>
+                <div class="row">
+                    <div class="col-3 bold"><strong>Requested By</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.UserRequest)</p></div>
+                    <div class="col-3"><strong>Maintenance Type</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.MaintenanceType)</p></div>
+
+                </div>
+                <div class="row">
+                    <div class="col-3 bold"><strong>Section</strong></div>
+                    <div class="col-3 bold">@ViewBag.header.CostName</div>
+                    <div class="col-3 bold"><strong>Status</strong></div>
+                    <div class="col-3">
+                        <h5>
+
+                            @if (ViewBag.header.Status == 1)
+                            {
+                                @Html.Raw("<span class=\"badge badge-primary\">Open</span>");
+
+                            }
+                            else if (ViewBag.header.Status == 2)
+                            {
+                                @Html.Raw("<span class=\"badge badge-warning\">Preparing</span>");
+                            }
+                            else if (ViewBag.header.Status == 3)
+                            {
+                                @Html.Raw("<span class=\"badge badge-success\">Ready To Pickup</span>");
+
+                            }
+                            else if (ViewBag.header.Status == 4)
+                            {
+                                @Html.Raw("<span class=\"badge badge-secondary\">Request Closed</span>");
+                            }
+                            else if (ViewBag.header.Status == 10)
+                            {
+                                @Html.Raw("<span class=\"badge badge-dark\">Cancelled</span>");
+                            }
+                        </h5>
+                    </div>
+
+
+                </div>
+                @if (ViewBag.header.Status == 3)
+                {
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <div class="alert alert-danger pb-0" role="alert">
+                                <p align="center">Request Auto Close in <br /><h2 align="center" id="txtCountDown"> </h2></p>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (ViewBag.header.Status == 2 && (User.IsInRole("AdminSparepart") || User.IsInRole("Administrator") || User.IsInRole("WarehouseSparepart")))
+                {
+                    <hr />
+                    <div class="row mt-4 mb-4">
+
+
+                        <div class="col-12">
+                            <div id="cameraStandBy">
+                                <video id="preview"></video>
+                                <div class="btn-group btn-group-toggle mb-5" data-toggle="buttons">
+                                    <label class="btn btn-primary active">
+                                        <input type="radio" name="options" value="1" autocomplete="off" checked> Front Camera
+                                    </label>
+                                    <label class="btn btn-secondary">
+                                        <input type="radio" name="options" value="2" autocomplete="off"> Back Camera
+                                    </label>
+                                </div>
+                            </div>
+                            <input type="text" name="ITEMID" class="form-control mb-2" placeholder="Click Here to scan Item" id="txtScanItem" autofocus autocomplete="off" />
+
+                            <input type="hidden" name="RequestNo" value="@(ViewBag.header.RequestNo)" class="mb-2" />
+                            <div class="alertMsg">
+                            </div>
+                        </div>
+
+                    </div>
+                }
+                <hr/>
+                <div id="toolbar" >        
+                        <div>
+                            @if (ViewBag.header.Status == 4 || ViewBag.header.Status == 3)
+                            {
+                                <div class="btn-group me-2">
+                                    <button id="buttonPrint" class="btn btn-primary" disabled><i class="fas fa-print"></i> Print</button>
+                                </div>
+                            }
+                            @if (ViewBag.header.Status == 2 && (User.IsInRole("AdminSparepart") || User.IsInRole("Administrator") || User.IsInRole("WarehouseSparepart")))
+                            {
+                                <div class="btn-group me-2"><button class="btn btn-secondary" id="confirmPickup" disabled><i class="fa fa-truck"></i> Confirm to Pickup</button></div>
+                            }
+                            else if (ViewBag.header.Status == 3)
+                            {
+                                <div class="btn-group me-2"><button class="btn btn-success" id="confirmClose"><i class="fa fa-times-circle"></i> Close Request</button></div>
+                            }
+                            @if (ViewBag.header.Status < 4)
+                            {
+                                <div class="btn-group"><button class="btn btn-danger" id="cancelRequest"><i class="fa fa-ban"></i> Cancel Request</button></div>
+                            }
+                        </div>
+                </div>
+
+                <table id="table"
+                       data-toggle="table"
+                       data-toolbar="#toolbar"
+                       data-ajax="ajaxRequest"
+                       data-query-params="queryParams"
+                       data-click-to-select="true"
+                       data-url=""
+                       class="table-sm">
+                    <thead>
+                        <tr>
+                            @*<th data-field="state" data-checkbox="true"></th>*@
+                            @if (ViewBag.header.Status == 3 || ViewBag.header.Status == 4)
+                            {
+                                <th data-field="state" data-checkbox="true"></th>
+                            }
+                            <th data-field="ITEMID" data-sortable="true">ITEM ID</th>
+                            <th data-field="ProductName" data-sortable="true">Product Name</th>
+                            <th data-field="RackBoxName" data-sortable="true">Rack Location</th>
+                            <th data-field="Quantity" data-sortable="Quantity">Qty Request</th>
+                            @if (ViewBag.header.Status > 1)
+                            {
+                                <th data-field="Qty_Realization" data-sortable="Quantity">Qty Realization</th>
+                            }
+                            @if (ViewBag.header.Status == 4)
+                            {
+                                <th data-field="Qty_Retur">Qty Return</th>
+                            }
+                            @if (ViewBag.header.Status == 2 || ViewBag.header.Status == 1)
+                            {
+                                <th data-field="Tools">Action</th>
+                            }
+
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+<div id="EditQuantityModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("EditQuantityItemOpen", "Sparepart", new { area = "SCM" })" id="formUpdateQuantityItemOpen" name="formUpdateQuantityItemOpen">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Item Quantity</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ITEMID">ITEM ID</label>
+                        <input name="ITEMID" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Name</label>
+                        <input name="ProductName" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Quantity</label>
+                        <input name="Quantity" id="txtQuantity" type="text" class="form-control" required="required" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-info" value="Update" id="updateQuantityItemOpen" />
+                    <input type="hidden" id="id" name="Id" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="EditQuantityRealizationModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("EditQuantityRealization", "Sparepart", new { area = "SCM" })" id="formUpdateQuantity" name="formUpdateQuantity">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Item Quantity</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ITEMID">ITEM ID</label>
+                        <input name="ITEMID" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Name</label>
+                        <input name="ProductName" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Quantity</label>
+                        <input name="Qty_Realization" id="txtQuantity" type="text" class="form-control" required="required" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-info" value="Save" id="updateQuantity" />
+                    <input type="hidden" id="id" name="Id" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    var txtScanner = document.getElementById('txtScanItem');
+    var scanner = new Instascan.Scanner({ video: document.getElementById('preview'), scanPeriod: 5, mirror: false });
+    scanner.addListener('scan', function (content) {
+        //alert(content);
+        document.getElementById('txtScanItem').value = content;
+        submitScanner(content);
+        txtScanner.dispatchEvent(new Event('keydown'));
+    });
+    Instascan.Camera.getCameras().then(function (cameras) {
+        if (cameras.length > 0) {
+            var frontCamera = null;
+            var backCamera = null;
+
+            // Loop to search for front/back keywords in camera name
+            for (var i = 0; i < cameras.length; i++) {
+                var name = (cameras[i].name || "").toLowerCase();
+                if (name.indexOf('back') !== -1 || name.indexOf('rear') !== -1 || name.indexOf('environment') !== -1) {
+                    backCamera = cameras[i];
+                } else if (name.indexOf('front') !== -1 || name.indexOf('user') !== -1) {
+                    frontCamera = cameras[i];
+                }
+            }
+
+            // Fallback strategy if keywords aren't found or distinguish:
+            if (!frontCamera) {
+                frontCamera = cameras[0];
+            }
+            if (!backCamera) {
+                backCamera = cameras.length > 1 ? cameras[1] : cameras[0];
+            }
+
+            // Start with front camera by default
+            scanner.start(frontCamera);
+
+            $('[name="options"]').on('change', function () {
+                if ($(this).val() == 1) {
+                    if (frontCamera) {
+                        scanner.start(frontCamera);
+                    } else {
+                        alert('No Front camera found!');
+                    }
+                } else if ($(this).val() == 2) {
+                    if (backCamera) {
+                        scanner.start(backCamera);
+                    } else {
+                        alert('No Back camera found!');
+                    }
+                }
+            });
+        } else {
+            console.error('No cameras found.');
+            alert('No cameras found.');
+        }
+    }).catch(function (e) {
+        console.error(e);
+        document.getElementById("cameraStandBy").style.display = "none";
+
+    });
+</script>
+<script>
+        var $process = $('#confirmPickup');
+        var $close = $('#confirmClose');
+
+        $close.click(function () {
+
+            var Link = "@Url.Action("CloseRequest", "Sparepart", new { area = "SCM" })";
+            var id = "@ViewBag.RequestNo";
+            ConfirmSendRequest(Link, "Confirm To Close Request ?", id, '#28a745', 'Yes, Close');
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        });
+
+        $process.click(function () {
+
+            var Link = "@Url.Action("ConfirmReadyRequest", "Sparepart", new { area = "SCM" })";
+            var id = "@ViewBag.RequestNo";
+            ConfirmSendRequest(Link, "Confirm To Ready Pickup ?", id, '#0275d8', 'Yes, Ready');
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        })
+
+    $('#txtScanItem').keydown(function (e) {
+        var RequestNo = "@ViewBag.RequestNo";
+
+            if (e.keyCode == 13) {
+                $.ajax({
+                    type: "post",
+                    url: "@Url.Action("PostScanItem", "Sparepart", new { area = "SCM" })",
+                    dataType: 'json',
+                    data: { "RequestNo": RequestNo, "ITEMID": $(this).val() },
+                    success: function (json)
+                    {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-right';
+                            toastr.success(json.msg);
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('tes');
+                            })
+                            $('#txtScanItem').val("");
+                        }
+                        else {
+
+                            $('.alertMsg').append(json.msg);
+                            $('#txtScanItem').val("");
+                        }
+                    },
+                    error: function (er) {
+                        console.log(params.error(er))
+                        console.log("error", er);
+                    }
+                })
+            }
+    })
+
+    function submitScanner(itemid) {
+        var RequestNo = "@ViewBag.RequestNo";
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("PostScanItem", "Sparepart", new { area = "SCM" })",
+            dataType: 'json',
+            data: { "RequestNo": RequestNo, "ITEMID": itemid },
+            success: function (json)
+            {
+                if (json.status == 1) {
+                    toastr.options.positionClass = 'toast-bottom-right';
+                    toastr.success(json.msg);
+                    $('#table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                    $('#txtScanItem').val("");
+                }
+                else {
+
+                    $('.alertMsg').append(json.msg);
+                    $('#txtScanItem').val("");
+                }
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+
+    function ConfirmSendRequest(Link, Text, id, Button, BtnText) {
+        Swal.fire({
+            title: "Are you sure?",
+            text: Text,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: Button,
+            confirmButtonText: BtnText,
+            cancelButtonText: "Close"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: "json",
+                    data: { requestNo: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Success",
+                                text: json.msg,
+                                icon: "success"
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Canceled!", Link, "error");
+                    }
+                });
+            } else {
+                Swal.fire("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+        function queryParams(params) {
+            params.switch = "@(ViewBag.RequestNo)";//   <<<----------catch like this
+            return params;
+        }
+
+        function ajaxRequest(params) {
+            var RequestNo = "@(ViewBag.RequestNo)";
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("ItemListRequest", "Sparepart", new { area = "SCM" })",
+                dataType: 'json',
+                data: { "RequestNo": params.data.switch, "Status":'@ViewBag.header.Status' },
+                success: function (items) {
+                    //console.log(items.notReady);
+                    if (items.notReady === 0) {
+
+                        $('#confirmPickup').removeClass("btn btn-secondary").addClass("btn btn-warning").prop('disabled', false);
+                    }
+                    params.success({
+                        rows: items
+                    }, null);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            })
+        }
+
+        $(function () {
+            $('#table').bootstrapTable({
+                exportDataType: "all",
+                exportTypes: ['excel', 'pdf'],
+                buttonsClass: 'primary'
+            })
+        });
+
+        $(document).on('click', '#procItem', function (e) {
+            var a = $(this).data("id");
+            var urlString = "@Url.Action("ReadyItem", "Sparepart", new { area = "SCM" })";
+            //$(this).hide();
+                $.ajax({
+                    url: urlString,
+                    type: "POST",
+                    cache: false,
+                    data: { Id: a },
+                    dataType: 'json',
+                    success: function (json) {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-left';
+                            toastr.success(json.msg);
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('tes');
+                            })
+                        }
+                        else {
+
+                            toastr.error(json.msg);
+                        }
+                    }
+                });
+        });
+
+    var formValidate =
+        $("form[name='formUpdateQuantity']").validate({
+            // Specify validation rules
+            rules: {
+                // The key name on the left side is the name attribute
+                // of an input field. Validation rules are defined
+                // on the right side
+                Qty_Realization: {
+                    required: true,
+                    min: 1
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                Qty_Realization: {
+                    required: "Please enter quantity",
+                    min: "please ente minimal 1 quantity"
+                }
+            },
+            errorElement: 'span',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function (element, errorClass, validClass) {
+
+
+                var elem = $(element);
+                if (elem.hasClass("select2-offscreen")) {
+                    $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                } else {
+                    $(element).addClass('is-invalid');
+                }
+                jQuery(element).closest('.form-group').addClass('has-error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
+                jQuery(element).closest('.form-group').removeClass('has-error');
+            },
+            // Make sure the form is submitted to the destination defined
+            // in the "action" attribute of the form when valid
+            submitHandler: function (form) {
+                updateQuantity();
+            }
+        });
+
+        $('#updateQuantity').click(function (e) {
+            //e.preventDefault();
+            formValidate.form();
+        });
+
+        $(document).on('click', '#editQty', function (e) {
+
+            var urlString = "@Url.Action("EditQuantityRealization", "Sparepart", new { area = "SCM" })";
+            var a = $(this).data("id");
+            console.log(urlString, a);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { DetailId: a },
+                success: function (response) {
+
+                    var selStock = response[0].Quantity;
+                    $('#EditQuantityRealizationModal input[name="Qty_Realization"]').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "You Can Only Reduce Quantity"
+                        }
+                    });
+                    $('#EditQuantityRealizationModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityRealizationModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityRealizationModal input[name="Qty_Realization"]').val(response[0].Qty_Realization);
+                    $('#EditQuantityRealizationModal input[name="Id"]').val(response[0].Id);
+                }
+            })
+
+        });
+
+        var formValidateOpen =
+            $("form[name='formUpdateQuantityItemOpen']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    Quantity: {
+                        required: true,
+                        min: 1
+                    }
+                },
+                // Specify validation error messages
+                messages: {
+                    Quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    updateQuantityItemOpen();
+                }
+            });
+
+        $(document).on('click', '#EditQtyItem', function (e) {
+
+            var urlString = "@Url.Action("EditQuantityItemOpen", "Sparepart", new { area = "SCM" })";
+            var a = $(this).data("id");
+            console.log(urlString, a);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { DetailId: a },
+                success: function (response) {
+
+                    var selStock = response[0].Stock;
+                    $('#EditQuantityModal input[name="Quantity"]').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "Stock Available " + selStock
+                        }
+                    });
+                    $('#EditQuantityModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityModal input[name="Id"]').val(response[0].Id);
+                    $('#EditQuantityModal input[name="Quantity"]').val(response[0].Quantity);
+                }
+            })
+
+        });
+
+        $('#updateQuantityItemOpen').click(function (e) {
+            formValidateOpen.form();
+        });
+
+        function updateQuantity() {
+            $.ajax({
+                url: $('#formUpdateQuantity').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantity').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#EditQuantityRealizationModal').modal('toggle');
+                        $('#table').bootstrapTable('refresh', function () {
+                            console.log('refresh');
+                        })
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#EditQuantityRealizationModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+        function updateQuantityItemOpen() {
+            $.ajax({
+                url: $('#formUpdateQuantityItemOpen').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantityItemOpen').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                        $('#table').bootstrapTable('refresh', function () {
+                            console.log('refresh');
+                        })
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+    $(document).on('click', '#DeleteItem', function (e) {
+        var id = $(this).data("id");
+        var urlString = "@Url.Action("DeleteItemRequest", "Sparepart", new { area = "SCM" })";
+        confirmDelete(urlString, id);
+    });
+    function confirmDelete(Link, id) {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Delete This Item !",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#DD6B55",
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "No, Don't Delete This Item"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: { Id: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Deleted",
+                                text: "Item has been deleted.",
+                                icon: "success"
+                            }).then(() => {
+                                $('#table').bootstrapTable('refresh', function () {
+                                    console.log('refresh');
+                                });
+                            });
+                            
+                        } else {
+                            Swal.fire("Failed!", "Failed To Delete Item.", "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Canceled!", Link, "error");
+                    }
+                });
+            } else {
+                Swal.fire("Cancelled", "Cancel Delete Item" , "error");
+            }
+        });
+    }
+
+        $(document).on('click', '#cancelRequest', function (e) {
+            var a = $(this).data("id");
+            var Link = "@Url.Action("CancelRequest", "Sparepart", new { area = "SCM" })";
+            var id = "@ViewBag.RequestNo";
+            ConfirmSendRequest(Link, "Cancel this request ?", id, '#DC4C64', 'Yes, Cancel it');
+        });
+
+        // CountDown Function
+
+        // Set the date we're counting down to
+
+
+            var txtCountDown = document.getElementById("txtCountDown");
+            if (txtCountDown) {
+                var dueDate = new Date("@ViewBag.header.CloseTimeDueDate").getTime();
+                var countDownDate = dueDate;
+                //var countDownDate = new Date("Jan 5, 2024 15:37:25").getTime();
+                // Update the count down every 1 second
+                var x = setInterval(function () {
+
+                    // Get today's date and time
+                    var now = new Date().getTime();
+
+                    // Find the distance between now and the count down date
+                    var distance = countDownDate - now;
+
+                    // Time calculations for days, hours, minutes and seconds
+                    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    // Display the result in the element with id="demo"
+                    txtCountDown.innerHTML = days + "d " + hours + "h "
+                        + minutes + "m " + seconds + "s ";
+
+                    // If the count down is finished, write some text
+                    if (distance < 0) {
+                        clearInterval(x);
+                        txtCountDown.innerHTML = "EXPIRED";
+                    }
+                }, 1000);
+            }
+
+    var $btnPrint = $('#buttonPrint');
+    var $table = $('#table');
+
+    $table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+        $btnPrint.prop('disabled', !$table.bootstrapTable('getSelections').length)
+    })
+
+
+
+    $(function () {
+        // Event listener untuk tombol print
+        $('#buttonPrint').on('click', function () {
+            // Ambil instance dari bootstrap table
+            const $table = $('#table');
+
+            // Dapatkan semua baris yang dipilih (dicentang)
+            const selections = $table.bootstrapTable('getSelections');
+
+            // Jika tidak ada baris yang dipilih, tampilkan peringatan
+            if (selections.length === 0) {
+                Swal.fire(
+                    'Perhatian!',
+                    'Silakan pilih setidaknya satu item untuk dicetak.',
+                    'warning'
+                );
+                return; // Hentikan eksekusi
+            }
+
+            // Ekstrak ID dari setiap baris yang dipilih
+            // Pastikan 'ITEMID' sesuai dengan 'data-field' di tabel Anda
+            const selectedIds = selections.map(row => row.Id);
+
+            console.log('ID : ', selectedIds);
+
+            // Panggil fungsi untuk mengirim daftar ID ke server
+            printSelectedLabels(selectedIds);
+        });
+    });
+
+async function printSelectedLabels(ids) {
+    // Tampilkan dialog konfirmasi
+    const result = await Swal.fire({
+        title: 'Konfirmasi Cetak',
+        text: `Apakah Anda yakin ingin mencetak ${ids.length} jenis label yang dipilih?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, Cetak!'
+    });
+
+    if (result.isConfirmed) {
+        Swal.fire({
+            title: 'Processing...',
+            text: 'Mengirim data ke printer, mohon tunggu.',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            showCloseButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+                setTimeout(() => {
+                    Swal.update({
+                        text: 'Close dan batalkan cek printer terlebih dahulu jika terlalu lama.',
+                        showCloseButton: true,
+                        showConfirmButton: false
+                    });
+                    Swal.showLoading();
+                }, 20000);
+            }
+        });
+       
+
+        try {
+            const url = '@Url.Action("SparepartPrintQr", "Sparepart", new { area = "SCM" })';
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                
+                body: new URLSearchParams({
+                    'ids': ids,
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                Swal.fire('Berhasil!', data.message, 'success');
+            } else {
+                Swal.fire('Gagal!', data.message, 'error');
+            }
+
+        } catch (error) {
+            Swal.fire('Error!', 'Terjadi kesalahan saat menghubungi server.', 'error');
+            console.error('Error:', error);
+        }
+    }
+}
+
+</script>

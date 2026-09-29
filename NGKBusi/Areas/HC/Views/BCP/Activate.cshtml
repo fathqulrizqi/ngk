@@ -1,0 +1,969 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var incident    = (NGKBusi.Areas.HC.Models.HC_BCP_Incident)ViewBag.Incident;
+    var assessments = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment>)ViewBag.Assessments;
+    var reviews     = (List<NGKBusi.Areas.HC.Models.HC_BCP_Review>)ViewBag.Reviews ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Review>();
+    var logs        = (List<NGKBusi.Areas.HC.Models.HC_BCP_Activation_Log>)ViewBag.ActivationLogs;
+    var revNames    = (ViewBag.ReviewerNames as Dictionary<string, string>) ?? new Dictionary<string, string>();
+    var activator   = ViewBag.CurrentActivator as NGKBusi.Areas.HC.Models.HC_BCP_Organization;
+    bool isPresdir  = ViewBag.IsPresdir == true;
+    bool isReviewer = ViewBag.IsReviewer == true;
+    bool canApprovePlan = ViewBag.CanApprovePlan == true || isPresdir;
+
+    var criteriaList = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Criteria>)ViewBag.Criteria ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Criteria>();
+    var allDetails   = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Detail>)ViewBag.AllDetails ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Detail>();
+
+    bool isActivated   = incident.Status == 6;
+    bool isDeactivated = incident.Status == 7;
+    bool canToggle     = incident.Status == 5 || incident.Status == 6 || incident.Status == 7;
+    bool isActivatedOrDeactivated = incident != null && (incident.Status == 5 || incident.Status == 6 || incident.Status == 7);
+
+    decimal avgScore   = assessments.Any() ? assessments.Average(x => x.TotalScore ?? 0) : 0;
+    int impactedCount  = assessments.Count(x => x.IsImpacted == true);
+    int totalAreas     = assessments.Count;
+
+    string severityColor = incident.Severity == "Critical" || incident.Severity == "4" ? "#e11d48"
+                         : incident.Severity == "High"     || incident.Severity == "3" ? "#f97316"
+                         : incident.Severity == "Medium"   || incident.Severity == "2" ? "#eab308"
+                         : incident.Severity == "Low"      || incident.Severity == "1" ? "#22c55e"
+                         : "#94a3b8";
+
+    var recoveryPlans = (List<NGKBusi.Areas.HC.Models.HC_BCP_Recovery_Plan>)ViewBag.RecoveryPlans ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Recovery_Plan>();
+    var questionList = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>)ViewBag.QuestionList ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>();
+    var orgList = (List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>)ViewBag.OrgList ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>();
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                colors: {
+                    ngk: {
+                        primary: '#007581', primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e', accent: '#eeb500', accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+<style>
+    .fade-up { animation: fadeUp 0.5s ease-out both; }
+    @@keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .pulse-ring { animation: pulseRing 2.5s ease-in-out infinite; }
+    @@keyframes pulseRing {
+        0%,100% { box-shadow: 0 0 0 0 rgba(225,29,72,.3); }
+        50%      { box-shadow: 0 0 0 14px rgba(225,29,72,.0); }
+    }
+    .timeline-line::before {
+        content: ''; position: absolute; left: 19px; top: 40px; bottom: 0;
+        width: 2px; background: #e2e8f0;
+    }
+    .score-bar { transition: width 1s cubic-bezier(.4,0,.2,1); }
+    
+    /* Ensure solid borders on BCP Recovery Plan table cells due to preflight being disabled */
+    .recovery-plan-table td,
+    .recovery-plan-table th {
+        border-style: solid !important;
+        border-color: #e2e8f0 !important;
+        border-width: 1px !important;
+    }
+</style>
+
+<div class="w-full bg-slate-50 font-sans min-h-screen py-6 px-2 sm:px-4 md:px-8">
+
+    <div class="mb-6 fade-up">
+        @* BREADCRUMB *@
+        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest mb-5 ml-2">
+            <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors duration-200 flex items-center gap-1.5">
+                <i class="fas fa-home"></i>BCP Home
+            </a>
+            <i class="fas fa-chevron-right text-[9px] text-slate-300"></i>
+            <a href="@Url.Action("IncidentDetail", "BCP", new { id = incident.IncidentNo })" class="hover:text-ngk-primary transition-colors duration-200">@incident.IncidentNo</a>
+            <i class="fas fa-chevron-right text-[9px] text-slate-300"></i>
+            <span class="text-rose-500 font-bold">Final Decision</span>
+        </div>
+
+        @* NEW HEADER MATCHING ASSESSMENT REVIEW THEME *@
+        <div class="w-full relative overflow-hidden rounded-[20px] shadow-md border border-slate-200" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #164e63 100%);">
+            <div class="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10" style="background: radial-gradient(circle, #007581 0%, transparent 70%); transform: translate(30%, -40%); pointer-events: none;"></div>
+            <div class="absolute bottom-0 left-1/2 w-72 h-72 rounded-full opacity-5" style="background: radial-gradient(circle, #e11d48 0%, transparent 70%); transform: translate(-50%, 50%); pointer-events: none;"></div>
+
+            <div class="relative z-10 px-6 md:px-10 py-8">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-start gap-5">
+                        <div class="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg" style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);">
+                            <i class="fas fa-power-off text-white text-2xl"></i>
+                        </div>
+                        <div class="pt-1">
+                            <h1 class="text-2xl md:text-3xl font-black text-white tracking-tight mb-1.5">BCP Final Decision</h1>
+                            <p class="text-slate-400 text-sm md:text-base font-medium flex items-center gap-2">
+                                <span class="bg-white/10 px-2 py-0.5 rounded text-white/90 font-bold">@incident.IncidentNo</span>
+                                <span class="text-slate-600">-</span>
+                                <span class="text-white/80">@incident.Title</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    @* Authority Badge *@
+                    <div class="flex items-center gap-3 bg-slate-800/50 backdrop-blur-md border border-slate-700 px-5 py-3 rounded-xl">
+                        <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center border border-rose-500/40 shadow-inner">
+                            <i class="fas fa-crown text-rose-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-none mb-1">
+                                @(isPresdir ? "President Director" : "Authorized Delegate")
+                            </p>
+                            <p class="font-extrabold text-sm text-white m-0 leading-none">@(activator?.Name ?? "Unknown")</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t border-slate-700/50 grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Category</p>
+                        <p class="font-extrabold text-base text-white">@incident.Category</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Severity</p>
+                        <p class="font-extrabold text-base" style="color:@severityColor">@(string.IsNullOrEmpty(incident.Severity) ? "-" : incident.Severity)</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Impacted Areas</p>
+                        <p class="font-extrabold text-base text-rose-400">@impactedCount <span class="text-slate-500 font-medium text-sm ml-1">/ @totalAreas</span></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[0.15em] mb-1.5">Avg Impact Score</p>
+                        <p class="font-extrabold text-base text-rose-400">@avgScore.ToString("0.00") <span class="text-slate-500 font-medium text-sm ml-1">/ 5.00</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ── CURRENT STATUS BANNER ───────────────────────────── *@
+    @if (isActivated)
+    {
+        <div class="fade-up mb-6 p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 flex items-center gap-5 shadow-sm" style="animation-delay:.05s">
+            <div class="w-14 h-14 rounded-full bg-emerald-100 border-4 border-emerald-400 flex items-center justify-center flex-shrink-0 pulse-ring" style="--tw-ring-color:rgba(52,211,153,.4)">
+                <i class="fas fa-check text-emerald-600 text-2xl"></i>
+            </div>
+            <div>
+                <p class="font-black text-emerald-800 text-lg m-0">BCP IS CURRENTLY ACTIVE</p>
+                <p class="text-emerald-700 text-sm font-medium m-0">
+                    Activated by <strong>@ViewBag.ActivatorName</strong>
+                    on @(incident.Activated_At?.ToString("dd MMM yyyy, HH:mm"))
+                </p>
+            </div>
+            <div class="ml-auto">
+                <span class="px-4 py-2 bg-emerald-600 text-white text-xs font-black uppercase tracking-widest rounded-full">
+                    ACTIVE
+                </span>
+            </div>
+        </div>
+    }
+    else if (isDeactivated)
+    {
+        <div class="fade-up mb-6 p-5 rounded-2xl bg-slate-100 border-2 border-slate-300 flex items-center gap-5" style="animation-delay:.05s">
+            <div class="w-14 h-14 rounded-full bg-slate-200 border-4 border-slate-400 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-power-off text-slate-500 text-2xl"></i>
+            </div>
+            <div>
+                <p class="font-black text-slate-700 text-lg m-0">BCP HAS BEEN DEACTIVATED</p>
+                <p class="text-slate-500 text-sm font-medium m-0">
+                    By <strong>@ViewBag.ActivatorName</strong>
+                    on @(incident.Activated_At?.ToString("dd MMM yyyy, HH:mm"))
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="fade-up mb-6 p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 flex items-center gap-5" style="animation-delay:.05s">
+            <div class="w-14 h-14 rounded-full bg-amber-100 border-4 border-amber-400 flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-hourglass-half text-amber-600 text-2xl"></i>
+            </div>
+            <div>
+                <p class="font-black text-amber-800 text-lg m-0">AWAITING YOUR DECISION</p>
+                <p class="text-amber-700 text-sm font-medium m-0">All management reviews are complete. The final decision to activate BCP is now in your hands.</p>
+            </div>
+            <div class="ml-auto">
+                <span class="px-4 py-2 bg-amber-500 text-white text-xs font-black uppercase tracking-widest rounded-full animate-pulse">
+                    ACTION REQUIRED
+                </span>
+            </div>
+        </div>
+    }
+
+    @* ── MAIN GRID ───────────────────────────────────────── *@
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+
+        @* ═══ LEFT: INFO COLUMNS ════════════════════════ *@
+        <div class="xl:col-span-8 flex flex-col gap-6">
+
+            @* INCIDENT SUMMARY *@
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm fade-up" style="animation-delay:.15s">
+                <h6 class="font-extrabold text-slate-700 text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i class="fas fa-file-alt text-ngk-primary"></i> Incident Summary
+                </h6>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
+                    <div>
+                        <p class="text-[0.65rem] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Category</p>
+                        <p class="font-semibold text-slate-700 m-0">@incident.Category</p>
+                    </div>
+                    <div>
+                        <p class="text-[0.65rem] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Reported</p>
+                        <p class="font-semibold text-slate-700 m-0">@(incident.Created_At?.ToString("dd MMM yyyy, HH:mm")) by @ViewBag.ReporterName</p>
+                    </div>
+                    <div>
+                        <p class="text-[0.65rem] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Personnel Status</p>
+                        <p class="font-semibold text-slate-700 m-0">@(incident.PersonnelStatus ?? "—")</p>
+                    </div>
+                    @if (!string.IsNullOrEmpty(incident.Description))
+                    {
+                        <div class="md:col-span-3">
+                            <p class="text-[0.65rem] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Description</p>
+                            <p class="font-medium text-slate-600 m-0 leading-relaxed">@incident.Description</p>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(incident.InfrastructureImpact))
+                    {
+                        <div class="md:col-span-3">
+                            <p class="text-[0.65rem] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Infrastructure Impact</p>
+                            <p class="font-medium text-slate-600 m-0 leading-relaxed">@incident.InfrastructureImpact</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @* CRITERIA IMPACT SUMMARY *@
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm fade-up" style="animation-delay:.18s">
+                <div class="flex justify-between items-center mb-4">
+                    <h6 class="font-extrabold text-slate-700 text-xs uppercase tracking-widest flex items-center gap-2 m-0">
+                        <i class="fas fa-layer-group text-ngk-primary"></i> Criteria Impact Summary
+                    </h6>
+                    <span class="text-[0.65rem] text-slate-400 italic">Click a criteria for details</span>
+                </div>
+                
+                @if (criteriaList.Any())
+                {
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach (var crit in criteriaList)
+                        {
+                            var critDetails = allDetails.Where(d => d.CriteriaID == crit.ID).ToList();
+                            decimal cMax = critDetails.Any() ? critDetails.Max(d => d.AverageScore ?? 0) : 0;
+                            decimal cAvg = critDetails.Any() ? critDetails.Average(d => d.AverageScore ?? 0) : 0;
+                            
+                            string cColor = cMax >= 4.50m ? "rose" : cMax >= 3.50m ? "orange" : cMax >= 2.50m ? "yellow" : cMax >= 1.50m ? "blue" : "emerald";
+
+                            <div class="border border-slate-100 bg-slate-50 rounded-xl p-4 flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all cursor-pointer" onclick="showCriteriaDetails(@crit.ID)">
+                                <p class="text-xs font-bold text-slate-700 mb-2 truncate" title="@crit.Name">@crit.Name</p>
+                                <div class="flex items-end justify-between mt-1">
+                                    <div>
+                                        <p class="text-[0.6rem] text-slate-400 font-semibold uppercase mb-0.5">Max Severity</p>
+                                        <span class="text-lg font-black text-@(cColor)-600">@cMax</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[0.6rem] text-slate-400 font-semibold uppercase mb-0.5">Avg Impact</p>
+                                        <span class="text-sm font-bold text-slate-600">@cAvg.ToString("0.00")</span>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-slate-200 h-1.5 rounded-full mt-3 overflow-hidden">
+                                    <div class="h-full bg-@(cColor)-500 rounded-full transition-all duration-1000 ease-out" style="width: @((cMax / 5m) * 100)%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-slate-400 italic text-sm text-center py-4">No criteria data available.</p>
+                }
+            </div>
+
+            @* REVIEW TRAIL *@
+            <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm fade-up" style="animation-delay:.25s">
+                <h6 class="font-extrabold text-slate-700 text-xs uppercase tracking-widest mb-5 flex items-center gap-2">
+                    <i class="fas fa-stream text-ngk-primary"></i> Management Review Trail
+                </h6>
+                @if (reviews.Any())
+                {
+                    <div class="flex flex-col gap-0 relative timeline-line">
+                        @foreach (var r in reviews)
+                        {
+                            string decisionColor = r.Decision == "EscalateToPresdir" ? "rose"
+                                                 : r.Decision == "ERTOnly"           ? "amber"
+                                                 : "slate";
+                            string nik = r.ReviewerNIK?.Trim() ?? "";
+                            string rName = revNames.ContainsKey(nik) ? revNames[nik] : "Unknown";
+
+                            <div class="flex gap-4 pb-6 relative">
+                                <div class="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-black text-xs shadow border-2 border-white flex-shrink-0 z-10">
+                                    @(r.ReviewerRole?.Length > 2 ? r.ReviewerRole.Substring(0,2) : "?")
+                                </div>
+                                <div class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p class="font-black text-slate-700 text-sm m-0">@rName <span class="text-xs text-slate-500 font-semibold ml-1">(@r.ReviewerRole)</span></p>
+                                            @{
+                                                var positions = ViewBag.ReviewerPositions as Dictionary<string, string>;
+                                                string posName = positions != null && positions.ContainsKey(nik) ? positions[nik] : "Unknown Position";
+                                            }
+                                            <p class="text-[0.65rem] text-slate-400 font-medium m-0">@r.ReviewerNIK - @posName</p>
+                                        </div>
+                                        <span class="px-2 py-1 text-[0.6rem] font-black uppercase tracking-widest rounded-lg border
+                                            @(decisionColor == "rose" ? "bg-rose-50 text-rose-600 border-rose-200"
+                                              : decisionColor == "amber" ? "bg-amber-50 text-amber-600 border-amber-200"
+                                              : "bg-slate-100 text-slate-600 border-slate-200")">
+                                            @r.Decision
+                                        </span>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(r.ReviewNote))
+                                    {
+                                        <p class="text-sm text-slate-600 italic border-l-4 border-slate-300 pl-3 m-0 leading-relaxed">
+                                            "@r.ReviewNote"
+                                        </p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-slate-400 italic text-sm text-center py-4">No management reviews recorded.</p>
+                }
+            </div>
+
+            @* ACTIVATION LOG HISTORY *@
+            @if (logs != null && logs.Any())
+            {
+                <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm fade-up" style="animation-delay:.3s">
+                    <h6 class="font-extrabold text-slate-700 text-xs uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <i class="fas fa-history text-ngk-primary"></i> Activation History
+                    </h6>
+                    <div class="flex flex-col gap-3">
+                        @foreach (var log in logs)
+                        {
+                            bool isAct = log.Action == "Activated";
+                            <div class="flex items-start gap-3 p-3 rounded-xl @(isAct ? "bg-emerald-50 border border-emerald-200" : "bg-slate-50 border border-slate-200")">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 @(isAct ? "bg-emerald-100" : "bg-slate-200")">
+                                    <i class="fas @(isAct ? "fa-check text-emerald-600" : "fa-power-off text-slate-500") text-xs"></i>
+                                </div>
+                                <div>
+                                    <p class="font-black text-sm @(isAct ? "text-emerald-800" : "text-slate-700") m-0">@log.Action</p>
+                                    <p class="text-[0.65rem] text-slate-500 font-medium m-0">
+                                        by @log.ActionBy - @(log.ActionAt?.ToString("dd MMM yyyy, HH:mm"))
+                                    </p>
+                                    @if (!string.IsNullOrEmpty(log.Note))
+                                    {
+                                        <p class="text-xs text-slate-600 mt-1 m-0 italic">@log.Note</p>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+        </div>
+
+        @* ═══ RIGHT: DECISION PANEL ═════════════════════ *@
+        <div class="xl:col-span-4 fade-up" style="animation-delay:.15s">
+            <div class="sticky top-6 flex flex-col gap-5">
+
+                @* DECISION CARD *@
+                @if (!isActivated && !isDeactivated)
+                {
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm mb-2 relative overflow-hidden">
+                        <div class="absolute right-0 top-0 w-24 h-24 bg-rose-50 rounded-bl-full -z-10"></div>
+                        <h6 class="font-extrabold text-slate-700 text-xs uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <i class="fas fa-lightbulb text-amber-500"></i> Executive Context
+                        </h6>
+                        <ul class="text-xs text-slate-600 space-y-2 mb-0 pl-4 list-disc marker:text-rose-400">
+                            <li><strong>@impactedCount out of @totalAreas areas</strong> reported critical disruptions.</li>
+                            <li>Management has escalated this issue to your level.</li>
+                            <li>Activating BCP will trigger corporate emergency protocols and notify all stakeholders.</li>
+                        </ul>
+                    </div>
+
+                    @* ACTIVATE BUTTON *@
+                    <div class="group relative cursor-pointer" id="btnActivateCard" onclick="handleDecision('Activated')">
+                        <div class="absolute inset-0 bg-rose-500 rounded-2xl blur-xl opacity-20 group-hover:opacity-50 transition-opacity duration-500"></div>
+                        <div class="bg-gradient-to-b from-white to-rose-50 border-2 border-rose-200 group-hover:border-rose-500 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg relative z-10 transition-all duration-300 group-hover:-translate-y-1">
+                            <div class="w-20 h-20 rounded-full bg-gradient-to-bl from-rose-100 to-rose-300 border-4 border-white shadow-lg flex items-center justify-center mb-4 pulse-ring group-hover:scale-110 transition-transform duration-300">
+                                <i class="fas fa-power-off text-3xl text-rose-600"></i>
+                            </div>
+                            <h3 class="font-black text-rose-700 text-xl mb-2">ACTIVATE BCP</h3>
+                            <p class="text-xs text-rose-800/70 font-medium leading-relaxed mb-5 px-2">
+                                Declare a corporate emergency state. All Business Continuity Protocols will be executed immediately.
+                            </p>
+                            <button class="w-full py-3 rounded-full bg-rose-600 text-white font-extrabold tracking-widest text-sm shadow-lg shadow-rose-500/40 group-hover:bg-rose-700 transition-all uppercase flex justify-center items-center gap-2">
+                                <i class="fas fa-exclamation-triangle"></i> Execute Protocol
+                            </button>
+                        </div>
+                    </div>
+                }
+                else if (isActivated)
+                {
+                    @* DEACTIVATE TOGGLE (BCP is already active) *@
+                    <div class="bg-emerald-50 border-2 border-emerald-300 rounded-2xl p-6 text-center shadow-sm">
+                        <div class="w-16 h-16 rounded-full bg-emerald-100 border-4 border-emerald-400 flex items-center justify-center mx-auto mb-4 pulse-ring">
+                            <i class="fas fa-check text-2xl text-emerald-600"></i>
+                        </div>
+                        <h3 class="font-black text-emerald-700 text-lg mb-1">BCP ACTIVE</h3>
+                        <p class="text-xs text-emerald-600 font-medium mb-4 leading-relaxed">
+                            Business Continuity Plan is currently running.<br>
+                            Click below to deactivate and return to normal operations.
+                        </p>
+                        <button onclick="handleDecision('Deactivated')"
+                                class="w-full py-3 rounded-full bg-slate-700 text-white font-extrabold tracking-widest text-sm shadow transition-all uppercase hover:bg-slate-800 flex justify-center items-center gap-2">
+                            <i class="fas fa-power-off"></i> Deactivate BCP
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    @* Already deactivated *@
+                    <div class="bg-slate-100 border-2 border-slate-300 rounded-2xl p-6 text-center">
+                        <div class="w-16 h-16 rounded-full bg-slate-200 border-4 border-slate-400 flex items-center justify-center mx-auto mb-3">
+                            <i class="fas fa-power-off text-2xl text-slate-400"></i>
+                        </div>
+                        <h3 class="font-black text-slate-600 text-base mb-1">BCP DEACTIVATED</h3>
+                        <p class="text-xs text-slate-500 font-medium m-0">This incident has been resolved.</p>
+                    </div>
+                }
+
+                @* BACK BUTTON *@
+                <a href="@Url.Action("IncidentDetail","BCP",new{id=incident.IncidentNo})"
+                   class="w-full py-3 px-4 mt-2 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-sm text-center hover:border-ngk-primary hover:text-ngk-primary transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Back to Incident Details
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+
+    @if (isActivatedOrDeactivated)
+    {
+        <div class="mt-8 bg-white border border-slate-200 rounded-[20px] shadow-sm overflow-hidden fade-up" style="animation-delay:.35s">
+            <div class="p-6 border-b border-slate-200/80 bg-gradient-to-r from-white to-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h3 class="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2 m-0">
+                        <i class="fas fa-tools text-ngk-primary"></i> Incident Recovery Plan
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1 m-0">Collaborative plan to restore systems and operations. Changes are auto-saved in real-time on edit.</p>
+                </div>
+                @if (canApprovePlan && recoveryPlans.Any(p => p.Status == "Submitted"))
+                {
+                    <button onclick="approveAllActionPlans(@incident.ID)" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-500 text-white text-xs font-bold rounded-xl hover:bg-emerald-600 transition-all cursor-pointer border-0 shadow-sm">
+                        <i class="fas fa-check-double"></i> Approve All Action Plans
+                    </button>
+                }
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="recovery-plan-table w-full text-left border-collapse table-fixed text-xs min-w-[1000px] m-0">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-500 uppercase tracking-widest text-[10px] font-extrabold border-b border-slate-300 border-t border-slate-300">
+                            <th class="py-3 px-4 text-center w-12 border-l border-r border-slate-300">No</th>
+                            <th class="py-3 px-4 text-center w-36 border-r border-slate-300">Incident</th>
+                            <th class="py-3 px-4 w-60 border-r border-slate-300">Critical Issue</th>
+                            <th class="py-3 px-4 w-72 border-r border-slate-300">Action Plan</th>
+                            <th class="py-3 px-4 w-72 border-r border-slate-300">To Do List</th>
+                            <th class="py-3 px-4 w-44 border-r border-slate-300">PIC</th>
+                            <th class="py-3 px-4 text-center w-32 border-r border-slate-300">Due Date</th>
+                            <th class="py-3 px-4 text-center w-28 border-r border-slate-300">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-300" id="recoveryPlanTableBody">
+                        @{
+                            var reviewablePlans = recoveryPlans.Where(p => p.Status == "Submitted" || p.Status == "Approved" || p.Status == "Revised").ToList();
+                        }
+                        @if (reviewablePlans.Any())
+                        {
+                            int incidentRowSpan = reviewablePlans.Sum(p => Math.Max(1, p.Todos.Count));
+                            bool isFirstIncidentRow = true;
+
+                            var groupedByCrit = reviewablePlans.GroupBy(p => p.CriteriaID).ToList();
+
+                            foreach (var critGroup in groupedByCrit)
+                            {
+                                var critPlans = critGroup.ToList();
+                                int critRowSpan = critPlans.Sum(p => Math.Max(1, p.Todos.Count));
+                                bool isFirstCritRow = true;
+                                var criteriaObj = critPlans.First().Criteria;
+                                var questionText = criteriaObj != null ? criteriaObj.Name : "Critical Issue";
+
+                                foreach (var plan in critPlans)
+                                {
+                                    int planRowSpan = Math.Max(1, plan.Todos.Count);
+                                    bool isFirstPlanRow = true;
+                                    var todos = plan.Todos.ToList();
+
+                                    for (int i = 0; i < planRowSpan; i++)
+                                    {
+                                        var todo = i < todos.Count ? todos[i] : null;
+                                        <tr class="hover:bg-slate-50/50 transition-colors">
+                                            @if (isFirstIncidentRow)
+                                            {
+                                                <td rowspan="@incidentRowSpan" class="text-center font-bold align-middle border-l border-r border-b border-slate-300 bg-slate-50/20">1</td>
+                                                <td rowspan="@incidentRowSpan" class="font-black text-slate-800 align-middle border-r border-b border-slate-300 text-center bg-slate-50/20 p-3">
+                                                    <span class="inline-block px-2.5 py-1 bg-rose-50 text-rose-700 rounded-lg border border-rose-200 font-extrabold text-[10px]">
+                                                        @incident.Category.ToUpper()
+                                                    </span>
+                                                    <div class="text-[10px] text-slate-400 font-bold mt-1">@incident.IncidentNo</div>
+                                                </td>
+                                                isFirstIncidentRow = false;
+                                            }
+
+                                            @if (isFirstCritRow)
+                                            {
+                                                <td rowspan="@critRowSpan" class="font-semibold text-slate-700 align-middle p-3 border-r border-b border-slate-300 bg-slate-50/10">
+                                                    <div class="line-clamp-3 leading-relaxed">@questionText</div>
+                                                </td>
+                                                isFirstCritRow = false;
+                                            }
+
+                                            @if (isFirstPlanRow)
+                                            {
+                                                <td rowspan="@planRowSpan" class="font-semibold text-slate-700 align-top p-3 border-r border-b border-slate-300">
+                                                    @if (plan.Status == "Revised" && !string.IsNullOrEmpty(plan.RevisionComment))
+                                                    {
+                                                        <div class="mb-2 p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-[10px] font-medium leading-normal">
+                                                            <span class="font-extrabold uppercase text-[9px] block mb-0.5 text-rose-700"><i class="fas fa-exclamation-circle mr-1"></i>Revision Feedback:</span>
+                                                            "@plan.RevisionComment"
+                                                        </div>
+                                                    }
+                                                    
+                                                    <div class="line-clamp-4 leading-relaxed font-medium">@plan.ActionPlanText</div>
+                                                    <div class="text-[9px] text-slate-400 mt-2 font-semibold flex flex-col gap-1">
+                                                        <span>Created by: @(plan.Created_By ?? "System")</span>
+                                                        <div>
+                                                            @if (plan.Status == "Submitted")
+                                                            {
+                                                                <span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Awaiting Approval</span>
+                                                            }
+                                                            else if (plan.Status == "Approved")
+                                                            {
+                                                                <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Approved</span>
+                                                            }
+                                                            else if (plan.Status == "Revised")
+                                                            {
+                                                                <span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">Revised</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="bg-slate-100 text-slate-800 px-2 py-0.5 rounded text-[8px] font-bold uppercase shadow-sm">@plan.Status</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+
+                                                    @if (canApprovePlan && plan.Status == "Submitted")
+                                                    {
+                                                        <div class="mt-3 flex items-center gap-1 border-t border-slate-100 pt-2">
+                                                            <button onclick="approveActionPlan(@plan.ID)" class="flex-1 py-1.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded text-[10px] font-bold transition-colors border border-emerald-200">
+                                                                <i class="fas fa-check mr-0.5"></i> Approve
+                                                            </button>
+                                                            <button onclick="reviseActionPlan(@plan.ID)" class="flex-1 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white rounded text-[10px] font-bold transition-colors border border-rose-200">
+                                                                <i class="fas fa-times mr-0.5"></i> Revise
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                </td>
+                                                isFirstPlanRow = false;
+                                            }
+
+                                            @if (todo != null)
+                                            {
+                                                <td class="align-top p-3 border-r border-b border-slate-300">
+                                                    <div class="line-clamp-4 leading-relaxed font-medium text-slate-700">@todo.TodoText</div>
+                                                    @if (todo.Status == "Pending" && !string.IsNullOrEmpty(todo.PendingNote))
+                                                    {
+                                                        <div class="mt-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[10.5px] font-medium leading-relaxed text-left">
+                                                            <span class="font-extrabold uppercase text-[9px] block mb-0.5 text-amber-700">
+                                                                <i class="fas fa-exclamation-circle mr-1"></i>Pending Note:
+                                                            </span>
+                                                            "@todo.PendingNote"
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300">
+                                                    <div class="flex items-center gap-2.5">
+                                                        <div class="w-7 h-7 rounded-full bg-sky-50 text-sky-700 font-extrabold text-[10px] flex items-center justify-center border border-sky-100 shrink-0 uppercase">
+                                                            @(todo.PIC_Name.Length > 2 ? todo.PIC_Name.Substring(0, 2) : "PI")
+                                                        </div>
+                                                        <div class="text-left">
+                                                            <div class="font-bold text-slate-700 leading-tight">@todo.PIC_Name</div>
+                                                            <div class="text-[9px] text-slate-400 font-semibold mt-0.5">@todo.PIC_NIK</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300 text-center">
+                                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 font-semibold mt-1">
+                                                        <i class="far fa-calendar-alt text-slate-400 text-[10px]"></i>
+                                                        @todo.DueDate.ToString("dd MMM yyyy")
+                                                    </span>
+                                                </td>
+                                                <td class="align-top p-3 border-r border-b border-slate-300 text-center">
+                                                    <div class="flex flex-col items-center justify-center mt-1">
+                                                        <span class="px-2.5 py-1.5 w-full rounded-full text-[10px] font-black uppercase tracking-wider border block text-center
+                                                            @(todo.Status == "Complete" ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                                                                         : todo.Status == "Pending" ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                                         : "bg-blue-50 text-blue-700 border-blue-200")">
+                                                            @todo.Status
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            }
+                                            else
+                                            {
+                                                <td colspan="4" class="text-slate-400 italic text-center align-middle bg-slate-50/40 py-5 border-r border-b border-slate-300">
+                                                    No tasks assigned.
+                                                </td>
+                                            }
+                                        </tr>
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center py-14 text-slate-400 font-medium">
+                                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                        <i class="fas fa-clipboard-check text-2xl text-slate-300"></i>
+                                    </div>
+                                    <p class="m-0 text-sm font-bold text-slate-500">No Action Plans require approval</p>
+                                    <p class="m-0 text-xs text-slate-400 mt-1">Action plans submitted by DGM will appear here.</p>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@* CRITERIA DETAILS MODAL *@
+<div id="criteriaModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="criteriaModalContent">
+        <div class="flex items-center justify-between p-5 border-b border-slate-100">
+            <h3 class="font-black text-slate-800 text-lg flex items-center gap-2">
+                <i class="fas fa-layer-group text-ngk-primary"></i> Detailed Criteria Assessment
+            </h3>
+            <button type="button" onclick="closeCriteriaDetails()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-rose-100 hover:text-rose-600 text-slate-500 flex items-center justify-center transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="p-6 overflow-y-auto flex-1">
+            @foreach (var crit in criteriaList)
+            {
+                var critDetails = allDetails.Where(d => d.CriteriaID == crit.ID).ToList();
+                decimal cMax = critDetails.Any() ? critDetails.Max(d => d.AverageScore ?? 0) : 0;
+                decimal cAvg = critDetails.Any() ? critDetails.Average(d => d.AverageScore ?? 0) : 0;
+                string cColor = cMax >= 4.50m ? "rose" : cMax >= 3.50m ? "orange" : cMax >= 2.50m ? "yellow" : cMax >= 1.50m ? "blue" : "emerald";
+
+                <div id="crit-detail-@crit.ID" class="crit-detail-container mb-6 last:mb-0 border border-slate-200 rounded-xl overflow-hidden hidden">
+                    <div class="bg-slate-50 border-b border-slate-200 p-4 flex justify-between items-center">
+                        <div>
+                            <h4 class="font-black text-slate-700 text-sm mb-1">@crit.Name</h4>
+                            <p class="text-xs text-slate-500 m-0">Weight: @(crit.Weight?.ToString("0.##"))%</p>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="text-right">
+                                <p class="text-[0.6rem] text-slate-400 font-bold uppercase mb-0.5">Max Score</p>
+                                <span class="font-black text-@(cColor)-600 bg-@(cColor)-50 px-2 py-0.5 rounded-lg border border-@(cColor)-200">@cMax</span>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[0.6rem] text-slate-400 font-bold uppercase mb-0.5">Average</p>
+                                <span class="font-bold text-slate-600">@cAvg.ToString("0.00")</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-0">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-white text-slate-400 uppercase tracking-widest text-[0.6rem] border-b border-slate-100">
+                                <tr>
+                                    <th class="py-2 px-4 font-bold w-1/3">Department / Area</th>
+                                    <th class="py-2 px-4 font-bold text-center w-20">Score</th>
+                                    <th class="py-2 px-4 font-bold">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach (var det in critDetails.OrderByDescending(d => d.MaxScore))
+                                {
+                                    var ass = assessments.FirstOrDefault(a => a.ID == det.AssessmentID);
+                                    var areas = ViewBag.Areas as List<NGKBusi.Areas.HC.Models.HC_BCP_Area>;
+                                    var areaObj = areas?.FirstOrDefault(ar => ar.ID == ass?.AreaID);
+                                    string areaName = areaObj?.AreaName ?? "Unknown Area";
+
+                                    string deptName = ass?.DepartmentName;
+                                    if (string.IsNullOrEmpty(deptName) || deptName == "Unknown") {
+                                        var depts = ViewBag.Departments as List<NGKBusi.Areas.HC.Models.HC_BCP_Department>;
+                                        var deptObj = depts?.FirstOrDefault(dp => dp.Code == areaObj?.DepartmentCode);
+                                        deptName = deptObj?.DeptName ?? "Unknown Department";
+                                    }
+                                    
+                                    decimal score = det.AverageScore ?? 0;
+                                    decimal maxScore = det.MaxScore ?? 0;
+                                    string sColorClass = maxScore >= 4.50m ? "text-rose-700 bg-rose-50/80 font-bold" : 
+                                                         maxScore >= 3.50m ? "text-orange-700 bg-orange-50/80 font-bold" : 
+                                                         maxScore >= 2.50m ? "text-yellow-700 bg-yellow-50/80 font-bold" : 
+                                                         maxScore >= 1.50m ? "text-blue-700 bg-blue-50/80 font-bold" : 
+                                                         "text-emerald-700 bg-emerald-50/80 font-bold";
+
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="py-3 px-4">
+                                            <p class="font-bold text-slate-700 m-0 text-xs">@deptName</p>
+                                            <p class="text-[0.65rem] text-slate-500 m-0">@areaName</p>
+                                        </td>
+                                        <td class="py-3 px-4 text-center text-slate-600 font-medium">@score.ToString("0.00")</td>
+                                        
+                                        <td class="py-3 px-4 text-slate-500 italic max-w-xs truncate" title="@det.Notes">@(string.IsNullOrEmpty(det.Notes) ? "-" : det.Notes)</td>
+                                    </tr>
+                                }
+                                @if (!critDetails.Any())
+                                {
+                                    <tr>
+                                        <td colspan="4" class="py-4 text-center text-slate-400 italic">No assessment data for this criteria.</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end">
+            <button type="button" onclick="closeCriteriaDetails()" class="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-sm rounded-full transition-colors">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function showCriteriaDetails(critId) {
+            const modal = document.getElementById('criteriaModal');
+            const content = document.getElementById('criteriaModalContent');
+            
+            // Hide all
+            document.querySelectorAll('.crit-detail-container').forEach(el => el.classList.add('hidden'));
+            
+            // Show target
+            if (critId) {
+                const target = document.getElementById('crit-detail-' + critId);
+                if (target) target.classList.remove('hidden');
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeCriteriaDetails() {
+            const modal = document.getElementById('criteriaModal');
+            const content = document.getElementById('criteriaModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        function handleDecision(decision) {
+            const isActivate = decision === 'Activated';
+            Swal.fire({
+                title: isActivate
+                    ? '<span style="color:#e11d48;font-weight:900">ACTIVATE BCP?</span>'
+                    : '<span style="color:#475569;font-weight:900">DEACTIVATE BCP?</span>',
+                html: `
+                    <p style="color:#64748b;font-size:13px;margin-bottom:16px">
+                        ${isActivate
+                            ? 'This action will formally activate the Business Continuity Plan. All emergency protocols will be executed and relevant stakeholders will be notified.'
+                            : 'This action will deactivate the BCP and return operations to normal status. Please ensure the situation is fully resolved.'}
+                    </p>
+                    <div style="text-align:left;margin-bottom:4px">
+                        <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em">
+                            Directive Note <span style="color:#e11d48">*</span>
+                        </label>
+                    </div>
+                    <textarea id="finalNote" class="swal2-textarea"
+                        style="width:100%;margin:4px 0 0;font-size:13px;border:2px solid #e2e8f0;border-radius:8px;padding:10px;resize:vertical;min-height:90px"
+                        placeholder="${isActivate ? 'Example: Based on assessment reports, BCP is activated to address critical infrastructure failures.' : 'Example: Situation is under control, operations can return to normal.'}"></textarea>
+                `,
+                icon: isActivate ? 'warning' : 'question',
+                showCancelButton: true,
+                confirmButtonColor: isActivate ? '#e11d48' : '#475569',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: isActivate
+                    ? '<i class="fas fa-power-off"></i> Yes, Activate BCP'
+                    : '<i class="fas fa-power-off"></i> Yes, Deactivate',
+                cancelButtonText: 'Cancel',
+                customClass: { popup: 'rounded-2xl', confirmButton: 'rounded-full font-bold', cancelButton: 'rounded-full font-bold' },
+                preConfirm: () => {
+                    const note = document.getElementById('finalNote').value.trim();
+                    if (!note) {
+                        Swal.showValidationMessage('A directive note is required.');
+                    }
+                    return { note };
+                }
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                const btn = document.querySelector('#btnActivateCard button') || document.querySelector('button[onclick]');
+                Swal.showLoading();
+
+                $.post('@Url.Action("FinalDecision","BCP")', {
+                    IncidentID: @incident.ID,
+                    Decision:   decision,
+                    Note:       result.value.note
+                }, function (res) {
+                    if (res.status === 'success') {
+                        Swal.fire({
+                            icon:  'success',
+                            title: isActivate ? 'BCP Activated!' : 'BCP Deactivated',
+                            text:  res.message,
+                            confirmButtonColor: '#007581',
+                            confirmButtonText:  'OK'
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: res.message });
+                    }
+                }).fail(() => {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Connection failed. Please try again.' });
+                });
+            });
+        }
+
+        // ΓöÇΓöÇ RECOVERY PLAN COLLABORATIVE SCRIPTS ΓöÇΓöÇ
+        
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2500,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        });
+
+        function showAutosaveToast() {
+            Toast.fire({
+                icon: 'success',
+                title: 'Changes saved automatically'
+            });
+        }
+
+        function showErrorToast(msg) {
+            Toast.fire({
+                icon: 'error',
+                title: msg || 'Error saving changes'
+            });
+        }
+
+        function approveActionPlan(planId) {
+            Swal.fire({
+                title: "Approve Action Plan?",
+                text: "This will approve the action plan and allow the tasks to be executed.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#10b981",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, approve it"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("ApproveRecoveryPlan", "BCP")', {
+                        PlanID: planId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            location.reload();
+                        } else {
+                            Swal.fire("Error", res.message, "error");
+                        }
+                    }).fail(function() {
+                        Swal.fire("Error", "Network error.", "error");
+                    });
+                }
+            });
+        }
+
+        function reviseActionPlan(planId) {
+            Swal.fire({
+                title: "Revise Action Plan",
+                text: "Please provide a revision comment for the plan creator:",
+                input: "textarea",
+                inputPlaceholder: "Enter your feedback here...",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#f43f5e",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Submit Revision",
+                inputValidator: (value) => {
+                    if (!value || !value.trim()) {
+                        return 'You need to provide a revision comment!';
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    $.post('@Url.Action("ReviseRecoveryPlan", "BCP")', {
+                        PlanID: planId,
+                        RevisionComment: result.value.trim()
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            location.reload();
+                        } else {
+                            Swal.fire("Error", res.message, "error");
+                        }
+                    }).fail(function() {
+                        Swal.fire("Error", "Network error.", "error");
+                    });
+                }
+            });
+        }
+
+        function approveAllActionPlans(incidentId) {
+            Swal.fire({
+                title: "Approve All Pending Action Plans?",
+                text: "This will approve all Action Plans that are currently awaiting approval.",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#10b981",
+                cancelButtonColor: "#94a3b8",
+                confirmButtonText: "Yes, approve all"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.showLoading();
+                    $.post('@Url.Action("ApproveAllRecoveryPlans", "BCP")', {
+                        IncidentID: incidentId
+                    }, function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Approved!',
+                                text: res.message,
+                                confirmButtonColor: '#007581'
+                            }).then(() => location.reload());
+                        } else {
+                            Swal.fire("Error", res.message, "error");
+                        }
+                    }).fail(function() {
+                        Swal.fire("Error", "Network error.", "error");
+                    });
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,989 @@
+﻿@{
+    ViewBag.Title = "Tax Documentation Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+
+}
+@section scriptHead{
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf_viewer.min.css" rel="stylesheet" type="text/css" />
+
+<style>
+    .has-error .select2-selection {
+        border-color: #dc3545 !important;
+    }
+
+    table td {
+        position: relative;
+    }
+
+        table td input {
+            position: absolute;
+            display: block;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+            table td input[readonly] {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+        table td .form-control {
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+    #pdf_container {
+        background: #ccc;
+        text-align: center;
+        display: none;
+        padding: 5px;
+        height: 820px;
+        overflow: auto;
+    }
+</style>
+}
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-toolbar.min.js")"</script>
+<script src="@Url.Content("~/Content/bootstrap-table/tableExport.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-export.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-filter-control.min.js")"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style type="text/css">
+    .card {
+        text-align: left;
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 50%;
+        }
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inherit;
+        }
+
+            .card .card-header .bg-default {
+                color: black;
+            }
+
+    #txtQuantity-error {
+        font-size: 18px;
+    }
+
+    fieldset.scheduler-border {
+        border: 1px groove #ddd !important;
+        padding: 0 1.4em 1.4em 1.4em !important;
+        margin: 0 0 1.5em 0 !important;
+        -webkit-box-shadow: 0px 0px 0px 0px #000;
+        box-shadow: 0px 0px 0px 0px #000;
+    }
+
+    legend.scheduler-border {
+        font-size: 1.2em !important;
+        font-weight: bold !important;
+        text-align: left !important;
+        width: auto;
+        padding: 0 10px;
+        border-bottom: none;
+    }
+</style>
+@{
+    var type = ViewBag.DocumentationHeader.Type;
+    var Status = ViewBag.DocumentationHeader.Status;
+    var taskID =  ViewBag.DocumentationHeader.TaskID;
+}
+<div class="row">
+    <div class="col-sm-12">
+        <a href="@Url.Action("Dashboard", "TaxDocumentation" , new { area="FA" })" class="btn btn-warning btn-lg" data-toggle="tooltip" title="Dashboard" role="button" aria-pressed="true"><i class="fa fa-home"></i></a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-8">
+        <div class="row mt-3">
+            <div class="col-sm-12">
+                <div class="card">
+                    <div class="card-header bg-success">
+                        <div class="button-prev"></div>
+                        Tax Documentation Header
+                    </div>
+                    <form action="@Url.Action("UpdateDocumentationHeader", "TaxDocumentation" , new { area="FA" })" id="formUpdateDocumentationHeader" name="formUpdateDocumentationHeader">
+                        <input type="hidden" name="HeaderID" value="@ViewBag.HeaderID" />
+                        <div class="card-body">
+                            <h5 class="card-title"> </h5>
+                            <div class="form-group row has-error">
+                                <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Documentation Title </label>
+                                <div class="col-md-8">
+                                    <input type="text" class="form-control form-control-sm" id="txtDocumentationTitle" name="DocumentationTitle" placeholder="input Title" required autocomplete="off" value="@ViewBag.DocumentationHeader.DocumentationTitle">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selDocumentationType" class="col-md-4 col-form-label">Type</label>
+                                <div class="col-md-8">
+                                    <select class="form-control selectpicker form-control-sm select2" data-live-search="true" name="Type" id="selDocumentationType" data-placeholder="Select Type" required>
+                                        <option value="AllTax" @((type =="AllTax" ) ? "selected" : "" )>All Tax</option>
+                                        <option value="Objection" @((type =="Objection" ) ? "selected" : "" )> Objection</option>
+                                        <option value="Others" @((type =="Others" ) ? "selected" : "" )> Others</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtAuditDate" class="col-md-4 col-form-label">Tax Audit Date</label>
+                                <div class="col-md-8">
+                                    <input type="text" class="form-control form-control-sm" id="txtAuditDate" name="TaxAuditDate" placeholder="input Date" required autocomplete="off" value="@ViewBag.DocumentationHeader.TaxAuditDate">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtFinalDiscussionDate" class="col-md-4 col-form-label">Final Discussion Date</label>
+                                <div class="col-md-8">
+                                    <input name="FinalDiscussionDate" type="text" class="form-control form-control-sm" id="txtFinalDiscussionDate" placeholder="input Date" value="@ViewBag.DocumentationHeader.FinalDiscussionDate">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtTotalClaim" class="col-md-4 col-form-label">Total Claim</label>
+                                <div class="col-md-8">
+                                    <input name="TotalClaim" type="text" class="form-control form-control-sm" " id="txtTotalClaim" placeholder="Input Amount" required value="@ViewBag.DocumentationHeader.TotalClaim" data-type="currency">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary" id="btnUpdateHeader">Update</button> <button type="submit" class="btn btn-danger">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-sm-12">
+                <div class="card">
+                    <div class="card-header bg-success">Documentation Detail</div>
+                    <div class="card-body">
+
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th style="width:40%">Correction List</th>
+                                    <th style="width:20%">Before SPHP @if(@ViewBag.DocumentationHeader.IsApproveBeforeSPHP == 1) { <span style="float:right;color:forestgreen;font-size:16px;"> <i class="fa fa-check-circle"></i></span> }</th>
+                                    <th style="width:20%">SPHP @if(@ViewBag.DocumentationHeader.IsApproveSPHP == 1) { <span style="float:right;color:forestgreen;font-size:16px;"> <i class="fa fa-check-circle"></i></span> }</th>
+                                    <th style="width:20%">Result @if(@ViewBag.DocumentationHeader.IsApproveResult == 1) { <span style="float:right;color:forestgreen;font-size:16px;"> <i class="fa fa-check-circle"></i></span> }</th>
+                                </tr>
+                            </thead>
+                            <form action="@Url.Action("SaveCorrectionListDocumentation", "TaxDocumentation" , new { area="FA" })" id="frmCorrectionList">
+                                <input type="hidden" name="HeaderID" value="@ViewBag.HeaderID" />
+                            <tbody>
+                                @if(@Status == "RejectBeforeSPHP" || @Status == "RejectSPHP" || @Status == "RejectResult") {
+                                <div class="alert alert-danger" role="alert">
+                                    <h4 class="alert-heading">Reject Correction!</h4>
+                                    <p>Please update your correction base on notes bellow.</p>
+                                    <hr>
+                                    <p class="mb-0">@(ViewBag.DocumentationHeader.RejectNotes) .</p>
+                                </div>
+                                }
+                                @foreach (var tbl in ViewBag.CorrectionList)
+                                {
+                                <tr>
+                                    <td>
+                                        @if (tbl.motherID != "0")
+                                        {<span>&nbsp;&nbsp;&nbsp;  @tbl.CorrectionList </span>}
+                                        else
+                                        {<strong>@tbl.CorrectionList</strong>}
+                                    </td>
+                                    <td>
+                                        @if (tbl.HaveChild == 0)
+                                        {<input type="text" name="@tbl.ID" placeholder="0" class="currency" data-id="BeforeSPHP" data-type="currency" @((Status=="0" || Status=="RejectBeforeSPHP" ) ? "" : "Disabled" ) value="@tbl.BeforeSPHP">}
+                                    </td>
+                                    <td>
+                                        @if (tbl.HaveChild == 0)
+                                        {
+                                        <input type="text" name="@tbl.ID" placeholder="0" class="currency" data-id="SPHP" data-type="currency" @((Status=="ApproveBeforeSPHP" || Status=="RejectSPHP" ) ? "" : "Disabled" ) value="@tbl.SPHP">
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (tbl.HaveChild == 0)
+                                        {<input type="text" name="@tbl.ID" placeholder="0" class="currency" data-id="Result" data-type="currency" @((Status=="ApproveSPHP" || Status=="RejectResult" ) ? "" : "Disabled" ) value="@tbl.Result">
+                                        }
+                                    </td>
+                                </tr>
+                                }
+                                <tr>
+                                    <td><strong>Grand Total</strong></td>
+                                    <td><input type="text" name="TotalBeforeSPHP" class="currency" id="TotalBeforeSPHP" readonly /></td>
+                                    <td><input type="text" name="TotalSPHP" class="currency" id="TotalSPHP" readonly /></td>
+                                    <td><input type="text" name="TotalResult" class="currency" id="TotalResult" readonly /></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Refund</strong></td>
+                                    <td><input type="text" name="TotalRefundBeforeSPHP" class="currency" id="TotalRefundBeforeSPHP" readonly /></td>
+                                    <td><input type="text" name="TotalRefundSPHP" class="currency" id="TotalRefundSPHP" readonly /></td>
+                                    <td><input type="text" name="TotalRefundResult" class="currency" id="TotalRefundResult" readonly /></td>
+                                </tr>
+                            </tbody>
+                            </form>
+                            <tfoot>
+                                <tr style="margin:2px auto">
+                                    <td></td>
+                                    <td>
+                                        @if (Status == "0" || Status == "RejectBeforeSPHP")
+                                        {<button class="btn btn-success" id="saveCorrection" data-id="BeforeSPHP">Save</button> <button class="btn btn-primary" id="SubmitCorrection" data-id="BeforeSPHP">Save & Submit</button>} else if  (Status == "SubmitBeforeSPHP")
+                                        {<button class="btn btn-success" id="ApproveCorrection" data-id="BeforeSPHP">Approve</button> <button class="btn btn-danger" id="RejectCorrection" data-id="BeforeSPHP">Reject</button> }
+                                        @if(@ViewBag.DocumentationHeader.IsApproveBeforeSPHP == 1) {
+                                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                                            <span><i class="fa fa-check"></i></span> &nbsp; Approved
+
+                                        </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (Status == "ApproveBeforeSPHP" || Status == "RejectSPHP")
+                                        {<button class="btn btn-success" id="saveCorrection" data-id="SPHP">Save</button> <button class="btn btn-primary" id="SubmitCorrection" data-id="SPHP">Save & Submit</button>} else if  (Status == "SubmitSPHP")
+                                        {<button class="btn btn-success" id="ApproveCorrection" data-id="SPHP">Approve</button> <button class="btn btn-danger" id="RejectCorrection" data-id="SPHP">Reject</button> }
+                                        @if(@ViewBag.DocumentationHeader.IsApproveSPHP == 1) {
+                                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                                            <span><i class="fa fa-check"></i></span> &nbsp; Approved
+
+                                        </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (Status == "ApproveSPHP" || Status == "RejectResult")
+                                        {<button class="btn btn-success" id="saveCorrection" data-id="Result">Save</button> <button class="btn btn-primary" id="SubmitCorrection" data-id="Result">Save & Submit</button>} else if  (Status == "SubmitResult")
+                                        {<button class="btn btn-success" id="ApproveCorrection" data-id="Result">Approve</button> <a href="#" data-id="Result" id="RejectCorrection" class="btn btn-danger"> Reject</a> }
+                                        @if(@ViewBag.DocumentationHeader.IsApproveResult == 1) {
+                                        <div class="alert alert-success d-flex align-items-center" role="alert">
+                                            <span><i class="fa fa-check"></i></span> &nbsp; Approved
+
+                                        </div>
+                                        }
+                                    </td>
+                                </tr>
+                            </tfoot>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="row mt-3">
+            <div class="col-sm-12">
+                <div class="card">
+                    <div class="card-header bg-primary">
+                        <div class="button-prev"></div>
+                        File Attachment
+                    </div>
+
+                    <div class="card-body">
+                        <table class="table">
+                            @foreach(var document in ViewBag.FileDocumentation) {
+                            string button;
+                            string BtnStatus;
+                            var urlDocument = Url.Content("~/Files/FA/TaxDocumentation/" + document.FileLocation)  ;
+
+                            if (document.IsEnable == 1) {
+                            button = "primary";
+                            BtnStatus = "";
+                            } else {
+                            button = "secondary";
+                            BtnStatus = "disabled";
+                            }
+                            <tr>
+                                <td width="10%">
+                                    @*<button class="btnDocument btn btn-@button  btn-lg" onclick="LoadPdfFromUrl('@urlDocument')" data-id="@document.FileLocation" data-toggle="tooltip" title="Click To View" @BtnStatus><i class="fa fa-file-alt"></i></button>*@
+                                    <a class="btnDocument btn btn-@button  btn-lg" href="@(urlDocument)" target="_blank" title="Click To View" @BtnStatus><i class="fa fa-file-alt"></i></a>
+                                </td>
+                                <td>
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                        <strong>@document.FileName</strong><br />
+                                        @document.Tooltip <br />
+
+                                    </div>
+                                </td>
+                            </tr>
+                            }
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-sm-12">
+        <div class="card">
+            <div class="card-header bg-secondary">Document Upload</div>
+            <div class="card-body">
+                
+                <form action="@Url.Action("UploadTaxDocument", "TaxDocumentation" , new { area="FA" })" method="post" enctype="multipart/form-data" id="formUploadTaxDocument">
+                    <input type="hidden" name="HeaderID" value="@ViewBag.HeaderID" />
+                    <div class="row mt-4">
+                        <div class="col-sm-12">
+                            <div class="form-group row">
+                                <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Select Document</label>
+                                <div class="col-md-8">
+                                    <input name="fileTaxDocumentation" type="file" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selDocumentationType" class="col-md-4 col-form-label">Type Document</label>
+                                <div class="col-md-8">
+                                    <select name="DocumentType" class="form-control selectpicker form-control-sm" " data-live-search="true" id="selDocumentationType" data-placeholder="Select Type" required>
+                                        <option value="SP2">SP2</option>
+                                        <option value="BeforeSPHP">Before SPHP</option>
+                                        <option value="SPHP"> SPHP</option>
+                                        <option value="TanggapanSPHP"> Tanggapan SPHP</option>
+                                        <option value="UndanganPembahasan"> Undangan Pembahasan</option>
+                                        <option value="Result">Risalah Pembahasan (Result)</option>
+                                        <option value="SKP">SKP</option>
+                                        <option value="PermintaanRekening">Permintaan Rekening</option>
+                                    </select>
+                                    @*<div id="loading">
+                                        <img style="width:30px;float:left" src="@Url.Content("~/Images/assets/Pulse-1s-200px.gif")" alt="Loading...">
+                                    </div>*@
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selDocumentationType" class="col-md-4 col-form-label"></label>
+                                <div class="col-md-8">
+                                    <button type="submit" class="btn btn-primary" id="btnUploadDocument">Upload</button>
+                                    <button type="reset" class="btn btn-danger">Reset</button>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@*<iframe id="pdf-preview" src="/NGKBusi/Content/Images/TanggapanSPHP_2.pdf" style="width: 100%; height: 500px;"></iframe>*@
+
+<div class="modal fade modalViewDocumentation" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myModalLabel"></h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="@Url.Action("RejectCorrection", "TaxDocumentation" , new { area="FA" })" id="formRejectCorrection" name="formRejectCorrection">
+                    <div class="form-group row has-error">
+                        <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Type Note</label>
+                        <div class="col-md-8">
+                            <input type="hidden" name="correctionType" id="correctionType" value="" />
+                            <textarea class="form-control" name="RejectNotes"></textarea>
+                        </div>
+                    </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-danger" id="btnRejectCorrection">Reject</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@* Modal Document Viewer *@
+<div class="modal fade" id="pdfModal" tabindex="-1" role="dialog" aria-labelledby="pdfModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pdfModalLabel">Preview PDF</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Tempatkan iframe di sini untuk menampilkan PDF -->
+                <div id="pdf_container"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var HeaderID = @ViewBag.HeaderID;
+    var taskID = @ViewBag.DocumentationHeader.TaskID;
+
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    })
+
+    function formatCurrency()
+    {
+        $('.currency').each(function () {
+            var inputValue = $(this).val();
+
+            // Mengubah format menjadi "1000.00"
+            var formattedValue = parseInt(inputValue).toLocaleString('en');
+
+            // Menampilkan hasil di dalam textbox yang bersangkutan
+            $(this).val(formattedValue);
+        });
+    }
+    function formatPemisahRibuan() {
+        var inputValue = $(this).val();
+
+        // Mengubah format menjadi "1.000"
+        var formattedValue = parseInt(inputValue).toLocaleString('en');
+
+        // Menampilkan hasil di dalam textbox yang bersangkutan
+        $(this).val(formattedValue);
+    }
+
+    function kembalikanFormatSebelumPerhitungan() {
+        $('.currency').each(function () {
+            var inputValue = $(this).val();
+
+            // Mengubah format menjadi "1000.00"
+            var formattedValue = parseInt(inputValue.replace(/,/g, ''));
+
+            // Menampilkan hasil di dalam textbox yang bersangkutan
+            $(this).val(formattedValue);
+        });
+    }
+
+
+    // Menambahkan event listener saat pengguna selesai mengetik di dalam setiap textbox
+    $('.currency').on('blur', formatPemisahRibuan);
+
+    calculateTotal();
+    function calculateTotal() {
+
+        //kembalikanFormatSebelumPerhitungan();
+        const totals = {};
+        const totalRefunds = {};
+        var totalClaim = $('#txtTotalClaim').val();
+        // Menghitung total dari setiap grup data-id
+        $('.currency').each(function () {
+            const dataId = $(this).data('id');
+            totals[dataId] = (parseInt(totals[dataId]) || 0) + (parseInt($(this).val()) || 0);
+            totalRefunds[dataId] = totalClaim - totals[dataId] ;
+        });
+
+        // Memperbarui tampilan total untuk setiap grup data-id
+        for (const dataId in totals) {
+            $('#Total' + dataId).val(totals[dataId]);
+            $('#TotalRefund' + dataId).val(totalRefunds[dataId]);
+        }
+    }
+
+    function calculateTotal2() {
+
+        //kembalikanFormatSebelumPerhitungan();
+        const totals = {};
+        const totalRefunds = {};
+        var totalClaim = $('#txtTotalClaim').val();
+        // Menghitung total dari setiap grup data-id
+        $('.currency').each(function () {
+            const dataId = $(this).data('id');
+            totals[dataId] = (parseInt(totals[dataId]) || 0) + (parseInt($(this).val().replace(/,/g, '')) || 0);
+            totalRefunds[dataId] = totalClaim - totals[dataId];
+        });
+
+        // Memperbarui tampilan total untuk setiap grup data-id
+        for (const dataId in totals) {
+            $('#Total' + dataId).val(parseInt(totals[dataId]).toLocaleString('en'));
+            $('#TotalRefund' + dataId).val(parseInt(totalRefunds[dataId]).toLocaleString('en'));
+        }
+
+    }
+
+    var currencyInputs = $('.currency');
+
+    // Loop melalui setiap elemen dan terapkan format mata uang pada nilai awal
+    currencyInputs.each(function () {
+        var initialValue = parseInt($(this).val()).toLocaleString('en');
+        $(this).val(initialValue);
+    });
+
+    var validateDocumentationtHeader =
+        $("form[name='formUpdateDocumentationHeader']").validate({
+            // Specify validation rules
+            rules: {
+                DocumentationTitle: {
+                    required: true
+                },
+                Type: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                DocumentationTitle: {
+                    required: "Please Input Title"
+
+                },
+                Type: {
+                    required: "Please select section"
+                }
+            },
+            submitHandler: function (form) {
+                var url = $('#formUpdateDocumentationHeader').attr('action');
+                confirmUpdateDocumentationHeader(url);
+            }
+        });
+
+    $(function () {
+        var $auditDate = $('#txtAuditDate');
+        var $endDate = $('#txtFinalDiscussionDate');
+
+        $auditDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+
+        $endDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+    })
+    function confirmUpdateDocumentationHeader(Link) {
+        swal({
+            title: "Are you sure?",
+            text: "Update Documentation ?",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Update it!",
+            closeOnConfirm: false,
+            closeOnCancel: false
+        }, function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: $('#formUpdateDocumentationHeader').serialize(),
+                    success: function (json) {
+                        if (json.status == 1) {
+
+                            swal("Success!", json.msg, "success");
+                            displayList();
+                            $('#formUpdateDocumentationHeader')[0].reset();
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Deactivate!", Link, "error");
+                    }
+                })
+            } else {
+                swal("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+    $(document).on('click', '#btnUpdateHeader', function (e) {
+
+        var url = $('#formUpdateDocumentationHeader').attr('action');
+        validateDocumentationtHeader.form();
+
+    });
+
+    $("input[data-type='currency']").on({
+        keyup: function () {
+            //formatNumber();
+            
+            //calculateTotal();
+        },
+        blur: function () {
+            //formatNumber();
+            calculateTotal2();
+        },
+        focus: function () {
+            //kembalikanFormatSebelumPerhitungan();
+            var focusValue = $(this).val();
+            var unformat = parseInt(focusValue.replace(/,/g, ''));
+            $(this).val(unformat);
+        }
+    });
+
+    $(document).on('click', "#saveCorrection", function (e) {
+        var Link = $("#frmCorrectionList").attr('action');
+        var correctionType = $(this).data('id');
+
+        $.ajax({
+            url: Link,
+            type: "POST",
+            cache: false,
+            dataType: 'json',
+            data: $('#frmCorrectionList').serialize() + "&correctionType=" + correctionType,
+            success: function (json) {
+                console.log(json.beforeSPHP);
+                if (json.status == 1) {
+                    swal("Success!", json.msg, "success");
+                    //$('#table').bootstrapTable('refresh', function () {
+
+                    //});
+                } else {
+                    swal("Failed!", json.msg, "error");
+                }
+            },
+            error: function () {
+                swal("Deactivate!", Link, "error");
+            }
+        })
+    });
+
+    $(document).on('click', "#SubmitCorrection", function (e) {
+        var Link = '@Url.Action("SubmitCorrection", "TaxDocumentation", new { area = "FA" })';
+        var correctionType = $(this).data('id');
+
+        ConfirmSubmitCorrection(Link, correctionType);
+    });
+
+    function ConfirmSubmitCorrection(Link, correctionType) {
+
+        swal({
+            title: "Are you sure?",
+            text: "Submit Data " + correctionType,
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Send it!",
+            closeOnConfirm: false,
+            closeOnCancel: false
+        }, function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data:
+                        $('#frmCorrectionList').serialize() + "&correctionType=" + correctionType,
+                    success: function (json) {
+                        if (json.status == 1) {
+
+                            swal({
+                                title: "Success!",
+                                text: json.msg,
+                                type: "success"
+                            },
+                                function () {
+                                    location.reload();
+                                }
+                            );
+
+
+                        } else if (json.status == 2) {
+
+                            swal("failed!", msg, "error");
+
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Deactivate!", Link, "error");
+                    }
+
+                })
+            } else {
+                swal("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+    $(document).on('click', "#ApproveCorrection", function (e) {
+        var Link = '@Url.Action("ApproveCorrection", "TaxDocumentation", new { area = "FA" })';
+        var correctionType = $(this).data('id');
+
+        ConfirmApproveCorrection(Link, correctionType);
+    });
+
+    function ConfirmApproveCorrection(Link, correctionType) {
+
+        swal({
+            title: "Are you sure?",
+            text: "Approve Data " + correctionType,
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Approve it!",
+            closeOnConfirm: false,
+            closeOnCancel: false
+        }, function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: {
+                        HeaderID: HeaderID, correctionType: correctionType, TaskID : taskID
+                    },
+                    success: function (json) {
+                        if (json.status == 1) {
+
+                            swal({
+                                title: "Success!",
+                                text: json.msg,
+                                type: "success"
+                            },
+                                function () {
+                                    location.reload();
+                                }
+                            );
+
+
+                        } else if (json.status == 2) {
+
+                            swal("failed!", msg, "error");
+
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Deactivate!", Link, "error");
+                    }
+
+                })
+            } else {
+                swal("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+    $(document).on('click', '#RejectCorrection', function (e) {
+        e.preventDefault();
+
+        if ($(this).data('id') == 'BeforeSPHP') {
+            $('#myModalLabel').html('Reject Correction Before SPHP');
+            $('#correctionType').val($(this).data('id'));
+        }
+        else if ($(this).data('id') == 'SPHP') {
+            $('#myModalLabel').html('Reject Correction SPHP');
+            $('#correctionType').val($(this).data('id'));
+        }
+        else if ($(this).data('id') == 'Result') {
+            $('#myModalLabel').html('Reject Correction Result');
+            $('#correctionType').val($(this).data('id'));
+        }
+
+        //$('#ModalContent').load($(this).attr('href'));
+        $('#myModal').modal('show');
+    });
+
+    $(document).on('click', "#btnRejectCorrection", function (e) {
+        var url = $('#formRejectCorrection').attr('action');
+        //console.log(url);
+        //validateRejectCorrection.form();
+        actRejectCorrection(url);
+
+    });
+
+    var validateRejectCorrection =
+        $("form[name='formRejectCorrection']").validate({
+            // Specify validation rules
+            rules: {
+                RejectNotes: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                RejectNotes: {
+                    required: "Please Input Notes"
+
+                }
+            },
+            submitHandler: function (form) {
+                console.log('tset');
+                actRejectCorrection(url);
+
+            }
+        });
+
+    function actRejectCorrection(url) {
+        var url = $('#formRejectCorrection').attr('action');
+        $.ajax({
+            url: url,
+            type: "POST",
+            cache: false,
+            dataType: 'json',
+            data: $('#formRejectCorrection').serialize() + "&HeaderID=" + HeaderID + "&TaskID=" + taskID,
+            success: function (json) {
+                if (json.status == 1) {
+
+                    swal({
+                        title: "Rejected!",
+                        text: json.msg,
+                        type: "success"
+                    },
+                        function () {
+                            location.reload();
+                        }
+                    );
+
+
+                } else if (json.status == 2) {
+
+                    swal("failed!", msg, "error");
+
+
+                } else {
+                    swal("Failed!", json.msg, "error");
+                }
+            },
+            error: function () {
+                swal("Deactivate!", Link, "error");
+            }
+
+        })
+    }
+    /* -- document upload -- */
+    $('#formUploadTaxDocument').on('submit', (function (e) {
+        e.preventDefault();
+        var formData = new FormData(this);
+
+        $.ajax({
+            type: 'POST',
+            url: "@Url.Action("UploadTaxDocument", "TaxDocumentation", new { area = "FA" })",
+            data: formData,
+            cache: false,
+            contentType: false,
+            processData: false,
+            beforeSend: function () {
+                $('#btnUploadDocument').prop('disabled', true);
+                $('#btnUploadDocument').html('<div style="width:50px;" id="loading"><img src="@Url.Content("~/Images/assets/Pulse-1s-200px.gif")" alt="Loading..."></div>');
+            },
+            success: function (json) {
+                if (json.status == 1) {
+                    $('#btnUploadDocument').prop('disabled', false);
+                    $('#btnUploadDocument').html('Upload');
+                    swal({
+                        title: "Success!",
+                        text: json.msg,
+                        type: "success"
+                    },
+                        function () {
+                            location.reload();
+                        }
+                    );
+                } else {
+                    $('#btnUploadDocument').prop('disabled', false);
+                    $('#btnUploadDocument').html('Upload');
+                }
+            }
+        });
+    }));
+
+    /* Document Viewer */
+    //$('.btnDocument').on('click', function () {
+    //    var dataId = $(this).data('id');
+    //    var pdfURL = "~/Files/FA/TaxDocumentation/TanggapanSPHP_2.pdf";
+    //    // Menggunakan jQuery Ajax untuk mengambil data PDF
+    //    $('#pdf-preview').attr('src', pdfURL);
+    //    $('#pdfModal').modal('show');
+    //});
+
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+    var pdfDoc = null;
+    var scale = 1; //Set Scale for zooming PDF.
+    var resolution = 1; //Set Resolution to Adjust PDF clarity.
+
+    function LoadPdfFromUrl(url) {
+        //Read PDF from URL.
+        pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+            pdfDoc = pdfDoc_;
+
+            //Reference the Container DIV.
+            var pdf_container = document.getElementById("pdf_container");
+            pdf_container.style.display = "block";
+
+            //Loop and render all pages.
+            for (var i = 1; i <= pdfDoc.numPages; i++) {
+                RenderPage(pdf_container, i);
+            }
+        });
+
+        $('#pdfModal').modal('show');
+    };
+    function RenderPage(pdf_container, num) {
+        pdfDoc.getPage(num).then(function (page) {
+            //Create Canvas element and append to the Container DIV.
+            var canvas = document.createElement('canvas');
+            canvas.id = 'pdf-' + num;
+            ctx = canvas.getContext('2d');
+            pdf_container.appendChild(canvas);
+
+            //Create and add empty DIV to add SPACE between pages.
+            var spacer = document.createElement("div");
+            spacer.style.height = "20px";
+            pdf_container.appendChild(spacer);
+
+            //Set the Canvas dimensions using ViewPort and Scale.
+            var viewport = page.getViewport({ scale: scale });
+            canvas.height = resolution * viewport.height;
+            canvas.width = resolution * viewport.width;
+
+            //Render the PDF page.
+            var renderContext = {
+                canvasContext: ctx,
+                viewport: viewport,
+                transform: [resolution, 0, 0, resolution, 0, 0]
+            };
+
+            page.render(renderContext);
+        });
+    };
+</script>

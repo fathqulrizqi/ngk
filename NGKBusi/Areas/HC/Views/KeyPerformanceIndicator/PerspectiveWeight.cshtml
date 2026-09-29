@@ -1,0 +1,166 @@
+﻿
+@{
+    ViewBag.Title = "Perspective Weight";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var isDisplayForm = Request["addNew"] != null || ViewBag.KPIPerspectiveWeight != null ? true : false;
+}
+@section scriptHead{
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#formPerspectiveWeight").submit(function (e) {
+                var checkTotal = 0;
+                $(".txtPercentage").each(function () {
+                    checkTotal += parseFloat($(this).val());
+                });
+
+                if (checkTotal != 100) {
+                    alert("Total percentage " + checkTotal + " is not 100!");
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        });
+    </script>
+}
+
+<h2>Perspective Weight</h2>
+@if (Request["addNew"] == null && ViewBag.KPIPerspectiveWeight == null)
+{
+    <a href="@Url.Action("PerspectiveWeight", "KeyPerformanceIndicator", new { area = "HC", addNew = "addNew" })" class="btn btn-success">Add New</a>
+}
+<hr />
+<div id="divFormPerspectiveWeight" class="container-fluid" style="@(isDisplayForm ? "" : "display:none;")">
+    <div class="row">
+        <div class="col-4">
+            <table class="table table-bordered table-responsive">
+                <thead class="bg-secondary text-light">
+                    <tr>
+                        <th>PERSPEKTIF</th>
+                        <th>Operator - Sr. Staff/Spv.</th>
+                        <th>Asst. Manager Up</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th>Finansial</th><th>10% - 25%</th><th>25%</th></tr>
+                    <tr><th>Customer</th><th>15% - 30%</th><th>30%</th></tr>
+                    <tr><th>Internal Process</th><th>25% - 50%</th><th>25%</th></tr>
+                    <tr><th>Learn & Growth</th><th>20% - 25%</th><th>20%</th></tr>
+                </tbody>
+            </table>
+
+        </div>
+        <div class="col-8">
+            <form id="formPerspectiveWeight" action="@Url.Action("PerspectiveWeightSubmit", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+
+                <div class="form-group row">
+                    <label class="control-label col-3 text-right font-weight-bold">Period :</label>
+                    <div class="col-9">
+                        <select id="selPeriod" class="form-control" name="iPeriodFY" required>
+                            <option value="">-Period-</option>
+                            @for (var i = 2024; i <= (DateTime.Now.Month >= 3 ? DateTime.Now.Year + 1 : DateTime.Now.Year); i++)
+                            {
+                                <option value="@("FY1" + (i).ToString().Substring(2, 2))" @("FY1" + (i).ToString().Substring(2, 2) == ViewBag.KPIPerspectiveWeight?.PeriodFY ? "selected" : "")>@("FY1" + (i).ToString().Substring(2, 2))</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="control-label col-3 text-right font-weight-bold">Department :</label>
+                    <div class="col-9">
+                        <input type="hidden" name="iID" value="@(ViewBag.KPIPerspectiveWeight?.ID)" />
+                        <select class="form-control select2" name="iDepartment" required>
+                            <option value="">-Select-</option>
+                            @foreach (var item in ViewBag.DeptAll)
+                            {
+                                <option value="@(item)" @(ViewBag.KPIPerspectiveWeight?.Department.ToLower() == item.ToLower() ? "Selected" : "")>@(item)</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                @{
+                    string[] positionList = { "OPERATOR", "ADMIN", "GROUP LEADER", "JUNIOR STAFF", "FOREMAN", "ENGINEER", "FOREMAN", "SUPERVISOR", "SENIOR STAFF" };
+                }
+                <div class="form-group row">
+                    <label class="control-label col-3 text-right font-weight-bold">Position :</label>
+                    <div class="col-9">
+                        <select class="form-control select2" name="iPosition" required>
+                            <option value="">-Select-</option>
+                            @foreach (var item in positionList)
+                            {
+                                <option value="@item" @(ViewBag.KPIPerspectiveWeight?.Position.ToLower() == item.ToLower() ? "Selected" : "")>@item</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label class="control-label col-3 text-right font-weight-bold">Percentage :</label>
+                    <div class="col-9">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr class="bg-primary">
+                                    <th>Financial</th>
+                                    <th>Customer</th>
+                                </tr>
+                                <tr>
+                                    <td><input type="number" name="iFinancial" class="form-control txtPercentage" placeholder="Financial" min="10" max="25" step=".01" value="@(ViewBag.KPIPerspectiveWeight?.Financial)" /></td>
+                                    <td><input type="number" name="iCustomer" class="form-control txtPercentage" placeholder="Customer" min="15" max="30" step=".01" value="@(ViewBag.KPIPerspectiveWeight?.Customer)" /></td>
+                                </tr>
+                                <tr class="bg-primary">
+                                    <th>Internal Process</th>
+                                    <th>Learn & Growth</th>
+                                </tr>
+                                <tr>
+                                    <td><input type="number" name="iInternalProcess" class="form-control txtPercentage" placeholder="Internal Process" min="25" max="50" value="@(ViewBag.KPIPerspectiveWeight?.Internal_Process)" step=".01" /></td>
+                                    <td><input type="number" name="iLearnGrowth" class="form-control txtPercentage" placeholder="Learn & Growth" min="20" max="25" value="@(ViewBag.KPIPerspectiveWeight?.Learning_Growth)" step=".01" /></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <div class="offset-3 col-9">
+                        <button type="submit" class="btn btn-success form-control">Submit</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<hr />
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr class="bg-info">
+            <th>Period</th>
+            <th>Section</th>
+            <th>Position</th>
+            <th>Financial</th>
+            <th>Customer</th>
+            <th>Internal Process</th>
+            <th>Learn & Growth</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.KPIPerspectiveWeightList)
+        {
+            <tr>
+                <td>@data.PeriodFY</td>
+                <td>@data.Department</td>
+                <td>@data.Position</td>
+                <td>@data.Financial</td>
+                <td>@data.Customer</td>
+                <td>@data.Internal_Process</td>
+                <td>@data.Learning_Growth</td>
+                <td class="text-center">
+                    <form action="@Url.Action("PerspectiveWeight", "KeyPerformanceIndicator", new { area = "HC", iID = data.ID })" method="post" style="display:inline-block;">
+                        <button type="submit" class="btn btn-sm btn-warning btnPWEdit mr-1"><i class="fas fa-edit"></i></button>
+                    </form>
+                    <form action="@Url.Action("PerspectiveWeightDelete", "KeyPerformanceIndicator", new { area = "HC", iID = data.ID })" method="post" style="display:inline-block;">
+                        <button type="submit" class="btn btn-sm btn-danger btnPWDelete" onclick="return confirm('Are you sure want to delete?')"><i class="fas fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

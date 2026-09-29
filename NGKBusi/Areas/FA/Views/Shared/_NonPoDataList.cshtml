@@ -1,0 +1,945 @@
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $('.tablesorter-childRow td').hide();
+        $(".tblPRNPO").tablesorter({
+            theme: "bootstrap",
+
+            widthFixed: true,
+
+            // widget code contained in the jquery.tablesorter.widgets.js file
+            // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+            // the uitheme widget is NOT REQUIRED!
+            widgets: ["filter", "columns", "stickyHeaders"],
+
+            widgetOptions: {
+                filter_excludeFilter: {
+                    // zero-based column index
+                    7: 'range',
+                    8: 'range',
+                    10: 'range'
+                },
+                // class names added to columns when sorted
+                columns: ["primary", "secondary", "tertiary"],
+
+                // extra css class name (string or array) added to the filter element (input or select)
+                filter_cssFilter: [
+                    'form-control',
+                    'form-control',
+                    'form-control', // select needs custom class names :(
+                    'form-control',
+                    'form-control',
+                    'form-control',
+                    'form-control',
+                    'form-control',
+                    'form-control',
+                    'form-control',
+                    'form-control'
+                ],
+                filter_saveFilters: true
+
+            }
+        }).tablesorterPager({
+            cssGoto: '.pagenum',
+            container: $(".ts-pager"),
+            output: '{startRow} to {endRow} ({totalRows})',
+            size: 10
+        });
+        $('.tablesorter').delegate('.toggle', 'click', function () {
+
+            $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+
+            return false;
+        });
+        // AP non PO -=========================================================
+        $(".cbCheckID").change(function () {
+            var checkID = [];
+            $(".cbCheckID:checked").each(function (i, e) {
+                checkID.push($(this).val());
+            });
+            if (checkID.length > 0) {
+                $(".btnCheckDownload,.btnCheckPrint,.btnDownloadBank").prop("disabled", false);
+            } else {
+                $(".btnCheckDownload,.btnCheckPrint,.btnDownloadBank").prop("disabled", true);
+            }
+            $("#hfCheckDownloadID").val(checkID);
+            $(".hfDownloadBankID").val(checkID);
+        });
+        $(".btnCheckPrint").click(function () {
+            var checkID = [];
+            $(".cbCheckID:checked").each(function (i, e) {
+                checkID.push($(this).val());
+            });
+            var currCTR = $(this);
+            currCTR.LoadingOverlay("show");
+            $.ajax({
+                url: "/NGKBusi/FA/PaymentRequest/APNonPOPrint",
+                method: "POST",
+                tryCount: 0,
+                tryLimit: 3,
+                data: {
+                    iNonPOID: checkID.join()
+                }, success: function (data) {
+                    $(".cbCheckID:checked").each(function (i, e) {
+                        $(this).prop("checked", false);
+                    });
+                    $("#printModal .modal-body").empty(data);
+                    $("#printModal .modal-body").append(data);
+                    $("#printModal").modal("show");
+                    currCTR.prop("disabled", true);
+                    $(".btnCheckDownload").prop("disabled", true);
+                    currCTR.LoadingOverlay("hide");
+                }, error: function (xhr, textStatus, errorThrown) {
+                    if (textStatus === "timeout") {
+                        this.tryCount++;
+                        if (this.tryCount <= this.tryLimit) {
+                            $.ajax(this);
+                            return;
+                        }
+                    }
+                    currCTR.LoadingOverlay("hide");
+                    alert("Error Occurred, Please Try Again.");
+                }
+            });
+        });
+
+        $(".btnAPNonPOSign").click(function () {
+            var iNonPOID = $(this).data("id");
+            var iApproval = $(this).data("approval");
+            var iApprovalSub = $(this).data("approval_sub");
+
+            $("#hfAPNonPOID").val(iNonPOID);
+            $("#hfApproval").val(iApproval);
+            $("#hfApprovalSub").val(iApprovalSub);
+            $("#signModal").modal("show");
+        });
+        $(".btnAPNonPOReceived").click(function () {
+            if (confirm("Receive This Document ?")) {
+                var currTD = $(this).closest("td");
+                currTD.LoadingOverlay("show");
+                $.ajax({
+                    url: "/NGKBusi/FA/PaymentRequest/APNonPOReceive",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iNonPOID: $(this).data("id"),
+                        iApproval: $(this).data("approval"),
+                        iApprovalSub: $(this).data("approval_sub")
+                    }, success: function () {
+                        location.reload();
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        currTD.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+        });
+
+        var latestDueDate = 0;
+        $("#txtDueDateFAEdit").change(function () {
+            if ($(this).val() == "" || $(this).val() == latestDueDate) {
+                $("#txtDueDateReason").val('');
+                $("#txtDueDateReason").prop("required", false);
+                $("#txtDueDateReason").hide();
+            } else {
+                $("#txtDueDateReason").show();
+                $("#txtDueDateReason").prop("required", true);
+            }
+        });
+        $(".btnAPNonPOEditFA").click(function () {
+            var currID = $(this).data("id");
+            latestDueDate = $(this).data("duedate").replace(/-/gi, "/");
+            var currPaymentMethod = $(this).data("paymentmethod");
+            var currWHT = $(this).data("wht");
+            var currWHTAmount = $(this).data("whtamount");
+            $("#hfPaymentID").val(currID);
+            $("#txtDueDateFAEdit").val($.datepicker.formatDate('mm/dd/yy', new Date(latestDueDate)));
+            $(".rbPaymentMethod[value='" + currPaymentMethod + "']").prop("checked", true);
+            if (currWHTAmount > 0) {
+                $("#selWHTCode").val(currWHT);
+                $("#txtWHTAmount").val(currWHTAmount);
+                $("#txtWHTAmount").prop("required", true);
+                $(".divWHTAmount").show("blind");
+            }
+            $("#nonPOFAEditModal").modal("show");
+        });
+
+        // AP non PO =========================================================-
+
+        $(".thDebitTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdDebit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+        $(".thCreditTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdCredit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+
+        $(".btnNonPOReturn").click(function () {
+            var currID = $(this).data("id");
+            $("#hfReturnID").val(currID);
+            $("#returnModal").modal();
+        });
+
+        var newRowIndex = 0;
+        $("#btnDPAdd").click(function () {
+            newRowIndex++;
+            var newRow = $("#tblDirectPayment tbody tr:first()").clone();
+            newRow.find("input").val("");
+            newRow.find("textarea").val("");
+            newRow.find(".select2-container").remove();
+            newRow.find(".select2").select2();
+            newRow.find(".selAllocVATRate").hide();
+            newRow.find(".selAllocVATRate").prop("required", false);
+            newRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceDate").hide();
+            newRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceDate").removeClass('hasDatepicker').datepicker({ dateFormat: 'mm/dd/yy' });
+            newRow.find(".txtAllocTaxInvoiceNumber").hide();
+            newRow.find(".txtAllocTaxInvoiceNumber").inputmask("999.999-99.99999999");
+            newRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").inputmask("99999999999999999");
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + newRowIndex);
+            $("#tblDirectPayment tbody").append(newRow);
+        });
+
+        $(document).on("change", ".selCOA", function () {
+            currTD = $(this).closest("td");
+            if ($(this).val() == "1851104|Prepaid Tax - VAT IN") {
+                currTD.find(".selAllocVATRate").show();
+                currTD.find(".txtAllocTaxInvoiceDate").show();
+                currTD.find(".txtAllocTaxInvoiceNumber").show();
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").show();
+                currTD.find(".selAllocVATRate").prop("required", true);
+            } else {
+                currTD.find(".selAllocVATRate").hide();
+                currTD.find(".selAllocVATRate").val("");
+                currTD.find(".txtAllocTaxInvoiceDate").hide();
+                currTD.find(".txtAllocTaxInvoiceDate").val("");
+                currTD.find(".txtAllocTaxInvoiceNumber").hide();
+                currTD.find(".txtAllocTaxInvoiceNumber").val("");
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").val("");
+                currTD.find(".selAllocVATRate").prop("required", false);
+            }
+        });
+
+        $(".btnNonPOEdit").click(function () {
+            var currID = $(this).data("id");
+            var currCTR = $(this);
+            currCTR.LoadingOverlay("show");
+            $.ajax({
+                url: "/NGKBusi/FA/PaymentRequest/NonPOEditData",
+                method: "POST",
+                tryCount: 0,
+                tryLimit: 3,
+                data: {
+                    iNonPOID: currID
+                }, success: function (data) {
+                    console.log(data[0])
+                    $("#selSettlementFor").val(data[0].Settlement_For).change();
+                    $("#txtEntryDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Entry_Date.substr(6)))));
+                    $("#formNonPO").attr("action", $("#formNonPO").data("edit"));
+                    $(".divReceiveNumber").show();
+                    $("#txtRecNumber").val(data[0].Receive_Number);
+                    $("#hfNonPOID").val(currID);
+                    $("#selCurrency").val(data[0].Currency_Code);
+                    $("#selSection").val(data[0].Section_From_Code + "|" + data[0].Section_From_Name).change();
+                    $("#txtInvoiceNumber").val(data[0].Invoice_Number);
+                    $("#selVendor").val(data[0].Third_Party_Id + "|" + data[0].Third_Party_Name).change();
+                    $("#txtInvoiceAmount").val(accounting.formatNumber(data[0].Amount_of_Invoice, 2));
+                    $("#txtDescription").val(data[0].Description);
+                    $("#txtDueDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Due_Date.substr(6)))));
+                    $(".rbPaymentType[value='" + data[0].Payment_Type + "']").prop("checked", true).change();
+                    $(".rbPaymentMethod[value='" + data[0].Payment_Method + "']").prop("checked", true);
+                    $("#selVATRate").val(data[0].VAT).change();
+                    if (data[0].Tax_Date != null) {
+                        $("#txtTaxInvoiceDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Tax_Date.substr(6)))));
+                    } else {
+                        $("#txtTaxInvoiceDate").val("");
+                    }
+                    $("#txtTaxInvoiceNumber").val(data[0].Tax_Number);
+                    $("#txtTaxInvoiceNumber17Digit").val(data[0].Tax_Number_17);
+                    $("#tblDirectPayment tbody tr:not(:first)").remove();
+                    var subRow = $("#tblDirectPayment tbody tr:first()");
+                    var newRow = subRow.clone();
+
+                    $(data[0].Non_PO_Sub).each(function (i, el) {
+                        newRowIndex++;
+                        var currRow = subRow;
+                        if (i != 0) {
+                            currRow = newRow.clone();
+                        }
+                        currRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + i);
+                        currRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + i);
+                        currRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + i);
+                        currRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + i);
+                        currRow.find(".txtAllocTaxInvoiceDate").removeClass('hasDatepicker').datepicker({ dateFormat: 'mm/dd/yy' });
+                        currRow.find(".txtAllocTaxInvoiceNumber").inputmask("999.999-99.99999999");
+                        currRow.find(".txtAllocTaxInvoiceNumber17Digit").inputmask("99999999999999999");
+                        currRow.find("input").val("");
+                        currRow.find("textarea").val("");
+                        currRow.find(".select2-container").remove();
+                        currRow.find(".selSectionTo").val(el.Section_To_Code + "|" + el.Section_To_Name).change();
+                        currRow.find(".txtAllocationAmount").val(accounting.formatNumber(el.Allocation_Amount, 2));
+                        currRow.find(".txtAllocationAmountHolder").val(el.Allocation_Amount);
+                        currRow.find(".selCOA").val(el.COA_Code + "|" + el.COA_Name).change();
+                        currRow.find(".selProcate").val(el.Procate_Code + "|" + el.Procate_Name).change();
+                        currRow.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                        currRow.find(".selBudgetNumber option[data-dept-to ='ALL']").prop("disabled", false);
+                        currRow.find(".selBudgetNumber option[data-dept-to ='" + el.Section_To_Code + "']").prop("disabled", false);
+                        currRow.find(".selBudgetNumber option[data-dept-to ='" + (el.Budget_Number == "UNB" ? "ALL" : el.Section_To_Code) + "'][value='" + el.Budget_Number + "|" + el.Budget_Desc.replace(/(['])/g, "\\$1") + "']").prop("selected", true);
+                        currRow.find(".txtAllocationDesc").val(el.Description);
+                        currRow.find(".selAllocVATRate").val(el.VAT || "");
+                        if (el.Tax_Date) {
+                            currRow.find(".txtAllocTaxInvoiceDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(el.Tax_Date.substr(6)))));
+                        }
+                        currRow.find(".txtAllocTaxInvoiceNumber").val(el.Tax_Number);
+                        currRow.find(".txtAllocTaxInvoiceNumber17Digit").val(el.Tax_Number_17);
+                        if (i != 0) {
+                            $("#tblDirectPayment tbody").append(currRow);
+                        }
+                        if (currRow.find(".selCOA").val() == "1851104|Prepaid Tax - VAT IN") {
+                            currRow.find(".selAllocVATRate").show();
+                            currRow.find(".txtAllocTaxInvoiceDate").show();
+                            currRow.find(".txtAllocTaxInvoiceNumber").show();
+                            currRow.find(".txtAllocTaxInvoiceNumber17Digit").show();
+                            currRow.find(".selAllocVATRate").prop("required", true);
+                        }
+
+                        currRow.find(".select2").select2();
+                    });
+                    totalAlloc();
+                    $("#divNonPOForm").show("blind");
+                    $("html, body").animate({ scrollTop: 0 }, "slow");
+                    currCTR.LoadingOverlay("hide");
+                }, error: function (xhr, textStatus, errorThrown) {
+                    if (textStatus === "timeout") {
+                        this.tryCount++;
+                        if (this.tryCount <= this.tryLimit) {
+                            $.ajax(this);
+                            return;
+                        }
+                    }
+                    currCTR.LoadingOverlay("hide");
+                    alert("Error Occurred, Please Try Again.");
+                }
+            });
+        });
+
+        function totalAlloc() {
+            var totalAllocation = 0;
+            $(".txtAllocationAmount").each(function () {
+                totalAllocation += accounting.unformat($(this).val()) || 0;
+            });
+            $("#tdTotalAllocation").text(accounting.formatNumber(totalAllocation, 2));
+        }
+        $(".btnPrintJournal").click(function () {
+            $(".tblJournal").printThis();
+        });
+
+        $(".btnNonPOBank").click(function () {
+            var bank = $(this).data("bank");
+            var currID = $(this).data("id");
+            $("#modalBank .selectBank").val(bank);
+            $("#modalBank .hfNonPOID").val(currID);
+            $("#modalBank").modal("show");
+        });
+        $(".btnNonPOReminderEmail").click(function () {
+            var currID = $(this).data("id");
+            var currDesc = $(this).data("desc");
+            $("#modalReminderEmail .hfNonPOID").val(currID);
+            $("#modalReminderEmail .txtNonPOReminderDescription").val(currDesc);
+            $("#modalReminderEmail").modal("show");
+        });
+        $('#modalReminderEmail form').submit(function (e) {
+            e.preventDefault();
+            var $form = $(this);
+            var $btn = $form.find(':submit');
+            var originalText = $btn.html();
+
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Mengirim Email...',
+                    text: 'Sedang memproses dan mengirim email reminder, mohon tunggu sebentar.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: function () {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                timeout: 180000,
+                success: function (res) {
+                    if (res && res.success) {
+                        $('#modalReminderEmail').modal('hide');
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message || 'Email reminder berhasil dikirim!',
+                                icon: 'success'
+                            });
+                        } else {
+                            alert(res.message || 'Email reminder berhasil dikirim!');
+                        }
+                    } else {
+                        var errMsg = (res && res.message) ? res.message : 'Gagal mengirim email.';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Gagal!',
+                                text: errMsg,
+                                icon: 'error'
+                            });
+                        } else {
+                            alert(errMsg);
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    var errMsg = 'Terjadi kesalahan sistem saat mengirim email: ' + ((xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : (error === 'timeout' ? 'Waktu pengiriman melebihi batas (Timeout).' : error));
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errMsg,
+                            icon: 'error'
+                        });
+                    } else {
+                        alert(errMsg);
+                    }
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        });
+
+        $(".btnNonPOInfoEmail").click(function () {
+            var currID = $(this).data("id");
+            var currDesc = $(this).data("desc");
+            $("#modalInfoEmail .hfNonPOID").val(currID);
+            $("#modalInfoEmail .txtNonPOInfoDescription").val(currDesc);
+            $("#modalInfoEmail").modal("show");
+        });
+
+        $('#modalInfoEmail form').submit(function (e) {
+            e.preventDefault();
+            var $form = $(this);
+            var $btn = $form.find(':submit');
+            var originalText = $btn.html();
+
+            $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Mengirim Email...',
+                    text: 'Sedang memproses dan mengirim email info, mohon tunggu sebentar.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: function () {
+                        Swal.showLoading();
+                    }
+                });
+            }
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                data: $form.serialize(),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                timeout: 180000,
+                success: function (res) {
+                    if (res && res.success) {
+                        $('#modalInfoEmail').modal('hide');
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message || 'Email info berhasil dikirim!',
+                                icon: 'success'
+                            });
+                        } else {
+                            alert(res.message || 'Email info berhasil dikirim!');
+                        }
+                    } else {
+                        var errMsg = (res && res.message) ? res.message : 'Gagal mengirim email.';
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                title: 'Gagal!',
+                                text: errMsg,
+                                icon: 'error'
+                            });
+                        } else {
+                            alert(errMsg);
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    var errMsg = 'Terjadi kesalahan sistem saat mengirim email: ' + ((xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : error);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: errMsg,
+                            icon: 'error'
+                        });
+                    } else {
+                        alert(errMsg);
+                    }
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).html(originalText);
+                }
+            });
+        });
+    });
+</script>
+
+<table class="tblPRNPO table table-striped">
+    <thead>
+        <tr>
+            <th>Receive Number</th>
+            <th>Entry Date</th>
+            <th>Section From</th>
+            <th>Third Party</th>
+            <th class="filter-select" data-placeholder="Select">Currency</th>
+            <th>Amount of Invoice</th>
+            <th>Due Date</th>
+            <th class="filter-select" data-placeholder="Select">Payment Method</th>
+            <th class="filter-select" data-placeholder="Select">Payment Type</th>
+            <th>Created By</th>
+            <th class="filter-select" data-placeholder="Select">Status</th>
+            <th class="filter-false sorter-false text-center">
+                <button type="button" class="btn btn-sm btn-warning btnCheckPrint" data-toggle="tooltip" title="Print" disabled><i class="fas fa-print"></i></button>
+
+                <form action="@Url.Action("NonPODownloadAP", "PaymentRequest" , new { area="FA" })" class="d-inline-block" method="post">
+                    <input type="hidden" name="iDownloadID" id="hfCheckDownloadID" />
+                    <button type="submit" class="btn btn-sm btn-primary btnCheckDownload" data-toggle="tooltip" title="Download" disabled><i class="fas fa-download"></i></button>
+                </form>
+
+                <form action="@Url.Action("APNonPODownloadBank", "PaymentRequest" , new { area="FA" })" method="post" class="d-inline-block">
+                    <input type="hidden" class="hfDownloadBankID" name="iDownloadBankID" />
+                    <button type="submit" class="btn btn-sm btn-success btnDownloadBank" data-toggle="tooltip" title="Print" disabled><i class="fas fa-money-check"></i></button>
+                </form>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.NonPOList)
+        {
+            var currID = (int)item.id;
+            var nonPOSub = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList().Sum(s => s.Allocation_Amount);
+            <tr>
+                <td class="text-nowrap">
+                    <input type="checkbox" name="iCheckID" class="cbCheckID" value="@(item.id)" />
+                    <a href="#" class="toggle"> @(item.Receive_Number)</a>
+                </td>
+                <td class="text-nowrap">@( item.Entry_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@( "(" + item.Section_From_Code + ") " + item.Section_From_Name)</td>
+                <td>@( "(" + item.Third_Party_Id + ") " + item.Third_Party_Name)</td>
+                <td class="text-center">@(item.Currency_Code)</td>
+                @if (item.Payment_Type == "Pre-Payment")
+                {
+                    <td class="text-right">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                }
+                else
+                {
+                    <td class="text-right">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                }
+                <td class="text-nowrap">@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Payment_Method)</td>
+                <td>@(item.Payment_Type)</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @(PaymentRequestController.ApprovalStatus(item.Approval, item.Approval_Sub, item.Is_Reject, item.Amount_of_Invoice))
+                </td>
+                <td class="text-nowrap text-center">
+                    @if (item.Approval >= 4 && item.Payment_Type == "Settlement")
+                    {
+                        <button class="btn btn-sm btn-primary btnNonPOReminderEmail" data-toggle="tooltip" title="Send Reminder Email" data-desc="@(item.Description.Split('_').Length > 2 ? item.Description.Split('_')[2] : "")" data-id="@(item?.id)"><i class="fas fa-envelope"></i></button>
+                    }
+                    @{
+                        var infoDesc = item.Description ?? "";
+                        var firstIdx = infoDesc.IndexOf('_');
+                        var lastIdx = infoDesc.LastIndexOf('_');
+                        if (firstIdx >= 0 && lastIdx > firstIdx)
+                        {
+                            infoDesc = infoDesc.Substring(firstIdx + 1, lastIdx - firstIdx - 1);
+                        }
+                    }
+                    @if (item.Approval >= 4 && item.Payment_Type != "Settlement" && item.Third_Party_Id.StartsWith("G"))
+                    {
+                        <button class="btn btn-sm btn-primary btnNonPOInfoEmail" data-toggle="tooltip" title="Send Reminder Email" data-desc="@(infoDesc)" data-id="@(item?.id)"><i class="fas fa-envelope"></i></button>
+                    }
+                    @if (item.Approval >= 4)
+                    {
+                        <button class="btn btn-sm btn-@(item.Bank != null ? "success" : "warning") btnNonPOBank" data-bank="@(item.Bank)" data-toggle="tooltip" title="Bank" data-id="@(item.id)"><i class="fas fa-money-bill"></i></button>
+                    }
+                    @if (item.Approval == 4 && item.Approval_Sub <= 3)
+                    {
+                        <button class="btn btn-sm btn-warning btnAPNonPOEditFA" data-toggle="tooltip" title="Edit" data-id="@(item.id)" data-duedate="@(item.Due_Date.ToShortDateString())" data-wht="@(item.WHT_COA_Code + " |" + item.WHT_COA_Name)" data-whtamount="@(item.WHT_Amount)" data-paymentmethod="@(item.Payment_Method)"><i class="fas fa-edit"></i></button>
+                    }
+                    <button class="btn btn-sm btn-warning btnNonPOEdit" data-toggle="tooltip" title="Edit User Input" data-id="@(item.id)"><i class="fas fa-user-edit"></i></button>
+
+                    @if (item.Approval == 4 && item.Approval_Sub <= 3)
+                    {
+                        <hr class="m-1" />
+                        if (item.Approval_Sub <= 1)
+                        {
+                            <button class="btn btn-sm btn-success btnAPNonPOReceived" data-toggle="tooltip" title="Receive" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-alt"></i></button>
+                        }
+                        <button class="btn btn-sm btn-primary btnAPNonPOSign" data-toggle="tooltip" title="Sign" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-signature"></i></button>
+                        <button class="btn btn-sm btn-warning btnNonPOReturn" data-toggle="tooltip" title="Return" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-undo"></i></button>
+                    }
+                </td>
+            </tr>
+
+            <tr class="tablesorter-childRow">
+                <td colspan="12">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Invoice</th>
+                                <th>Bgt. Number</th>
+                                <th>Description</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var subItem in nonPOSub)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + subItem.COA_Name + "'>" + subItem.COA_Code.Trim() + "</span>" + "--" + "<span title='" + subItem.Procate_Name + "'>" + subItem.Procate_Code + "</span>" + "-" + "<span title='" + subItem.Section_To_Name + "'>" + subItem.Section_To_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("(" + subItem.Budget_Number + ")" + subItem.Budget_Desc)</td>
+                                    <td>@(subItem.Description)</td>
+                                    <td class="tdDebit">@(subItem.Allocation_Amount.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.Payment_Type == "Pre-Payment")
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@(item.Description)</td>
+                                    <td class="tdDebit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            else if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice != TotalAllocation)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("AP Other")</td>
+                                    @if (item.Amount_of_Invoice > TotalAllocation)
+                                    {
+                                        <td class="tdDebit">@((item.Amount_of_Invoice - TotalAllocation).ToString("N2"))</td>
+                                        <td class="tdCredit">0</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdDebit">0</td>
+                                        <td class="tdCredit">@(((TotalAllocation - item.Amount_of_Invoice) - (item.WHT_Amount != null ? item.WHT_Amount : 0)).ToString("N2"))</td>
+                                    }
+                                </tr>
+                            }
+
+                            @if (item.VAT > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Tax - VAT IN'>1851104</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("Prepaid Tax - VAT IN")</td>
+                                    @if (item.Payment_Type == "Pre-Payment")
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.WHT_Amount > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.WHT_COA_Name + "'>" + item.WHT_COA_Code + "</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@(item.WHT_COA_Name)</td>
+                                    <td class="tdDebit">@(0)</td>
+                                    <td class="tdCredit">@(item.WHT_Amount.ToString("N2"))</td>
+                                </tr>
+                            }
+
+                            <tr>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                }
+                                else
+                                {
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                }
+                                <td>@(item.Invoice_Number)</td>
+                                <td>@("-")</td>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>Prepaid Expense</td>
+                                }
+                                else
+                                {
+                                    <td>@(item.Description)</td>
+                                }
+                                <td class="tdDebit">@(0)</td>
+                                @if (item.Payment_Type == "Pre-Payment")
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        <td class="tdCredit">@(((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)) - item.WHT_Amount).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                }
+                                else
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice < TotalAllocation)
+                                        {
+                                            <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                        }
+                                        else
+                                        {
+                                            <td class="tdCredit">@((item.Amount_of_Invoice - item.WHT_Amount).ToString("N2"))</td>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    }
+                                }
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th>Total</th>
+                                <th class="thDebitTotal">Debit</th>
+                                <th class="thCreditTotal">Credit</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="12" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="modal fade" id="printModal" tabindex="-1" role="dialog" aria-labelledby="printModal" aria-hidden="true">
+    <div class="modal-dialog" role="document" style="max-width:90%;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel"><button type="button" class="btn btn-primary btnPrintJournal">Print</button> Preview</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="modalBank" tabindex="-1" role="dialog" aria-labelledby="modalBankLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalBankLabel">Select Bank</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("APNonPOBank", "PaymentRequest" , new { area="FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <input type="hidden" class="hfNonPOID" name="iNonPOID" value="" />
+                    <select class="form-control selectBank" name="iBank" title="Select page size" required>
+                        <option value="">-Choose-</option>
+                        <option value="BCA-IDR">BCA-IDR</option>
+                        <option value="BNI-IDR">BNI-IDR</option>
+                        <option value="BRP-IDR">BRP-IDR</option>
+                        <option value="BRP-JPY">BRP-JPY</option>
+                        <option value="BRP-USD">BRP-USD</option>
+                        <option value="BTMU-IDR">BTMU-IDR</option>
+                        <option value="BTMU-JPY">BTMU-JPY</option>
+                        <option value="BTMU-USD">BTMU-USD</option>
+                        <option value="SMI-IDR">SMI-IDR</option>
+                        <option value="SMI-JPY">SMI-JPY</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal fade" id="modalReminderEmail" tabindex="-1" role="dialog" aria-labelledby="modalReminderEmailLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalReminderEmailLabel">Reminder Email Detail</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("SendReminderEmail", "PaymentRequest" , new { area="FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <input type="hidden" class="hfNonPOID" name="iNonPOID" value="" />
+                    <label>Email To:</label>
+                    <select class="select2 form-control selNonPOReminderEmailListTo" multiple data-placeholder="-Select-" name="iNonPOReminderEmailListTo">
+                        <option value="">-Select-</option>
+                        @foreach (var email in ViewBag.EmailList)
+                        {
+                            <option value="@(email)">@(email)</option>
+                        }
+                    </select>
+                    <label>Email CC:</label>
+                    <select class="select2 form-control selNonPOReminderEmailListCC" multiple data-placeholder="-Select-" name="iNonPOReminderEmailListCC">
+                        <option value="">-Select-</option>
+                        @foreach (var email in ViewBag.EmailList)
+                        {
+                            <option value="@(email)">@(email)</option>
+                        }
+                    </select>
+                    <label>Description:</label>
+                    <input type="text" class="form-control txtNonPOReminderDescription" placeholder="Description" name="iNonPOReminderDescription" />
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalInfoEmail" tabindex="-1" role="dialog" aria-labelledby="modalInfoEmailLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalInfoEmailLabel">Info Email Detail</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("SendInfoEmail", "PaymentRequest" , new { area="FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <input type="hidden" class="hfNonPOID" name="iNonPOID" value="" />
+                    <label>Email To:</label>
+                    <select class="select2 form-control selNonPOReminderEmailListTo" multiple data-placeholder="-Select-" name="iNonPOInfoEmailListTo">
+                        <option value="">-Select-</option>
+                        @foreach (var email in ViewBag.EmailList)
+                        {
+                            <option value="@(email)">@(email)</option>
+                        }
+                    </select>
+                    <label>Email CC:</label>
+                    <select class="select2 form-control selNonPOReminderEmailListCC" multiple data-placeholder="-Select-" name="iNonPOInfoEmailListCC">
+                        <option value="">-Select-</option>
+                        @foreach (var email in ViewBag.EmailList)
+                        {
+                            <option value="@(email)">@(email)</option>
+                        }
+                    </select>
+                    <label>Description:</label>
+                    <input type="text" class="form-control txtNonPOInfoDescription" placeholder="Description" name="iNonPOInfoDescription" />
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary">Send Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

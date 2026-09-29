@@ -1,0 +1,907 @@
+﻿@{
+    ViewBag.Title = "Rekap Laporan Temuan Internal Audit";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // DeptName sudah dihapus dari backend, jadi tidak perlu ditarik lagi.
+    string tanggalAudit = ViewBag.TanggalAudit ?? "-";
+    string periodeAudit = ViewBag.PeriodeAudit ?? "-";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    /* Style Tabel Murni Biasa (Tanpa Tailwind) */
+    .tbl-bordered {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .tbl-bordered th, .tbl-bordered td {
+            border: 1px solid #000000 !important;
+        }
+
+    .tbl-no-border th, .tbl-no-border td {
+        border: none !important;
+    }
+
+    /* Style Stampel */
+    .stamp-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: 2px solid;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(-12deg);
+        opacity: 0.85;
+        user-select: none;
+        pointer-events: none;
+        position: relative;
+        margin: 0 auto;
+    }
+
+        .stamp-circle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 50%;
+            border: 1px solid;
+        }
+
+        .stamp-circle .stamp-text {
+            font-size: 0.45rem;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stamp-circle .stamp-date {
+            font-size: 0.35rem;
+            font-weight: 800;
+            border-top: 1px solid;
+            padding-top: 2px;
+            width: 80%;
+            text-align: center;
+        }
+
+    .stamp-approved-circle {
+        color: #059669;
+        border-color: #059669;
+    }
+
+        .stamp-approved-circle::before, .stamp-approved-circle .stamp-date {
+            border-color: #059669;
+        }
+
+    .stamp-rejected-circle {
+        color: #dc2626;
+        border-color: #dc2626;
+    }
+
+        .stamp-rejected-circle::before, .stamp-rejected-circle .stamp-date {
+            border-color: #dc2626;
+        }
+
+    /* LAYOUT SCREEN */
+    .print-paper {
+        background: white;
+        max-width: 297mm;
+        margin: 0 auto 2rem auto;
+        padding: 20px;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    }
+
+    /* KONTROL VISIBILITAS SCREEN VS PRINT */
+    @@media screen {
+        .print-only {
+            display: none !important;
+        }
+    }
+
+    @@media print {
+        body {
+            background: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .no-print, .screen-only {
+            display: none !important;
+        }
+
+        .print-only {
+            display: block !important;
+        }
+        /* PERUBAHAN UTAMA UNTUK KERTAS PRINT */
+        .a4-landscape-page {
+            background: white;
+            width: 297mm !important;
+            height: 209mm !important; /* Diberi toleransi 1mm dari 210mm agar tidak tumpah */
+            margin: 0 !important;
+            padding: 20px !important; /* Gunakan padding internal, BUKAN margin page */
+            box-sizing: border-box !important;
+            box-shadow: none !important;
+            overflow: hidden; /* Paksa hentikan elemen yang melewati batas */
+        }
+
+        .page-break {
+            page-break-after: always;
+            break-after: page;
+        }
+
+        table {
+            page-break-inside: auto;
+            width: 100%;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        .signature-block {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        /* HAPUS SEMUA MARGIN DARI BROWSER */
+        @@page {
+            size: A4 landscape;
+            margin: 0 !important;
+        }
+    }
+</style>
+
+<div class="max-w-7xl mx-auto px-4 py-4 no-print flex justify-between items-center">
+    <a href="javascript:history.back()" class="inline-flex items-center text-white hover:text-blue-100 text-sm font-semibold transition-all hover:-translate-x-1 drop-shadow-sm">
+        <i class="bi bi-arrow-left mr-1.5"></i> Back
+    </a>
+
+    <div class="flex items-center gap-2">
+        <button onclick="printReport()" class="group flex items-center bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-md shadow hover:shadow-md transition-all duration-150 active:scale-95">
+            <i class="bi bi-file-earmark-pdf mr-2 text-base transition-transform duration-150 group-hover:scale-110"></i>
+            Print PDF
+        </button>
+
+        <button onclick="exportExcel()" class="group flex items-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-md shadow hover:shadow-md transition-all duration-150 active:scale-95">
+            <i class="bi bi-file-earmark-excel mr-2 text-base transition-transform duration-150 group-hover:scale-110"></i>
+            Export Excel
+        </button>
+    </div>
+</div>
+
+<div class="w-full pb-10 px-2 sm:px-4 relative min-h-[500px]">
+    <div id="loadingOverlay" class="absolute inset-0 z-50 flex flex-col justify-start items-center pt-20 no-print">
+        <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg flex flex-col items-center">
+            <i class="bi bi-arrow-repeat animate-spin text-4xl text-blue-800 mb-2"></i>
+            <span class="font-bold text-slate-600">Menyusun Dokumen...</span>
+        </div>
+    </div>
+
+    <div id="screenContainer" class="screen-only"></div>
+    <div id="printContainer" class="print-only"></div>
+</div>
+
+<script>
+    const tanggalAudit = '@Html.Raw(tanggalAudit)';
+    const periodeAudit = '@Html.Raw(periodeAudit)';
+
+    let currentUserName = "";
+    const urlParams = new URLSearchParams(window.location.search);
+    const globalEventId = urlParams.get('eventId');
+
+    // =========================================================================
+    // OTORISASI TOMBOL BERDASARKAN VIEWBAG DARI CONTROLLER
+    // =========================================================================
+    const isAdministrator = @Html.Raw((ViewBag.IsAdministrator != null && (bool)ViewBag.IsAdministrator).ToString().ToLower());
+    const isMR = @Html.Raw((ViewBag.IsMR != null && (bool)ViewBag.IsMR).ToString().ToLower());
+
+    // "Dibuat" & "Diperiksa" HANYA bisa diklik oleh Administrator
+    const canSignDibuat = isAdministrator;
+    const canSignDiperiksa = isAdministrator;
+
+    // "Disetujui" HANYA bisa diklik oleh MR
+    const canSignDisetujui = isMR;
+
+    // Nilai padding dalam pixel untuk kalkulasi area konten
+    const PADDING_PX = 20;
+
+    // =========================================================================
+    // TAILWIND WARM-UP
+    // =========================================================================
+    function primeTailwindClasses(callback) {
+        const sampleRowHtml = `
+            <tr class="align-top font-sans text-[9px] text-gray-800">
+                <td colspan="1" class="p-1 text-center">1</td>
+                <td colspan="3" class="p-1 text-center">Sample</td>
+                <td colspan="3" class="p-1 text-center whitespace-nowrap">01 Jan 2026</td>
+                <td colspan="2" class="p-1 text-center">-</td>
+                <td colspan="4" class="p-1 text-center">Sample</td>
+                <td colspan="6" class="p-1 text-center">Sample</td>
+                <td colspan="3" class="p-1 text-center">Sample</td>
+                <td colspan="11" class="p-1 text-left whitespace-pre-wrap">Sample<br/>Sample</td>
+                <td colspan="19" class="p-1 text-left">Sample</td>
+                <td colspan="2" class="p-1 text-center font-bold">V</td>
+                <td colspan="2" class="p-1 text-center font-bold">V</td>
+                <td colspan="2" class="p-1 text-center font-bold">V</td>
+                <td colspan="5" class="p-1 text-center">1</td>
+                <td colspan="3" class="p-1 text-center font-bold text-[9px]">CLOSE</td>
+                <td colspan="3" class="p-1 text-center font-bold text-[9px]">CLOSE</td>
+            </tr>`;
+
+        const $warmup = $('<div>')
+            .css({ position: 'absolute', visibility: 'hidden', left: '-99999px', top: 0, width: `calc(297mm - ${PADDING_PX * 2}px)` })
+            .appendTo('body')
+            .html(`
+                <table class="tbl-bordered w-full text-gray-800">
+                    <colgroup><col span="69" style="width:1.4492%;"></colgroup>
+                    ${buildPrintTheadHtml('ISO 9001', 1, 1)}
+                    <tbody>${sampleRowHtml}</tbody>
+                </table>
+                ${buildPrintFooterHtml(0, 0, 0, '01 Jan 2026')}
+            `);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                $warmup.remove();
+                if (typeof callback === 'function') callback();
+            });
+        });
+    }
+
+    $(document).ready(function() {
+        primeTailwindClasses(function() {
+            if (globalEventId) {
+                $.ajax({
+                    url: '@Url.Action("GetLaporanTemuanAuditByEvent", "EAudit")',
+                    type: 'GET',
+                    data: { eventId: globalEventId },
+                    success: function(res) {
+                        try {
+                            if (res.success) {
+                                currentUserName = res.currentUserName || "User";
+
+                                // --- LOGIKA MENCARI TANGGAL DOKUMEN ("Dibuat") ---
+                                let finalDocDate = new Date(); // Default ke hari ini
+                                let dateStrFromDB = null;
+
+                                if (res.recapEventApprovals && res.recapEventApprovals.length > 0) {
+                                    const dibuatApp = res.recapEventApprovals.find(a => a.recap_sign_category === "Dibuat" && a.recap_sign_status === "Approved");
+                                    if (dibuatApp && dibuatApp.recap_sign_date) dateStrFromDB = dibuatApp.recap_sign_date;
+                                } else if (res.existingApprovals && res.existingApprovals.length > 0) {
+                                    const dibuatApp = res.existingApprovals.find(a => (a.category_recap === "Dibuat" || a.recap_sign_role === "Dibuat") && a.recap_sign_status === "Approved");
+                                    if (dibuatApp && dibuatApp.recap_sign_date) dateStrFromDB = dibuatApp.recap_sign_date;
+                                }
+
+                                if (dateStrFromDB) {
+                                    let timestamp = parseInt(dateStrFromDB.replace(/\/Date\((\d+)\)\//, '$1'));
+                                    if (!isNaN(timestamp)) {
+                                        finalDocDate = new Date(timestamp);
+                                    } else {
+                                        finalDocDate = new Date(dateStrFromDB);
+                                    }
+                                }
+
+                                const documentDateFormatted = `${finalDocDate.getDate()} ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][finalDocDate.getMonth()]} ${finalDocDate.getFullYear()}`;
+                                // ---------------------------------------------------
+
+                                // 1. Render isi tabel laporan (Inject documentDateFormatted)
+                                renderLaporanTemuan(res.data, res.auditStandards, documentDateFormatted);
+
+                                // 2. Render Stampel / Tanda Tangan dari tabel Approval Recap Event
+                                if(res.recapEventApprovals && res.recapEventApprovals.length > 0) {
+                                    res.recapEventApprovals.forEach(app => {
+                                        renderExistingVerificationStamp(
+                                            app.recap_sign_category,
+                                            app.recap_sign_status,
+                                            app.recap_sign_date,
+                                            app.recap_sign_by
+                                        );
+                                    });
+                                }
+                                // 3. Fallback: Jika masih menggunakan tabel lama
+                                else if(res.existingApprovals && res.existingApprovals.length > 0) {
+                                    res.existingApprovals.forEach(app => {
+                                        renderExistingVerificationStamp(
+                                            app.category_recap || app.recap_sign_role,
+                                            app.recap_sign_status,
+                                            app.recap_sign_date,
+                                            app.recap_sign_by_name
+                                        );
+                                    });
+                                }
+                            } else {
+                                showEmptyState("Gagal memuat data: " + res.message);
+                            }
+                        } catch (err) {
+                            console.error("Error during rendering data: ", err);
+                            showEmptyState("Terjadi kesalahan saat memproses tampilan laporan.");
+                        } finally {
+                            $('#loadingOverlay').fadeOut();
+                        }
+                    },
+                    error: function() {
+                        showEmptyState("Koneksi ke server terputus.");
+                        $('#loadingOverlay').fadeOut();
+                    }
+                });
+            } else {
+                showEmptyState("ID Event tidak ditemukan di URL.");
+                $('#loadingOverlay').fadeOut();
+            }
+        });
+    });
+
+    function printReport() {
+        $('#printContainer').printThis({
+            importCSS: true,
+            importStyle: true,
+            printContainer: true,
+            pageTitle: "Laporan Temuan Internal Audit",
+            printDelay: 500,
+            removeInline: false
+        });
+    }
+
+    function showEmptyState(msg) {
+        $('#screenContainer').html(`<div class="text-center p-10 font-bold text-rose-500 bg-white rounded-xl shadow max-w-2xl mx-auto">${msg}</div>`);
+    }
+
+    function renderAuditStandardsDynamic(kriteriaText, standards) {
+        if (!standards || standards.length === 0) {
+            return kriteriaText.split(' / ').map(part => `<span class="line-through opacity-60">${part.trim()}</span>`).join(' / ');
+        }
+        const parts = kriteriaText.split(' / ').map(s => s.trim());
+        const result = parts.map(part => {
+            const isMatch = standards.some(std => part.toLowerCase().includes(std.toLowerCase()));
+            return isMatch ? `<span>${part}</span>` : `<span class="line-through opacity-60">${part}</span>`;
+        });
+        return result.join(' / ');
+    }
+
+    function createSignatureBox(roleLabel, canSign, isPrint) {
+        // PERBAIKAN: HAPUS SEMUA SPASI DAN SIMBOL MENGGUNAKAN REGEX
+        const roleKey = roleLabel.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        const btnHtml = (!isPrint && canSign) ? `
+            <div class="no-print absolute top-1 left-1/2 -translate-x-1/2 flex flex-col gap-0.5 z-10 action-btns-${roleKey} w-[90%] max-w-[75px]">
+                <button type="button" onclick="executeSign('${roleLabel}', 'Approved', this)" class="text-[8px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 py-[2px] rounded shadow-sm uppercase cursor-pointer hover:bg-emerald-200">Approve</button>
+                <button type="button" onclick="executeSign('${roleLabel}', 'Rejected', this)" class="text-[8px] font-bold bg-red-100 text-red-800 border border-red-300 py-[2px] rounded shadow-sm uppercase cursor-pointer hover:bg-red-200">Reject</button>
+            </div>` : ``;
+
+        return `
+             <td class="p-0.5 relative align-bottom text-center h-[70px] ${isPrint ? 'w-1/3' : ''}">
+                 ${btnHtml}
+                 <div class="stamp-container-${roleKey} w-full flex justify-center items-end mb-1 h-[45px]"></div>
+                 <div class="name-lbl-${roleKey} text-[9px] font-bold z-0 relative whitespace-nowrap overflow-hidden text-ellipsis px-0.5">-</div>
+             </td>
+         `;
+    }
+
+    function buildScreenLetterheadHtml(kriteriaHtml, pageNum, totalPages) {
+        return `
+            <table class="tbl-bordered text-[11px] mb-2 font-sans text-black">
+                <tr>
+                    <td rowspan="4" class="w-[15%] p-2 text-center align-middle">
+                        <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Niterra-Logo" style="max-height: 40px; margin: 0 auto;" />
+                    </td>
+                    <td rowspan="2" class="w-[60%] p-1.5 text-center align-middle font-bold text-[14px] tracking-wider uppercase">
+                        FORMULIR INTEGRASI
+                    </td>
+                    <td class="w-[10%] px-2 py-1">No. Dok</td>
+                    <td class="w-[15%] px-2 py-1">PMLK3-MR-09/L6</td>
+                </tr>
+                <tr>
+                    <td class="px-2 py-1">Revisi</td>
+                    <td class="px-2 py-1">01</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" class="w-[60%] p-1.5 text-center align-middle font-bold text-[15px]">
+                        Rekap Laporan temuan Internal Audit
+                    </td>
+                    <td class="px-2 py-1">Tanggal</td>
+                    <td class="px-2 py-1">4-Aug-2025</td>
+                </tr>
+                <tr>
+                    <td class="px-2 py-1">Halaman</td>
+                    <td class="px-2 py-1">${pageNum} / ${totalPages}</td>
+                </tr>
+            </table>
+
+            <div class="mb-2 leading-tight">
+                <table class="w-full text-left text-[10px]">
+                    <tr><td class="w-24">Audit</td><td>: ${kriteriaHtml}</td></tr>
+                    <tr><td>Bulan / Tahun</td><td>: ${periodeAudit}</td></tr>
+                </table>
+            </div>
+        `;
+    }
+
+    function buildScreenTheadHtml() {
+        return `
+            <thead>
+                <tr class="text-center align-middle font-semibold bg-gray-50">
+                    <td rowspan="3" class="p-1 w-[2%]">No</td>
+                    <td rowspan="3" class="p-1 w-[6%]">Nama<br/>Proses</td>
+                    <td rowspan="3" class="p-1 w-[6%]">Tgl Audit</td>
+                    <td rowspan="3" class="p-1 w-[4%]">Shift</td>
+                    <td rowspan="3" class="p-1 w-[6%]">Auditor</td>
+                    <td rowspan="3" class="p-1 w-[6%]">Clausul</td>
+                    <td rowspan="3" class="p-1 w-[6%]">Jenis Audit</td>
+                    <td colspan="2" class="p-1">Temuan audit</td>
+                    <td colspan="3" class="p-1 w-[9%]">Klasifikasi Temuan</td>
+                    <td colspan="3" class="p-1 w-[15%]">CAR</td>
+                </tr>
+                <tr class="text-center align-middle font-semibold bg-gray-50">
+                    <td rowspan="2" class="p-1 italic w-[18%]">Details of Nonconformity</td>
+                    <td rowspan="2" class="p-1 italic w-[18%]">Objective Evidence Observed</td>
+                    <td rowspan="2" class="p-1 w-[3%]">Major</td>
+                    <td rowspan="2" class="p-1 w-[3%]">Minor</td>
+                    <td rowspan="2" class="p-1 w-[3%]">Ofi</td>
+                    <td rowspan="2" class="p-1 w-[5%]">No.</td>
+                    <td colspan="2" class="p-1 w-[5%]">Status Verifikasi</td>
+                </tr>
+                <tr class="text-center align-middle font-semibold bg-gray-50">
+                    <td class="p-1 w-[5%]">Ke-1</td>
+                    <td class="p-1 w-[5%]">Ke-2</td>
+                </tr>
+            </thead>`;
+    }
+
+    function buildPrintTheadHtml(kriteriaHtml, pageNum, totalPages) {
+        return `
+            <thead>
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="7" rowspan="4" class="text-center p-1">
+                        <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Niterra-Logo" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+                    </th>
+                    <th rowspan="2" colspan="52" style="font-size: 14px; padding: 8px;" class="text-center font-sans tracking-wider uppercase">
+                        FORMULIR INTEGRASI
+                    </th>
+                    <th colspan="4" class="text-[10px] text-left px-1">No. Dok</th>
+                    <th colspan="6" class="text-[10px] text-left px-1">PMLK3-MR-09/L6</th>
+                </tr>
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="4" class="text-[10px] text-left px-1">Revisi</th>
+                    <th colspan="6" class="text-[10px] text-left px-1">01</th>
+                </tr>
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="52" rowspan="2" style="font-size: 14px; padding: 8px;" class="text-center font-sans uppercase">
+                        Rekap Laporan Temuan Internal Audit
+                    </th>
+                    <th colspan="4" class="text-[10px] text-left px-1">Tanggal</th>
+                    <th colspan="6" class="text-[10px] text-left px-1">4-Aug-2025</th>
+                </tr>
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="4" class="text-[10px] text-left px-1">Halaman</th>
+                    <th colspan="6" class="text-[10px] text-left px-1">${pageNum} / ${totalPages}</th>
+                </tr>
+
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="4" class="p-1 text-[10px] pl-1 text-left">Audit</th>
+                    <th colspan="65" class="p-1 text-[10px] font-normal text-left">: ${kriteriaHtml}</th>
+                </tr>
+                <tr class="font-semibold text-black bg-white">
+                    <th colspan="4" class="p-1 text-[10px] pl-1 text-left">Bulan/Tahun</th>
+                    <th colspan="65" class="p-1 text-[10px] font-normal text-left">: ${periodeAudit}</th>
+                </tr>
+
+                <tr class="text-center align-middle h-8 bg-gray-50 font-semibold text-black">
+                    <th rowspan="3" colspan="1" class="p-1 text-[10px]">No</th>
+                    <th rowspan="3" colspan="3" class="p-1 text-[10px]">Nama Proses</th>
+                    <th rowspan="3" colspan="3" class="p-1 text-[10px]">Tgl Audit</th>
+                    <th rowspan="3" colspan="2" class="p-1 text-[10px]">Shift</th>
+                    <th rowspan="3" colspan="4" class="p-1 text-[10px]">Auditor</th>
+                    <th rowspan="3" colspan="6" class="p-1 text-[10px]">Clausul</th>
+                    <th rowspan="3" colspan="3" class="p-1 text-[10px]">Jenis Audit</th>
+                    <th colspan="30" class="p-1 text-[10px]">Temuan Audit</th>
+                    <th colspan="6" class="p-1 text-[10px]">Klasifikasi temuan</th>
+                    <th colspan="11" class="p-1 text-[10px]">CAR</th>
+                </tr>
+                <tr class="text-center align-middle h-6 bg-gray-50 font-semibold text-black">
+                    <th colspan="15" rowspan="2" class="p-1 text-[10px] italic">Details of Nonconformity</th>
+                    <th colspan="15" rowspan="2" class="p-1 text-[10px] italic">Objective Evidence Observed</th>
+                    <th colspan="2" rowspan="2" class="p-1 text-[10px]">Major</th>
+                    <th colspan="2" rowspan="2" class="p-1 text-[10px]">Minor</th>
+                    <th colspan="2" rowspan="2" class="p-1 text-[10px]">Ofi</th>
+                    <th colspan="5" rowspan="2" class="p-1 text-[10px]">No.</th>
+                    <th colspan="6" class="p-1 text-[10px]">Status Verifikasi</th>
+                </tr>
+                <tr class="text-center align-middle h-6 bg-gray-50 font-semibold text-black">
+                    <th colspan="3" class="p-1 text-[10px]">Ke-1</th>
+                    <th colspan="3" class="p-1 text-[10px]">Ke-2</th>
+                </tr>
+            </thead>`;
+    }
+
+    function buildScreenFooterHtml(totalMajor, totalMinor, totalOfi, formattedToday) {
+        return `
+            <div class="mt-2 flex justify-between items-start text-[10px] text-black">
+                <div class="w-[20%]">
+                    <div class="font-bold underline italic mb-0.5">Remark :</div>
+                    <table class="tbl-bordered text-center">
+                        <tr>
+                            <td class="p-1 font-semibold bg-gray-50">Klasifikasi</td>
+                            <td class="p-1 font-semibold bg-gray-50">Total</td>
+                        </tr>
+                        <tr><td class="p-1 text-left pl-2">Major</td><td class="p-1">${totalMajor}</td></tr>
+                        <tr><td class="p-1 text-left pl-2">Minor</td><td class="p-1">${totalMinor}</td></tr>
+                        <tr><td class="p-1 text-left pl-2">Ofi</td><td class="p-1">${totalOfi}</td></tr>
+                    </table>
+                </div>
+                <div class="w-[35%] flex flex-col items-end">
+                    <div class="mb-1 text-right w-full pr-2">Jakarta, ${formattedToday}</div>
+                    <table class="tbl-bordered text-center table-fixed">
+                        <tr>
+                            <td class="p-1 font-bold w-1/3">Disetujui</td>
+                            <td class="p-1 font-bold w-1/3">Diperiksa</td>
+                            <td class="p-1 font-bold w-1/3">Dibuat</td>
+                        </tr>
+                        <tr>
+                            ${createSignatureBox('Disetujui', canSignDisetujui, false)}
+                            ${createSignatureBox('Diperiksa', canSignDiperiksa, false)}
+                            ${createSignatureBox('Dibuat', canSignDibuat, false)}
+                        </tr>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    function buildPrintFooterHtml(totalMajor, totalMinor, totalOfi, formattedToday) {
+        return `
+            <div class="mt-4 flex justify-between items-start text-[10px] text-black w-full px-1 signature-block">
+                <div class="w-[25%]">
+                    <div class="font-bold underline italic mb-1 text-[11px]">Remark :</div>
+                    <table class="tbl-bordered text-center w-full">
+                        <tr>
+                            <td class="p-1 font-semibold bg-gray-50">Klasifikasi</td>
+                            <td class="p-1 font-semibold bg-gray-50">Total</td>
+                        </tr>
+                        <tr><td class="p-1 text-left pl-2">Major</td><td class="p-1 font-bold">${totalMajor}</td></tr>
+                        <tr><td class="p-1 text-left pl-2">Minor</td><td class="p-1 font-bold">${totalMinor}</td></tr>
+                        <tr><td class="p-1 text-left pl-2">Ofi</td><td class="p-1 font-bold">${totalOfi}</td></tr>
+                    </table>
+                </div>
+                <div class="w-[40%] flex flex-col items-end">
+                    <div class="mb-1 text-right w-full pr-2 font-medium">Jakarta, ${formattedToday}</div>
+                    <table class="tbl-bordered text-center table-fixed w-full">
+                        <tr>
+                            <td class="p-1 font-bold w-1/3">Disetujui</td>
+                            <td class="p-1 font-bold w-1/3">Diperiksa</td>
+                            <td class="p-1 font-bold w-1/3">Dibuat</td>
+                        </tr>
+                        <tr>
+                            ${createSignatureBox('Disetujui', canSignDisetujui, true)}
+                            ${createSignatureBox('Diperiksa', canSignDiperiksa, true)}
+                            ${createSignatureBox('Dibuat', canSignDibuat, true)}
+                        </tr>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    // =========================================================================
+    // PAGINATION ENGINE
+    // =========================================================================
+
+    function mmToPx(mm) {
+        const $ruler = $('<div>').css({ position: 'absolute', visibility: 'hidden', height: 0, width: mm + 'mm' }).appendTo('body');
+        const px = $ruler.width();
+        $ruler.remove();
+        return px;
+    }
+
+    function paginateRows(printRowsArr, kriteriaHtml) {
+        const contentWidthPx = mmToPx(297) - (PADDING_PX * 2);
+
+        const contentHeightPx = mmToPx(210) - (PADDING_PX * 2) - 35;
+
+        const $stage = $('<div>').css({ position: 'absolute', visibility: 'hidden', left: '-99999px', top: 0, width: contentWidthPx + 'px' }).appendTo('body');
+        const colgroupHtml = `<colgroup><col span="69" style="width:1.4492%;"></colgroup>`;
+
+        const $headerTbl = $(`<table class="tbl-bordered w-full text-gray-800">${colgroupHtml}${buildPrintTheadHtml(kriteriaHtml, 1, 1)}<tbody></tbody></table>`).appendTo($stage);
+        const headerHeightPx = $headerTbl.find('thead').outerHeight(true) || 0;
+        $headerTbl.remove();
+
+        const $footerEl = $(buildPrintFooterHtml(0, 0, 0, '00 Jan 0000')).css('width', contentWidthPx + 'px').appendTo($stage);
+        const footerHeightPx = $footerEl.outerHeight(true) || 0;
+        $footerEl.remove();
+
+        const $rowTbl = $(`<table class="tbl-bordered w-full text-gray-800">${colgroupHtml}<tbody></tbody></table>`).appendTo($stage);
+        const $tbody = $rowTbl.find('tbody');
+        const rowHeights = printRowsArr.map(rowHtml => {
+            $tbody.html(rowHtml);
+            return $tbody.find('tr').outerHeight(true) || 0;
+        });
+        $rowTbl.remove();
+        $stage.remove();
+
+        const pages = [];
+        let current = { start: 0, count: 0, height: headerHeightPx };
+        for (let i = 0; i < rowHeights.length; i++) {
+            const h = rowHeights[i];
+            if (current.count > 0 && (current.height + h) > contentHeightPx) {
+                pages.push(current);
+                current = { start: i, count: 0, height: headerHeightPx };
+            }
+            current.height += h;
+            current.count++;
+        }
+        pages.push(current);
+
+        const lastPage = pages[pages.length - 1];
+        if (lastPage.height + footerHeightPx > contentHeightPx) {
+            pages.push({ start: printRowsArr.length, count: 0, height: headerHeightPx });
+        }
+
+        return pages;
+    }
+
+    // =========================================================================
+    // MAIN RENDER (Modified Parameter)
+    // =========================================================================
+
+    function renderLaporanTemuan(items, auditStandards, docDateStr) {
+        const validItems = items || [];
+
+        let totalMajor = 0, totalMinor = 0, totalOfi = 0;
+        validItems.forEach(item => {
+            const klas = item.klasifikasi_temuan ? item.klasifikasi_temuan.toUpperCase() : '';
+            if (klas === 'MAJOR') totalMajor++;
+            if (klas === 'MINOR') totalMinor++;
+            if (klas === 'OFI') totalOfi++;
+        });
+
+        const kriteriaString = 'ISO 9001 : 2015 / IATF 16949 : 2016 / ISO 14001 : 2015 / ISO 45001 : 2018';
+        const kriteriaHtml = renderAuditStandardsDynamic(kriteriaString, auditStandards);
+
+        let screenRowsArr = [];
+        let printRowsArr = [];
+
+        if (validItems.length === 0) {
+            screenRowsArr = [`<tr><td colspan="15" class="p-4 text-center italic">Tidak ada temuan audit.</td></tr>`];
+            printRowsArr = [`<tr><td colspan="69" class="p-4 text-center italic">Tidak ada temuan audit.</td></tr>`];
+        } else {
+            validItems.forEach((item, idx) => {
+                const rowNumber = idx + 1;
+                const klasifikasi = item.klasifikasi_temuan ? item.klasifikasi_temuan.toUpperCase() : '';
+
+                const p = item.problem ? `<b>Problem:</b><br>${item.problem}<br>` : '';
+                const l = item.location ? `<b>Lokasi:</b> ${item.location}<br>` : '';
+                const d = item.detail ? `${klasifikasi != 'OFI' ? '<b>Detail:</b><br>' : '' }${item.detail}` : '';
+                const detailsStr = p || l || d ? `${p}${l}${d}` : '-';
+
+                const auditorFormatted = item.auditor || '-';
+                const jenisAudit = item.category_audit || '-';
+
+                screenRowsArr.push(`
+                    <tr class="align-top">
+                        <td class="p-1 text-center">${rowNumber}</td>
+                        <td class="p-1 text-center">${item.section || '-'}</td>
+                        <td class="p-1 text-center whitespace-nowrap">${item.start_date || '-'}</td>
+                        <td class="p-1 text-center">-</td>
+                        <td class="p-1 text-center">${auditorFormatted}</td>
+                        <td class="p-1 text-center">${item.clause || '-'}</td>
+                        <td class="p-1 text-center">${jenisAudit}</td>
+                        <td class="p-1 text-left whitespace-pre-wrap">${detailsStr}</td>
+                        <td class="p-1 text-left">${item.Object || '-'}</td>
+                        <td class="p-1 text-center font-bold">${klasifikasi === 'MAJOR' ? 'V' : ''}</td>
+                        <td class="p-1 text-center font-bold">${klasifikasi === 'MINOR' ? 'V' : ''}</td>
+                        <td class="p-1 text-center font-bold">${klasifikasi === 'OFI' ? 'V' : ''}</td>
+                        <td class="p-1 text-center">
+                            ${klasifikasi === 'OFI'
+                                    ? `<a href="${item.url}" class="text-blue-600 underline hover:text-blue-800 font-semibold transition-colors">LINK</a>`
+                                    : `<a href="${item.url}" class="text-blue-600 underline hover:text-blue-800 font-semibold transition-colors">${item.no || '-'}</a>`
+                            }
+                        </td>
+                        ${klasifikasi === 'OFI'
+                        ? `<td colspan="2" class="p-1 text-center font-bold text-[9px]">
+                           ${item.verifikasi1 === "Approved" ? "CLOSE" :"OPEN"}
+                       </td>`
+                        : `<td class="p-1 text-center font-bold text-[9px]">
+                           ${item.verifikasi1 === "Approved" ? "CLOSE" : "OPEN"}
+                       </td>
+                       <td class="p-1 text-center font-bold text-[9px]">
+                           ${item.verifikasi2 === "Approved" ? "CLOSE" : "OPEN"}
+                       </td>`
+                }
+                </tr>`);
+
+                printRowsArr.push(`
+                    <tr class="align-top font-sans text-[9px] text-gray-800">
+                        <td colspan="1" class="p-1 text-center">${rowNumber}</td>
+                        <td colspan="3" class="p-1 text-center">${item.section || '-'}</td>
+                        <td colspan="3" class="p-1 text-center whitespace-nowrap">${item.start_date || '-'}</td>
+                        <td colspan="2" class="p-1 text-center">-</td>
+                        <td colspan="4" class="p-1 text-center">${auditorFormatted}</td>
+                        <td colspan="6" class="p-1 text-center">${item.clause || '-'}</td>
+                        <td colspan="3" class="p-1 text-center">${jenisAudit}</td>
+                        <td colspan="15" class="p-1 text-left whitespace-pre-wrap">${detailsStr}</td>
+                        <td colspan="15" class="p-1 text-left">${item.Object || '-'}</td>
+                        <td colspan="2" class="p-1 text-center font-bold">${klasifikasi === 'MAJOR' ? 'V' : ''}</td>
+                        <td colspan="2" class="p-1 text-center font-bold">${klasifikasi === 'MINOR' ? 'V' : ''}</td>
+                        <td colspan="2" class="p-1 text-center font-bold">${klasifikasi === 'OFI' ? 'V' : ''}</td>
+                        <td colspan="5" class="p-1 text-center">
+                            ${klasifikasi === 'OFI'
+                                ? `-`
+                                : `${item.no || '-'}</a>`
+                            }
+                        </td>
+                        ${klasifikasi === 'OFI'
+                            ? `<td colspan="6" class="p-1 text-center font-bold text-[9px]">
+                                ${item.verifikasi1 === "Approved" ? "CLOSE" :"OPEN"}
+                            </td>`
+                            : `<td colspan="3" class="p-1 text-center font-bold text-[9px]">
+                                ${item.verifikasi1 === "Approved" ? "CLOSE" : "OPEN"}
+                            </td>
+                            <td colspan="3" class="p-1 text-center font-bold text-[9px]">
+                                ${item.verifikasi2 === "Approved" ? "CLOSE" : "OPEN"}
+                            </td>`
+                        }
+                    </tr>`);
+            });
+        }
+
+        const pages = paginateRows(printRowsArr, kriteriaHtml);
+        const totalPages = pages.length;
+
+        let screenFullHtml = '';
+        let printFullHtml = '';
+
+        pages.forEach((pg, pIdx) => {
+            const pageNum = pIdx + 1;
+            const isLastPage = pageNum === totalPages;
+            const screenRowsHtml = screenRowsArr.slice(pg.start, pg.start + pg.count).join('');
+            const printRowsHtml = printRowsArr.slice(pg.start, pg.start + pg.count).join('');
+
+            screenFullHtml += `
+                <div class="print-paper font-sans text-black text-[10px] flex flex-col justify-between">
+                    <div>
+                        ${buildScreenLetterheadHtml(kriteriaHtml, pageNum, totalPages)}
+                        <table class="tbl-bordered text-[9.5px]">
+                            ${buildScreenTheadHtml()}
+                            <tbody>
+                                ${screenRowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                    ${isLastPage ? buildScreenFooterHtml(totalMajor, totalMinor, totalOfi, docDateStr) : ''}
+                </div>
+            `;
+
+            printFullHtml += `
+                <div class="a4-landscape-page${isLastPage ? '' : ' page-break'}">
+                    <table class="tbl-bordered w-full text-gray-800">
+                        <colgroup>
+                            <col span="69" style="width: 1.4492%;" />
+                        </colgroup>
+                        ${buildPrintTheadHtml(kriteriaHtml, pageNum, totalPages)}
+                        <tbody>
+                            ${printRowsHtml}
+                        </tbody>
+                    </table>
+                    ${isLastPage ? buildPrintFooterHtml(totalMajor, totalMinor, totalOfi, docDateStr) : ''}
+                </div>
+            `;
+        });
+
+        $('#screenContainer').html(screenFullHtml);
+        $('#printContainer').html(printFullHtml);
+    }
+
+    function executeSign(roleLabel, status, btnElement) {
+        const isApprove = status === 'Approved';
+        Swal.fire({
+            title: isApprove ? 'Approve Dokumen?' : 'Reject Dokumen?',
+            text: `Tanda tangani di kolom ${roleLabel}?`,
+            icon: isApprove ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: isApprove ? '#10b981' : '#e11d48',
+            confirmButtonText: isApprove ? 'Ya, Approve' : 'Ya, Reject'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                const payload = {
+                    audit_event_id: globalEventId,
+                    recap_sign_category: roleLabel, // "Dibuat", "Diperiksa", "Disetujui"
+                    recap_sign_status: status
+                };
+
+                $.ajax({
+                    url: '@Url.Action("UpsertApprovalRecapEventAudit", "EAudit")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function(res) {
+                        if (res.success) {
+                            // PERBAIKAN: HAPUS SEMUA SPASI DAN SIMBOL MENGGUNAKAN REGEX
+                            const roleKey = roleLabel.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+                            $(`.action-btns-${roleKey}`).hide();
+
+                            const dateObj = new Date();
+                            const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+                            const stampHtml = isApprove
+                                ? `<div class="stamp-circle stamp-approved-circle"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`
+                                : `<div class="stamp-circle stamp-rejected-circle"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+
+                            $(`.stamp-container-${roleKey}`).html(stampHtml);
+                            $(`.name-lbl-${roleKey}`).text(currentUserName);
+
+                            Swal.fire({ title: 'Berhasil!', icon: 'success', timer: 1500, showConfirmButton: false })
+                                .then(() => {
+                                    if(roleLabel === 'Dibuat' && isApprove) {
+                                        window.location.reload();
+                                    }
+                                });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function renderExistingVerificationStamp(roleLabel, status, dateStr, signerName) {
+        if (!status || !roleLabel) return;
+
+        const roleKey = roleLabel.toLowerCase().replace(/[^a-z0-9]/g, '');
+        $(`.action-btns-${roleKey}`).hide();
+
+        let dateObj = new Date();
+        if (dateStr) {
+            let timestamp = parseInt(dateStr.replace(/\/Date\((\d+)\)\//, '$1'));
+            if (!isNaN(timestamp)) dateObj = new Date(timestamp);
+            else dateObj = new Date(dateStr);
+        }
+        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+        const stampHtml = status.toLowerCase() === 'approved'
+            ? `<div class="stamp-circle stamp-approved-circle"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`
+            : `<div class="stamp-circle stamp-rejected-circle"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+
+        $(`.stamp-container-${roleKey}`).html(stampHtml);
+        $(`.name-lbl-${roleKey}`).text(signerName);
+    }
+    function exportExcel() {
+        if (!globalEventId) {
+            Swal.fire('Error', 'ID Event tidak ditemukan di URL.', 'error');
+            return;
+        }
+
+        // Tampilkan overlay loading
+        $('#loadingOverlay').fadeIn();
+
+        // Panggil endpoint action Export Excel
+        window.location.href = '@Url.Action("ExportExcelRekapLaporan", "EAudit")' + '?eventId=' + globalEventId;
+
+        // Sembunyikan overlay setelah jeda (karena pengalihan window.location.href tidak memiliki callback succes)
+        setTimeout(() => {
+            $('#loadingOverlay').fadeOut();
+        }, 1500);
+    }
+</script>

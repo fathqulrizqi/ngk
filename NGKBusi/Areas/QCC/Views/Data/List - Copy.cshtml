@@ -1,0 +1,213 @@
+﻿@using NGKBusi.Areas.QCC.Models;
+@using NGKBusi.Models;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Data List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    QCCConnection dbQCC = new QCCConnection();
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    var checkRole = db.Users_Menus_Roles.Where(w => w.userNIK == currUserID && w.menuID == 34).FirstOrDefault();
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/QCC/Default.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<table id="tbQCCDataList" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="16" class="sorter-false">
+                <h2 class="table-title">
+                    Data List
+                    @if (checkRole != null && checkRole.allowInsert)
+                    {
+                        <img id="imgQCCAdd" class="pointer" src="@Url.Content("~/Content/Images/add-white.png")" width="55" height="55" data-toggle="modal" data-target="#srModal" />
+                    }
+                    </h2>
+            </th>
+        </tr>
+        <tr>
+            <th class="filter-select" data-placeholder="-Pilih Periode-">Periode</th>
+            <th>Group</th>
+            <th class="filter-select" data-placeholder="-Pilih Type-">Type</th>
+            <th>Tema</th>
+            <th>Fasilitator</th>
+            <th>Ketua</th>
+            <th>Anggota</th>
+            <th>Section</th>
+            <th class="filter-false sorter-false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.DataList)
+        {
+            <tr>
+                @{ int currID = data.ID;
+                    var members = dbQCC.QCC_List_Member.Where(w => w.List_ID == currID).ToList(); }
+                <td>@(data.Period)</td>
+                <td><a href="@Url.Action("Progress","Data",new { area = "QCC",iPeriod = data.Period,iGroup = data.Group })" target="_blank">@(data.Group)</a></td>
+                <td>@(data.Type)</td>
+                <td>@(data.Theme)</td>
+                <td data-nik="@(data.Fasilitator)">@(data.UserFasilitator.Name)</td>
+                <td data-nik="@(data.Leader)">@(data.UserLeader.Name)</td>
+                <td data-member="@( String.Join(",",members.Select(s => s.Member).ToArray()))">
+                    <ul>
+                        @foreach (var member in members)
+                        {
+                            <li>
+                                @(member.UserMember.Name)
+                            </li>
+                        }
+                    </ul>
+                </td>
+                <td>
+                    @{
+                        var memberSection = members.Select(s => s.Section).Distinct().ToList();
+                    }
+                    <ul>
+                        @foreach (var member in memberSection)
+                        {
+                            <li>
+                                @(member)
+                            </li>
+                        }
+                    </ul>
+                </td>
+                <td>
+                    @if (checkRole != null && checkRole.allowUpdate)
+                    {
+                        <button class="btnEdit btn btn-warning btn-sm" data-id="@(data.ID)"><i class="fa fa-edit"></i></button>
+                    }
+                    @if (checkRole != null && checkRole.allowDelete)
+                    {
+                        <button class="btnDelete btn btn-danger btn-sm" data-id="@(data.ID)"><i class="fa fa-trash"></i></button>
+                    }
+                    </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="16">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div id="srModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form id="QCCForm" action="@Url.Action("insertList","Data",new { area = "QCC" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">QCC/QCP</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group row">
+                            <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Period</label>
+                            <div class="col-9">
+                                <select id="selPeriod" name="iPeriod" class="select2" style="width:100%;" required>
+                                    <option value="">-Select Period-</option>
+                                    @for (int i = 2019; i <= DateTime.Now.Year + 1; i++)
+                                    {
+                                        <option value="@(i)" @(i == DateTime.Now.Year ? "selected" : "")>@(i)</option>
+                                    }
+                                </select>
+                                <input id="hfQCCID" type="hidden" name="iID" value="" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtGroupName" class="col-3 text-right font-weight-bold text-right font-weight-bold">Nama Group</label>
+                            <div class="col-9">
+                                <textarea type="text" id="txtGroupName" name="iGroupName" class="form-control" placeholder="Nama Group" required></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selType" class="col-3 text-right font-weight-bold text-right font-weight-bold">Type</label>
+                            <div class="col-9">
+                                <select id="selType" name="iType" class="select2" style="width:100%;" required>
+                                    <option value="">-Select Type-</option>
+                                    <option value="QCC">QCC</option>
+                                    <option value="QCP">QCP</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtTema" class="col-3 text-right font-weight-bold text-right font-weight-bold">Tema</label>
+                            <div class="col-9">
+                                <textarea type="text" id="txtTema" name="iTema" class="form-control" placeholder="Tema" required></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selFasilitator" class="col-3 text-right font-weight-bold text-right font-weight-bold">Fasilitator</label>
+                            <div class="col-9">
+                                <select id="selFasilitator" name="iFasilitator" class="select2" style="width:100%;" required>
+                                    <option value="">-Select Employee-</option>
+                                    @foreach (var item in ViewBag.Users)
+                                    {
+                                        <option data-div="@(item.DivisionName)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-subsection="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selLeader" class="col-3 text-right font-weight-bold text-right font-weight-bold">Leader</label>
+                            <div class="col-9">
+                                <select id="selLeader" name="iLeader" class="select2 selAnggota" style="width:100%;" required>
+                                    <option value="">-Select Employee-</option>
+                                    @foreach (var item in ViewBag.Users)
+                                    {
+                                        <option data-div="@(item.DivisionName)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-subsection="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                    }
+                                </select>
+                                <input type="hidden" id="hfSection" name="iSection" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selAnggota" class="col-3 text-right font-weight-bold text-right font-weight-bold">Anggota</label>
+                            <div class="col-9">
+                                <select id="selAnggota" name="iAnggota[]" class="select2 selAnggota" style="width:100%;" data-maximum-selection-length="10" data-placeholder="-Pilih Member-" multiple required>
+                                    @foreach (var item in ViewBag.Users)
+                                    {
+                                        <option data-nik="@(item.NIK)" data-div="@(item.DivisionName)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-subsection="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnAppCreate" type="submit" class="btn btn-default">Submit</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

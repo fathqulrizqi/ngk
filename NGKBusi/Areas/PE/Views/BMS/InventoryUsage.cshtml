@@ -1,0 +1,603 @@
+﻿@{
+    ViewBag.Title = "Inventory Usage";
+    // Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Select2 CSS -->
+<link href="@Url.Content("~/Content/select2/select2.min.css")" rel="stylesheet" />
+
+<script src="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" ></script>
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    brand: {
+                        50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+                        400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+                        800: '#3730a3', 900: '#312e81'
+                    }
+                },
+                boxShadow: {
+                    soft: '0 1px 2px rgba(16,24,40,.04), 0 12px 32px -16px rgba(16,24,40,.18)',
+                    lift: '0 2px 4px rgba(16,24,40,.06), 0 18px 40px -18px rgba(16,24,40,.28)'
+                },
+                keyframes: {
+                    fadeUp: {
+                        '0%': { opacity: '0', transform: 'translateY(8px)' },
+                        '100%': { opacity: '1', transform: 'translateY(0)' }
+                    },
+                    modalIn: {
+                        '0%': { opacity: '0', transform: 'scale(.95) translateY(10px)' },
+                        '100%': { opacity: '1', transform: 'scale(1) translateY(0)' }
+                    }
+                },
+                animation: {
+                    fadeUp: 'fadeUp .35s ease-out both',
+                    modalIn: 'modalIn .3s ease-out both'
+                }
+            }
+        }
+    }
+</script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Select2 customization for Tailwind styling */
+    .select2-container--default .select2-selection--single {
+        background-color: rgb(248 250 252 / 0.7);
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem; /* rounded-md */
+        height: 42px;
+        padding: 6px 12px;
+        transition: all 0.2s;
+    }
+
+        .select2-container--default .select2-selection--single:focus,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: #6366f1; /* brand-500 */
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); /* ring */
+            outline: none;
+            background-color: #fff;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 28px;
+            color: #0f172a;
+            font-size: 0.875rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px;
+            right: 8px;
+        }
+
+    /* Override SweetAlert font to match Tailwind */
+    div:where(.swal2-container) {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+</style>
+
+<div class="min-h-screen p-4 sm:p-6">
+    <div class="mx-auto max-w-screen-2xl">
+
+        <!-- ======================================= -->
+        <!-- PAGE HEADER -->
+        <!-- ======================================= -->
+        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between animate-fadeUp">
+            <div>
+                <h1 class="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-white">Inventory Usage</h1>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="loadInventoryList()" title="Refresh" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/20 text-white backdrop-blur-sm transition hover:bg-white/30 focus:outline-none focus:ring-4 focus:ring-white/20">
+                    <svg id="refreshIcon" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356m-4.992 4.992-3.181-3.183a8.25 8.25 0 0 0-13.803 3.7M4.031 9.865H.037m3.994 0v4.992m0-4.992 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7" />
+                    </svg>
+                </button>
+                <button type="button" onclick="openCreateModal()" class="flex h-10 items-center gap-2 rounded-md bg-[#1E3A8A] px-4 text-sm font-semibold text-white shadow-lift transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-900/30">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Create Usage
+                </button>
+            </div>
+        </div>
+
+        <!-- ======================================= -->
+        <!-- MAIN TABLE -->
+        <!-- ======================================= -->
+        <div class="rounded-lg border border-slate-200 bg-white shadow-soft overflow-hidden animate-fadeUp">
+
+            <!-- TOOLBAR: Search & Page Size -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200 bg-slate-50/50 p-4">
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-72 shrink-0">
+                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search inventory usage..."
+                           class="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10" />
+                </div>
+
+                <!-- Page Size Limit -->
+                <div class="flex w-full sm:w-auto items-center justify-between sm:justify-end gap-2 text-sm text-slate-600">
+                    <span>Show</span>
+                    <select id="pageSize" class="rounded-md border border-slate-200 bg-white py-1.5 pl-3 pr-8 text-sm focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+            </div>
+
+            <!-- Desktop Table -->
+            <div class="hidden md:block overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b border-slate-200 bg-slate-50/80">
+                            <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Project Name</th>
+                            <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Remarks</th>
+                            <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-1/4">Materials Used</th>
+                            <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Created By</th>
+                            <th scope="col" class="px-6 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-500 w-32">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyInventory" class="divide-y divide-slate-100 text-sm">
+                        <!-- Loaded via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card List -->
+            <div class="md:hidden divide-y divide-slate-100" id="cardInventory">
+                <!-- Loaded via AJAX -->
+            </div>
+
+            <!-- FOOTER: Pagination Info & Controls -->
+            <div class="flex flex-col-reverse sm:flex-row items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/50 p-4">
+                <div class="text-xs sm:text-sm text-slate-500" id="paginationInfo">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <div class="flex items-center gap-1" id="paginationControls">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ======================================= -->
+<!-- UNIFIED MODAL (CREATE & EDIT) -->
+<!-- ======================================= -->
+<div id="modalFormWrapper" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Background overlay -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+
+    <!-- Modal panel -->
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div class="relative w-full max-w-3xl transform overflow-hidden rounded-lg bg-white text-left shadow-lift transition-all animate-modalIn sm:my-8">
+
+                <!-- Modal Header -->
+                <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900" id="modalTitle">Create New Inventory Usage</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">Fill in the project details and materials used</p>
+                    </div>
+                    <button type="button" onclick="closeModal()" class="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="px-6 py-5">
+                    <input type="hidden" id="form_header_id" value="0" />
+
+                    <!-- Form Header Info -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Project Name <span class="text-rose-500">*</span></label>
+                            <input type="text" id="form_project_name" required
+                                   class="w-full rounded-md border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                   placeholder="e.g., Maintenance Line 3">
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Remarks</label>
+                            <input type="text" id="form_remarks"
+                                   class="w-full rounded-md border border-slate-200 bg-slate-50/70 px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                   placeholder="Optional">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="h-px flex-1 bg-slate-200"></span>
+                        <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">List of Materials Used</span>
+                        <span class="h-px flex-1 bg-slate-200"></span>
+                    </div>
+
+                    <!-- Dynamic Table Components -->
+                    <div class="rounded-md border border-slate-200 overflow-hidden">
+                        <table class="min-w-full divide-y divide-slate-200">
+                            <thead class="bg-slate-50 text-[11px] font-medium text-slate-500 uppercase tracking-wide text-left">
+                                <tr>
+                                    <th class="px-4 py-2 w-2/3">Material Name <span class="text-rose-500">*</span></th>
+                                    <th class="px-4 py-2 w-24">Qty <span class="text-rose-500">*</span></th>
+                                    <th class="px-4 py-2 w-16 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyComponent" class="divide-y divide-slate-100 text-sm">
+                                <!-- Generated via JS -->
+                            </tbody>
+                        </table>
+                        <div class="bg-slate-50 px-4 py-3 border-t border-slate-200">
+                            <button type="button" onclick="addRow('', 1)" class="flex items-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                                Add Material
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="border-t border-slate-100 bg-slate-50 px-6 py-4 flex items-center justify-end gap-3 rounded-b-lg">
+                    <button type="button" onclick="closeModal()" class="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                        Cancel
+                    </button>
+                    <button type="button" id="btnSaveData" onclick="submitData()" class="flex items-center gap-2 rounded-md bg-[#1E3A8A] px-5 py-2 text-sm font-semibold text-white shadow-lift transition hover:bg-blue-900 focus:outline-none focus:ring-4 focus:ring-blue-900/30">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.5 3.5L20.5 6.5M21 7l-13 13H4v-4L17 3l4 4z" />
+                        </svg>
+                        Save Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script src="@Url.Content("~/Content/select2/select2.min.js")"></script>
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2@11.js")"></script>
+
+    <script>
+        var masterInventory = [];
+
+        $(document).ready(function () {
+            loadMasterInventory();
+            loadInventoryList();
+        });
+
+        function loadInventoryList() {
+            $('#refreshIcon').addClass('animate-spin');
+
+            // Temporary loading state
+            $('#tbodyInventory').html('<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">Loading data...</td></tr>');
+            $('#cardInventory').html('<div class="px-6 py-12 text-center text-slate-400">Loading data...</div>');
+
+            $.ajax({
+                url: '@Url.Action("GetInventoryUsageList", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    if (res.success) {
+                        var htmlDesktop = '';
+                        var htmlMobile = '';
+
+                        if (res.data.length === 0) {
+                            var empty = '<tr><td colspan="6" class="px-6 py-16 text-center text-sm text-slate-500">No usage data available.</td></tr>';
+                            $('#tbodyInventory').html(empty);
+                            $('#cardInventory').html('<div class="px-6 py-16 text-center text-sm text-slate-500">No usage data available.</div>');
+                        } else {
+                            $.each(res.data, function (i, item) {
+
+                                // Render Material List (Desktop & Mobile)
+                                var materialsHtml = '<ul class="list-disc pl-4 space-y-0.5 text-slate-600">';
+                                if (item.materials && item.materials.length > 0) {
+                                    $.each(item.materials, function(mIndex, mat) {
+                                        materialsHtml += '<li>' + escapeHtml(mat.item_name) + ' <span class="font-semibold text-slate-900 ml-1">(Qty: ' + mat.qty + ')</span></li>';
+                                    });
+                                } else {
+                                    materialsHtml += '<li class="list-none text-slate-400 italic">No materials recorded</li>';
+                                }
+                                materialsHtml += '</ul>';
+
+                                // Desktop View
+                                htmlDesktop += '<tr class="transition hover:bg-slate-50/80">';
+                                htmlDesktop += '<td class="whitespace-nowrap px-6 py-4 text-slate-500">' + escapeHtml(item.created_at) + '</td>';
+                                htmlDesktop += '<td class="px-6 py-4 font-medium text-slate-900">' + escapeHtml(item.project_name) + '</td>';
+                                htmlDesktop += '<td class="px-6 py-4 text-slate-600">' + (item.remarks ? escapeHtml(item.remarks) : '-') + '</td>';
+                                htmlDesktop += '<td class="px-6 py-4">' + materialsHtml + '</td>';
+                                htmlDesktop += '<td class="whitespace-nowrap px-6 py-4"><span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">' + escapeHtml(item.created_by_name) + '</span></td>';
+                                htmlDesktop += '<td class="whitespace-nowrap px-6 py-4 text-center">';
+                                htmlDesktop += '<div class="flex items-center justify-center gap-2">';
+                                htmlDesktop += '<button class="rounded-md bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100 ring-1 ring-inset ring-amber-600/20" onclick="openEditModal(' + item.header_id + ', \'' + escapeHtml(item.project_name) + '\', \'' + escapeHtml(item.remarks) + '\')">Edit</button>';
+                                htmlDesktop += '<button class="rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-700 transition hover:bg-rose-100 ring-1 ring-inset ring-rose-600/20" onclick="deleteInventory(' + item.header_id + ')">Delete</button>';
+                                htmlDesktop += '</div></td></tr>';
+
+                                // Mobile View (Card)
+                                htmlMobile += '<div class="px-6 py-4">';
+                                htmlMobile += '<div class="flex items-start justify-between gap-3 mb-2">';
+                                htmlMobile += '<div>';
+                                htmlMobile += '<h3 class="font-semibold text-slate-900">' + escapeHtml(item.project_name) + '</h3>';
+                                htmlMobile += '<p class="text-xs text-slate-500 mt-0.5">' + escapeHtml(item.created_at) + ' • ' + escapeHtml(item.created_by_name) + '</p>';
+                                htmlMobile += '</div>';
+                                htmlMobile += '<div class="flex gap-2">';
+                                htmlMobile += '<button class="text-amber-600 hover:text-amber-800 p-1" onclick="openEditModal(' + item.header_id + ', \'' + escapeHtml(item.project_name) + '\', \'' + escapeHtml(item.remarks) + '\')"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>';
+                                htmlMobile += '<button class="text-rose-600 hover:text-rose-800 p-1" onclick="deleteInventory(' + item.header_id + ')"><svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>';
+                                htmlMobile += '</div></div>';
+                                htmlMobile += '<div class="text-sm">' + materialsHtml + '</div>';
+                                htmlMobile += '</div>';
+                            });
+
+                            $('#tbodyInventory').html(htmlDesktop);
+                            $('#cardInventory').html(htmlMobile);
+                        }
+                    } else {
+                        showToast('error', 'Error', res.message);
+                    }
+                },
+                complete: function() {
+                    $('#refreshIcon').removeClass('animate-spin');
+                }
+            });
+        }
+
+        function loadMasterInventory() {
+            $.ajax({
+                url: '@Url.Action("GetAllInventoryListForDropdown", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    if (res.success) {
+                        masterInventory = res.data;
+                    }
+                }
+            });
+        }
+
+        function deleteInventory(header_id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Deleting this project will RESTORE all deducted material stock!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#1E3A8A', // match your primary button color
+                cancelButtonColor: '#f43f5e', // match rose-500
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteInventoryUsage", "BMS", new { area = "PE" })',
+                        type: 'POST',
+                        data: { header_id: header_id },
+                        success: function (res) {
+                            if (res.success) {
+                                showToast('success', 'Success', res.message);
+                                loadInventoryList();
+                            } else {
+                                showToast('error', 'Failed', res.message);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // =============================================
+        // MODAL LOGIC (Tailwind Toggle)
+        // =============================================
+        function closeModal() {
+            $('#modalFormWrapper').addClass('hidden');
+        }
+
+        function openCreateModal() {
+            $('#form_header_id').val(0);
+            $('#form_project_name').val('');
+            $('#form_remarks').val('');
+            $('#tbodyComponent').empty();
+            $('#modalTitle').text('Create New Inventory Usage');
+
+            addRow('', 1);
+            $('#modalFormWrapper').removeClass('hidden');
+        }
+
+        function openEditModal(header_id, project_name, remarks) {
+            $('#form_header_id').val(header_id);
+            $('#form_project_name').val(project_name);
+            $('#form_remarks').val(remarks === 'null' ? '' : remarks);
+            $('#modalTitle').text('Edit Inventory Usage');
+            $('#tbodyComponent').empty();
+
+            $.ajax({
+                url: '@Url.Action("GetInventoryUsageDetails", "BMS", new { area = "PE" })',
+                type: 'GET',
+                data: { header_id: header_id },
+                success: function (res) {
+                    if (res.success) {
+                        $.each(res.data, function (i, detail) {
+                            addRow(detail.inventory_id, detail.qty_used);
+                        });
+                        $('#modalFormWrapper').removeClass('hidden');
+                    } else {
+                        showToast('error', 'Failed', 'Failed to retrieve material details.');
+                    }
+                }
+            });
+        }
+
+        // =============================================
+        // DYNAMIC ROW MATERIAL
+        // =============================================
+        function addRow(selectedInventoryId, qty) {
+            var optionsHtml = '<option value="">-- Select Material --</option>';
+            $.each(masterInventory, function (i, item) {
+                var selected = (item.id == selectedInventoryId) ? 'selected' : '';
+                optionsHtml += `<option value="${item.id}" ${selected}>${item.text}</option>`;
+            });
+
+            var tr = `
+                <tr class="group">
+                    <td class="px-4 py-2">
+                        <select class="item-select w-full" required>
+                            ${optionsHtml}
+                        </select>
+                    </td>
+                    <td class="px-4 py-2">
+                        <input type="number" class="item-qty w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10" min="1" value="${qty}" required>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <button type="button" class="btn-remove-row rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition" title="Remove row">
+                            <svg class="h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            $('#tbodyComponent').append(tr);
+
+            // Initialize Select2
+            $('.item-select').last().select2({
+                placeholder: "Search material...",
+                width: '100%',
+                dropdownParent: $('#modalFormWrapper') // Ensure dropdown z-index works inside modal
+            });
+        }
+
+        $(document).on('click', '.btn-remove-row', function () {
+            if ($('#tbodyComponent tr').length > 1) {
+                // Destroy select2 before removing to prevent memory leaks
+                $(this).closest('tr').find('.item-select').select2('destroy');$(this).closest('tr').remove();
+            } else {
+                showToast('warning', 'Warning', 'At least 1 material must be used!');
+            }
+        });
+
+        // =============================================
+        // SUBMIT (CREATE / EDIT)
+        // =============================================
+        function submitData() {
+            var headerId = $('#form_header_id').val();
+            var projectName = $('#form_project_name').val().trim();
+            var remarks = $('#form_remarks').val().trim();
+
+            if (!projectName) {
+                showToast('warning', 'Validation', 'Project name is required!');
+                $('#form_project_name').focus();
+                return;
+            }
+
+            var detailsArray = [];
+            var isValid = true;
+
+            $('#tbodyComponent tr').each(function () {
+                var invId = $(this).find('.item-select').val();
+                var qty = $(this).find('.item-qty').val();
+
+                if (!invId) {
+                    showToast('warning', 'Validation', 'Please select a material for all rows!');
+                    isValid = false;
+                    return false; // Break loop
+                }
+
+                if(!qty || qty <= 0) {
+                     showToast('warning', 'Validation', 'Quantity must be greater than 0!');
+                     isValid = false;
+                     return false;
+                }
+
+                detailsArray.push({
+                    inventory_id: parseInt(invId),
+                    qty_used: parseInt(qty)
+                });
+            });
+
+            if (!isValid) return;
+
+            var payload = {
+                project_name: projectName,
+                remarks: remarks,
+                details: detailsArray
+            };
+
+            var isEdit = headerId != 0;
+            // Determine the URL based on Edit or Create action
+            var targetUrl = isEdit
+                ? '@Url.Action("UpdateInventoryUsage", "BMS", new { area = "PE" })?header_id=' + headerId
+                : '@Url.Action("SubmitInventoryUsage", "BMS", new { area = "PE" })';
+
+            $('#btnSaveData').prop('disabled', true).html('<svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path></svg> Saving...');
+
+            $.ajax({
+                url: targetUrl,
+                type: 'POST',
+                data: JSON.stringify(payload),
+                contentType: 'application/json; charset=utf-8',
+                success: function (res) {
+                    if (res.success) {
+                        showToast('success', 'Success', res.message);
+                        closeModal();
+                        loadInventoryList();
+                    } else {
+                        showToast('error', 'Failed', res.message);
+                    }
+                },
+                error: function () {
+                    showToast('error', 'System Error', 'An error occurred while connecting to the server.');
+                },
+                complete: function () {
+                    $('#btnSaveData').prop('disabled', false).html('<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.5 3.5L20.5 6.5M21 7l-13 13H4v-4L17 3l4 4z" /></svg> Save Data');
+                }
+            });
+        }
+
+        // =============================================
+        // HELPERS
+        // =============================================
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Replaced custom toast function with SweetAlert2 Toast configuration
+        function showToast(type, title, message) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: type, // 'success', 'error', 'warning', 'info'
+                title: title,
+                text: message,
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true,
+                customClass: {
+                    container: 'font-sans'
+                },
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                }
+            });
+        }
+    </script>
+}

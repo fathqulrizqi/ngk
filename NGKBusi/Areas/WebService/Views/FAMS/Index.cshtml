@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <link href="@Url.Content("~/Content/bootstrap/css/bootstrap.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <title>F.A.M.S(Fixed Asset Management System)</title>
+    <script src="@Url.Content("~/Scripts/jquery.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/jquery-migrate.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($("#FAMSReportTable").length) {
+                $("#FAMSReportTable").tablesorter({
+                    theme: 'metro-dark',
+                    widthFixed: true,
+                    widgets: ['zebra', 'columns', 'filter', 'stickyHeaders', 'reflow', 'output'],
+                    widgetOptions: {
+                        stickyHeaders_attachTo: $("#FAMSReportTable").parent(),
+                        stickyHeaders_yScroll: $(window),
+                        output_delivery: 'download',
+                        output_saveFileName: 'FAMSData.csv',
+                        output_replaceCR: '&amp;',
+                        output_replaceTab: 'asfaf',
+                        filter_saveFilters: true,
+                        filter_searchDelay: 750
+                    }
+                }).tablesorterPager({
+                    container: $(".pager"),
+                    output: '{startRow} to {endRow} ({totalRows})'
+                });
+            }
+
+            $('#FAMSReportTable').on("click", "#btnDownload", function () {
+                $("#FAMSReportTable").trigger('outputTable');
+            });
+        });
+    </script>
+</head>
+<body>    
+    <div style="overflow:auto;">
+        <table id="FAMSReportTable" class="tablesorter" style="vertical-align:middle;">
+            <thead>
+                <tr class="dark-row">
+                    <th colspan="12" class="sorter-false">
+                        <h2 class="table-title" style="display:inline-block;">
+                            Asset List
+                        </h2>
+                        <button id="btnDownload" class="btn btn-default" style="z-index:99;">Download</button>
+                    </th>
+                </tr>
+                <tr>
+                    <th>Asset ID</th>
+                    <th class="filter-select" data-placeholder="-Type-">Asset Type</th>
+                    <th>Name</th>
+                    <th>Descr</th>
+                    <th class="filter-select" data-placeholder="-Section-">Section</th>
+                    <th class="filter-select" data-placeholder="-Location-">Location</th>
+                    <th>Asset Date</th>
+                    <th>Acc Value</th>
+                    <th>Updated Descr</th>
+                    <th class="filter-select" data-placeholder="-Section-">Updated Section</th>
+                    <th class="filter-select" data-placeholder="-Location-">Updated Location</th>
+                    <th>Auditor</th>
+                </tr>
+            </thead>
+            <tfoot>
+                <tr class="dark-row">
+                    <th colspan="12">
+                        <div class="pager">
+                            <button type="button" class="first"><<</button>
+                            <button type="button" class="prev"><</button>
+                            <span class="pagedisplay"></span>
+                            <button type="button" class="next">></button>
+                            <button type="button" class="last">>></button>
+                            <select class="pagesize" title="Select page size" style="color:black;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="40">40</option>
+                            </select>
+                            <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+            <tbody>
+                @foreach (var item in ViewBag.AssetList)
+                {
+                    <tr>
+                        <td>@(item.AssetID)</td>
+                        <td>@(item.AssetType)</td>
+                        <td>@(item.Name)</td>
+                        <td>@(item.Descr)</td>
+                        <td>@(item.Section)</td>
+                        <td>@(item.Location)</td>
+                        <td>@(item.EntryDate)</td>
+                        <td style="text-align:right;">@(item.AccValue.ToString("N0"))</td>
+                        <td>@(item.updatedDescr)</td>
+                        <td>@(item.updatedSection)</td>
+                        <td>@(item.updatedLocation)</td>
+                        <td>@(!String.IsNullOrEmpty(item.updatedUser) ? item.Users.Name : "")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+

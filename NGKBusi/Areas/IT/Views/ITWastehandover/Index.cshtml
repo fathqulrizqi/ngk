@@ -1,0 +1,1087 @@
+﻿﻿@{
+    ViewBag.Title = "IT Waste Handover";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid px-4">
+    <div class="card my-4 shadow-sm border-0">
+        <div class="card-body">
+            <!-- Baris Utama: Judul di Kiri & Tombol Aksi di Kanan -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="font-weight-bold text-dark m-0">
+                    <i class="fas fa-boxes text-primary mr-2"></i> IT Waste Handover Management
+                </h4>
+
+                <div class="d-flex">
+                    @if (ViewBag.IsChecker == null || !(bool)ViewBag.IsChecker)
+                    {
+                        <button type="button" id="btnSendToDisposal" class="btn btn-primary mr-2" style="display: none;">
+                            <i class="fas fa-share mr-1"></i> Kirim ke IT Disposal
+                        </button>
+
+                        <button type="button" class="btn btn-success" data-toggle="modal" data-target="#createHandoverModal">
+                            <i class="fas fa-plus mr-1"></i> Add New Handover
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <!-- Baris Kedua: Filter Tanggal di Kiri & Search + History Sent di Kanan -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                <!-- Sisi Kiri: Filter Tanggal & Download PDF -->
+                <div class="d-flex align-items-center flex-wrap mb-2 mb-md-0">
+                    <label class="font-weight-bold mr-1 mb-0" style="font-size: 0.85rem;">From:</label>
+                    <input type="date" id="filterDateFrom" class="form-control form-control-sm mr-2" style="width: 130px;" />
+                    <label class="font-weight-bold mr-1 mb-0" style="font-size: 0.85rem;">To:</label>
+                    <input type="date" id="filterDateTo" class="form-control form-control-sm mr-2" style="width: 130px;" />
+                    <button type="button" id="btnFilterDate" class="btn btn-primary btn-sm mr-2">
+                        <i class="fas fa-filter mr-1"></i> Filter
+                    </button>
+                    <button type="button" id="btnDownloadPdf" class="btn btn-danger btn-sm">
+                        <i class="fas fa-file-pdf mr-1"></i> Download PDF
+                    </button>
+                </div>
+
+                <!-- Sisi Kanan: Tombol History Sent & Tempat Search Box -->
+                <div class="d-flex align-items-center" id="rightSearchHistoryContainer">
+                    <button type="button" id="btnHistory" class="btn btn-secondary btn-sm font-weight-bold mr-2" style="display: inline-block;">
+                        <i class="fas fa-history mr-1"></i> History Sent
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table id="wasteHandoverTable" class="table table-bordered table-striped table-hover w-100" style="font-size: 0.9rem;">
+                    <thead class="thead-dark text-center">
+                        <tr>
+                            <th style="width: 5%;"></th>
+                            <th style="width: 5%;">No</th>
+                            <th>Items</th>
+                            <th style="width: 7%;">Qty</th>
+                            <th style="width: 8%;">Unit</th>
+                            <th>Asset No</th>
+                            <th>Type</th>
+                            <th>Condition</th>
+                            <th>Actions</th>
+                            <th>Confidentiality</th>
+                            <th>Name</th>
+                            <th>Dept</th>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 10%;">Action</th>
+                            <th style="width: 10%;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data loaded dynamically via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal untuk Check Status (Khusus Checker) -->
+<div class="modal fade" id="checkModal" tabindex="-1" role="dialog" aria-labelledby="checkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-dark">
+                <h5 class="modal-title font-weight-bold" id="checkModalLabel">
+                    <i class="fas fa-check-circle mr-1"></i> Verify Waste Handover
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <input type="hidden" id="selectedDisposalId" />
+                <p class="font-weight-bold mb-0">Yakin ingin mengubah status item ini menjadi Checked?</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary font-weight-bold px-3" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-info font-weight-bold text-dark px-4" onclick="submitStatus('Checked')">
+                    <i class="fas fa-check mr-1"></i> Yes, Set as Checked
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Create / Add New Item -->
+<div class="modal fade" id="createHandoverModal" tabindex="-1" role="dialog" aria-labelledby="createHandoverModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title font-weight-bold" id="createHandoverModalLabel">
+                    <i class="fas fa-plus-circle mr-1"></i> Tambah Serah Terima Limbah IT
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="wasteHandoverForm">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="font-weight-bold">Date</label>
+                            <input type="date" name="disposal_date" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" required />
+                        </div>
+                    </div>
+
+                    <div class="card border mb-3">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                            <h6 class="m-0 font-weight-bold">
+                                <i class="fas fa-list mr-2"></i> List Item Disposal
+                            </h6>
+                            <button type="button" id="btnTambahBaris" class="btn btn-success btn-sm font-weight-bold px-3">
+                                <i class="fas fa-plus mr-1"></i> Tambah Baris
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive m-0">
+                                <table class="table table-bordered m-0" style="font-size: 0.9rem;">
+                                    <thead class="thead-light text-center">
+                                        <tr>
+                                            <th style="width: 15%;">Name</th>
+                                            <th>Items</th>
+                                            <th style="width: 7%;">Qty</th>
+                                            <th style="width: 8%;">Unit</th>
+                                            <th>Asset No</th>
+                                            <th>Type</th>
+                                            <th style="width: 12%;">Condition</th>
+                                            <th style="width: 12%;">Actions</th>
+                                            <th style="width: 12%;">Confidentiality</th>
+                                            <th style="width: 6%;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="disposalTableBody">
+                                        <tr class="baris-aset">
+                                            <td>
+                                                <select name="Details[0].creator_name" class="form-control form-control-sm creator-select" required>
+                                                    <option value="">Pilih Nama...</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="text" name="Details[0].items" class="form-control form-control-sm item-input" required /></td>
+                                            <td><input type="number" name="Details[0].quantity" class="form-control form-control-sm qty-input text-center" value="1" required /></td>
+                                            <td><input type="text" name="Details[0].unit" class="form-control form-control-sm unit-input" value="unit" required /></td>
+                                            <td><input type="text" name="Details[0].asset_no" class="form-control form-control-sm asset-input" required /></td>
+                                            <td>
+                                                <select name="Details[0].type" class="form-control form-control-sm type-input" required>
+                                                    <option value="">Pilih...</option>
+                                                    <option value="Laptop">Laptop</option>
+                                                    <option value="PC">PC</option>
+                                                    <option value="Server">Server</option>
+                                                    <option value="Storage">Storage</option>
+                                                    <option value="Monitor">Monitor</option>
+                                                    <option value="Printer">Printer</option>
+                                                    <option value="Keyboard">Keyboard</option>
+                                                    <option value="Others">Others</option>
+                                                </select>
+                                            </td>
+                                            <td><input type="text" name="Details[0].condition" class="form-control form-control-sm condition-input" required /></td>
+                                            <td>
+                                                <select name="Details[0].actions" class="form-control form-control-sm actions-input" required>
+                                                    <option value="Auctioned">Auctioned</option>
+                                                    <option value="Donated">Donated</option>
+                                                    <option value="Destroyed">Destroyed</option>
+                                                    <option value="Scrap">Scrap</option>
+                                                    <option value="Repair">Repair</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select name="Details[0].confidentiality" class="form-control form-control-sm confidentiality-input" required>
+                                                    <option value="Public">Public</option>
+                                                    <option value="Internal">Internal</option>
+                                                    <option value="Confidential">Confidential</option>
+                                                </select>
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-danger btn-sm btn-hapus px-2 py-1 font-weight-bold">Del</button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Tutup</button>
+                <button type="button" id="btnSave" class="btn btn-danger font-weight-bold px-4" style="background-color: #e53935; border-color: #e53935;">
+                    <i class="fas fa-save mr-1"></i> Simpan & Kirim Pengajuan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Edit Item -->
+<div class="modal fade" id="editHandoverModal" tabindex="-1" role="dialog" aria-labelledby="editHandoverModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title font-weight-bold" id="editHandoverModalLabel">
+                    <i class="fas fa-edit mr-1"></i> Edit Serah Terima Limbah IT
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="editWasteHandoverForm">
+                    <input type="hidden" id="edit_disposal_id" name="disposal_id" />
+                    <div class="row mb-3">
+                        <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">Department (Dept)</label>
+                            <input type="text" id="edit_department" name="department" class="form-control" readonly />
+                        </div>
+                        <div class="col-md-6 form-group">
+                            <label class="font-weight-bold">Date</label>
+                            <input type="date" id="edit_date" name="date" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="card border mb-3">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                            <h6 class="m-0 font-weight-bold">
+                                <i class="fas fa-list mr-2"></i> List Item Disposal
+                            </h6>
+                            <button type="button" id="btnEditTambahBaris" class="btn btn-warning btn-sm font-weight-bold px-3 text-dark">
+                                <i class="fas fa-plus mr-1"></i> Tambah Baris
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive m-0">
+                                <table class="table table-bordered m-0" style="font-size: 0.9rem;">
+                                    <thead class="thead-light text-center">
+                                        <tr>
+                                            <th>Items</th>
+                                            <th style="width: 8%;">Qty</th>
+                                            <th style="width: 10%;">Unit</th>
+                                            <th>Asset No</th>
+                                            <th>Type</th>
+                                            <th>Condition</th>
+                                            <th>Actions</th>
+                                            <th>Confidentiality</th>
+                                            <th style="width: 6%;">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="editDisposalTableBody">
+                                        <!-- Baris dinamis akan dimasukkan via JavaScript -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary font-weight-bold" data-dismiss="modal">Tutup</button>
+                <button type="button" id="btnUpdate" class="btn btn-warning font-weight-bold px-4">
+                    <i class="fas fa-save mr-1"></i> Update Perubahan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- DataTables CSS & JS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css" />
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #2c5e50 0%, #a8c4b8 100%) !important;
+            background-attachment: fixed !important;
+            min-height: 100vh;
+        }
+
+        .dataTables_filter {
+            text-align: right !important;
+            float: none !important;
+            margin-bottom: 0 !important;
+        }
+
+            .dataTables_filter label {
+                text-align: left !important;
+                display: inline-flex;
+                align-items: center;
+                margin-bottom: 0 !important;
+            }
+
+        .dataTables_wrapper .row:last-child {
+            display: flex !important;
+            justify-content: flex-end !important;
+            align-items: center !important;
+        }
+
+        .dataTables_wrapper .dataTables_paginate {
+            float: none !important;
+            text-align: right !important;
+            display: flex !important;
+            justify-content: flex-end !important;
+            width: 100% !important;
+        }
+
+        .dataTables_wrapper .dataTables_info {
+            display: none !important;
+        }
+    </style>
+
+    <script>
+    var index = 1;
+    var globalUserOptions = '<option value="">Pilih Nama...</option>';
+
+    function openCheckModal(detailId) {
+        $('#selectedDisposalId').val(detailId);
+        $('#checkModal').modal('show');
+    }
+
+    function submitStatus(newStatus) {
+        var id = $('#selectedDisposalId').val();
+        if (!id) return;
+
+        Swal.fire({ title: "Memproses...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        $.ajax({
+            url: '@Url.Action("UpdateStatus", "ITWasteHandover", new { area = "IT" })',
+            type: 'POST',
+            data: { id: id, newStatus: newStatus, message: "Checked by Checker" },
+            success: function (response) {
+                $('#checkModal').modal('hide');
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: 'Status berhasil diubah menjadi Checked.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        if (typeof wasteTable !== 'undefined') {
+                            wasteTable.ajax.reload(null, false);
+                        }
+                    });
+                } else {
+                    Swal.fire('Gagal', response.message || 'Terjadi kesalahan.', 'error');
+                }
+            },
+            error: function (xhr) {
+                $('#checkModal').modal('hide');
+                Swal.fire('Error', 'Terjadi kesalahan pada server: ' + xhr.statusText, 'error');
+            }
+        });
+    }
+
+    function loadActiveUsersForTable() {
+        $.ajax({
+            url: '@Url.Action("GetActiveUsers", "ITWasteHandover", new { area = "IT" })',
+            type: 'GET',
+            success: function (res) {
+                globalUserOptions = '<option value="">Pilih Nama...</option>';
+                $.each(res, function (i, user) {
+                    globalUserOptions += '<option value="' + user.name + '" data-dept="' + (user.department || '-') + '">' + user.name + '</option>';
+                });
+                $('.creator-select').html(globalUserOptions);
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        loadActiveUsersForTable();
+    });
+
+    $(document).on("click", "#btnTambahBaris", function () {
+        var rowIdx = $('#disposalTableBody tr.baris-aset').length;
+
+        var barisBaru = `
+            <tr class="baris-aset">
+                <td>
+                    <select name="Details[${rowIdx}].creator_name" class="form-control form-control-sm creator-select" required>
+                        ${globalUserOptions}
+                    </select>
+                </td>
+                <td><input type="text" name="Details[${rowIdx}].items" class="form-control form-control-sm item-input" required /></td>
+                <td><input type="number" name="Details[${rowIdx}].quantity" class="form-control form-control-sm qty-input text-center" value="1" required /></td>
+                <td><input type="text" name="Details[${rowIdx}].unit" class="form-control form-control-sm unit-input" value="unit" required /></td>
+                <td><input type="text" name="Details[${rowIdx}].asset_no" class="form-control form-control-sm asset-input" required /></td>
+                <td>
+                    <select name="Details[${rowIdx}].type" class="form-control form-control-sm type-input" required>
+                        <option value="">Pilih...</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="PC">PC</option>
+                        <option value="Server">Server</option>
+                        <option value="Storage">Storage</option>
+                        <option value="Monitor">Monitor</option>
+                        <option value="Printer">Printer</option>
+                        <option value="Keyboard">Keyboard</option>
+                        <option value="Others">Others</option>
+                    </select>
+                </td>
+                <td><input type="text" name="Details[${rowIdx}].condition" class="form-control form-control-sm condition-input" required /></td>
+                <td>
+                    <select name="Details[${rowIdx}].actions" class="form-control form-control-sm actions-input" required>
+                        <option value="Auctioned">Auctioned</option>
+                        <option value="Donated">Donated</option>
+                        <option value="Destroyed">Destroyed</option>
+                        <option value="Scrap">Scrap</option>
+                        <option value="Repair">Repair</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="Details[${rowIdx}].confidentiality" class="form-control form-control-sm confidentiality-input" required>
+                        <option value="Public">Public</option>
+                        <option value="Internal">Internal</option>
+                        <option value="Confidential">Confidential</option>
+                    </select>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-danger btn-sm btn-hapus px-2 py-1 font-weight-bold">Del</button>
+                </td>
+            </tr>`;
+
+        $("#disposalTableBody").append(barisBaru);
+    });
+
+    $(document).on("click", ".btn-hapus", function () {
+        var row = $(this).closest("tr");
+        if ($("#disposalTableBody tr.baris-aset").length <= 1) {
+            Swal.fire("Perhatian", "Minimal harus ada 1 baris item pengajuan.", "warning");
+            return;
+        }
+        row.remove();
+        reindexCreateRows();
+    });
+
+    function reindexCreateRows() {
+        $('#disposalTableBody tr.baris-aset').each(function (idx) {
+            $(this).find('input, select').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/\[\d+\]/, '[' + idx + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+        });
+    }
+
+    var editIndex = 0;
+    var wasteTable;
+
+    $(document).ready(function () {
+        $('#btnSendToDisposal').hide();
+
+        wasteTable = $('#wasteHandoverTable').DataTable({
+            "ajax": {
+                "url": '@Url.Action("GetWasteHandoverHeaders", "ITWasteHandover", new { area = "IT" })',
+                "type": "GET",
+                "datatype": "json",
+                "data": function (d) {
+                    d.dateFrom = $('#filterDateFrom').val();
+                    d.dateTo = $('#filterDateTo').val();
+                },
+                "dataSrc": function (json) {
+                    return json.data || [];
+                }
+            },
+            "dom": '<"row mb-3"<"col-md-12"f>>rt<"row mt-3"<"col-md-6"><"col-md-6 text-right"p>>',
+            "columns": [
+                {
+                    "title": '<div class="text-center"><input type="checkbox" id="selectAllCheckbox" /></div>',
+                    "data": null,
+                    "orderable": false,
+                    "render": function (data, type, row) {
+                         var rawStatus = (row.status || '').toLowerCase();
+                         if (rawStatus === "checked" || rawStatus === "signedbycreator") {
+                              return '<div class="text-center"><input type="checkbox" class="row-checkbox" value="' + row.detail_id + '" /></div>';
+                         }
+                         return '';
+                    },
+                    "className": "text-center"
+                },
+                {
+                    "data": null,
+                    "render": function (data, type, row, meta) { return meta.row + 1; },
+                    "className": "text-center",
+                    "title": "No"
+                },
+                { "data": "items" },
+                { "data": "quantity", "className": "text-center" },
+                { "data": "unit", "className": "text-center" },
+                { "data": "asset_no", "className": "text-center" },
+                { "data": "type" },
+                { "data": "condition" },
+                { "data": "actions" },
+                { "data": "confidentiality" },
+                { "data": "requester_name" },
+                { "data": "department" },
+                {
+                    "data": "created_date",
+                    "render": function (data) {
+                        if (!data) return '-';
+                        if (typeof data === 'string' && data.indexOf('/Date(') >= 0) {
+                            var timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, '$1'));
+                            var dateObj = new Date(timestamp);
+                            return !isNaN(dateObj) ? dateObj.toLocaleDateString('id-ID') : data;
+                        }
+                        var parts = data.split('T')[0].split('-');
+                        if (parts.length === 3) {
+                            return parts[2] + '/' + parts[1] + '/' + parts[0];
+                        }
+                        return data;
+                    },
+                    "className": "text-center"
+                },
+                {
+                    "data": null,
+                    "render": function (data, type, row) {
+                        var rawStatus = (row.status || '').toLowerCase();
+                        var actionButtons = '<div class="text-center" style="white-space: nowrap;">';
+
+                        if ((rawStatus === 'pending' || rawStatus === 'sent' || rawStatus === '') && row.canDelete === true) {
+                            actionButtons += `
+                                <button type="button" class="btn btn-sm btn-warning btn-open-edit mb-1"
+                                    data-id="${row.disposal_id}"
+                                    data-department="${row.department}"
+                                    data-date="${row.created_date}"
+                                    data-items="${row.items}"
+                                    data-qty="${row.quantity}"
+                                    data-unit="${row.unit}"
+                                    data-asset="${row.asset_no}"
+                                    data-type="${row.type}"
+                                    data-condition="${row.condition}"
+                                    data-actions="${row.actions}"
+                                    data-confidentiality="${row.confidentiality}"
+                                    title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger btn-delete mb-1"
+                                    data-id="${row.detail_id}"
+                                    title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>`;
+                        }
+
+                        if ((rawStatus === 'pending' || rawStatus === 'sent' || rawStatus === '') && row.canCheck === true) {
+                            actionButtons += `
+                                <button type="button" class="btn btn-sm btn-info mb-1 text-dark font-weight-bold" onclick="openCheckModal(${row.detail_id})" title="Check Document">
+                                    <i class="fas fa-check-circle"></i> Check
+                                </button>`;
+                        }
+
+                        if (rawStatus === 'checked' && row.canSign === true) {
+                            actionButtons += `
+                                <button type="button" class="btn btn-sm btn-success mb-1" onclick="signDocument(${row.detail_id})" title="Sign Document">
+                                    <i class="fas fa-check"></i> Sign
+                                </button>`;
+                        }
+
+                        if (actionButtons === '<div class="text-center" style="white-space: nowrap;">') {
+                            return '<div class="text-center"><span class="badge badge-secondary" style="font-size: 0.8rem;">View Only</span></div>';
+                        }
+
+                        actionButtons += '</div>';
+                        return actionButtons;
+                    },
+                    "className": "text-center",
+                    "orderable": false
+                },
+                {
+                    "data": "status",
+                    "render": function (data) {
+                        return '<span class="badge badge-info text-white px-2 py-1 mb-1">' + (data || 'Sent') + '</span>';
+                    },
+                    "className": "text-center"
+                }
+            ],
+            "language": {
+                "emptyTable": "Belum ada data serah terima limbah IT."
+            },
+            "drawCallback": function (settings) {
+                $('#selectAllCheckbox').prop('checked', false);
+                $('#btnSendToDisposal').fadeOut();
+
+                var api = this.api();
+                var hasCheckableRows = false;
+
+                api.rows().every(function () {
+                    var data = this.data();
+                    var status = (data.status || '').toLowerCase();
+                    if (status === "checked" || status === "signedbycreator") {
+                        hasCheckableRows = true;
+                    }
+                });
+
+                if (!hasCheckableRows) {
+                    $('#selectAllCheckbox').hide();
+                } else {
+                    $('#selectAllCheckbox').show();
+                }
+            }
+        });
+
+        // Pindahkan kotak Search bawaan DataTables tepat ke sebelah kiri tombol History Sent di pojok kanan
+        $('.dataTables_filter').appendTo('#rightSearchHistoryContainer');
+        $('.dataTables_filter input').addClass('form-control-sm ml-1');
+        $('#btnHistory').show();
+    });
+
+    $(document).on('click', '#btnFilterDate', function () {
+        wasteTable.ajax.reload();
+    });
+
+    $(document).on('click', '#btnDownloadPdf', function (e) {
+        e.preventDefault();
+
+        var selectedIds = [];
+        $('.row-checkbox:checked').each(function () {
+            selectedIds.push($(this).val());
+        });
+
+        var dateFrom = $('#filterDateFrom').val();
+        var dateTo = $('#filterDateTo').val();
+
+        var url = '@Url.Action("PrintWastePdf", "ITWasteHandover", new { area = "IT" })' + '?ids=' + selectedIds.join(',') + '&dateFrom=' + dateFrom + '&dateTo=' + dateTo;
+
+        var popupWidth = 1000;
+        var popupHeight = 650;
+        var left = (screen.width - popupWidth) / 2;
+        var top = (screen.height - popupHeight) / 2;
+
+        var popupWindow = window.open(
+            url,
+            'PopupPrint',
+            'width=' + popupWidth + ',height=' + popupHeight + ',top=' + top + ',left=' + left + ',scrollbars=yes,resizable=yes'
+        );
+
+        if (popupWindow) {
+            popupWindow.focus();
+        } else {
+            Swal.fire("Peringatan", "Pop-up terblokir oleh browser. Harap izinkan pop-up untuk situs ini.", "warning");
+        }
+    });
+
+    $(document).on('click', '#btnHistory', function () {
+        var isHistoryMode = $(this).hasClass('btn-info');
+
+        if (!isHistoryMode) {
+            $(this).removeClass('btn-secondary').addClass('btn-info').html('<i class="fas fa-arrow-left mr-1"></i> Back to Active');
+            wasteTable.ajax.url('@Url.Action("GetHistoryWasteHandover", "ITWasteHandover", new { area = "IT" })');
+        } else {
+            $(this).removeClass('btn-info').addClass('btn-secondary').html('<i class="fas fa-history mr-1"></i> History Sent');
+            wasteTable.ajax.url('@Url.Action("GetWasteHandoverHeaders", "ITWasteHandover", new { area = "IT" })');
+        }
+
+        wasteTable.ajax.reload();
+    });
+
+    $(document).on('change', '#selectAllCheckbox', function () {
+        var isChecked = $(this).is(':checked');
+        $('.row-checkbox').prop('checked', isChecked).trigger('change');
+    });
+
+    $(document).on('change', '.row-checkbox', function () {
+        var checkedCount = $('.row-checkbox:checked').length;
+        if (checkedCount > 0) {
+            $('#btnSendToDisposal').stop(true, true).fadeIn();
+        } else {
+            $('#btnSendToDisposal').stop(true, true).fadeOut();
+            $('#selectAllCheckbox').prop('checked', false);
+        }
+
+        if ($(this).is(':checked')) {
+            if ($('.row-checkbox:checked').length === $('.row-checkbox').length) {
+                $('#selectAllCheckbox').prop('checked', true);
+            }
+        } else {
+            $('#selectAllCheckbox').prop('checked', false);
+        }
+    });
+
+    $(document).on('click', '#btnSendToDisposal', function () {
+        var selectedIds = [];
+        var hasEmptyItem = false;
+
+        $('.row-checkbox:checked').each(function () {
+            var rowData = wasteTable.row($(this).closest('tr')).data();
+
+            if (rowData && rowData.items && rowData.items.trim() !== "") {
+                selectedIds.push($(this).val());
+            } else {
+                hasEmptyItem = true;
+            }
+        });
+
+        if (selectedIds.length === 0) {
+            Swal.fire("Perhatian", "Pilih minimal satu data valid yang berstatus Checked (Item tidak boleh kosong).", "warning");
+            return;
+        }
+
+        if (hasEmptyItem) {
+            Swal.fire("Informasi", "Beberapa baris kosong yang Anda pilih diabaikan dan hanya data valid yang dikirim.", "info");
+        }
+
+        Swal.fire({
+            title: "Kirim ke IT Disposal?",
+            text: "Data yang dipilih akan dikirim ke modul IT Disposal.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Kirim",
+            cancelButtonText: "Batal"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: "Memproses...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                $.ajax({
+                    url: '@Url.Action("SendToITDisposal", "ITWasteHandover", new { area = "IT" })',
+                    type: 'POST',
+                    data: { selectedIds: selectedIds },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: response.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                if (typeof wasteTable !== 'undefined') {
+                                    wasteTable.ajax.reload(null, false);
+                                }
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'Terjadi kesalahan pada server: ' + xhr.statusText, 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    function signDocument(detailId) {
+        Swal.fire({
+            title: "Sign Dokumen?",
+            text: "Apakah Anda yakin ingin melakukan Sign pada dokumen ini?",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Sign",
+            cancelButtonText: "Batal"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: "Memproses...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+                $.ajax({
+                    url: '@Url.Action("SignWasteHandover", "ITWasteHandover", new { area = "IT" })',
+                    type: 'POST',
+                    data: { id: detailId },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                text: response.message,
+                                timer: 1500,
+                                showConfirmButton: false
+                            }).then(() => {
+                                if (typeof wasteTable !== 'undefined') {
+                                    wasteTable.ajax.reload(null, false);
+                                }
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'Terjadi kesalahan pada server: ' + xhr.statusText, 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function tambahBarisEdit(data = {}) {
+        var items = data.items || '';
+        var quantity = data.quantity || 1;
+        var unit = data.unit || 'unit';
+        var asset_no = data.asset_no || '';
+        var type = data.type || '';
+        var condition = data.condition || '';
+        var actions = data.actions || 'Auctioned';
+        var confidentiality = data.confidentiality || 'Public';
+
+        var barisEditBaru = `
+            <tr class="baris-edit-aset">
+                <td><input type="text" name="Details[${editIndex}].items" class="form-control form-control-sm item-input" value="${items}" required /></td>
+                <td><input type="number" name="Details[${editIndex}].quantity" class="form-control form-control-sm qty-input text-center" value="${quantity}" required /></td>
+                <td><input type="text" name="Details[${editIndex}].unit" class="form-control form-control-sm unit-input" value="${unit}" required /></td>
+                <td><input type="text" name="Details[${editIndex}].asset_no" class="form-control form-control-sm asset-input" value="${asset_no}" required /></td>
+                <td>
+                    <select name="Details[${editIndex}].type" class="form-control form-control-sm type-input" required>
+                        <option value="">Pilih...</option>
+                        <option value="Laptop" ${type === 'Laptop' ? 'selected' : ''}>Laptop</option>
+                        <option value="PC" ${type === 'PC' ? 'selected' : ''}>PC</option>
+                        <option value="Server" ${type === 'Server' ? 'selected' : ''}>Server</option>
+                        <option value="Storage" ${type === 'Storage' ? 'selected' : ''}>Storage</option>
+                        <option value="Monitor" ${type === 'Monitor' ? 'selected' : ''}>Monitor</option>
+                        <option value="Printer" ${type === 'Printer' ? 'selected' : ''}>Printer</option>
+                        <option value="Keyboard" ${type === 'Keyboard' ? 'selected' : ''}>Keyboard</option>
+                        <option value="Others" ${type === 'Others' ? 'selected' : ''}>Others</option>
+                    </select>
+                </td>
+                <td><input type="text" name="Details[${editIndex}].condition" class="form-control form-control-sm condition-input" value="${condition}" required /></td>
+                <td>
+                    <select name="Details[${editIndex}].actions" class="form-control form-control-sm actions-input" required>
+                        <option value="Auctioned" ${actions === 'Auctioned' ? 'selected' : ''}>Auctioned</option>
+                        <option value="Donated" ${actions === 'Donated' ? 'selected' : ''}>Donated</option>
+                        <option value="Destroyed" ${actions === 'Destroyed' ? 'selected' : ''}>Destroyed</option>
+                        <option value="Scrap" ${actions === 'Scrap' ? 'selected' : ''}>Scrap</option>
+                        <option value="Repair" ${actions === 'Repair' ? 'selected' : ''}>Repair</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="Details[${editIndex}].confidentiality" class="form-control form-control-sm confidentiality-input" required>
+                        <option value="Public" ${confidentiality === 'Public' ? 'selected' : ''}>Public</option>
+                        <option value="Internal" ${confidentiality === 'Internal' ? 'selected' : ''}>Internal</option>
+                        <option value="Confidential" ${confidentiality === 'Confidential' ? 'selected' : ''}>Confidential</option>
+                    </select>
+                </td>
+                <td class="text-center"><button type="button" class="btn btn-danger btn-sm btn-hapus-edit px-2 py-1 font-weight-bold">Del</button></td>
+            </tr>`;
+
+        $("#editDisposalTableBody").append(barisEditBaru);
+        editIndex++;
+    }
+
+    $(document).on("click", "#btnEditTambahBaris", function () {
+        tambahBarisEdit();
+    });
+
+    $(document).on("click", ".btn-hapus-edit", function () {
+        var row = $(this).closest("tr");
+        if ($("#editDisposalTableBody tr").length <= 1) {
+            Swal.fire("Perhatian", "Minimal harus ada 1 baris item disposal.", "warning");
+            return;
+        }
+        row.remove();
+        reindexEditRows();
+    });
+
+    function reindexEditRows() {
+        $('#editDisposalTableBody tr').each(function (idx) {
+            $(this).find('input, select').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/\[\d+\]/, '[' + idx + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+        });
+        editIndex = $('#editDisposalTableBody tr').length;
+    }
+
+    $(document).on("click", "#btnSave", function (e) {
+        e.preventDefault();
+
+        var firstRow = $("#disposalTableBody tr.baris-aset").first();
+        var creatorVal = firstRow.find('.creator-select').val();
+        var itemsVal = firstRow.find('.item-input').val();
+        var assetNoVal = firstRow.find('.asset-input').val();
+        var typeVal = firstRow.find('.type-input').val();
+
+        if (!creatorVal || !itemsVal || !assetNoVal || !typeVal) {
+            Swal.fire({ icon: "warning", title: "Mohon lengkapi data nama dan item disposal!", timer: 1500, showConfirmButton: false });
+            return;
+        }
+
+        var formData = $('#wasteHandoverForm').serialize();
+
+        Swal.fire({ title: "Sedang memproses...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        $.ajax({
+            url: '@Url.Action("SaveWasteHandover", "ITWasteHandover", new { area = "IT" })',
+            type: "POST",
+            data: formData,
+            success: function (response) {
+                if (response.success) {
+                    Swal.fire({ icon: "success", title: "Berhasil!", text: response.message || "Data berhasil disimpan.", timer: 1500, showConfirmButton: false });
+                    $('#createHandoverModal').modal('hide');
+                    $('#wasteHandoverForm')[0].reset();
+                    $('#disposalTableBody').html(`
+                        <tr class="baris-aset">
+                            <td>
+                                <select name="Details[0].creator_name" class="form-control form-control-sm creator-select" required>
+                                    ${globalUserOptions}
+                                </select>
+                            </td>
+                            <td><input type="text" name="Details[0].items" class="form-control form-control-sm item-input" required /></td>
+                            <td><input type="number" name="Details[0].quantity" class="form-control form-control-sm qty-input text-center" value="1" required /></td>
+                            <td><input type="text" name="Details[0].unit" class="form-control form-control-sm unit-input" value="unit" required /></td>
+                            <td><input type="text" name="Details[0].asset_no" class="form-control form-control-sm asset-input" required /></td>
+                            <td>
+                                <select name="Details[0].type" class="form-control form-control-sm type-input" required>
+                                    <option value="">Pilih...</option>
+                                    <option value="Laptop">Laptop</option>
+                                    <option value="PC">PC</option>
+                                    <option value="Server">Server</option>
+                                    <option value="Storage">Storage</option>
+                                    <option value="Monitor">Monitor</option>
+                                    <option value="Printer">Printer</option>
+                                    <option value="Keyboard">Keyboard</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </td>
+                            <td><input type="text" name="Details[0].condition" class="form-control form-control-sm condition-input" required /></td>
+                            <td>
+                                <select name="Details[0].actions" class="form-control form-control-sm actions-input" required>
+                                    <option value="Auctioned">Auctioned</option>
+                                    <option value="Donated">Donated</option>
+                                    <option value="Destroyed">Destroyed</option>
+                                    <option value="Scrap">Scrap</option>
+                                    <option value="Repair">Repair</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select name="Details[0].confidentiality" class="form-control form-control-sm confidentiality-input" required>
+                                    <option value="Public">Public</option>
+                                    <option value="Internal">Internal</option>
+                                    <option value="Confidential">Confidential</option>
+                                </select>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-danger btn-sm btn-hapus px-2 py-1 font-weight-bold">Del</button>
+                            </td>
+                        </tr>
+                    `);
+                    if (typeof wasteTable !== 'undefined') {
+                        wasteTable.ajax.reload(null, false);
+                    }
+                } else {
+                    Swal.fire({ icon: "error", title: "Gagal", text: response.message });
+                }
+            },
+            error: function (xhr) {
+                Swal.fire("Error", "Status: " + xhr.status + " - " + xhr.responseText, "error");
+            }
+        });
+    });
+
+    $(document).on("click", ".btn-open-edit", function () {
+        $('#edit_disposal_id').val($(this).data('id'));
+        $('#edit_department').val($(this).data('department'));
+
+        var rawDate = $(this).data('date');
+        if (rawDate) {
+            var timestamp = parseInt(rawDate.replace(/\/Date\((\d+)\)\//, '$1'));
+            var dateObj = new Date(timestamp);
+            if (!isNaN(dateObj)) {
+                var formattedDate = dateObj.toISOString().split('T')[0];
+                $('#edit_date').val(formattedDate);
+            }
+        }
+
+        $('#editDisposalTableBody').empty();
+        editIndex = 0;
+
+        tambahBarisEdit({
+            items: $(this).data('items'),
+            quantity: $(this).data('qty'),
+            unit: $(this).data('unit'),
+            asset_no: $(this).data('asset'),
+            type: $(this).data('type'),
+            condition: $(this).data('condition'),
+            actions: $(this).data('actions'),
+            confidentiality: $(this).data('confidentiality')
+        });
+
+        $('#editHandoverModal').modal('show');
+    });
+
+    $(document).on("click", "#btnUpdate", function (e) {
+        e.preventDefault();
+
+        var formData = $('#editWasteHandoverForm').serialize();
+
+        Swal.fire({ title: "Menyimpan Perubahan...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+
+        $.ajax({
+            url: '@Url.Action("UpdateWasteHandover", "ITWasteHandover", new { area = "IT" })',
+            type: "POST",
+            data: formData,
+            success: function (response) {
+                if (response.success) {
+                    Swal.fire({ icon: "success", title: "Berhasil!", text: response.message || "Data berhasil diperbarui.", timer: 1500, showConfirmButton: false });
+                    $('#editHandoverModal').modal('hide');
+                    if (typeof wasteTable !== 'undefined') {
+                        wasteTable.ajax.reload(null, false);
+                    }
+                } else {
+                    Swal.fire({ icon: "error", title: "Gagal", text: response.message });
+                }
+            },
+            error: function (xhr) {
+                Swal.fire("Error", "Status: " + xhr.status + " - " + xhr.responseText, "error");
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        $("body").addClass("sidebar-toggled");
+        $(".sidebar").addClass("toggled");
+
+        if (window.innerWidth >= 768) {
+            $(".sidebar").css({
+                "width": "65px",
+                "overflow": "visible"
+            });
+            $(".sidebar.toggled .nav-item .collapse").removeClass("show");
+        }
+    });
+
+    $(document).on("click", ".btn-delete", function () {
+        var id = $(this).data("id");
+
+        Swal.fire({
+            title: "Are you sure?",
+            text: "This data will be permanently deleted.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, Delete",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#d33"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '@Url.Action("DeleteWasteHandover", "ITWasteHandover", new { area = "IT" })',
+                    type: 'POST',
+                    data: { id: id },
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Deleted',
+                                text: res.message || 'Data berhasil dihapus.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+
+                            if (typeof wasteTable !== 'undefined') {
+                                wasteTable.ajax.reload(null, false);
+                            }
+                            $('#btnSendToDisposal').fadeOut();
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire('Error', 'Terjadi kesalahan: ' + xhr.statusText, 'error');
+                    }
+                });
+            }
+        });
+    });
+    </script>
+}

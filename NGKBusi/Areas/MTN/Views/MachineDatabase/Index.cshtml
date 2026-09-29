@@ -1,0 +1,291 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.MTN.Models;
+@using System.Text.RegularExpressions;
+@using System.Linq;
+
+@{
+    ViewBag.Title = "Index";
+    var currUser = ((ClaimsIdentity)User.Identity);
+    MachineDatabaseConnection db = new MachineDatabaseConnection();
+    DefaultConnection dbDef = new DefaultConnection();
+}
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ui-datepicker-calendar {
+            display: none;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/MTN/MachineDatabase.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<table id="tbMachineDB" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="17" class="sorter-false">
+                <h2 class="table-title">
+                    Machine List
+                    <img id="btnMDAdd" class="pointer" src="@Url.Content("~/Content/Images/add-white.png")" width="55" height="55" data-toggle="modal" data-target="#mdModal" />
+                    <button id="btnDownload" class="btn btn-default btnDownload" style="z-index:99;">Download</button>
+                </h2>
+            </th>
+        </tr>
+        <tr>
+            <th>Machine</th>
+            <th>No Machine</th>
+            <th>Asset No</th>
+            <th>Model</th>
+            <th>Power</th>
+            <th class="filter-select" data-placeholder="-Maker-">Maker</th>
+            <th>Serial</th>
+            <th>Coming Date</th>
+            <th>Qty</th>
+            <th>Start Date</th>
+            <th>End Date</th>
+            <th>Overhaul Schedule</th>
+            <th>Remark</th>
+            <th class="filter-select" data-placeholder="-Status-">Status</th>
+            <th class="filter-select" data-placeholder="-Area-">Area</th>
+            <th class="filter-select" data-placeholder="-Scheduled-">Schedule Item</th>
+            <th class="filter-false sorter-false"></th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="17">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+        @foreach (var item in ViewBag.machineList)
+        {
+            int currParentID = item.id;
+            var childRow = db.MTN_MachineDatabase_List.Where(x => x.Machine_Parent_ID == currParentID).ToList();
+
+            <tr>
+                <td class="text-left">
+                    @if (childRow.Count > 0)
+                    {
+                        <a href="#" class="toggle" data-id="@(item.id)">@(item.Name)</a>
+                    }
+                    else
+                    {
+                        @(item.Name)
+                    }
+                </td>
+                <td>@(item.Machine_Number)</td>
+                <td>@(item.Asset_No)</td>
+                <td>@(item.Model)</td>
+                <td>@(item.Power)</td>
+                <td>@(item.Maker)</td>
+                <td>@(item.Serial_No)</td>
+                <td>@(item.Coming_Date != null ? item.Coming_Date.ToString("MMM-yyyy") : "" )</td>
+                <td>@(item.Qty)</td>
+                <td>@(item.Start_Date != null ? item.Start_Date.ToString("MMM-yyyy") : "" )</td>
+                <td>@(item.End_Date != null ? item.End_Date.ToString("MMM-yyyy") : "" )</td>
+                <td>@(item.Overhaul_Schedule != null ? item.Overhaul_Schedule.ToString("MMM-yyyy") : "" )</td>
+                <td>@(item.Remark)</td>
+                <td>@(item.Status)</td>
+                <td>@(item.Area.Name)</td>
+                <td class="text-center" data-isscheduled="@(item.Is_Scheduled)">
+                    @if (item.Is_Scheduled == true)
+                    {
+                        <i class="fa-solid fa-check"></i>
+                        <label class="d-none">Scheduled</label>
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-xmark"></i>
+                        <label class="d-none">Not Scheduled</label>
+                    }
+                </td>
+                <td>
+                    <span class="addMDChild pointerFade fa fa-plus" data-area="@item.Area.Name" data-areaid="@item.Area_ID" data-id="@item.id"></span>
+                    <span class="editMDItem pointerFade fa fa-edit" data-area="@item.Area.Name" data-areaid="@item.Area_ID" data-issuedid="@item.Issued_By" data-id="@item.id"></span>
+                    @if (childRow.Count == 0)
+                    {
+                        <span class="deleteMDItem pointerFade fa fa-trash" data-issuedid="@item.Issued_By" data-id="@item.id"></span>
+                    }
+                    else
+                    {
+                        <span class="deleteMDItem pointerFade fa fa-trash" data-issuedid="@item.Issued_By" data-id="@item.id" style="display:none;"></span>
+                    }
+                </td>
+            </tr>
+
+            @Html.Partial("_MachineChildRow", new ViewDataDictionary() { { "parentID", item.id }, { "paddingLeft", 0 } })
+        }
+    </tbody>
+</table>
+
+<div id="mdModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form action="@Url.Action("MDAdd","MachineDatabase",new { area = "MTN" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add New Machine</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div id="divMDReplace" class="form-group row" style="display:none;">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#selMDMainMachine"></label>
+                            <div class="col-9">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="cbMDReplace" value="1">
+                                    <label class="form-check-label" for="cbMDReplace">Replace Machine</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold text-right font-weight-bold" for="#selMDSubMachine">Area</label>
+                            <div class="col-9">
+                                <select id="selMDArea" name="iMDArea" class="form-control" required>
+                                    <option value="">-Choose Area-</option>
+                                    @foreach (var item in ViewBag.areaList)
+                                    {
+                                        <option value="@(item.id)">@(item.Name)</option>
+                                    }
+                                </select>
+                                <span id="spanMDArea" style="display:none;">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#selMDMainMachine">Machine</label>
+                            <div class="col-9">
+                                <input type="text" id="txtMachine" name="iMachine" value="" class="form-control" placeholder="Machine" required />
+                                <input type="hidden" id="txtMachineID" name="iMachineID" value="" class="form-control" placeholder="Machine ID" />
+                                <input type="hidden" id="txtMachineParent" name="iMachineParent" value="" class="form-control" placeholder="Machine Parent" />
+                                <input type="hidden" id="txtMachineOld" name="iMachineOld" value="" class="form-control" placeholder="Machine Old" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDMachineNo">Machine No</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDMachineNo" id="txtMDMachineNo" class="form-control" placeholder="Machine No" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#selMDMainMachine">Asset No</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDAssetNo" id="txtMDAssetNo" value="" class="form-control" placeholder="Asset No" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDModel">Model</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDModel" id="txtMDModel" class="form-control" placeholder="Model" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDPower">Power</label>
+                            <div class="col-9">
+                                <textarea id="txtMDPower" name="iMDPower" placeholder="Power" class="form-control"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDMaker">Maker</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDMaker" id="txtMDMaker" class="form-control" placeholder="Maker" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDSerial">Serial</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDSerial" id="txtMDSerial" class="form-control" placeholder="Serial" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDComingDate">Coming Date</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDComingDate" id="txtMDComingDate" autocomplete="off" class="form-control MDDatepicker" placeholder="Coming Date" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDQty">Jumlah</label>
+                            <div class="col-9">
+                                <input type="number" name="iMDQty" id="txtMDQty" class="form-control" placeholder="Jumlah" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDStartDate">Start Date</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDStartDate" id="txtMDStartDate" autocomplete="off" class="form-control MDDatepicker" placeholder="Start Date" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDEndDate">End Date</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDEndDate" id="txtMDEndDate" autocomplete="off" class="form-control MDDatepicker" placeholder="End Date" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDOverhaulSchedule">Overhaul Schedule</label>
+                            <div class="col-9">
+                                <input type="text" name="iMDOverhaulSchedule" id="txtMDOverhaulSchedule" autocomplete="off" class="form-control MDDatepicker" placeholder="Overhaul Schedule" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtMDRemark">Remark</label>
+                            <div class="col-9">
+                                <textarea id="txtMDRemark" name="iMDRemark" rows="5" cols="20" class="form-control" placeholder="Remark"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#selMDStatus">Status</label>
+                            <div class="col-9">
+                                <select id="selMDStatus" name="iMDStatus" class="form-control" required>
+                                    <option value="">-Choose Status-</option>
+                                    <option value="Used">Used</option>
+                                    <option value="Not Used">Not Used</option>
+                                    <option value="Write Off">Write Off</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold">Scheduled</label>
+                            <div class="col-9">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="iIsScheduled" id="cbIsScheduled" value="1">
+                                    <label class="form-check-label" for="cbIsScheduled">Include In Schedule</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnMDSubmit" type="submit" class="btn btn-default">Submit</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,506 @@
+﻿@{
+    ViewBag.Title = "Spark Plug Qr Generator";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section scriptHead{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .datatable-top {
+            margin: 0;
+            padding: 5px 0 0 0;
+        }
+
+        .datatable-input {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+
+        #selectPartName + .select2-container .select2-selection--single {
+            height: auto;
+        }
+
+        #selectPartName + .select2-container .select2-selection__rendered {
+            padding-top: 5px;
+            padding-bottom: 5px;
+            line-height: 1.5;
+            align-items: center;
+        }
+
+        #selectPartName + .select2-container .select2-selection__arrow {
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+
+        #quantitySelector + .select2-container .select2-selection--single {
+            height: auto;
+        }
+
+        #quantitySelector + .select2-container .select2-selection__rendered {
+            padding-top: 5px;
+            padding-bottom: 5px;
+            line-height: 1.5;
+            align-items: center;
+        }
+
+        #quantitySelector + .select2-container .select2-selection__arrow {
+            height: 100%;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+}
+
+@{
+    var typeList = ViewBag.TypeList as List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_Master_Type> ?? new List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_Master_Type>();
+    var historyList = ViewBag.HistoryList as List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_History> ?? new List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_History>();
+}
+
+<body class="w-100 m-0 p-0 bg-gray-50 min-h-[100vh]">
+    <h1 class="text-2xl font-bold text-gray-800 mb-6">Qr Spark Plug Generator</h1>
+    <div class="flex flex-wrap justify-between">
+        <div class="w-full lg:w-[48%]">
+            <div class="lg:col-span-1 bg-white p-0 rounded-lg shadow mb-3">
+                <div class="flex justify-between items-center border-b p-3">
+                    <h2 class="text-lg font-semibold py-1 text-gray-700">Generate Label</h2>
+                </div>
+                <form id="generateQr" method="post" action="@Url.Action("createHistory", "AssemblyQrSparkPlug")" class="px-4 py-3">
+
+                    @Html.AntiForgeryToken()
+                    <div class="flex">
+                        <div class="w-50 pr-2">
+                            <div class="mb-2">
+                                <label for="selectPartName" class="block text-sm font-medium text-gray-600 mb-1.5">Part Name</label>
+                                <div class="flex-grow">
+                                    <select name="id_tipe" id="selectPartName" required class="w-full px-3 py-[5px] border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                                        <option value="" selected>Pilih Tipe...</option>
+                                        @if (typeList.Any())
+                                        {
+                                            foreach (var item in typeList)
+                                            {
+                                                <option value="@item.id">@item.tipe</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="quantity" class="block text-sm font-medium text-gray-600 mb-1.5">Quantity</label>
+                                <div class="relative">
+                                    <select id="quantitySelector" name="qty" class="block w-full rounded-lg pl-2 border border-gray-300 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150">
+                                        <option value="" selected>Pilih Quantity...</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                        <option value="60">60</option>
+                                        <option value="80">80</option>
+                                        <option value="96">96</option>
+                                        <option value="99">99</option>
+                                        <option value="100">100</option>
+                                        <option value="manual">Input Manual...</option>
+                                    </select>
+
+                                    <div id="manualInputContainer" class="hidden mt-2">
+                                        <input type="number" id="manualQuantity" class="block w-full rounded-lg pl-2 border border-gray-300 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150" placeholder="Masukkan jumlah custom" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- [TAMBAHAN BARU]: Input untuk Page Count -->
+                            <div class="mb-2">
+                                <label for="page_count" class="block text-sm font-medium text-gray-600 mb-1.5">Page Count (Jumlah Halaman)</label>
+                                <div class="relative">
+                                    <input type="number" id="page_count" name="page_count" placeholder="Misal: 1" class="block w-full rounded-lg border border-gray-300 pl-2 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150" min="1" required>
+                                </div>
+                            </div>
+                            <!-- ======================================= -->
+
+                        </div>
+                        <div class="w-50 pl-2">
+                            <div class="mb-2">
+                                <label for="selectLotNumber" class="block text-sm font-medium text-gray-600 mb-1.5">Lot Number</label>
+                                <div class="relative">
+                                    <input type="text" id="lot" name="lot" placeholder="Masukan Lot" class="block w-full rounded-lg border border-gray-300 pl-2 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150" required>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="tgl_inspection" class="block text-sm font-medium text-gray-600 mb-1.5">Tgl Inspection</label>
+                                <div class="relative">
+                                    <input type="date" id="tgl_inspection" name="tgl_inspection" class="block w-full rounded-lg border border-gray-300 pl-2 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="inspector" class="block text-sm font-medium text-gray-600 mb-1.5">Inspector </label>
+                                <div class="relative">
+                                    <input type="text" id="inspector" name="inspector" placeholder="Masukan Nama Inspector" class="block w-full rounded-lg border border-gray-300 pl-2 py-[5px] focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 transition duration-150" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-4 pb-2 flex justify-end">
+                        <button type="submit" id="generateButton" class="w-full bg-blue-600 text-white font-bold py-2 px-5 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 w-full shadow hover:shadow-md">
+                            Generate
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+        <div class="w-full lg:w-[49%]">
+            <div class="bg-white rounded-lg shadow mb-3">
+                <div class="flex justify-between items-center p-3 border-b">
+                    <h2 class="text-lg font-semibold text-gray-700">Daftar Tipe</h2>
+                    <button id="addTypeButton" class="bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Tambah
+                    </button>
+                </div>
+                <div class="overflow-x-auto px-3 py-0">
+                    <table id="type-table" class="w-full">
+                        <thead>
+                            <tr>
+                                <th class="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipe</th>
+                                <th class="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Number</th>
+                                <th class="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="odd:bg-gray-50 even:bg-white transition-colors duration-200">
+                            @if (typeList.Any())
+                            {
+                                foreach (var item in typeList)
+                                {
+                                    <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                        <td class="px-6 py-2 text-sm font-medium text-gray-900">@item.tipe</td>
+                                        <td class="px-6 py-2 text-sm text-gray-600 font-mono">@item.PN</td>
+                                        <td class="px-6 py-2 text-sm text-gray-600">
+                                            <button class="badge badge-warning p-2 edit-type-btn"
+                                                    data-id="@item.id"
+                                                    data-tipe="@item.tipe"
+                                                    data-pn="@item.PN">
+                                                <span class="fas fa-edit"></span>
+                                            </button>
+                                            <button class="badge badge-danger p-2 delete-type-btn" data-id="@item.id">
+                                                <span class="fas fa-trash"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" class="px-6 py-10 text-center text-sm text-gray-500">
+                                        Belum ada data Tipe yang tersimpan.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toggleHistoryButton" class="flex items-center my-6 cursor-pointer text-gray-500 hover:text-gray-800 transition-colors duration-200">
+        <div class="flex-grow h-px bg-gray-300"></div>
+        <div class="flex items-center mx-4">
+            <span class="font-semibold text-sm uppercase tracking-wider">Generate History</span>
+            <i id="toggleIcon" class="fas fa-eye-slash ml-3"></i>
+        </div>
+        <div class="flex-grow h-px bg-gray-300"></div>
+    </div>
+    <div class="w-100 hidden" id="card-history">
+        <div class="bg-white rounded-lg shadow h-100">
+            <h2 class="text-lg font-semibold text-gray-700 p-6 border-b">Generate History</h2>
+            <div class="overflow-x-auto p-2">
+                <table id="history-table" class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PART NAME</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QUANTITY</th>
+                           
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LOT NUMBER</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TGL INSPECTION</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">INSPECTOR</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DETAIL</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @if (historyList != null && historyList.Any())
+                        {
+                            foreach (var item in historyList)
+                            {
+                                <tr class="hover:bg-gray-50 transition-colors duration-200">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">@(item.Part_Name)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">@( item.Qty)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">@(item.Lot_No)</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        @(item.Tgl_Inspection.HasValue ? item.Tgl_Inspection.Value.ToString("dd/MM/yyyy") : "")
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">@(item.Inspector)</td>
+
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                        <a href="@Url.Action("DetailHistory", "AssemblyQrSparkPlug", new { id = item.id })"
+                                           class="badge badge-secondary p-2"
+                                           role="button">
+                                            <span class="fas fa-eye mr-2"></span>View
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="px-6 py-10 text-center text-sm text-gray-500">
+                                    Belum ada data tersimpan.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+
+<div id="typeModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-3 border w-full max-w-lg shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 id="typeModalTitle" class="text-xl font-semibold text-gray-900 px-2">Tambah Tipe Baru</h3>
+            <button id="closeTypeModal" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <div class="mt-2">
+            <form id="formAddType">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="typeId" name="id" />
+                <div class="space-y-3 px-2">
+                    <div>
+                        <label for="newTipe" class="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                        <input type="text" id="newTipe" name="tipe" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="Contoh: Spark Plug  CPR6EA-9" required>
+                    </div>
+                    <div>
+                        <label for="newPN" class="block text-sm font-medium text-gray-700 mb-1">Part Number</label>
+                        <input type="text" id="newPN" name="PN" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2" placeholder="Contoh: 31916-KPH -9014-M1" required>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-3 pt-3 border-t">
+                    <button type="button" id="cancelAddType" class="bg-gray-200 text-gray-700 text-sm font-bold py-2 px-4 rounded-md hover:bg-gray-300">Batal</button>
+                    <button type="submit" class="bg-green-600 text-white text-sm font-bold py-2 px-4 rounded-md hover:bg-green-700">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            $('#selectPartName').select2({
+                placeholder: "Pilih Tipe...",
+                allowClear: true,
+                width: '100%'
+            });
+            $('#quantitySelector').select2({
+                placeholder: "Pilih Quantity...",
+                allowClear: true,
+                width: '100%'
+            });
+
+            $('#quantitySelector').on('change', function () {
+                const selectedValue = $(this).val();
+                const $manualInputContainer = $('#manualInputContainer');
+                const $manualInput = $('#manualQuantity');
+                const $quantitySelector = $(this);
+
+                if (selectedValue === 'manual') {
+                    $manualInputContainer.removeClass('hidden');
+                    $manualInput.attr('name', 'qty');    // Pindahkan 'name' ke input manual
+                    $manualInput.prop('required', true); // Jadikan input manual required
+
+                    $quantitySelector.removeAttr('name');      // Hapus 'name' dari select
+                    $quantitySelector.prop('required', false); // Jadikan select tidak required
+
+                    $manualInput.focus();
+                } else {
+                    $manualInputContainer.addClass('hidden');
+                    $manualInput.removeAttr('name');      // Hapus 'name' dari input manual
+                    $manualInput.prop('required', false); // Jadikan input manual tidak required
+
+                    $quantitySelector.attr('name', 'qty');    // Kembalikan 'name' ke select
+                    $quantitySelector.prop('required', true); // Jadikan select required
+                }
+            });
+
+            $('#quantitySelector').trigger('change');
+
+            @if (typeList.Any())
+            {
+                @:const dataTableType = new simpleDatatables.DataTable("#type-table", {
+                @:perPage: 4,
+                @:pagerDelta: 1,
+                @:perPageSelect: false,
+                 @:labels:
+                @:{
+                @:placeholder: "Cari...",
+                 @:}
+            @:});
+            }
+
+             @if (historyList.Any())
+                {
+                    @:const historyTableElement = document.getElementById("history-table");
+
+                    @:if (historyTableElement)
+                    @:{
+                        @:const dataTableLot = new simpleDatatables.DataTable("#history-table", {
+                        @:perPage: 10,
+                        @:pagerDelta: 2,
+                        @:perPageSelect: false,
+                        @:labels:
+                        @:{
+                        @:placeholder: "Cari...",
+                        @:},
+                    @:});
+                @:}
+             }
+
+                    // --- HELPER FUNCTIONS ---
+                    function getAntiForgeryToken() {
+                        // We get the token from the first form, it's the same for all.
+                        return $('#formAddType input[name="__RequestVerificationToken"]').val();
+                    }
+
+                    function showNotification(icon, title, text = '') {
+                        Swal.fire({
+                            icon: icon,
+                            title: title,
+                            text: text,
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                    }
+
+                    function handleAjaxResponse(response) {
+                        if (response.success) {
+                            showNotification('success','Success!!', response.message);
+                            setTimeout(() => location.reload(), 1500);
+                        } else {
+                            showNotification('error', 'Gagal!', response.message);
+                        }
+                    }
+
+                    const $typeModal = $('#typeModal');
+        const $typeForm = $('#formAddType');
+
+        $('#addTypeButton').on('click', function () {
+            $typeForm[0].reset();
+            $('#typeId').val(''); // Clear ID for create mode
+            $('#typeModalTitle').text('Tambah Tipe Baru');
+            $typeModal.removeClass('hidden');
+                    });
+
+        // Show modal for EDITING an existing Tipe
+        $('#type-table').on('click', '.edit-type-btn', function () {
+                        const $btn = $(this);
+            $typeForm[0].reset();
+
+            // Populate form with data from button attributes
+            $('#typeId').val($btn.data('id'));
+            $('#newTipe').val($btn.data('tipe'));
+            $('#newPN').val($btn.data('pn'));
+
+            $('#typeModalTitle').text('Update Tipe');
+            $typeModal.removeClass('hidden');
+                    });
+
+        // Handle Tipe form submission (CREATE or UPDATE)
+        $typeForm.on('submit', function (e) {
+                        e.preventDefault();
+                        if (!this.checkValidity()) {
+                            this.reportValidity();
+                            return;
+                        }
+
+                        const typeId = $('#typeId').val();
+                        const url = typeId ? '@Url.Action("UpdateTipe", "AssemblyQrSparkPlug")' : '@Url.Action("CreateTipe", "AssemblyQrSparkPlug")';
+                        const data = $(this).serialize();
+
+            $.ajax({
+                        url: url,
+                type: 'POST',
+                data: data,
+                success: handleAjaxResponse,
+                error: function (xhr) {
+                                showNotification('error', 'Error', 'Terjadi kesalahan saat menghubungi server.');
+                            }
+                        });
+                    });
+
+        // Handle Tipe DELETION
+        $('#type-table').on('click', '.delete-type-btn', function () {
+                        const typeId = $(this).data('id');
+
+                        Swal.fire({
+                        title: 'Anda yakin?',
+                text: "Data Tipe akan dihapus secara permanen!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonText: 'Batal'
+                        }).then((result) => {
+                        if (result.isConfirmed) {
+                    $.ajax({
+                            url: '@Url.Action("DeleteTipe", "AssemblyQrSparkPlug")',
+                        type: 'POST',
+                        data: {
+                                id: typeId,
+                            __RequestVerificationToken: getAntiForgeryToken()
+                        },
+                        success: handleAjaxResponse,
+                        error: function (xhr) {
+                                    showNotification('error', 'Error', 'Terjadi kesalahan saat menghapus data.');
+                                }
+                            });
+                    }
+                });
+        });
+
+
+
+
+            function closeModal($modal) {
+            $modal.addClass('hidden');
+            }
+
+        // Close buttons
+        $('#closeTypeModal, #cancelAddType').on('click', () => closeModal($typeModal));
+
+        $(window).on('click', function (event) {
+                if ($(event.target).is($typeModal)) {
+                    closeModal($typeModal);
+                }
+                if ($(event.target).is($lotModal)) {
+                    closeModal($lotModal);
+                }
+            });
+
+        $('#toggleHistoryButton').on('click', function () {
+            $('#card-history').toggleClass('hidden');
+            $('#toggleIcon').toggleClass('fa-eye-slash fa-eye');
+            });
+    });
+    </script>
+}

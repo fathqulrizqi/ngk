@@ -1,0 +1,20 @@
+﻿@model NGKBusi.Models.RecursiveMenu
+@using Microsoft.AspNet.Identity;
+
+@if (Model.Menus.Where(x => x.parentID == Model.parentID && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))).Any())
+{
+    <ul class="@(Model.parentID == null ? "nav navbar-nav" : (Model.itemCount > 0 ? "dropdown-menu":""))">
+        @foreach (var item in Model.Menus.Where(x => x.parentID == Model.parentID && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())) || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == "767.11.16")))))
+        {
+            if (item.parentID == Model.parentID)
+            {
+                int cnt = Model.Menus.Where(x => x.parentID == item.id && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())) || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == "767.11.16")))).Count();
+                <li class="@(cnt > 0? (Model.parentID == null ? "dropdown" : "dropdown-submenu"): "")">
+                    <a href="@(item.redirect != null ? item.redirect : (item.controller == null ? "#" : @Url.Action(item.action, item.controller, new { area = item.area })))" data-toggle="@(cnt > 0? "dropdown": "")" target="@(item.redirect !=null ?"_BLANK":"")" class="@(cnt > 0? "dropdown-toggle": "") animsition-link">@(item.name)</a>
+                    @{NGKBusi.Models.RecursiveMenu inner = new NGKBusi.Models.RecursiveMenu { parentID = item.id, itemCount = cnt, Menus = Model.Menus }; }
+                    @Html.Partial("_MenuPartial", inner)
+                </li>
+            }
+        }
+    </ul>
+}

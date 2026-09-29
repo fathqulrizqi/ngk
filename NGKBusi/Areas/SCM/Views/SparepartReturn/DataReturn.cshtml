@@ -1,0 +1,388 @@
+<!doctype html>
+@{
+    ViewBag.Title = "Data Return";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style>
+    .card {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        text-align: center;
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card .card-header {
+            /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+</style>
+<div class="row ">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="home-tab" data-toggle="tab" data-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Return Request</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="profile-tab" data-toggle="tab" data-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="false">Return History</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="myTabContent">
+                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                        <div class="card">
+                            <div class="card-header bg-primary">Open Return Request</div>
+                            <div class="card-body">
+                                <div class="row p-2">
+                                    <div class="col-lg-12">
+
+
+                                        <div id="toolbar">
+                                            @if (User.IsInRole("AdminSparepart") || User.IsInRole("Administrator") || User.IsInRole("WarehouseSparepart"))
+                                            {
+                                                <button id="accept" class="btn btn-success process" disabled>Accept</button> <button id="reject" class="btn btn-danger process" disabled>Reject</button>
+                                            }
+                                        </div>
+                                        <table id="fresh-table"
+                                               data-filter-control="true"
+                                               data-filter="true"
+                                               data-id-table="advancedTable"
+                                               data-ajax="ajaxRequest"
+                                               data-query-params="queryParamsRequest"
+                                               data-pagination="true"
+                                               data-toggle="table"
+                                               data-toolbar="#toolbar"
+                                               data-click-to-select="true"
+                                               class="table table-hover table-striped">
+                                            <thead>
+                                            <th data-field="state" data-checkbox="true"></th>
+                                            <th data-field="Id"></th>
+                                            <th data-field="Name" data-sortable="true">Return By</th>
+                                            <th data-field="RequestNo" data-sortable="true">Request No</th>
+                                            <th data-field="ITEMID" data-sortable="true">ITEM ID</th>
+                                            <th data-field="Quantity" data-sortable="true">QTY Return</th>
+                                            <th data-field="ReturnNotes" data-sortable="true">Return Notes</th>
+                                            <th data-field="Section" data-sortable="true">Section</th>
+                                            <th data-field="Create_Time" data-sortable="true" data-filter-type="datepicker_range">Return Time</th>
+                                            <th data-field="Status">Status</th>
+                                            </thead>
+                                            @*<tbody>
+                                                    @foreach (var tbl in ViewBag.ReturnList)
+                                                    {
+                                                        var date = tbl.Create_Time.ToShortDateString();
+
+                                                        <tr>
+                                                            <td></td>
+                                                            <td>@(tbl.Id)</td>
+                                                            <td>@(tbl.Name)</td>
+                                                            <td>@(tbl.RequestNo)</td>
+                                                            <td>@(tbl.ITEMID)</td>
+                                                            <td>@(tbl.Quantity)</td>
+                                                            <td>@(tbl.ReturnNotes)</td>
+                                                            <td>@(tbl.CostName)</td>
+                                                            <td>@(date)</td>
+                                                            <td>
+                                                                @{
+                                                                    if (tbl.IsAccept == 1 && tbl.IsReject == 0)
+                                                                    {
+                                                                        <h5><span class="badge badge-success"> Accept</span></h5>
+                                                                    }
+                                                                    else if (tbl.IsReject == 1 && tbl.IsAccept == 0)
+                                                                    {
+                                                                        <h5><span class="badge badge-danger"> Reject</span></h5>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <h5><span class="badge badge-primary"> Open</span></h5>
+                                                                    }
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>*@
+                                        </table>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                        <div class="card">
+                            <div class="card-header bg-info">Return History</div>
+                            <div class="card-body">
+                                <div class="row p-2">
+                                    <div class="col-lg-12">
+                                        <form action="@Url.Action("DataReturn", "SparepartReturn", new { area = "SCM" })" method="post">
+                                            <div class="form-group row">
+                                                <label for="dateRange" class="col-md-2 col-form-label">Select Periode</label>
+                                                <div class="col-md-4">
+                                                    <input type="text" class="form-control dateFrom" id="dateRange" name="dateFrom" placeholder="select date" required>
+
+                                                </div>
+                                                To
+                                                <div class="col-md-4">
+                                                    <input type="text" class="form-control dateTo" id="dateRange" name="dateTo" placeholder="select date" required>
+                                                </div>
+                                            </div>
+                                            <div class="form-group row">
+                                                <label for="inputPassword" class="col-md-2 col-form-label">Select Status </label>
+                                                <div class="col-md-4">
+
+                                                    <select class="form-control" name="status" data-placeholder="Select Status" required>
+                                                        <option value="0">-- All Status --</option>
+                                                        <option value="1" @(ViewBag.status == 1 ? "selected" : "")>Open</option>
+                                                        <option value="2" @(ViewBag.status == 2 ? "selected" : "")>Accept</option>
+                                                        <option value="3" @(ViewBag.status == 3 ? "selected" : "")>Reject</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <input type="submit" class="btn btn-info col-10" id="findData" value="Find Data" />
+                                                </div>
+                                            </div>
+                                        </form>
+
+                                        <div id="toolbar">
+
+                                        </div>
+                                        <table id="history-table"
+                                               data-ajax="ajaxRequestHistory"
+                                               data-query-params="queryParamsHistory"
+                                               data-pagination="true"
+                                               data-toggle="table"
+                                               data-click-to-select="true"
+                                               class="table table-hover table-striped">
+                                            <thead>
+                                            <th data-field="ReturnNo">Return No</th>
+                                            <th data-field="Name" data-sortable="true">Return By</th>
+                                            <th data-field="RequestNo" data-sortable="true">Request No</th>
+                                            <th data-field="ITEMID" data-sortable="true">ITEM ID</th>
+                                            <th data-field="Quantity" data-sortable="true">QTY Return</th>
+                                            <th data-field="ReturnNotes" data-sortable="true">Return Notes</th>
+                                            <th data-field="Create_Time" data-sortable="true" data-filter-type="datepicker_range">Return Time</th>
+                                            <th data-field="Status">Status</th>
+                                            </thead>
+
+                                        </table>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="contact" role="tabpanel" aria-labelledby="contact-tab">...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+        var $process = $('.process');
+        var $table = $('#fresh-table');
+        var $accept = $('#accept');
+        var $reject = $('#reject');
+
+        $(function () {
+            $('#fresh-table').bootstrapTable({
+                exportDataType: "all",
+                buttonsClass: 'primary',
+            })
+        });
+
+        $table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+            $process.prop('disabled', !$table.bootstrapTable('getSelections').length)
+        })
+
+        $(function () {
+
+            var $startDate = $('.dateFrom');
+            var $endDate = $('.dateTo');
+
+            $accept.click(function () {
+                var ids = $.map($table.bootstrapTable('getSelections'), function (row) {
+                    return row.Id
+                })
+
+
+                var Link = "@Url.Action("ProcessReturn", "SparepartReturn", new { area = "SCM" })";
+                Msg = "Accept Return Item ?";
+                var btnColor = '#28a745';
+                //var Link = $('this').attr('action');-->
+                @*@Url.Action("CloseRequest", "Sparepart", new { area = "SCM" })*@
+
+                ConfirmSendRequest(Link, Msg, ids, btnColor, "accept");
+            });
+
+            $reject.click(function () {
+                var ids = $.map($table.bootstrapTable('getSelections'), function (row) {
+                    return row.Id
+                })
+
+
+                var Link = "@Url.Action("ProcessReturn", "SparepartReturn", new { area = "SCM" })";
+                Msg = "Reject Return Item ?";
+                var btnColor = '#dc3545';
+                //var Link = $('this').attr('action');-->
+                @*@Url.Action("CloseRequest", "Sparepart", new { area = "SCM" })*@
+
+                ConfirmSendRequest(Link, Msg, ids, btnColor, "reject");
+            });
+
+            $startDate.datepicker({
+                autoHide: true,
+                format: 'yyyy-mm-dd',
+                date: '@(ViewBag.dateStart)',
+                autoPick: '@ViewBag.autopick'
+            });
+            $endDate.datepicker({
+                autoHide: true,
+                format: 'yyyy-mm-dd',
+                date: '@(ViewBag.dateEnd)',
+                autoPick: '@ViewBag.autopick',
+                startDate: $startDate.datepicker('getDate'),
+            });
+
+            $startDate.on('change', function () {
+                $endDate.datepicker('setStartDate', $startDate.datepicker('getDate'));
+            });
+        });
+
+        function ConfirmSendRequest(Link, Text, ids, btnColor, status) {
+            // Use SweetAlert2 API (Swal.fire). Make sure SweetAlert2 is loaded on the page (_Layout or view).
+            Swal.fire({
+                title: "Are you sure?",
+                text: Text,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: btnColor,
+                confirmButtonText: "Yes, Confirm",
+                cancelButtonText: "Close"
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        data: { Id: ids, status: status },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                Swal.fire({
+                                    title: "Success",
+                                    text: json.msg,
+                                    icon: "success"
+                                }).then(function () {
+                                    location.reload();
+                                });
+
+                            } else {
+                                Swal.fire("Failed!", json.msg, "error");
+                            }
+                        },
+                        complete: function (data) {
+                            $("select[name='status'").val('2');
+                            $('#findData').click();
+                        },
+                        error: function () {
+                            Swal.fire("Canceled!", Link, "error");
+                        }
+
+                    })
+                } else {
+                    Swal.fire("Cancelled", "Cancel Request", "info");
+                }
+            });
+        }
+
+        function queryParamsHistory(params) {
+            params.switch = "";//   <<<----------catch like this
+            return params;
+        }
+
+        function ajaxRequestHistory(params) {
+        //var RequestNo = "@(ViewBag.RequestNo)";
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("GetReturnHistory", "SparepartReturn", new { area = "SCM" })",
+                dataType: 'json',
+                data: '',
+                success: function (items) {
+                    //console.log(items.notReady);
+                    params.success({
+                        rows: items
+                    }, null);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            })
+
+        }
+
+        function queryParamsRequest(params) {
+            params.switch = "";//   <<<----------catch like this
+            return params;
+        }
+
+        function ajaxRequest(params) {
+        //var RequestNo = "@(ViewBag.RequestNo)";
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("ReturnRequestJson", "SparepartReturn", new { area = "SCM" })",
+                dataType: 'json',
+                data: '',
+                success: function (items) {
+                    //console.log(items.notReady);
+                    params.success({
+                        rows: items
+                    }, null);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            })
+
+    }
+
+</script>

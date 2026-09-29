@@ -1,0 +1,613 @@
+﻿<!doctype html>
+@{
+    ViewBag.Title = "D365 Excel Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-toolbar.min.js")"</script>
+<script src="@Url.Content("~/Content/bootstrap-table/tableExport.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table-export.min.js")"></script>
+<script src="@Url.Content("~/Content/bootstrap-table/filter-control/bootstrap-table-filter-control.min.js")"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+<style>
+    body {
+        font-size: 0.9rem;
+    }
+
+    .card-header {
+        font-size: 1rem;
+        color: white;
+    }
+
+    .card a {
+        text-decoration: none;
+        color: white;
+    }
+
+        .card a:hover {
+            text-decoration: none;
+            font;
+        }
+
+    .card-header .fa {
+        transition: .3s transform ease-in-out;
+    }
+
+    .card-header .collapsed .fa {
+        transform: rotate(90deg);
+    }
+
+
+    /* spinner */
+    *.hidden {
+        display: none !important;
+    }
+
+    div.loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(16, 16, 16, 0.5);
+        z-index: 1000;
+    }
+
+    @@-webkit-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-webkit-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-moz-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-ms-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-moz-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-webkit-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@-o-keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    @@keyframes uil-ring-anim {
+        0% {
+            -ms-transform: rotate(0deg);
+            -moz-transform: rotate(0deg);
+            -webkit-transform: rotate(0deg);
+            -o-transform: rotate(0deg);
+            transform: rotate(0deg);
+        }
+
+        100% {
+            -ms-transform: rotate(360deg);
+            -moz-transform: rotate(360deg);
+            -webkit-transform: rotate(360deg);
+            -o-transform: rotate(360deg);
+            transform: rotate(360deg);
+        }
+    }
+
+    .uil-ring-css {
+        margin: auto;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+    }
+
+        .uil-ring-css > div {
+            position: absolute;
+            display: block;
+            width: 160px;
+            height: 160px;
+            top: 20px;
+            left: 20px;
+            border-radius: 80px;
+            box-shadow: 0 6px 0 0 #ffffff;
+            -ms-animation: uil-ring-anim 1s linear infinite;
+            -moz-animation: uil-ring-anim 1s linear infinite;
+            -webkit-animation: uil-ring-anim 1s linear infinite;
+            -o-animation: uil-ring-anim 1s linear infinite;
+            animation: uil-ring-anim 1s linear infinite;
+        }
+</style>
+
+
+<div class="loading" style="display:none">
+    <div class='uil-ring-css' style='transform:scale(0.79);'>
+
+    </div>
+</div>
+<div class="row">
+
+    <div class="col-12">
+
+        <div class="card">
+            <div class="card-header bg-danger">
+                <a class="collapsed d-block" data-toggle="collapse" href="#collapse-collapsed-salesOrderLilnes" aria-expanded="true" aria-controls="collapse-collapsed" id="heading-collapsed">
+                    Standard Cost
+
+                </a>
+
+            </div>
+            <form action="@Url.Action("StandardCost", "D365ExcelForm", new { area = "FA" })" method="post" enctype="multipart/form-data" id="FormUploadStandardCost">
+                <div id="collapse-collapsed-standardCost" class="collapse show" aria-labelledby="heading-collapsed">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+
+                                <div class="form-group row">
+                                    <label for="" class="col-sm-4 col-form-label">Upload Standard Cost Report</label>
+                                    <div class="col-sm-8">
+                                        <input type="file" name="fileStandardCost" class="form-control col-sm-6" id="inputFile" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-primary" type="submit">Impor</button>
+                    </div>
+                </div>
+            </form>
+            <div class="form-group mt-3" id="processStandardCost" style="display:none">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped active bg-danger" role="progressbar">
+
+                    </div>
+                </div>
+                <span id="process_data_standard_cost"></span>
+            </div>
+        </div>
+    </div>
+
+</div>
+<br />
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary">
+                <div>
+                    <a class="d-block" data-toggle="collapse" href="#collapse-collapsed-salesOrderLilnes" aria-expanded="true" aria-controls="collapse-collapsed" id="heading-collapsed">
+                        Stock Management Report
+                    </a>
+                </div>
+            </div>
+            <form action="@Url.Action("StockManagement", "D365ExcelForm", new { area = "FA" })" method="post" enctype="multipart/form-data" id="FormUploadStockManagement">
+                <div id="collapse-collapsed-stockManagement" class="collapse show" aria-labelledby="heading-collapsed">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group row">
+                                    <label for="inputFile" class="col-sm-4 col-form-label">Select Periode</label>
+                                    <div class="col-sm-6">
+                                        <input name="periode" type="text" class="form-control datePeriode" required="required" id="monthPeriode" autocomplete="off" />
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="" class="col-sm-4 col-form-label">Stock Mangement</label>
+                                    <div class="col-sm-8">
+                                        <input type="file" name="fileStockManagement" class="form-control col-sm-6" id="inputFile" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-primary" type="submit">Impor</button>
+                    </div>
+                </div>
+            </form>
+            <div class="form-group mt-3" id="processStockManagement" style="display:none">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped active bg-primary" role="progressbar">
+
+                    </div>
+                </div>
+                <span id="process_data_stock_management"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<br />
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success">
+                <div>
+                    <a class="d-block" data-toggle="collapse" href="#collapse-collapsed-salesOrderLilnes" aria-expanded="true" aria-controls="collapse-collapsed" id="heading-collapsed">
+                        Generate WAD
+                    </a>
+                </div>
+            </div>
+            <form action="@Url.Action("StockManagement", "D365ExcelForm", new { area = "FA" })" method="post" enctype="multipart/form-data" id="FormUploadStockManagement">
+                <div id="collapse-collapsed-stockManagement" class="collapse show" aria-labelledby="heading-collapsed">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group row">
+                                    <label for="inputFile" class="col-sm-4 col-form-label">Select Periode</label>
+                                    <div class="col-sm-6">
+                                        <input name="periode" type="text" class="form-control PeriodeWAD" required="required" id="monthPeriode" autocomplete="off" />
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-primary" type="submit">Impor</button>
+                    </div>
+                </div>
+            </form>
+            <div class="form-group mt-3" id="processStockManagement" style="display:none">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped active bg-primary" role="progressbar">
+
+                    </div>
+                </div>
+                <span id="process_data_stock_management"></span>
+            </div>
+        </div>
+    </div>
+</div>
+<br />
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <div>
+                    <a class="d-block" data-toggle="collapse" href="#collapse-collapsed-salesOrderLilnes" aria-expanded="true" aria-controls="collapse-collapsed" id="heading-collapsed">
+                        Release Product
+                    </a>
+                </div>
+            </div>
+            <form action="@Url.Action("StockManagement", "D365ExcelForm", new { area = "FA" })" method="post" enctype="multipart/form-data" id="FormUploadStockManagement">
+                <div id="collapse-collapsed-stockManagement" class="collapse show" aria-labelledby="heading-collapsed">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="form-group row">
+                                    <label for="inputFile" class="col-sm-4 col-form-label">Select Periode</label>
+                                    <div class="col-sm-6">
+                                        <label for="inputFile" class="col-sm-4 col-form-label">Select Periode</label>
+                                        <div class="col-sm-8">
+                                            <input type="file" name="fileStandardCost" class="form-control col-sm-6" id="inputFile" required>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-primary" type="submit">Impor</button>
+                    </div>
+                </div>
+            </form>
+            <div class="form-group mt-3" id="processStockManagement" style="display:none">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped active bg-primary" role="progressbar">
+
+                    </div>
+                </div>
+                <span id="process_data_stock_management"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        var totalData;
+        var data;
+        var totalRow;
+        var startRow = 0;
+        var startRowStandardCost;
+        var startStockManagement;
+        var successInsert;
+        var arrayInsert = 0;
+        var insertDataRow;
+
+        var $datePeriode = $('.datePeriode');
+
+        $datePeriode.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm'
+        });
+
+        var $PeriodeWAD = $('.PeriodeWAD');
+
+        $PeriodeWAD.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm',
+            startDate: '2023-12-01',
+            endDate: '2024-03-01'
+        });
+
+
+        $('#FormUploadStandardCost').on('submit', (function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+
+            startRowStandardCost = 2;
+            successInsert = 0;
+            insertDataRow = 0;
+
+            formData.append('startRow', startRowStandardCost);
+            $.ajax({
+                type: 'POST',
+                url: "@Url.Action("GetTotalRowStandardCost", "D365ExcelForm", new { area = "FA" })",
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                beforeSend: function () {
+                    $('.loading').css("display", "");
+                },
+                success: function (json) {
+                    $('.loading').css("display", "");
+                    if (json.status == 1) {
+                        $('.loading').css("display", "none");
+                        $('.btn').prop('disabled', true);
+                        $('#processStandardCost').show();
+
+
+                        totalRow = json.totalRow;
+
+                        data = json.data;
+                        totalData = json.data.length;
+                        arrayInsert = 0;
+
+                        var dataimport = start_import_standard_cost(data[arrayInsert]);
+                        if (dataimport == 1) {
+                            alert("success");
+                        }
+                    }
+                },
+                error: function (data) {
+                    console.log("error");
+                    $('.loading').css("display", "none");
+                    swal("Failed!", json.msg, "error");
+
+                },
+                complete: function (data) {
+
+                }
+            });
+        }));
+
+        function start_import_standard_cost(insertData) {
+            $('#processStandardCost').css('display', 'block');
+            $.ajax({
+                url: "@Url.Action("ImportRowStandardCost", "D365ExcelForm", new { area = "FA" })",
+                type: 'POST',
+                data: insertData,
+                dataType: 'json',
+                success: function (result) {
+                    if (result.status == 1) {
+
+                        arrayInsert++;
+                        successInsert++;
+                        startRowStandardCost++;
+
+                        //console.log('array insert ' + arrayInsert);
+                        //console.log('success insert ' + successInsert);
+                        //console.log('start insert' + startRowSales);
+                        //console.log('total data' + totalData);
+                        //console.log('insert data ' + insertDataRow);
+
+                        var textProgress = successInsert + ' of ' + totalRow + ' row inserted';
+                        var width = Math.round((successInsert / totalRow) * 100);
+                        $('#process_data_standard_cost').text(textProgress);
+                        $('.progress-bar').css('width', width + '%');
+
+                        if (successInsert == totalData) {
+
+                            swal("Success!", "Finish Import Row", "success");
+                            $('.btn').prop('disabled', false);
+                            return true;
+
+                        } else {
+
+                            start_import_standard_cost(data[arrayInsert]);
+                        }
+                    } else {
+                        return true;
+
+                    }
+                }
+            })
+        }
+
+
+        /* ------------------------------------------------------    Stock Management Script ----------------------------------------------------------------------- */
+        $('#FormUploadStockManagement').on('submit', (function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            $('#processStockManagement').show();
+            $('#process_data_stock_management').text('Upload excel file');
+            $('.progress-bar').css('width', '10%');
+            startRowStockManagement = 13;
+            successInsert = 0;
+            insertDataRow = 0;
+            var periode = $('#monthPeriode').val();
+            formData.append('Periode', periode);
+            $.ajax({
+                type: 'POST',
+                url: "@Url.Action("UploadExcelStockManagement", "D365ExcelForm", new { area = "FA" })",
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+
+                success: function (json) {
+                    //$('.loading').css("display", "");
+                    if (json.status == 1) {
+                        // swal("Success!", "Finish Import Row", "success");
+                        $('#process_data_stock_management').text('success Upload  file');
+                        $('.progress-bar').css('width', '50%');
+                        start_import_stock_management(json.filepath, periode);
+                    }
+                },
+                error: function (data) {
+                    console.log("error");
+                    $('.loading').css("display", "none");
+                    swal("Failed!", json.msg, "error");
+
+                }
+            });
+        }));
+
+        function start_import_stock_management(fileName, periode) {
+            $('#process_data_stock_management').text('inserting to database');
+            $('.progress-bar').css('width', '70%');
+            $.ajax({
+                url: "@Url.Action("InsertStockManagement", "D365ExcelForm", new { area = "FA" })",
+                type: 'POST',
+                data: {
+                    fileName: fileName, periode: periode
+                },
+                dataType: 'json',
+                success: function (result) {
+                    if (result.status == 1) {
+                        swal("Success!", "Import Excel Finished", "success");
+                        $('#process_data_stock_management').text("success insert to database");
+                        $('.progress-bar').css('width',  '100%');
+                    } else {
+                        $('#process_data_stock_management').text("Failed insert to database");
+
+                    }
+                }
+            })
+        }
+
+    })
+</script>

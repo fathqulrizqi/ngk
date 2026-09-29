@@ -1,0 +1,294 @@
+﻿@{
+    ViewBag.Title = "Check Sheet Machine Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+
+}
+@section cssHead{
+
+    <style type="text/css">
+        .TblForm thead th {
+            text-align: center;
+        }
+
+        @@page {
+            size: landscape;
+            margin: 0;
+        }
+
+        @@media print {
+            #sidebar {
+                display: none;
+            }
+
+            footer {
+                display: none;
+            }
+
+            #printarea {
+                display: block;
+            }
+
+            #contentPrint, #contentPrint * {
+                display: block;
+            }
+        }
+
+        .select2-container--default .select2-selection__choice {
+            background-color: #f2f2f2;
+            color: #333;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 5px;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+
+        input[type="checkbox"] {
+            width: 1.5em;
+            height: 1.5em;
+        }
+    </style>
+    <style>
+        @@media print {
+            .sidebar {
+                display: none;
+            }
+
+            #btnPrint {
+                display: none;
+            }
+
+            #printarea {
+                display: block;
+            }
+
+            #contentPrint, #contentPrint * {
+                display: block;
+            }
+        }
+    </style>
+}
+<form id="formAddMTC" action="@Url.Action("AddCheckSheetMtcHardSoft", "FormCheckSheet", new { area = "IT" })">
+    <div id="content" style="position:relative; z-index: 5">
+        <table style="margin-bottom:20px">
+            <tr>
+                <td><a href="@Url.Action("IndexMTCHardSoft", "FormCheckSheet", new { area = "IT" })" class="btn btn-danger"><span><i class="fa fa-arrow-circle-left"></i> Back To List</span></a></td>
+                @*<td><button id="btnPrint" class="btn btn-primary"><span><i class="fa fa-print"></i> Download PDF</span></button></td>*@
+            </tr>
+        </table>
+        <table id="tblMScheduleHeader" border="1" style="width:100%;" class="contentPrint">
+            <thead>
+                <tr>
+                    <td rowspan="4" style="width:175px;" class="p-2">
+                        <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+                    </td>
+                    <td rowspan="2" class="text-center">FORMULIR INTEGRASI SISTEM MANAJEMEN MUTU, LINGKUNGAN & K3 TERINTEGRASI</td>
+                    <td>No. Dok</td>
+                    <td class="text-center">PML-IT-01/L3</td>
+                </tr>
+                <tr>
+                    <td style="width:75px;">Revisi</td>
+                    <td style="width:125px;" class="text-center">02</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" class="text-center">CHECK SHEET PEMELIHARAAN PERANGKAT KERAS DAN LUNAK</td>
+                    <td>Tanggal</td>
+                    <td class="text-center">1-FEB-2017</td>
+                </tr>
+                <tr>
+                    <td>Halaman</td>
+                    <td class="text-center">1 of 1</td>
+                </tr>
+            </thead>
+            <tbody>
+
+                <table width="100%">
+                    <tr style="padding-top:5px;">
+                        <td colspan="4" align="center" style="font-weight:bold; padding:5px;">Mesin / InfraStruktur</td>
+                    </tr>
+                    <tr>
+                        <td width="10%">Dept</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><span id="DeptName"></span></td>
+                        <td width="10%">Nama / No</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%">
+                            <select class="form-control" name="NIK" id="selUser" data-placement="select user">
+                                @foreach (var user in ViewBag.userList)
+                                {
+                                    <option value="@user.NIK" data-section="@user.SectionName" data-department="@user.DeptName">@user.Name</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="10%">Section</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><span id="SectionName"></span></td>
+                        <td width="10%">Spesifikasi</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><input name="spec" type="text" class="form-control" /></td>
+                    </tr>
+                    <tr>
+                        <td width="10%"></td>
+                        <td width="2%" style="text-align:center"></td>
+                        <td width="38%"></td>
+                        <td width="10%">Tahun Mulai Pemakaian</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><input name="year" type="text" class="form-control" /></td>
+                    </tr>
+                </table>
+
+                <table class="TblForm" border="1" width="100%" align="center" style="margin-top:20px; padding:10px">
+                    <thead>
+                        <tr>
+                            <th width="3%" align="center">No</th>
+                            <th width="12%" align="center">Type</th>
+                            <th width="15%" align="center">Tools</th>
+                            <th width="40%" align="center">Device</th>
+                            <th colspan="3">Checklist</th>
+                        </tr>
+
+                    </thead>
+                    <tbody style="padding:20px">
+                        @{ int i = 0;}
+                        @foreach (var item in ViewBag.DeviceHardware)
+                        {
+
+                            <tr style="text-align:center">
+
+                                @if (i == 0)
+                                {
+                                    <td rowspan="@ViewBag.countDevicesHardware">
+                                        1
+                                    </td>
+                                    <td rowspan="@ViewBag.countDevicesHardware">
+                                        Hardware
+                                    </td>
+                                }
+                                else
+                                {
+                                }
+                                <td>
+                                    @item.Tools
+                                </td>
+                                <td>@item.Device</td>
+                                <td style="padding:5px"><span>Lepas </span> <span style="float:right; margin-right:10px"><input type="checkbox" name="Lepas" value="@item.ID" /></span></td>
+                                <td style="padding:5px"><span>Pasang </span>  <span style="float:right; margin-right:10px"><input type="checkbox" name="Pasang" value="@item.ID" /></span></td>
+                                <td style="padding:5px"><span>Bersihkan </span>  <span style="float:right; margin-right:10px"><input type="checkbox" name="Bersihkan" value="@item.ID" /></span></td>
+                            </tr>
+                            i++;
+                        }
+                        <tr>
+                            <td colspan="7" style="background-color:darkgray">&nbsp;</td>
+                        </tr>
+                        @{ int s = 0;}
+                        @foreach (var item in ViewBag.DeviceSoftware)
+                        {
+
+                            <tr style="text-align:center">
+                                @if (s == 0)
+                                {
+                                    <td rowspan="@ViewBag.countDevicesSoftware">
+                                        2
+                                    </td>
+                                    <td rowspan="@ViewBag.countDevicesSoftware">
+                                        Software
+                                    </td>
+                                }
+                                else
+                                {
+                                }
+                                <td>
+                                    @item.Tools
+                                </td>
+                                <td>@item.Device</td>
+                                <td colspan="3" style="padding:5px"><span>Check </span> <span style="float:right; margin-right:10px"><input type="checkbox" name="Check" value="@item.ID" /></span></td>
+                            </tr>
+                            s++;
+                        }
+                    </tbody>
+
+                </table>
+                <table class="TblForm" width="100%" align="center" style="margin-top:20px; padding:10px">
+                    <tbody>
+                        <tr>
+                            <td style="float:right">
+                                <button type="button" id="btnSave" class="btn btn-primary"><span><i class="fa fa-floppy-disk"></i> Save</span></button> <button id="btnPrint" class="btn btn-danger"><span><i class="fa fa-refresh"></i> Reset</span></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </tbody>
+        </table>
+    </div>
+</form>
+<script>
+    $(document).ready(function () {
+        $('#selUser').select2({
+            closeOnSelect: true
+        });
+
+        $("#btnSave").click(function () {
+            var x = $("#formAddMTC").serializeArray();
+            //$.each(x, function (i, field) {
+            //    console.log(field.name + " : " + field.value + " ");
+            //});
+            $.ajax({
+                url: $("#formAddMTC").attr('action'),
+                type: "POST",
+                cache: false,
+                data: $("#formAddMTC").serialize(),
+                dataType: 'json',
+                beforeSend: function () {
+                    $('#btnSave').prop('disabled', true);
+                },
+                success: function (json) {
+                    if (json.status == 1) {
+                        // $('#ResponseInput').html(json.pesan);
+                        if (json.status == 1) {
+                            swal({
+                                title: "Success",
+                                text: json.msg,
+                                type: "success"
+                            }, function () {
+                                window.location.href = '@Url.Action("IndexMTCHardSoft", "FormCheckSheet", new { area = "IT" })';
+                            });
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+
+                    }
+                    else {
+                        toastr.error(json.msg);
+                    }
+                },
+                complete: function () {
+                    $('#btnSave').prop('disabled', false);
+                }
+            });
+
+            console.log(x);
+        });
+
+    });
+
+    $('#selUser').change(function () {
+
+        var selDept = $(this).find(':selected').data('department');
+        var selSection = $(this).find(':selected').data('section');
+
+        $('#SectionName').text(selSection);
+        $('#DeptName').text(selDept);
+        //if (selStock >= 0) {
+        //    $('#txtQuantity').attr('max', selStock);
+        //} else {
+        //    $('#txtQuantity').attr('max', '0');
+        //}
+    });
+
+
+</script>

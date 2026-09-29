@@ -1,0 +1,94 @@
+﻿
+@{
+    ViewBag.Title = "Overhaul";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Scripts/visjs/vis.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .over-green {
+            color: white;
+            background-color: green;
+            border-color: darkgreen;
+        }
+        .over-red {
+            color: white;
+            background-color: red;
+            border-color: darkred;
+        }
+        .over-orange {
+            color: white;
+            background-color: orange;
+            border-color: darkgoldenrod;
+        }
+    </style>
+}
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/visjs/vis.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            // DOM element where the Timeline will be attached
+            var container = document.getElementById('divOverhaul');
+            // Create a DataSet (allows two way data-binding)
+            $("#selOverhaulArea").change(function () {
+                $("#divOverhaul").LoadingOverlay("show");
+                var group = null;
+                $.ajax({
+                    type: "GET",
+                    url: "/NGKBusi/MTN/MachineDatabase/OverhaulArea",
+                    data: {
+                        "iOverhaulArea": $("#selOverhaulArea").val()
+                    },
+                    success: function (data) {
+                        group = new vis.DataSet(data);
+
+                        var items = null;
+                        $.ajax({
+                            type: "GET",
+                            url: "/NGKBusi/MTN/MachineDatabase/OverhaulItem",
+                            data: {
+                                "iOverhaulArea": $("#selOverhaulArea").val()
+                            },
+                            success: function (data) {
+                                $("#divOverhaul").LoadingOverlay("hide",true);
+                                $("#divOverhaul").empty();
+                                items = new vis.DataSet(data);
+                                var options = {};
+
+                                var timeline = new vis.Timeline(container, items, options);
+                                timeline.setGroups(group);
+                                timeline.redraw();
+                            }, error: function () {
+                                $("#divOverhaul").LoadingOverlay("hide", true);
+                            }
+                        });
+                    }, error: function () {
+                        $("#divOverhaul").LoadingOverlay("hide", true);
+                    }
+                });
+            });            
+
+        });
+    </script>
+}
+
+<h2>Overhaul</h2>
+<div id="divOverhaulForm">
+    <div class="row">
+        <label class="col-1 font-weight-bold text-right">Area :</label>
+        <div class="col-5">
+            <select id="selOverhaulArea" class="form-control select2" data-placeholder="Choose Area" placeholder="Choose Area" multiple>
+                <option value=""></option>
+                @foreach (var item in ViewBag.MachineArea)
+                {
+                    <option value="@(item.id)">@(item.Name)</option>
+                }
+            </select>
+        </div>
+    </div>   
+</div>
+<div id="divOverhaul"></div>
+

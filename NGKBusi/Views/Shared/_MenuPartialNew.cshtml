@@ -1,0 +1,107 @@
+﻿@model NGKBusi.Models.RecursiveMenu
+@using Microsoft.AspNet.Identity
+@using System.Security.Claims;
+@if (User.Identity.IsAuthenticated && ((ClaimsIdentity)User.Identity).FindFirst("dept").Value == "KOPERASI")
+{
+    if (Model.Menus.Where(x => x.parentID == Model.parentID && x.isExternal == true && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))).Any())
+    {
+        <div class="@(Model.parentID == null ? "sidebar-menu" : (Model.itemCount > 0 ? "sidebar-submenu" : ""))" id="@(Model.parentID)">
+            <ul>
+
+                @foreach (var item in Model.Menus.Where(x => x.parentID == Model.parentID && x.isExternal == true && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))))
+                {
+                    if (item.parentID == Model.parentID)
+                    {
+                        int cnt = Model.Menus.Where(x => x.parentID == item.id && x.isExternal == true && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))).Count();
+                        <li class="@(cnt > 0 ? "sidebar-dropdown" : "navSubChild")" id="@item.action">
+                            @if (cnt > 0)
+                            {
+                                <a class="urlParent" href="#">
+                                    <i class="@(item.icon)"></i>
+                                    <span>@(item.name)</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <a href="@(item.redirect != null ? item.redirect : (item.controller == null ? "#" : @Url.Action(item.action, item.controller, new { area = item.area })))" target="@(item.redirect != null ? "_BLANK" : "")" style="width:70%; float:left" class="url animsition-link col-lg-11">
+                                    <span>@(item.name)  </span>
+                                </a>
+                                int found = 0;
+                                foreach (var fm in ViewBag.FavoriteMenu)
+                                {
+                                    if (item.id == fm.IdMenu)
+                                    {
+                                        found++;
+                                    }
+                                }
+                                if (found > 0)
+                                {
+                                    <a href="#" style="width:30%" class="btnFavorite removeFavorite" data-id="@item.id" id="@item.id"><i class="fa fa-star favIcon" style="display:block;"></i></a>
+                                }
+                                else
+                                {
+                                    <a href="#" style="width:30%" class="btnUnFavorite addFavorite" data-id="@item.id" id="@item.id"><i class="fa fa-star favIcon" style="display: inline; color: black; background-color: unset"></i></a>
+                                }
+                            }
+                            @{NGKBusi.Models.RecursiveMenu inner = new NGKBusi.Models.RecursiveMenu { parentID = item.id, itemCount = cnt, Menus = Model.Menus }; }
+                            @Html.Partial("_MenuPartialNew", inner)
+
+                        </li>
+                    }
+                }
+            </ul>
+        </div>
+    }
+}
+else
+{
+    if (Model.Menus.Where(x => x.parentID == Model.parentID && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))).Any())
+    {
+        <div class="@(Model.parentID == null ? "sidebar-menu" : (Model.itemCount > 0 ? "sidebar-submenu" : ""))" id="@(Model.parentID)">
+            <ul>
+
+                @foreach (var item in Model.Menus.Where(x => x.parentID == Model.parentID && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))))
+                {
+                    if (item.parentID == Model.parentID)
+                    {
+                        int cnt = Model.Menus.Where(x => x.parentID == item.id && (x.isShow == true || (x.isShow == false && x.Users_Menus_Roles.Any(z => z.userNIK == User.Identity.GetUserId())))).Count();
+                        <li class="@(cnt > 0 ? "sidebar-dropdown" : "navSubChild")" id="@item.action">
+                            @if (cnt > 0)
+                            {
+                                <a class="urlParent" href="#">
+                                    <i class="@(item.icon)"></i>
+                                    <span>@(item.name)</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <a href="@(item.redirect != null ? item.redirect : (item.controller == null ? "#" : @Url.Action(item.action, item.controller, new { area = item.area })))" target="@(item.redirect != null ? "_BLANK" : "")" style="width:70%; float:left" class="url animsition-link col-lg-11">
+                                    <span>@(item.name)  </span>
+                                </a>
+                                int found = 0;
+                                foreach (var fm in ViewBag.FavoriteMenu)
+                                {
+                                    if (item.id == fm.IdMenu)
+                                    {
+                                        found++;
+                                    }
+                                }
+                                if (found > 0)
+                                {
+                                    <a href="#" style="width:30%" class="btnFavorite removeFavorite" data-id="@item.id" id="@item.id"><i class="fa fa-star favIcon" style="display:block;"></i></a>
+                                }
+                                else
+                                {
+                                    <a href="#" style="width:30%" class="btnUnFavorite addFavorite" data-id="@item.id" id="@item.id"><i class="fa fa-star favIcon" style="display: inline; color: black; background-color: unset"></i></a>
+                                }
+                            }
+                            @{NGKBusi.Models.RecursiveMenu inner = new NGKBusi.Models.RecursiveMenu { parentID = item.id, itemCount = cnt, Menus = Model.Menus }; }
+                            @Html.Partial("_MenuPartialNew", inner)
+
+                        </li>
+                    }
+                }
+            </ul>
+        </div>
+    }
+}

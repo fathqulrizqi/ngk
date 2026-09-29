@@ -1,0 +1,655 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var incident = (NGKBusi.Areas.HC.Models.HC_BCP_Incident)ViewBag.Incident;
+    var criteria = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Criteria>)ViewBag.Criteria;
+    var existing = (NGKBusi.Areas.HC.Models.HC_BCP_Assessment)ViewBag.ExistingAssessment;
+    
+    // Area Data
+    var myAreas = (List<NGKBusi.Areas.HC.Models.HC_BCP_Area>)ViewBag.MyAreas ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Area>();
+    var selectedArea = (NGKBusi.Areas.HC.Models.HC_BCP_Area)ViewBag.SelectedArea;
+    var areaAssessments = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment>)ViewBag.AreaAssessments ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment>();
+
+    string severityLabel = (incident.Severity ?? "").Trim();
+    int totalAreas = myAreas.Count;
+    int assessedAreas = areaAssessments.Count(x => myAreas.Any(m => m.ID == x.AreaID));
+    int progressPercent = totalAreas > 0 ? (assessedAreas * 100 / totalAreas) : 0;
+}
+
+<!-- Tailwind & Fonts -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] },
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<style>
+    /* Global Reset: No underline on any links or hover */
+    a, a:hover, a:focus, a:active {
+        text-decoration: none !important;
+    }
+    
+    .fade-up { animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    
+    .area-card {
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .area-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 24px -6px rgba(0, 117, 129, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.05);
+    }
+    .choice-card:hover {
+        border-color: #007581;
+        background-color: #f8fafc;
+    }
+</style>
+
+<div class="w-full bg-slate-50 min-h-screen py-6 px-3 sm:px-6 md:px-8 font-sans">
+    
+    <!-- 1. TOP HEADER & BREADCRUMB -->
+    <div class="mb-6 fade-up">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 ml-1">
+            <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors flex items-center gap-1.5 text-slate-500">
+                <i class="fas fa-home"></i> BCP Portal
+            </a>
+            <i class="fas fa-chevron-right text-[9px] text-slate-300"></i>
+            <span class="text-ngk-primary font-bold">Impact Assessment</span>
+        </div>
+
+        <!-- Header Banner Card -->
+        <div class="relative overflow-hidden rounded-2xl border border-slate-200 shadow-sm" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #164e63 100%);">
+            <div class="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10" style="background: radial-gradient(circle, #007581 0%, transparent 70%); transform: translate(30%, -40%); pointer-events: none;"></div>
+
+            <div class="relative z-10 px-6 sm:px-8 py-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div class="flex items-start gap-4 sm:gap-5">
+                    <div class="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style="background: linear-gradient(135deg, #007581 0%, #00555e 100%); border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="fas fa-clipboard-check text-white text-2xl"></i>
+                    </div>
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white/10 border border-white/20 text-teal-300 text-[11px] font-extrabold uppercase tracking-widest mb-2">
+                            <span class="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
+                            Step 2: Operational Impact Assessment
+                        </div>
+                        <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight m-0">@incident.IncidentNo &mdash; @incident.Title</h1>
+                        <p class="text-slate-300 mt-1.5 text-xs sm:text-sm font-normal max-w-2xl leading-relaxed m-0">
+                            Evaluate facility and resource disruption for your assigned department areas.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Incident Badges -->
+                <div class="flex flex-wrap items-center gap-2.5 self-start lg:self-center shrink-0">
+                    <span class="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-teal-300 text-xs font-bold flex items-center gap-2">
+                        <i class="fas fa-tag text-[10px] text-teal-400"></i> @(incident.Category ?? "Crisis Incident")
+                    </span>
+                    @if (!string.IsNullOrEmpty(severityLabel))
+                    {
+                        <span class="px-3 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-extrabold uppercase tracking-wider">
+                            @severityLabel Severity
+                        </span>
+                    }
+                    <span class="px-3.5 py-1.5 rounded-xl bg-white text-slate-800 text-xs font-extrabold shadow-sm border border-white/60">
+                        Phase: Assessment
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. KPI PROGRESS CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8 fade-up">
+        <!-- Progress Card -->
+        <div class="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 flex items-center justify-between">
+            <div>
+                <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Assessment Completion</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-3xl font-black text-slate-800">@assessedAreas</span>
+                    <span class="text-sm font-bold text-slate-400">/ @totalAreas Areas</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-1 m-0 font-medium">
+                    @(assessedAreas == totalAreas ? "All assigned areas evaluated" : $"{totalAreas - assessedAreas} remaining to complete")
+                </p>
+            </div>
+            <div class="relative flex items-center justify-center">
+                <div class="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-sm @(progressPercent == 100 ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-teal-50 text-ngk-primary border border-teal-100")">
+                    @progressPercent%
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluated Areas Card -->
+        <div class="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center text-xl shrink-0">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+                <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Completed Evaluations</p>
+                <h4 class="text-lg font-black text-slate-800 m-0">@assessedAreas Active Submissions</h4>
+                <p class="text-[11px] text-slate-500 mt-0.5 m-0">Ready for review & aggregation</p>
+            </div>
+        </div>
+
+        <!-- Protocol Guidance Card -->
+        <div class="bg-white border border-slate-200 shadow-sm rounded-2xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center text-xl shrink-0">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <div>
+                <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Next Step</p>
+                <h4 class="text-lg font-black text-slate-800 m-0">DGM Risk Consensus</h4>
+                <p class="text-[11px] text-slate-500 mt-0.5 m-0">Submitted scores aggregate automatically</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN SECTION CONTAINER -->
+    <div class="w-full bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden fade-up">
+        
+        <!-- Main Card Header -->
+        <div class="px-6 py-5 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-teal-50 text-ngk-primary border border-teal-100 flex items-center justify-center text-base font-black shrink-0">
+                    <i class="fas @(selectedArea != null ? "fa-pen-to-square" : "fa-layer-group")"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-slate-800 uppercase tracking-wide m-0">
+                        @if (selectedArea != null)
+                        {
+                            <span>@selectedArea.AreaName &mdash; Impact Questionnaire</span>
+                        }
+                        else
+                        {
+                            <span>Select Assessment Area</span>
+                        }
+                    </h3>
+                    <p class="text-xs text-slate-500 font-medium m-0 mt-0.5">
+                        @(selectedArea != null ? "Provide detailed quantitative and qualitative impact scoring below." : "Choose an assigned area from your department to provide an evaluation.")
+                    </p>
+                </div>
+            </div>
+
+            @if (selectedArea != null)
+            {
+                <a href="@Url.Action("AssessmentFill", new { id = incident.IncidentNo })" 
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-xs uppercase tracking-wider shadow-sm hover:bg-slate-50 hover:text-ngk-primary hover:border-ngk-primary transition-all">
+                    <i class="fas fa-arrow-left text-[11px]"></i>
+                    <span>Switch Area</span>
+                </a>
+            }
+        </div>
+
+        <div class="p-6 sm:p-8">
+            @if (selectedArea == null)
+            {
+                <!-- AREA SELECTION TILES (Modern Grid) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    @foreach (var area in myAreas)
+                    {
+                        var areaAss = areaAssessments.FirstOrDefault(x => x.AreaID == area.ID);
+                        bool isDone = areaAss != null;
+
+                        <a href="@Url.Action("AssessmentFill", new { id = incident.IncidentNo, areaId = area.ID })" 
+                           class="group relative bg-white border @(isDone ? "border-emerald-200/90 hover:border-emerald-500 bg-gradient-to-b from-white to-emerald-50/20" : "border-slate-200/90 hover:border-ngk-primary bg-gradient-to-b from-white to-slate-50/40") rounded-2xl p-5 area-card flex flex-col justify-between shadow-sm cursor-pointer block">
+                            
+                            <div>
+                                <!-- Top Row: Icon + Status Pill -->
+                                <div class="flex items-center justify-between gap-3 mb-4">
+                                    <div class="w-11 h-11 rounded-xl @(isDone ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20" : "bg-teal-50 text-ngk-primary border border-teal-100 group-hover:bg-ngk-primary group-hover:text-white transition-all") flex items-center justify-center text-base">
+                                        <i class="fas @(isDone ? "fa-check-double" : "fa-location-dot")"></i>
+                                    </div>
+                                    @if (isDone)
+                                    {
+                                        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            COMPLETED
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center px-3 py-1 bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                                            PENDING
+                                        </span>
+                                    }
+                                </div>
+
+                                <!-- Area Title -->
+                                <h4 class="text-base font-black text-slate-800 group-hover:text-ngk-primary transition-colors m-0 line-clamp-1">
+                                    @area.AreaName
+                                </h4>
+
+                                <!-- Meta Info -->
+                                <p class="text-xs text-slate-500 mt-2 m-0 leading-relaxed font-medium">
+                                    @if (isDone)
+                                    {
+                                        <span class="text-emerald-700 font-semibold flex items-center gap-1.5">
+                                            <i class="fas fa-user-check text-[11px]"></i> Evaluated by @(areaAss.AssessorName ?? "Assessor")
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-slate-400">Awaiting evaluation. Click to start report.</span>
+                                    }
+                                </p>
+                            </div>
+
+                            <!-- Card Bottom Action Link -->
+                            <div class="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between text-xs font-bold @(isDone ? "text-emerald-600" : "text-ngk-primary")">
+                                <span>@(isDone ? "Edit Assessment" : "Start Assessment")</span>
+                                <i class="fas fa-arrow-right text-[11px] group-hover:translate-x-1 transition-transform"></i>
+                            </div>
+                        </a>
+                    }
+
+                    @if (!myAreas.Any())
+                    {
+                        <div class="col-span-full py-16 text-center">
+                            <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl border border-slate-200">
+                                <i class="fas fa-shield-slash"></i>
+                            </div>
+                            <h4 class="font-extrabold text-slate-800 text-base m-0">No Assigned Areas</h4>
+                            <p class="text-xs text-slate-400 max-w-sm mx-auto mt-1 m-0">
+                                Your account is not currently mapped to any monitored BCP areas in your department.
+                            </p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- 4. QUESTIONNAIRE FORM (Area Selected) -->
+                <div class="space-y-8">
+                    
+                    <!-- Question 1: Impact Status -->
+                    <div class="p-6 rounded-2xl bg-slate-50/70 border border-slate-200">
+                        <label class="block font-black text-slate-800 text-xs uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-teal-50 text-ngk-primary border border-teal-100 flex items-center justify-center text-xs font-black">1</span>
+                            Is <span class="text-ngk-primary">@selectedArea.AreaName</span> impacted by the incident? <span class="text-rose-500">*</span>
+                        </label>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <!-- Yes Option -->
+                            <label class="relative cursor-pointer h-full" id="impact-yes-container" onclick="toggleImpact(true)">
+                                <input type="radio" name="IsImpacted" value="true" class="peer sr-only" @(existing?.IsImpacted == true ? "checked" : "") />
+                                <div class="h-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-center transition-all peer-checked:border-rose-500 peer-checked:bg-rose-50/50 peer-checked:shadow-md choice-card">
+                                    <div class="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-2 text-base">
+                                        <i class="fas fa-triangle-exclamation"></i>
+                                    </div>
+                                    <h5 class="font-black text-slate-800 text-sm mb-1 m-0">Yes, Impacted</h5>
+                                    <p class="text-[11px] text-slate-500 m-0 leading-normal">Operations, equipment, or workforce in this area are disrupted.</p>
+                                </div>
+                            </label>
+
+                            <!-- No Option -->
+                            <label class="relative cursor-pointer h-full" id="impact-no-container" onclick="toggleImpact(false)">
+                                <input type="radio" name="IsImpacted" value="false" class="peer sr-only" @(existing?.IsImpacted == false ? "checked" : "") />
+                                <div class="h-full rounded-2xl border-2 border-slate-200 bg-white p-5 text-center transition-all peer-checked:border-emerald-500 peer-checked:bg-emerald-50/50 peer-checked:shadow-md choice-card">
+                                    <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-2 text-base">
+                                        <i class="fas fa-shield-check"></i>
+                                    </div>
+                                    <h5 class="font-black text-slate-800 text-sm mb-1 m-0">No, Not Impacted</h5>
+                                    <p class="text-[11px] text-slate-500 m-0 leading-normal">This area continues regular operations without disruption.</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dependent Section (Visible if Impacted) -->
+                    <div id="impact-details-section" class="space-y-8" style="@(existing?.IsImpacted == true ? "" : "display:none")">
+                        
+                        <!-- Question 2: Qualitative Narrative -->
+                        <div class="p-6 rounded-2xl bg-slate-50/70 border border-slate-200">
+                            <label class="block font-black text-slate-800 text-xs uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-teal-50 text-ngk-primary border border-teal-100 flex items-center justify-center text-xs font-black">2</span>
+                                Qualitative Description of Impact <span class="text-rose-500">*</span>
+                            </label>
+                            <p class="text-xs text-slate-500 mb-3 m-0 font-medium">Describe specific physical damage, downtime, personnel injuries, or operational bottlenecks.</p>
+                            <textarea id="ImpactDescription" class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm transition-all focus:border-ngk-primary focus:ring-2 focus:ring-ngk-primary/20 leading-relaxed" rows="3" placeholder="Enter detailed observations regarding this area...">@(existing != null ? existing.ImpactDescription : "")</textarea>
+                        </div>
+
+                        <!-- Question 3: Criteria & Quantitative Matrix -->
+                        <div class="p-6 rounded-2xl bg-slate-50/70 border border-slate-200">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <label class="block font-black text-slate-800 text-xs uppercase tracking-wider m-0 flex items-center gap-2">
+                                    <span class="w-6 h-6 rounded-lg bg-teal-50 text-ngk-primary border border-teal-100 flex items-center justify-center text-xs font-black">3</span>
+                                    Quantitative Scoring Matrix
+                                </label>
+                                <span class="text-xs font-extrabold px-3 py-1 bg-teal-50 text-teal-800 border border-teal-200 rounded-full">
+                                    Scale: 1 (Lowest) &mdash; 5 (Highest Severity)
+                                </span>
+                            </div>
+
+                            <div class="border border-slate-200 rounded-2xl overflow-x-auto shadow-sm bg-white">
+                                <table class="w-full text-left border-collapse min-w-[1050px] m-0">
+                                    <thead>
+                                        <tr class="bg-slate-100/70 text-slate-500 text-[11px] uppercase tracking-widest font-extrabold border-b border-slate-200">
+                                            <th class="py-3.5 px-4 border-r border-slate-200 w-[30%]">Assessment Criteria</th>
+                                            <th class="py-3.5 px-3 text-center border-r border-slate-200 w-[14%]">Score 1<br><span class="text-[10px] font-normal lowercase">(Lowest)</span></th>
+                                            <th class="py-3.5 px-3 text-center border-r border-slate-200 w-[14%]">Score 2</th>
+                                            <th class="py-3.5 px-3 text-center border-r border-slate-200 w-[14%]">Score 3</th>
+                                            <th class="py-3.5 px-3 text-center border-r border-slate-200 w-[14%]">Score 4</th>
+                                            <th class="py-3.5 px-3 text-center w-[14%]">Score 5<br><span class="text-[10px] font-normal lowercase">(Highest)</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 text-sm">
+                                        @{
+                                            var questions = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>)ViewBag.Questions;
+                                            var existingAnswers = (List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Answer>)ViewBag.ExistingAnswers ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Answer>();
+                                        }
+                                        @foreach (var crit in criteria)
+                                        {
+                                            var qForCrit = questions != null ? questions.Where(q => q.CriteriaID == crit.ID).ToList() : new List<NGKBusi.Areas.HC.Models.HC_BCP_Assessment_Question>();
+                                            if (!qForCrit.Any())
+                                            {
+                                                continue;
+                                            }
+
+                                            var existDetail = existing != null ? existing.Details.FirstOrDefault(d => d.CriteriaID == crit.ID) : null;
+                                            
+                                            <!-- Criteria Header Row -->
+                                            <tr class="bg-teal-50/70 border-b-2 border-teal-200/80 criteria-row" data-id="@crit.ID" data-weight="@crit.Weight">
+                                                <td class="py-3 px-4 border-r border-slate-200" colspan="6">
+                                                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                                        <div>
+                                                            <p class="font-black text-teal-900 mb-0.5 text-sm m-0">@crit.Name</p>
+                                                            <p class="text-xs text-teal-700 font-medium leading-tight m-0"><span class="font-extrabold uppercase tracking-wider text-[10px]">Standard:</span> @crit.Description</p>
+                                                        </div>
+                                                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end shrink-0">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-[11px] font-black uppercase tracking-wider text-teal-900">Score:</span>
+                                                                <span id="criteria-score-@crit.ID" class="criteria-score-badge px-3 py-1 bg-teal-800 text-white font-black text-xs rounded-lg shadow-sm border border-teal-900 min-w-[50px] text-center">
+                                                                    @(existDetail != null ? (existDetail.AverageScore ?? 0).ToString("0.00") : "0.00")
+                                                                </span>
+                                                            </div>
+                                                            <textarea class="note-input w-full md:w-64 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs shadow-sm transition-all resize-none focus:border-ngk-primary" rows="1" placeholder="Criteria observation note...">@(existDetail != null ? existDetail.Notes : "")</textarea>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            foreach (var q in qForCrit) 
+                                            {
+                                                var ans = existingAnswers.FirstOrDefault(a => a.QuestionID == q.ID);
+                                                int selectedScore = ans != null ? (ans.Score ?? 0) : 0;
+                                                bool isTriggerQuestion = (q.SortOrder ?? 0) == 1;
+
+                                                <tr class="hover:bg-slate-50/50 transition-colors bg-white question-row group" 
+                                                    data-qid="@q.ID" 
+                                                    data-cid="@crit.ID" 
+                                                    data-qweight="@(q.Weight ?? 100)" 
+                                                    data-sort-order="@(q.SortOrder ?? 0)" 
+                                                    data-trigger-question="@(isTriggerQuestion ? "true" : "false")"
+                                                    style="@(isTriggerQuestion ? "" : "display:none;")">
+                                                    <td class="py-3.5 px-4 align-middle border-r border-slate-200">
+                                                        <p class="font-bold text-slate-800 text-xs leading-snug m-0">@q.QuestionText</p>
+                                                        <span class="inline-flex items-center mt-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                                            <i class="fas fa-weight-hanging mr-1 text-[9px]"></i> Weight: @(q.Weight ?? 100)%
+                                                        </span>
+                                                    </td>
+                                                    @for (int s = 1; s <= 5; s++) 
+                                                    {
+                                                        var choice = q.Choices.FirstOrDefault(c => c.ScoreValue == s);
+                                                        <td class="border border-slate-100 p-2 align-middle">
+                                                            @if (choice != null) {
+                                                                bool isChecked = selectedScore == s;
+                                                                <label class="block w-full h-full min-h-[56px] rounded-xl border-2 @(isChecked ? "border-ngk-primary bg-teal-50/60" : "border-slate-200/80 bg-slate-50/30") cursor-pointer hover:border-ngk-primary hover:bg-slate-50 transition-all relative overflow-hidden choice-card">
+                                                                    <input type="radio" name="q_@q.ID" value="@choice.ID" data-score="@s" class="peer sr-only" onchange="applyConditionalQuestionDisplay(); updatePreviewScore();" @(isChecked ? "checked" : "")>
+                                                                    <div class="w-full h-full flex items-center justify-center p-2 text-center rounded-lg peer-checked:bg-ngk-primary peer-checked:text-white text-slate-700 transition-colors text-xs font-semibold leading-tight">
+                                                                        <span class="leading-tight font-medium peer-checked:font-extrabold text-inherit" style="font-size:0.75rem">@choice.ChoiceText</span>
+                                                                    </div>
+                                                                </label>
+                                                            } else {
+                                                                <div class="w-full h-full min-h-[56px] flex items-center justify-center text-slate-300 text-xs">
+                                                                    &mdash;
+                                                                </div>
+                                                            }
+                                                        </td>
+                                                    }
+                                                </tr>
+                                            }
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <!-- Action Bar -->
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-slate-200">
+                        <a href="@Url.Action("AssessmentFill", new { id = incident.IncidentNo })" class="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider hover:bg-slate-100 transition-colors text-center">
+                            <i class="fas fa-arrow-left text-[11px] mr-1.5"></i> Back to Areas
+                        </a>
+                        <button type="button" onclick="submitAssessment()" 
+                                class="w-full sm:w-auto px-8 py-3.5 rounded-xl text-white font-black text-sm uppercase tracking-wider shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
+                                style="background: linear-gradient(135deg, #007581 0%, #00555e 100%);">
+                            <i class="fas fa-paper-plane text-xs"></i>
+                            <span>Submit Assessment Report</span>
+                        </button>
+                    </div>
+
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="~/Scripts/BCP/bcp.js"></script>
+    <script>
+        function toggleImpact(isImpacted) {
+            if (isImpacted) {
+                $('#impact-details-section').slideDown(300);
+            } else {
+                $('#impact-details-section').slideUp(300);
+            }
+        }
+
+        function submitAssessment() {
+            let isImpacted = $('input[name="IsImpacted"]:checked').val() === "true";
+            let desc = $('#ImpactDescription').val();
+
+            // Validate IsImpacted
+            if ($('input[name="IsImpacted"]:checked').length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pilihan Wajib',
+                    text: 'Mohon tentukan apakah area ini terdampak atau tidak.',
+                    confirmButtonColor: '#007581'
+                });
+                return;
+            }
+
+            if (isImpacted && (!desc || desc.trim() === "")) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Deskripsi Wajib',
+                    text: 'Mohon isi deskripsi kualitatif dampak karena area ditandai terdampak.',
+                    confirmButtonColor: '#007581'
+                });
+                return;
+            }
+
+            // Validate all questions answered
+            let unanswered = [];
+            let firstUnansweredRow = null;
+            if (isImpacted) {
+                $('.question-row:visible').each(function() {
+                    let checkedRadio = $(this).find('input[type="radio"]:checked');
+                    if (checkedRadio.length === 0) {
+                        let qText = $(this).find('p.font-bold').first().text().trim();
+                        unanswered.push('• ' + (qText.length > 70 ? qText.substring(0, 70) + '...' : qText));
+                        if (!firstUnansweredRow) firstUnansweredRow = this;
+                    }
+                });
+            }
+
+            if (unanswered.length > 0) {
+                $('.question-row').each(function() {
+                    let checkedRadio = $(this).find('input[type="radio"]:checked');
+                    if (checkedRadio.length === 0) {
+                        $(this).find('td:first').addClass('border-l-4 border-l-rose-500');
+                    } else {
+                        $(this).find('td:first').removeClass('border-l-4 border-l-rose-500');
+                    }
+                });
+                if (firstUnansweredRow) {
+                    firstUnansweredRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Penilaian Belum Lengkap',
+                    html: '<p class="text-sm text-slate-600 mb-3">Mohon lengkapi seluruh pertanyaan kriteria scoring:</p>' +
+                          '<div class="text-left text-xs text-rose-600 bg-rose-50 rounded-xl p-3 max-h-40 overflow-y-auto">' +
+                          unanswered.join('<br>') + '</div>',
+                    confirmButtonColor: '#007581',
+                    confirmButtonText: 'Lengkapi Sekarang'
+                });
+                return;
+            }
+
+            let criteriaIds = [];
+            let notes = [];
+            let questionIds = [];
+            let choiceIds = [];
+            
+            // Collect criteria notes
+            $('.criteria-row').each(function() {
+                let id = $(this).data('id');
+                let note = $(this).find('.note-input').val();
+                criteriaIds.push(id);
+                notes.push(note);
+            });
+
+            // Collect question answers from visible rows
+            $('.question-row:visible').each(function() {
+                let qid = $(this).data('qid');
+                let checkedRadio = $(this).find('input[type="radio"]:checked');
+                if (checkedRadio.length > 0) {
+                    let cid = checkedRadio.val();
+                    questionIds.push(qid);
+                    choiceIds.push(cid);
+                }
+            });
+
+            Swal.fire({
+                title: 'Kirim Penilaian Area?',
+                text: "Data penilaian untuk area ini akan disimpan dan diagregasikan ke laporan konsensus DGM.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#007581',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Kirim Penilaian',
+                cancelButtonText: 'Periksa Kembali'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Menyimpan...',
+                        text: 'Mengunggah penilaian dampak...',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.post('@Url.Action("SubmitAssessment", "BCP")', {
+                        IncidentID: @incident.ID,
+                        AreaID: @(selectedArea != null ? selectedArea.ID : 0),
+                        IsImpacted: isImpacted,
+                        ImpactDescription: desc,
+                        CriteriaID: criteriaIds,
+                        Notes: notes,
+                        QuestionID: questionIds,
+                        ChoiceID: choiceIds
+                    }, function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Penilaian Tersimpan!',
+                                text: res.message,
+                                confirmButtonColor: '#007581'
+                            }).then(() => {
+                                window.location.href = '@Url.Action("AssessmentFill", "BCP", new { id = incident.IncidentNo })';
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: res.message,
+                                confirmButtonColor: '#e11d48'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function applyConditionalQuestionDisplay() {
+            $('.criteria-row').each(function() {
+                const criteriaId = $(this).data('id');
+                const triggerRows = $('.question-row[data-cid="' + criteriaId + '"][data-trigger-question="true"]');
+                const dependentRows = $('.question-row[data-cid="' + criteriaId + '"]').not('[data-trigger-question="true"]');
+
+                if (triggerRows.length === 0) {
+                    dependentRows.show();
+                    return;
+                }
+
+                const triggerChecked = triggerRows.first().find('input[type="radio"]:checked');
+                const shouldShow = triggerChecked.length > 0 && parseInt(triggerChecked.data('score'), 10) === 5;
+
+                if (shouldShow) {
+                    dependentRows.show();
+                } else {
+                    dependentRows.hide();
+                    dependentRows.find('input[type="radio"]').prop('checked', false);
+                }
+            });
+        }
+
+        function updatePreviewScore() {
+            let total = 0;
+            
+            $('.criteria-row').each(function() {
+                let cid = $(this).data('id');
+                let critWeight = parseFloat($(this).data('weight')) || 0;
+                
+                let criteriaSumOfWeighted = 0;
+                let totalQWeight = 0;
+                $('.question-row[data-cid="'+cid+'"]:visible').each(function() {
+                    let checkedRadio = $(this).find('input[type="radio"]:checked');
+                    if (checkedRadio.length > 0) {
+                        let score = parseInt(checkedRadio.data('score')) || 0;
+                        let qWeight = parseFloat($(this).data('qweight')) || 100;
+                        criteriaSumOfWeighted += (score * qWeight);
+                        totalQWeight += qWeight;
+                    }
+                });
+                
+                let critScore = totalQWeight > 0 ? (criteriaSumOfWeighted / totalQWeight) : 0;
+                $('#criteria-score-' + cid).text(critScore.toFixed(2));
+                total += (critScore * critWeight / 100);
+            });
+        }
+
+        $(document).ready(function() {
+            applyConditionalQuestionDisplay();
+            updatePreviewScore();
+        });
+    </script>
+}

@@ -1,0 +1,473 @@
+﻿@{
+    ViewBag.Title = "Detail Transfer Labor";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var details = ViewBag.Details as List<NGKBusi.Areas.Production.Models.Production_TransferLabor_Request_Detail>;
+    var header = ViewBag.Header as NGKBusi.Areas.Production.Models.Production_TransferLabor_Request_Header;
+
+    if (header == null)
+    {
+        <div class="p-10 text-center text-red-600 font-bold">
+            <h3>Data Header tidak ditemukan atau Namespace class salah!</h3>
+        </div>
+        return;
+    }
+
+    string docDate = header.created_at?.ToString("dd/MM/yyyy") ?? header.start_date.ToString("dd/MM/yyyy");
+    int detailsCount = details?.Count ?? 0;
+
+    bool isCreatorSigned = !string.IsNullOrEmpty(header.request_creator_sign);
+    bool isReqApproverSigned = !string.IsNullOrEmpty(header.request_approval_sign);
+    bool isProviderIssuedSigned = !string.IsNullOrEmpty(header.provider_issued_sign);
+    bool isProviderApproverSigned = !string.IsNullOrEmpty(header.provider_approval_sign);
+    bool isDocumentRejected = header.status != null && header.status.ToUpper().Contains("REJECTED");
+
+
+    string currentUserNik = ViewBag.CurrentNIK as string;
+
+    Func<dynamic, bool> HasAccess = (accessList) =>
+    {
+        if (accessList == null) return false;
+        foreach (var item in accessList)
+        {
+            if (item.nik == currentUserNik) return true;
+        }
+        return false;
+    };
+
+    bool canApproveRequestor = HasAccess(ViewBag.RequestorApproval);
+    bool canIssueProvider = HasAccess(ViewBag.ProviderIssued);
+    bool canApproveProvider = HasAccess(ViewBag.ProviderApproval);
+}
+
+@section scriptHead{
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        @@page {
+            size: A4;
+            margin: 0mm;
+        }
+
+        @@media print {
+            body {
+                border-color: none !important;
+                background-color: white !important;
+                width: 210mm;
+                height: 297mm;
+                margin: 0 auto;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .print-border {
+                border-color: none !important;
+            }
+
+            #printable-area {
+                border-color: none !important;
+            }
+            /* Opsi tambahan agar halaman tidak terpotong di tengah baris/elemen */
+            table {
+                page-break-inside: auto;
+            }
+
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+        }
+    </style>
+}
+
+
+<div class="bg-gray-100 min-h-screen py-8 font-sans text-gray-900">
+    <div class="max-w-5xl mx-auto mb-4 flex justify-between items-center no-print">
+        <a href="@Url.Action("Index", "TransferLabor")" class="bg-gray-600 text-white px-4 py-2 rounded shadow hover:bg-gray-700 transition">
+            &larr; Kembali
+        </a>
+        <button id="btn-print" type="button" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">
+            <i class="fas fa-print mr-2"></i> Print Dokumen
+        </button>
+    </div>
+
+    <div id="printable-area" class="max-w-5xl h-full mx-auto bg-white p-10 shadow-xl print-border" style="min-height: 297mm;">
+
+        <table class="w-full border-collapse border border-black mb-6 text-sm">
+            <tr>
+                <td rowspan="4" class="border border-black p-4 w-40 text-center align-middle bg-white">
+                    <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Logo Niterra" class="max-h-14 mx-auto object-contain" />
+                </td>
+                <td rowspan="4" class="border border-black p-2 text-center align-middle">
+                    <h1 class="text-lg font-bold">FORMULIR INTEGRASI</h1>
+                    <h1 class="text-lg font-bold uppercase mt-1">TRANSFER LABOR</h1>
+                </td>
+                <td class="border border-black p-1 px-2 text-xs w-24">No Dok</td>
+                <td class="border border-black p-1 px-2 text-xs w-48">: </td>
+            </tr>
+            <tr>
+                <td class="border border-black p-1 px-2 text-xs">Revisi</td>
+                <td class="border border-black p-1 px-2 text-xs">: </td>
+            </tr>
+            <tr>
+                <td class="border border-black p-1 px-2 text-xs">Tanggal</td>
+                <td class="border border-black p-1 px-2 text-xs">: </td>
+            </tr>
+            <tr>
+                <td class="border border-black p-1 px-2 text-xs">Halaman</td>
+                <td class="border border-black p-1 px-2 text-xs">: </td>
+            </tr>
+        </table>
+
+        <div class="flex flex-wrap items-start justify-between mb-8">
+            <div class="w-full md:w-1/2 pr-4 text-sm">
+                <h3 class="font-bold underline mb-3 text-[15px]">1. Requestor Transfer Labor:</h3>
+
+                <table class="w-full mb-4">
+                    <tr><td class="py-1 w-40">Date</td><td class="py-1">: @docDate</td></tr>
+                    <tr><td class="py-1">Requested by</td><td class="py-1">: @header.from_section</td></tr>
+                    <tr><td class="py-1">Departement </td><td class="py-1 font-semibold">: @header.from_department</td></tr>
+                    <tr><td class="py-1">Requested to Section</td><td class="py-1 font-semibold">: @header.to_section</td></tr>
+                    <tr><td class="py-1">Job Detail</td><td class="py-1">: @header.job_detail</td></tr>
+                </table>
+
+                <div class="w-full border-b border-black my-2"></div>
+
+                <table class="w-full mt-4">
+                    <tr><td class="py-1 w-40">Start Date</td><td class="py-1 font-semibold">: @header.start_date.ToString("dd/MM/yyyy")</td></tr>
+                    <tr><td class="py-1">Time</td><td class="py-1 font-semibold">: @header.start_date.ToString("HH:mm")</td></tr>
+                    <tr><td class="py-1">Date of completion</td><td class="py-1 font-semibold">: @header.end_date.ToString("dd/MM/yyyy")</td></tr>
+                    <tr><td class="py-1">Time</td><td class="py-1 font-semibold">: @header.end_date.ToString("HH:mm")</td></tr>
+                    <tr><td class="py-1 font-bold pt-3">Total manpower</td><td class="py-1 font-bold pt-3">: @detailsCount manpower</td></tr>
+                </table>
+            </div>
+
+            <div class="w-full md:w-5/12 mt-6 md:mt-0">
+                <table class="w-full border-collapse border border-black text-sm text-center">
+                    <tr><td colspan="2" class="border border-black font-bold p-1 bg-gray-50 text-left px-2 text-xs">Requestor Transfer Labor :</td></tr>
+                    <tr>
+                        <td class="border border-black p-1 w-1/2">Requested by</td>
+                        <td class="border border-black p-1 w-1/2">Approved by</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-black h-24 relative align-bottom p-2">
+                            @if (isCreatorSigned)
+                            {
+                                <div class="absolute inset-0 flex items-center justify-center text-green-600 opacity-60 font-bold border-2 border-green-600 rounded-full w-16 h-16 mx-auto mt-2 transform -rotate-12 text-[10px] leading-tight flex-col">
+                                    <span>CREATED</span>
+                                    <span>@header.request_creator_sign_date</span>
+                                </div>
+                            }
+                            <div class="border-t border-black pt-1 w-3/4 mx-auto mt-2 overflow-hidden flex justify-center">
+                                <span class="text-xs uppercase whitespace-nowrap auto-shrink">@header.request_creator_by</span>
+                            </div>
+                        </td>
+
+                        <td class="border border-black h-24 relative align-bottom p-2">
+                            @if (isReqApproverSigned)
+                            {
+                                var isReject = header.request_approval_sign == "REJECTED";
+                                var colorClass = isReject ? "text-red-600 border-red-600" : "text-green-600 border-green-600";
+                                <div class="absolute inset-0 flex items-center justify-center @colorClass opacity-60 font-bold border-2 rounded-full w-16 h-16 mx-auto mt-2 transform -rotate-12 text-[10px] leading-tight flex-col">
+                                    <span>@header.request_approval_sign</span>
+                                    <span>@header.request_approval_sign_date</span>
+                                </div>
+                            }
+                            else if (isCreatorSigned && !isDocumentRejected)
+                            {
+                                if (canApproveRequestor)
+                                {
+                                    <div onclick="revealButtons(this)" class="h-[70px] flex flex-col items-center justify-center bg-white relative cursor-pointer hover:bg-gray-50 transition-all border-2 border-dashed border-gray-200 hover:border-teal-400 group w-[90%] mx-auto mb-1 no-print">
+                                        <div class="initial-ui text-center z-10 select-none transition-all w-full">
+                                            <i class="fas fa-pen-nib text-gray-300 text-lg mb-0.5 block group-hover:text-teal-400 transition-colors"></i>
+                                            <span class="text-gray-400 text-[10px] font-medium group-hover:text-teal-500 transition-colors">Klik untuk Sign</span>
+                                        </div>
+                                        <div class="action-buttons hidden absolute inset-0 bg-white flex flex-col items-center justify-center gap-1 z-20 p-1">
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'RequestorApprove', 'Approve')" class="bg-teal-600 text-white text-[9px] py-1 rounded shadow hover:bg-teal-700 transition font-bold w-full">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'RequestorReject', 'Reject')" class="bg-red-500 text-white text-[9px] py-1 rounded shadow hover:bg-red-600 transition font-bold w-full">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="flex items-center justify-center h-[70px] text-gray-400 text-[10px] font-medium italic">
+                                        Waiting Manager Approval
+                                    </div>
+                                }
+                            }
+                            <div class="border-t border-black pt-1 w-3/4 mx-auto mt-2 overflow-hidden flex justify-center">
+                                <span class="text-xs uppercase whitespace-nowrap auto-shrink">
+                                    @(string.IsNullOrEmpty(header.request_approval_by) ? "(Nama Approver)" : header.request_approval_by)
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="w-full text-sm">
+            <h3 class="font-bold underline mb-3 text-[15px]">2. Filled by provider Transfer Labor:</h3>
+
+            <div class="flex items-center gap-8 mb-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 border border-black flex items-center justify-center">
+                        @if (header.status == "APPROVED" || header.status == "COMPLETE")
+                        {<i class="fas fa-check text-xs"></i>}
+                    </div>
+                    <span>Transfer Labor Approved</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-5 h-5 border border-black flex items-center justify-center">
+                        @if (header.status == "REJECTED")
+                        {<i class="fas fa-check text-xs"></i>}
+                    </div>
+                    <span>Transfer Labor Declined</span>
+                </div>
+            </div>
+
+            <table class="w-full border-collapse border border-black mb-8 text-sm">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="border border-black text-center p-2 w-12">No</th>
+                        <th class="border border-black text-center p-2 text-left">Nama Karyawan</th>
+                        <th class="border border-black text-center p-2 w-48 text-left">NIK</th>
+                        <th class="border border-black text-center p-2 w-24">Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (details != null && details.Any())
+                    {
+                        int no = 1;
+                        foreach (var emp in details)
+                        {
+                            <tr>
+                                <td class="border border-black p-1.5 text-center">@no</td>
+                                <td class="border border-black p-1.5 font-semibold">@emp.name</td>
+                                <td class="border border-black p-1.5 text-center">@emp.nik</td>
+                                <td class="border border-black p-1.5 text-center">@(emp.transfer_labor_hours + emp.transfer_overtime_hours)</td>
+                            </tr>
+                            no++;
+                        }
+                    }
+                    @for (int i = 0; i < (10 - detailsCount); i++)
+                    {
+                        <tr>
+                            <td class="border border-black p-1.5 h-7">&nbsp;</td>
+                            <td class="border border-black p-1.5">&nbsp;</td>
+                            <td class="border border-black p-1.5">&nbsp;</td>
+                            <td class="border border-black p-1.5">&nbsp;</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="w-full md:w-5/12">
+                <table class="w-full border-collapse border border-black text-sm text-center">
+                    <tr><td colspan="2" class="border border-black font-bold p-1 bg-gray-50 text-left px-2 text-xs">Provider Transfer Labor :</td></tr>
+                    <tr>
+                        <td class="border border-black p-1 w-1/2">Checked by</td>
+                        <td class="border border-black p-1 w-1/2">Approved by</td>
+                    </tr>
+                    <tr>
+                        <td class="border border-black h-24 relative align-bottom p-2">
+                            @if (isProviderIssuedSigned)
+                            {
+                                var isReject = header.provider_issued_sign == "REJECTED";
+                                var colorClass = isReject ? "text-red-600 border-red-600" : "text-green-600 border-green-600";
+                                <div class="absolute inset-0 flex items-center justify-center @colorClass opacity-60 font-bold border-2 rounded-full w-16 h-16 mx-auto mt-2 transform -rotate-12 text-[10px] leading-tight flex-col">
+                                    <span>@header.provider_issued_sign</span>
+                                    <span>@header.provider_issued_sign_date</span>
+                                </div>
+                            }
+                            else if (isReqApproverSigned && !isDocumentRejected)
+                            {
+                                if (canIssueProvider)
+                                {
+                                    <div onclick="revealButtons(this)" class="h-[70px] flex flex-col items-center justify-center bg-white relative cursor-pointer hover:bg-gray-50 transition-all border-2 border-dashed border-gray-200 hover:border-teal-400 group w-[90%] mx-auto mb-1 no-print">
+                                        <div class="initial-ui text-center z-10 select-none transition-all w-full">
+                                            <i class="fas fa-pen-nib text-gray-300 text-lg mb-0.5 block group-hover:text-blue-400 transition-colors"></i>
+                                            <span class="text-gray-400 text-[10px] font-medium group-hover:text-blue-500 transition-colors">Klik untuk Sign</span>
+                                        </div>
+                                        <div class="action-buttons hidden absolute inset-0 bg-white flex flex-col items-center justify-center gap-1 z-20 p-1">
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'ProviderIssue', 'Issue')" class="bg-blue-600 text-white text-[9px] py-1 rounded shadow hover:bg-blue-700 transition font-bold w-full">
+                                                <i class="fas fa-pen"></i> Issue
+                                            </button>
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'ProviderIssueReject', 'Reject')" class="bg-red-500 text-white text-[9px] py-1 rounded shadow hover:bg-red-600 transition font-bold w-full">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="flex items-center justify-center h-[70px] text-gray-400 text-[10px] font-medium italic">
+                                        Waiting SPV Approval
+                                    </div>
+                                }
+                            }
+                            <div class="border-t border-black pt-1 w-3/4 mx-auto mt-2 overflow-hidden flex justify-center">
+                                <span class="text-xs uppercase whitespace-nowrap auto-shrink">
+                                    @(string.IsNullOrEmpty(header.provider_issued_by) ? "(Checker Section)" : header.provider_issued_by)
+                                </span>
+                            </div>
+                        </td>
+
+                        <td class="border border-black h-24 relative align-bottom p-2">
+                            @if (isProviderApproverSigned)
+                            {
+                                var isReject = header.provider_approval_sign == "REJECTED";
+                                var colorClass = isReject ? "text-red-600 border-red-600" : "text-green-600 border-green-600";
+                                <div class="absolute inset-0 flex items-center justify-center @colorClass opacity-60 font-bold border-2 rounded-full w-16 h-16 mx-auto mt-2 transform -rotate-12 text-[10px] leading-tight flex-col">
+                                    <span>@header.provider_approval_sign</span>
+                                    <span>@header.provider_approval_sign_date</span>
+                                </div>
+                            }
+                            else if (isProviderIssuedSigned && !isDocumentRejected)
+                            {
+                                if (canApproveProvider)
+                                {
+                                    <div onclick="revealButtons(this)" class="h-[70px] flex flex-col items-center justify-center bg-white relative cursor-pointer hover:bg-gray-50 transition-all border-2 border-dashed border-gray-200 hover:border-teal-400 group w-[90%] mx-auto mb-1 no-print">
+                                        <div class="initial-ui text-center z-10 select-none transition-all w-full">
+                                            <i class="fas fa-pen-nib text-gray-300 text-lg mb-0.5 block group-hover:text-teal-400 transition-colors"></i>
+                                            <span class="text-gray-400 text-[10px] font-medium group-hover:text-teal-500 transition-colors">Klik untuk Sign</span>
+                                        </div>
+                                        <div class="action-buttons hidden absolute inset-0 bg-white flex flex-col items-center justify-center gap-1 z-20 p-1">
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'ProviderApprove', 'Approve')" class="bg-teal-600 text-white text-[9px] py-1 rounded shadow hover:bg-teal-700 transition font-bold w-full">
+                                                <i class="fas fa-check"></i> Approve
+                                            </button>
+                                            <button type="button" onclick="event.stopPropagation(); processAction('@header.id', 'ProviderReject', 'Reject')" class="bg-red-500 text-white text-[9px] py-1 rounded shadow hover:bg-red-600 transition font-bold w-full">
+                                                <i class="fas fa-times"></i> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="flex items-center justify-center h-[70px] text-gray-400 text-[10px] font-medium italic">
+                                        Waiting Manager Approval
+                                    </div>
+                                }
+                            }
+                            <div class="border-t border-black pt-1 w-3/4 mx-auto mt-2 overflow-hidden flex justify-center">
+                                <span class="text-xs uppercase whitespace-nowrap auto-shrink">
+                                    @(string.IsNullOrEmpty(header.provider_approval_by) ? "(Approver Dept)" : header.provider_approval_by)
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#btn-print').on('click', function () {
+            $('#printable-area').printThis({
+                importCSS: true,            // Mengambil style dari head (berguna untuk CSS Tailwind yang diinjeksi via JS)
+                importStyle: true,          // Mengambil <style> tag
+                pageTitle: "Dokumen Transfer Labor", // Judul file ketika di-save as PDF/Print
+                removeInline: false,        // Jangan hilangkan style inline
+                printDelay: 333,            // Beri jeda agar style Tailwind termuat
+                header: null,               // Header tambahan (bisa dikosongkan)
+                formValues: true            // Mempertahankan nilai form jika ada
+            });
+        });
+
+        $('.auto-shrink').each(function () {
+            let el = $(this)[0]; // Ambil elemen DOM asli
+            let parent = el.parentElement;
+            let fontSize = 12; // Ukuran bawaan text-xs Tailwind adalah 12px
+
+            // Set ukuran awal
+            el.style.fontSize = fontSize + 'px';
+
+            // Selama teks lebih lebar dari parent, dan font masih lebih besar dari 6px, kecilkan!
+            while (el.scrollWidth > parent.clientWidth && fontSize > 6) {
+                fontSize -= 0.5; // Kurangi ukuran font 0.5px
+                el.style.fontSize = fontSize + 'px';
+            }
+        });
+    });
+
+    function processAction(reqId, signType, actionName) {
+        // Tentukan pesan dan warna berdasarkan aksi (Approve vs Reject)
+        const isReject = actionName === 'Reject';
+        const titleText = isReject ? 'Tolak Request?' : 'Konfirmasi Tanda Tangan';
+        const confirmText = isReject ? 'Ya, Tolak!' : (actionName === 'Issue' ? 'Ya, Terbitkan!' : 'Ya, Setujui!');
+        const confirmColor = isReject ? '#ef4444' : (actionName === 'Issue' ? '#2563eb' : '#0d9488');
+
+        Swal.fire({
+            title: titleText,
+            text: isReject ? "Apakah Anda yakin ingin MENOLAK request transfer labor ini?" : "Apakah Anda yakin ingin menandatangani tahap ini?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: confirmColor,
+            cancelButtonColor: '#9ca3af',
+            confirmButtonText: confirmText,
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                const url = '@Url.Action("SignProcess", "TransferLabor")';
+                const formData = new FormData();
+                formData.append("id", reqId);
+                formData.append("signType", signType);
+
+                Swal.fire({
+                    title: 'Memproses...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading() }
+                });
+
+                fetch(url, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(res => {
+                    if (res.success) {
+                        Swal.fire('Berhasil!', 'Dokumen berhasil diproses.', 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal!', res.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('Error!', 'Terjadi kesalahan sistem atau jaringan.', 'error');
+                });
+            }
+        });
+    }
+
+    // Fungsi untuk memunculkan tombol Approve/Reject saat kotak di-klik
+    function revealButtons(element) {
+        // Cari elemen UI awal (icon pen) dan sembunyikan
+        const initialUI = element.querySelector('.initial-ui');
+        if (initialUI) initialUI.classList.add('hidden');
+
+        // Cari elemen tombol-tombol dan tampilkan
+        const actionButtons = element.querySelector('.action-buttons');
+        if (actionButtons) actionButtons.classList.remove('hidden');
+
+        // Hilangkan efek border-dashed dan hover agar terlihat seperti kotak solid setelah di-klik
+        element.classList.remove('cursor-pointer', 'hover:bg-gray-50', 'border-dashed', 'hover:border-teal-400');
+        element.classList.add('border-solid', 'border-gray-200');
+
+        // Matikan event onclick agar tidak bereaksi lagi jika di-klik dua kali
+        element.onclick = null;
+    }
+</script>

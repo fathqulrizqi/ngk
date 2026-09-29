@@ -1,0 +1,487 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var roles = (List<string>)ViewBag.Roles ?? new List<string>();
+    var users = (List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>)ViewBag.Users ?? new List<NGKBusi.Areas.HC.Models.HC_BCP_Organization>();
+}
+
+<!-- Tailwind via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<!-- Inline Styles to override Bootstrap conflicts and style premium components -->
+<style>
+    .bcp-table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        letter-spacing: 0.05em !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .bcp-table td {
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155 !important;
+        font-size: 0.875rem !important;
+    }
+    .bcp-btn-primary {
+        background-color: #007581 !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .bcp-btn-primary:hover {
+        background-color: #00555e !important;
+    }
+    .bcp-glass {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+</style>
+
+<div class="container-fluid py-4 px-md-5">
+    <!-- Breadcrumb & Header -->
+    <div class="bg-gradient-to-r from-white to-ngk-primaryLight border border-slate-200/60 rounded-2xl p-6 sm:p-8 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors no-underline">BCP Dashboard</a>
+                <span>/</span>
+                <span class="text-ngk-primary font-semibold">Role Permissions</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight m-0">Role & User Permissions</h1>
+            <p class="text-slate-500 mt-1 text-sm md:text-base m-0">Configure detailed authorization rules for BCP Review, Submission, Activation, and Settings management.</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <button id="btnNewPermission" class="inline-flex items-center gap-2 px-5 py-3 bcp-btn-primary text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold cursor-pointer border-0">
+                <i class="fas fa-plus-circle text-ngk-primaryLight"></i>
+                New Permission Rule
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive Form Panel (Inline, Expandable) -->
+    <div id="formPanel" class="hidden transition-all duration-300 ease-in-out mb-8">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="formTitle" class="text-lg font-bold text-slate-800 m-0">Create Permission Rule</h3>
+                <button id="btnCancelForm" class="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="permForm" class="p-6 m-0">
+                <input type="hidden" id="permId" name="ID" />
+                
+                <div class="row">
+                    <!-- Role Name Input -->
+                    <div class="col-md-6 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">BCP Role Name</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fas fa-sitemap text-slate-400 text-sm"></i>
+                            </span>
+                            <input type="text" id="roleName" name="RoleName" placeholder="e.g. Commander, Coordinator, Member" class="form-control pl-9 rounded-xl border-slate-200 font-medium py-2 text-sm focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary transition-all" required />
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Specify the BCP committee role name for these permissions.</p>
+                    </div>
+
+                    <!-- Created Date Placeholder (ReadOnly on edit) -->
+                    <div class="col-md-6 mb-4 flex items-end">
+                        <div class="text-slate-400 text-xs font-medium pb-2 hidden" id="createdDateContainer">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200/50">
+                                <i class="far fa-calendar-alt text-slate-400 text-sm"></i>
+                                Rule Created At: <span class="font-bold text-slate-600" id="createdDateText">-</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Switches Grid -->
+                <div class="border-t border-slate-100 pt-4 mt-2">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Grant Scope & Actions</h4>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Switch 1: IsAllowedReview -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-800 mb-1">Review Access</h5>
+                                <p class="text-xs text-slate-500 leading-relaxed mb-3">Allowed to access details and review assessments.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" id="isAllowedReview" name="IsAllowedReview" value="true" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:height-5 after:width-5 after:transition-all peer-checked:bg-ngk-primary"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-600 toggle-label">Disabled</span>
+                            </label>
+                        </div>
+
+                        <!-- Switch 2: IsAllowedSubmitReview -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-800 mb-1">Submit Decision</h5>
+                                <p class="text-xs text-slate-500 leading-relaxed mb-3">Allowed to approve, revise, or escalate incident review decisions.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" id="isAllowedSubmitReview" name="IsAllowedSubmitReview" value="true" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:height-5 after:width-5 after:transition-all peer-checked:bg-ngk-primary"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-600 toggle-label">Disabled</span>
+                            </label>
+                        </div>
+
+                        <!-- Switch 3: IsAllowedActivate -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-800 mb-1">BCP Activation</h5>
+                                <p class="text-xs text-slate-500 leading-relaxed mb-3">Allowed to trigger or terminate emergency BCP states.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" id="isAllowedActivate" name="IsAllowedActivate" value="true" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:height-5 after:width-5 after:transition-all peer-checked:bg-ngk-primary"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-600 toggle-label">Disabled</span>
+                            </label>
+                        </div>
+
+                        <!-- Switch 4: IsAllowedManageBCP -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <div>
+                                <h5 class="text-sm font-bold text-slate-800 mb-1">Manage Settings</h5>
+                                <p class="text-xs text-slate-500 leading-relaxed mb-3">Allowed to modify master metadata and role permissions configuration.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" id="isAllowedManageBCP" name="IsAllowedManageBCP" value="true" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:height-5 after:width-5 after:transition-all peer-checked:bg-ngk-primary"></div>
+                                <span class="ml-3 text-xs font-bold text-slate-600 toggle-label">Disabled</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-100 pt-6 mt-6">
+                    <button type="button" id="btnDiscard" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-semibold border-0 cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 bcp-btn-primary text-white rounded-xl transition-all font-semibold border-0 cursor-pointer shadow-sm">
+                        Save Permission Rule
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main List Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="relative w-full md:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </span>
+                <input type="text" id="tableSearch" placeholder="Search rules by role or name..." class="form-control pl-10 rounded-xl border-slate-200 text-sm py-2" />
+            </div>
+            <div class="text-slate-400 text-sm font-medium" id="recordCountLabel">
+                Showing 0 permission rules
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table bcp-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="pl-6 w-16 text-center">No</th>
+                        <th>BCP Role / Scope</th>
+                        <th class="text-center">Review Access</th>
+                        <th class="text-center">Submit Decision</th>
+                        <th class="text-center">BCP Activation</th>
+                        <th class="text-center">Manage Settings</th>
+                        <th>Created At</th>
+                        <th class="pr-6 w-32 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="permTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            <div class="spinner-border spinner-border-sm text-primary mr-2" role="status"></div>
+                            Loading permission rules...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        $(document).ready(function () {
+            let allPermissions = [];
+
+            // Listen to switch states to toggle labels
+            $('input[type="checkbox"]').change(function() {
+                let label = $(this).siblings('.toggle-label');
+                if (this.checked) {
+                    label.text('Enabled').addClass('text-ngk-primary').removeClass('text-slate-600');
+                } else {
+                    label.text('Disabled').addClass('text-slate-600').removeClass('text-ngk-primary');
+                }
+            });
+
+            // TargetType is removed, defaulting only to RoleName text input
+
+            // Fetch and load permissions
+            function loadPermissions() {
+                let search = $('#tableSearch').val();
+                $.ajax({
+                    url: '@Url.Action("GetRolePermissionList", "BCP")',
+                    type: 'GET',
+                    data: { search: search },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allPermissions = res.data;
+                            renderTable(allPermissions);
+                        } else {
+                            $('#permTableBody').html(`<tr><td colspan="8" class="text-center py-8 text-danger">Error: ${res.message}</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        $('#permTableBody').html('<tr><td colspan="8" class="text-center py-8 text-danger">Failed to fetch data from server.</td></tr>');
+                    }
+                });
+            }
+
+            // Render table content
+            function renderTable(permissions) {
+                if (permissions.length === 0) {
+                    $('#permTableBody').html('<tr><td colspan="8" class="text-center py-12 text-slate-400"><i class="fas fa-key text-3xl mb-2 block"></i>No permissions rules found matching your search.</td></tr>');
+                    $('#recordCountLabel').text('Showing 0 rules');
+                    return;
+                }
+
+                let html = '';
+                permissions.forEach(function (item, index) {
+                    let targetBadge = '';
+                    if (item.RoleName) {
+                        targetBadge = `<div class="flex flex-col"><span class="font-semibold text-slate-700 text-sm"><i class="fas fa-sitemap mr-1.5 text-ngk-primary"></i>${item.RoleName}</span><span class="text-xs text-slate-400">BCP Role Name</span></div>`;
+                    } else if (item.UserNIK) {
+                        targetBadge = `<div class="flex flex-col"><span class="font-semibold text-slate-800 text-sm"><i class="fas fa-user mr-1.5 text-slate-400"></i>${item.TargetName}</span><span class="font-mono text-xs text-slate-400">NIK: ${item.UserNIK} (Legacy)</span></div>`;
+                    }
+
+                    let reviewBadge = getBooleanBadge(item.IsAllowedReview);
+                    let submitBadge = getBooleanBadge(item.IsAllowedSubmitReview);
+                    let activateBadge = getBooleanBadge(item.IsAllowedActivate);
+                    let manageBadge = getBooleanBadge(item.IsAllowedManageBCP);
+
+                    html += `
+                        <tr class="hover:bg-slate-50/50 transition-colors">
+                            <td class="pl-6 text-center font-semibold text-slate-400">${index + 1}</td>
+                            <td>${targetBadge}</td>
+                            <td class="text-center">${reviewBadge}</td>
+                            <td class="text-center">${submitBadge}</td>
+                            <td class="text-center">${activateBadge}</td>
+                            <td class="text-center">${manageBadge}</td>
+                            <td class="text-slate-500 font-medium text-xs whitespace-nowrap">${item.Created_At}</td>
+                            <td class="pr-6 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button class="edit-btn p-2 text-slate-500 hover:text-ngk-primary hover:bg-ngk-primaryLight rounded-xl transition-all border border-slate-200 hover:border-ngk-primary/30 bg-white shadow-sm flex items-center justify-center cursor-pointer" data-id="${item.ID}" title="Edit Permission Rule">
+                                        <i class="fas fa-pencil-alt text-xs"></i>
+                                    </button>
+                                    <button class="delete-btn p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all border border-slate-200 hover:border-rose-200 bg-white shadow-sm flex items-center justify-center cursor-pointer" data-id="${item.ID}" title="Delete Permission Rule">
+                                        <i class="fas fa-trash-alt text-xs"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                $('#permTableBody').html(html);
+                $('#recordCountLabel').text(`Showing ${permissions.length} rule${permissions.length > 1 ? 's' : ''}`);
+            }
+
+            function getBooleanBadge(val) {
+                return val 
+                    ? `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200"><i class="fas fa-check text-xs"></i></span>`
+                    : `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-50 text-slate-300 border border-slate-100"><i class="fas fa-times text-xs"></i></span>`;
+            }
+
+            // Search filtering with debounce
+            let searchTimeout;
+            $('#tableSearch').on('input', function () {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(loadPermissions, 300);
+            });
+
+            // Show form panel
+            $('#btnNewPermission').click(function () {
+                resetForm();
+                $('#roleName').prop('readonly', false).removeClass('bg-slate-50 text-slate-500 cursor-not-allowed');
+                $('#formTitle').text('Create Permission Rule');
+                $('#formPanel').removeClass('hidden');
+                $('html, body').animate({
+                    scrollTop: $("#formPanel").offset().top - 100
+                }, 500);
+            });
+
+            // Discard / Close form
+            $('#btnCancelForm, #btnDiscard').click(function () {
+                $('#formPanel').addClass('hidden');
+                resetForm();
+            });
+
+            // Populate form for editing
+            $(document).on('click', '.edit-btn', function () {
+                let id = $(this).data('id');
+                let item = allPermissions.find(x => x.ID == id);
+                if (item) {
+                    $('#permId').val(item.ID);
+                    $('#roleName').val(item.RoleName || '').prop('readonly', true).addClass('bg-slate-50 text-slate-500 cursor-not-allowed');
+                    
+                    $('#isAllowedReview').prop('checked', item.IsAllowedReview).trigger('change');
+                    $('#isAllowedSubmitReview').prop('checked', item.IsAllowedSubmitReview).trigger('change');
+                    $('#isAllowedActivate').prop('checked', item.IsAllowedActivate).trigger('change');
+                    $('#isAllowedManageBCP').prop('checked', item.IsAllowedManageBCP).trigger('change');
+
+                    $('#createdDateText').text(item.Created_At);
+                    $('#createdDateContainer').removeClass('hidden');
+
+                    $('#formTitle').text('Edit Permission Rule');
+                    $('#formPanel').removeClass('hidden');
+                    $('html, body').animate({
+                        scrollTop: $("#formPanel").offset().top - 100
+                    }, 500);
+                }
+            });
+
+            // Save Form Action
+            $('#permForm').submit(function (e) {
+                e.preventDefault();
+
+                let role = $('#roleName').val().trim();
+
+                if (!role) {
+                    Swal.fire({ icon: 'warning', title: 'Warning', text: 'Silakan masukkan BCP Role Name.', confirmButtonColor: '#007581' });
+                    return;
+                }
+
+                let data = {
+                    ID: $('#permId').val() || 0,
+                    RoleName: role,
+                    UserNIK: '',
+                    IsAllowedReview: $('#isAllowedReview').is(':checked'),
+                    IsAllowedSubmitReview: $('#isAllowedSubmitReview').is(':checked'),
+                    IsAllowedActivate: $('#isAllowedActivate').is(':checked'),
+                    IsAllowedManageBCP: $('#isAllowedManageBCP').is(':checked')
+                };
+
+                $.ajax({
+                    url: '@Url.Action("SaveRolePermission", "BCP")',
+                    type: 'POST',
+                    data: data,
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Saved!',
+                                text: res.message,
+                                confirmButtonColor: '#007581'
+                            });
+                            $('#formPanel').addClass('hidden');
+                            resetForm();
+                            loadPermissions();
+                        } else {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Warning',
+                                text: res.message,
+                                confirmButtonColor: '#007581'
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Request failed. Please try again.',
+                            confirmButtonColor: '#007581'
+                        });
+                    }
+                });
+            });
+
+            // Delete Action Click
+            $(document).on('click', '.delete-btn', function () {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: "Delete Permission?",
+                    text: "Are you sure you want to delete this authorization rule? This will immediately revoke their actions privileges.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Yes, revoke it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteRolePermission", "BCP")',
+                            type: 'POST',
+                            data: { ID: id },
+                            success: function (res) {
+                                if (res.status === 'success') {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: res.message,
+                                        confirmButtonColor: '#007581'
+                                    });
+                                    loadPermissions();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error',
+                                        text: res.message,
+                                        confirmButtonColor: '#007581'
+                                    });
+                                }
+                            },
+                            error: function () {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Request failed. Please try again.',
+                                    confirmButtonColor: '#007581'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Reset Form Values
+            function resetForm() {
+                $('#permId').val('');
+                $('#permForm')[0].reset();
+                $('#roleName').prop('readonly', false).removeClass('bg-slate-50 text-slate-500 cursor-not-allowed');
+                $('input[type="checkbox"]').prop('checked', false).trigger('change');
+                $('#createdDateContainer').addClass('hidden');
+                $('#createdDateText').text('-');
+            }
+
+            // Initial listing call
+            loadPermissions();
+        });
+    </script>
+}

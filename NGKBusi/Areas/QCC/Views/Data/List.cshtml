@@ -1,0 +1,132 @@
+﻿@using NGKBusi.Areas.QCC.Models;
+@using NGKBusi.Areas.QCC.Controllers;
+@using NGKBusi.Models;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Data List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    QCCConnection dbQCC = new QCCConnection();
+    var QCC = ViewContext.Controller as DataController;
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    string[] isQMTeam = { "808.10.18", "867.02.23", "714.06.15", "767.11.16" };
+    var checkRole = db.Users_Menus_Roles.Where(w => w.userNIK == currUserID && w.menuID == 34).FirstOrDefault();
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/QCC/List.css?v=" + DateTime.Now.TimeOfDay)" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/QCC/List.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@if (Request["addNew"] == null && Request["iGroup"] == null)
+{
+    if (Request.IsAuthenticated)
+    {
+        <a href="@Url.Action("List", "Data", new { area = "QCC", addNew = "addNew" })" class="btn btn-primary mb-3">Register QCC</a>
+    }
+
+    <table class="table table-bordered table-striped tblQCCList">
+        <thead>
+            <tr>
+                <th>Periode</th>
+                <th>Group</th>
+                <th>Category</th>
+                <th>Tema</th>
+                <th>Members</th>
+                <th>Section</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in ViewBag.QCCList)
+            {
+                int currID = data.ID;
+                var members = dbQCC.QCC_List_Member.Where(w => w.List_ID == currID).ToList();
+                <tr>
+                    <td>@data.Period_FY</td>
+                    @*<td><a href="@Url.Action("Progress","Data",new { area = "QCC",iPeriod = data.Period,iGroup = data.Group })" target="_blank">@(data.Group)</a></td>*@
+                    <td><a href="@Url.Action("List","Data",new { area = "QCC",iPeriodFY = data.Period_FY,iGroup = data.Group })" target="_blank">@(data.Group)</a></td>
+                    <td>@data.Category</td>
+                    <td>@data.Theme</td>
+                    <td data-member="@( String.Join(",",members.Select(s => s.Member).ToArray()))">
+                        <ul>
+                            @foreach (var member in members)
+                            {
+                                <li>
+                                    @(member.UserMember.Name)
+                                </li>
+                            }
+                        </ul>
+                    </td>
+                    <td>
+                        @{
+                            var memberSection = members.Select(s => s.Section).Distinct().ToList();
+                        }
+                        <ul>
+                            @foreach (var member in memberSection)
+                            {
+                                <li>
+                                    @(member)
+                                </li>
+                            }
+                        </ul>
+                    </td>
+                    <td>
+                        @if (!data.Is_Reject)
+                        {
+                            <span class="badge badge-info">@(QCC.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub))</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">Rejected</span>
+                        }
+                    </td>
+                    <td>
+                        @if ((isQMTeam.Contains(currUserID) || data.Created_By == currUserID) && data.Approval == 1 && data.Approval_Sub == 0)
+                        {
+                            <a href="@Url.Action("List","Data",new { area = "QCC",iPeriodFY = data.Period_FY,iGroup = data.Group })" class="btn btn-warning btn-sm d-inline-block" title="Edit"><i class="fas fa-edit"></i></a>
+                            <button class="btnDelete btn btn-danger btn-sm d-inline-block" title="Delete" data-id="@(data.ID)"><i class="fa fa-trash"></i></button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="8" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <a href="@Url.Action("List", "Data", new { area = "QCC" })" class="btn btn-success mb-3">Back to QCC List</a>
+
+    @Html.Partial("Partials/_RegistrationForm")
+}

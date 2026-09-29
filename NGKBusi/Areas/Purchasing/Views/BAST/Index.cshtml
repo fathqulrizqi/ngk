@@ -1,0 +1,371 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "BAST List";
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Hanya aktif jika ada class 'dark' di tag HTML
+        }
+    </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- DataTables Tailwind CSS Integration -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.tailwindcss.min.css">
+
+    <style>
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            min-height: 100vh;
+        }
+
+        .dataTables_scrollBody thead {
+            visibility: hidden;
+        }
+
+            .dataTables_scrollBody thead th {
+                padding: 0 !important;
+                height: 0 !important;
+                border: 0 !important;
+            }
+
+        /* Menyembunyikan baris filter duplikat di dalam area body scroll DataTables */
+        .dataTables_scrollBody thead tr.filters {
+            visibility: collapse !important;
+            height: 0 !important;
+            border: none !important;
+        }
+
+            .dataTables_scrollBody thead tr.filters th {
+                padding: 0 !important;
+                border: none !important;
+            }
+
+        .dataTables_wrapper,
+        .dataTables_scroll,
+        .dataTables_scrollHead,
+        .dataTables_scrollBody {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Hapus inline border-right yang ditambahkan DataTables saat scrollX aktif */
+        .dataTables_scrollBody {
+            border-right: none !important;
+        }
+
+        .dataTables_scrollHeadInner,
+        .dataTables_scrollHeadInner table {
+            border-right: none !important;
+        }
+
+        #bastTable,
+        #bastTable th,
+        #bastTable td {
+            border-right: none !important;
+        }
+
+        /* Scrollbar tipis & clean — tidak ada garis/gambar tambahan */
+        .dataTables_scrollBody::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .dataTables_scrollBody::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .dataTables_scrollBody::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
+        }
+
+        .dataTables_scrollBody {
+            scrollbar-width: thin;
+        }
+
+        /* --- PERBAIKAN DATATABLES DARK MODE --- */
+        /* Menghilangkan garis bawah tebal bawaan datatables */
+        table.dataTable,
+        table.dataTable.no-footer {
+            border-bottom: none !important;
+            border-top: none !important;
+            border-collapse: collapse !important;
+        }
+
+        /* Menghilangkan garis pembungkus / border dari wrapper DataTables jika ada */
+        .dataTables_wrapper {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Merapikan garis pembatas baris agar tidak terlihat double */
+        #bastTable tbody tr {
+            border-bottom: 1px solid #f3f4f6 !important; /* warna abu-abu sangat muda (gray-100) */
+        }
+        /* 1. Paksa warna teks header tetap gelap */
+        table.dataTable thead th {
+            color: #374151 !important;
+            border-bottom: 1px solid #e5e7eb !important;
+        }
+
+        /* Efek hover untuk baris tabel dan kursor pointer */
+        table.dataTable tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+            table.dataTable tbody tr:hover {
+                background-color: #fff7ed !important; /* Warna orange-50 ala Tailwind */
+            }
+
+        /* Title column - biarkan natural, tanpa paksa lebar */
+        .title-col {
+            white-space: normal;
+        }
+
+        table.dataTable thead th,
+        table.dataTable tbody td {
+            border-left: none !important;
+            border-right: none !important;
+        }
+
+        /* 2. Paksa background input search dan select length tetap putih */
+        .dataTables_wrapper .dataTables_length select,
+        .dataTables_wrapper .dataTables_filter input {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.5rem;
+        }
+
+        .dataTables_wrapper .dataTables_length select {
+            padding-right: 2rem !important;
+        }
+
+        .dataTables_wrapper .dataTables_filter input {
+            padding: 0.25rem 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        /* 3. Paksa background input per-kolom di baris kedua tetap putih */
+        table.dataTable thead tr.filters input {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            border: 1px solid #d1d5db !important;
+        }
+
+        /* 4. Paksa warna background baris filter dan kecilkan paddingnya */
+        table.dataTable thead tr.filters th {
+            background-color: #f9fafb !important;
+            padding: 4px 10px !important;
+        }
+    </style>
+}
+
+<div class="px-4 py-6 max-w-full mx-auto">
+    <!-- Header -->
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+            <h1 class="text-2xl font-bold text-gray-50">BAST List</h1>
+        </div>
+        @{
+            var currUserId = (ViewBag.currUserId ?? "").ToString().Split(',')[0].Trim();
+            bool isPurchasing = ViewBag.purchasingUserList != null &&
+                ((IEnumerable<dynamic>)ViewBag.purchasingUserList).Any(u => u.NIK == currUserId);
+        }
+        @if (isPurchasing)
+        {
+        <a href="@Url.Action("Create", "BAST", new { area = "Purchasing" })"
+           id="createBAST"
+           class="inline-flex hover:no-underline items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-600 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+            <i class="fas fa-plus mr-2"></i>
+            Create New BAST
+        </a>
+        }
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-white overflow-hidden p-6 mt-4 rounded-lg">
+        <div class="w-full">
+            <table id="bastTable" class="w-full text-sm text-left text-gray-600 stripe hover" style="width:100%">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-3">BAST No</th>
+                        <th class="px-4 py-3">Title</th>
+                        <th class="px-4 py-3">Vendor</th>
+                        <th class="px-4 py-3">Creator</th>
+                        <th class="px-4 py-3">Section To</th>
+                        <th class="px-4 py-3">Due Date</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Diisi oleh DataTables melalui AJAX -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <!-- DataTables JS & Tailwind Integration -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.tailwindcss.min.js"></script>
+
+    <script>
+        let rawLoggedInUser = '@(ViewBag.currUserId ?? "")'.trim();
+        const currentLoggedInUser = String(rawLoggedInUser).split(',')[0].trim().toLowerCase();
+
+        $(document).ready(function () {
+            // 1. Clone header untuk tempat input Filter Per-Column SEBELUM DataTables diinisialisasi
+            $('#bastTable thead tr').clone(true).addClass('filters bg-gray-50').appendTo('#bastTable thead');
+
+            // Isikan input form ke dalam row cloned header tersebut
+            $('#bastTable thead tr.filters th').each(function (colIdx) {
+                var title = $(this).text().trim();
+
+                // Abaikan kolom 'Action'
+                if (title === 'Action') {
+                    $(this).html('');
+                    return;
+                }
+
+                // Render Input search
+                $(this).html('<input type="text" placeholder="Search ' + title + '" class="w-full p-1.5 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none font-normal" />');
+            });
+
+            // 2. Inisialisasi DataTables
+            var table = $('#bastTable').DataTable({
+                scrollX: true,
+                scrollCollapse: true,
+                orderCellsTop: true, // Memastikan ordering/sorting hanya bekerja di baris header atas (bukan baris filter)
+                fixedHeader: false,
+                ajax: {
+                    url: "@Url.Action("GetBASTList", "BAST", new { area = "Purchasing" })",
+                    type: 'GET',
+                    dataSrc: 'data'
+                },
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'bast_number' },
+                    { data: 'title', className: 'title-col' },
+                    { data: 'vendor_name' },
+                    { data: 'creator_name' },
+                    { data: 'section_name' },
+                    { data: 'due_date' },
+                    {
+                        data: 'status',
+                        render: function (data, type, row) {
+                            let colorClass = "bg-gray-100 text-gray-800";
+                            if (data.toLowerCase().includes('waiting')) colorClass = "bg-yellow-100 text-yellow-800 border-yellow-200";
+                            else if (data.toLowerCase().includes('approved') || data.toLowerCase().includes('done')) colorClass = "bg-green-100 text-green-800 border-green-200";
+                            else if (data.toLowerCase().includes('reject')) colorClass = "bg-red-100 text-red-800 border-red-200";
+
+                            return `<span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${colorClass}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function (data, type, row) {
+                            var actionHtml = ``;
+                            var rowCreatorNik = String(row.creator_nik || '').trim().toLowerCase();
+
+                            if (rowCreatorNik !== '' && currentLoggedInUser.includes(rowCreatorNik)) {
+                                actionHtml += `
+                                    <button type="button" onclick="deleteBAST(${row.id})" class="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded transition-colors" title="Delete BAST">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                `;
+                            }
+
+                            return actionHtml;
+                        }
+                    }
+                ],
+
+                // 3. Pasang Event Listener untuk Filter Per-Column setelah DataTables selesai dimuat
+                initComplete: function () {
+                    var api = this.api();
+
+                    // Bersihkan header palsu yang ikut ter-clone di dalam scrollBody saat scrollX aktif
+                    $('.dataTables_scrollBody thead tr.filters').remove();
+
+                    // Jalankan event listener pencarian pada tiap input filter di scrollHead
+                    $('.dataTables_scrollHead tr.filters th').each(function (colIdx) {
+                        $('input', this).on('keyup change', function (e) {
+                            e.stopPropagation();
+
+                            var cursorPosition = this.selectionStart;
+
+                            api.column(colIdx)
+                                .search(this.value !== '' ? this.value : '', false, false)
+                                .draw();
+
+                            $(this).focus()[0].setSelectionRange(cursorPosition, cursorPosition);
+                        });
+                    });
+                }
+            });
+
+            // Handle Klik Baris Tabel (Redirect ke Detail)
+            $('#bastTable tbody').on('click', 'tr', function (e) {
+                if ($(e.target).closest('button').length > 0 || $(e.target).closest('input').length > 0) {
+                    return;
+                }
+
+                var data = table.row(this).data();
+                if (data) {
+                    var detailUrl = '@Url.Action("Detail", "BAST", new { area = "Purchasing" })' + '?bast_number=' + data.bast_number;
+                    window.location.href = detailUrl;
+                }
+            });
+        });
+
+        function deleteBAST(id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Data, file PDF, dan riwayat approval akan dihapus secara permanen!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteBAST", "BAST", new { area = "Purchasing" })',
+                        type: 'POST',
+                        data: { id: id },
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire(
+                                    'Deleted!',
+                                    response.message,
+                                    'success'
+                                );
+                                $('#bastTable').DataTable().ajax.reload(null, false);
+                            } else {
+                                Swal.fire('Error!', response.message, 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire('Error!', 'Terjadi kesalahan pada server.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}

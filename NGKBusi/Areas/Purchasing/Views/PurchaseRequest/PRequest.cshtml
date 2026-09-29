@@ -1,0 +1,1206 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.Purchasing.Controllers;
+@using NGKBusi.Areas.Purchasing.Models;
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using System.Linq;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var PR = ViewContext.Controller as PurchaseRequestController;
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = _currUser.GetUserId();
+    var currUserSectName = _currUser.FindFirstValue("sectName");
+    var currData = ViewBag.PurchaseRequest;
+    var currApproval = ViewBag.CurrApproval;
+    var currDataLine = ViewBag.PurchaseRequestLine;
+    var currDataList = ViewBag.PurchaseRequestList;
+    var currUserLevel = ViewBag.UserLevel;
+    var currUserLevelSub = ViewBag.UserLevelSub;
+
+    PurchaseRequestConnection dbPR = new PurchaseRequestConnection();
+    DefaultConnection db = new DefaultConnection();
+
+    var isAllowEdit = Request["addNew"] != null || currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub && currData?.Created_By == currUserID ? true : false;
+    var isAllowSign = currData != null && ((IEnumerable<dynamic>)ViewBag.currUserLevels).Any(a => a.Levels == currData.Approval && a.Levels_Sub == currData.Approval_Sub);
+}
+
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+
+        .tblPRLine, .trQTVendorDetail, .tblPRBudgetRemaining thead tr {
+            color: white;
+        }
+
+        #divPRLine {
+            overflow: auto !important;
+        }
+
+        .tblSign thead th, .tblAddEmployee thead th {
+            background-color: #1F4E78 !important;
+            color: white;
+        }
+    </style>
+
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            bindAutoComplete($(".txtItemID"));
+            $(".txtDueDate").datepicker({ dateFormat: "dd-mm-yy", minDate: 30 });
+            $(document).on("keyup", ".txtItemID", function (e) {
+                var item = $(this).closest("tr").find(".txtItemID").val().split('||');
+                if (item.length > 1) {
+                    $(this).closest("tr").find("#hfItemID").val(item[0].trim());
+                    $(this).closest("tr").find("#hfItemName").val(item[1].trim());
+                } else {
+                    $(this).closest("tr").find("#hfItemID").val("");
+                    $(this).closest("tr").find("#hfItemName").val($(this).val());
+                }
+            });
+
+            $(".btnPRLineAdd").click(function () {
+                var tr = $(".tblPRLine tbody tr:first").clone();
+                tr.find("input").val("");
+                tr.find(".txtQty").val(1);
+                tr.find(".txtPrice").val(0);
+                bindAutoComplete(tr.find(".txtItemID"));
+                tr.find("textarea").val("");
+                tr.find(".select2-container").remove();
+                tr.find(".select2").select2();
+                $(".tblPRLine tbody").append(tr);
+
+            });
+
+            $(document).on("click", ".btnPRLineCopy", function () {
+                var tr = $(this).closest(".tblPRLine tbody tr").clone();
+                var currBudget = tr.find(".selBudgetNumber option:selected").val();
+                console.log(tr)
+                bindAutoComplete(tr.find(".txtItemID"));
+                tr.find(".select2-container").remove();
+                tr.find(".select2").select2();
+                tr.find("select").val(currBudget).change();
+                $(".tblPRLine tbody").append(tr);
+                bindBudget();
+            });
+
+
+            $(document).on("click", ".btnPRLineDelete", function () {
+                var tr = $(this).closest("tr");
+                if ($(".tblPRLine tbody tr").length == 1) {
+                    tr.find("input").val("");
+                    tr.find(".txtQty").val(1);
+                    tr.find(".txtPrice").val(0);
+                    bindAutoComplete(tr.find(".txtItemID"));
+                    tr.find("textarea").val("");
+                    tr.find("select").val("").change();
+                    tr.find(".select2-container").remove();
+                    tr.find(".select2").select2();
+                } else {
+                    tr.remove();
+                }
+                bindBudget();
+            });
+
+            $(document).on("click", ".btnPRLineReject", function () {
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/Purchasing/PurchaseRequest/itemReject",
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iLineID: e.closest("tr").data('lineID').val()
+                    },
+                    success: function (data) {
+                        response(data);
+                    }, error: function (xhr, textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            $('.ulFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/deletePRAttachment",
+                        data: {
+                            iID: currID
+                        },
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            $("#selPRFilterStatus,#selPRFilterYear,#selPRFilterLevel").change(function () {
+                $(".btnPRFilter").click();
+            });
+
+            if ($(".txtPrice").length > 1) {
+                new AutoNumeric.multiple(".txtPrice", { unformatOnSubmit: true, allowDecimalPadding: false });
+                new AutoNumeric.multiple(".txtQty", { unformatOnSubmit: true, allowDecimalPadding: false });
+            }
+
+            $(document).on("keyup", ".txtPrice", function () {
+                calculateRemaining($(this));
+            });
+            $(document).on("keyup", ".txtQty", function () {
+                calculateRemaining($(this));
+            });
+            $(".txtPrice,.txtQty").each(function () {
+            });
+            $(".btnPRSubmit").click(function () {
+                $(".selItemGroup").each(function () {
+                    $(this).prop("disabled", false);
+                });
+            });
+
+            function calculateRemaining(e) {
+                var estimatePrice = 0.00;
+                var currBudget = e.closest("tr").find(".selBudgetNumber option:selected").val();
+                $(".tblPRLine tbody .selBudgetNumber option:selected[value='" + currBudget + "']").each(function () {
+                    estimatePrice += parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtPrice").val())) * parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtQty").val()));
+                });
+                var currBudgetNo = currBudget.split("|")[0];
+                var budgetRemainingTR = $(".tblPRBudgetRemaining tbody tr:has(td[data-budgetno='" + currBudgetNo + "'])");
+                if (budgetRemainingTR.length > 0) {
+                    var budgetRemainingTotalTD = budgetRemainingTR.find(".tdPRRemainingTotal");
+                    var budgetEstimationTD = budgetRemainingTR.find(".tdPRRemainingEstimation");
+                    var budgetRemaining = budgetEstimationTD.data("remaining");
+                    var budgetRemainingTotal = parseFloat(budgetRemaining) - parseFloat(estimatePrice) ?? 0;
+                    var budgetStatus = currBudgetNo == "Rebate" || budgetRemainingTotal >= 0 ? " <span style='color:green;'>(On Budget <i class='fa fa-check'></i>)</span>" : " <span style='color:red;'>(Over Budget <i class='fa fa-triangle-exclamation'></i>)</span>";
+                    budgetStatus = currBudgetNo == "New-Price" || currBudgetNo == "Selling-Out" || currBudgetNo == "Next-FY-Budget" ? "" : budgetStatus;
+                    if (currBudgetNo == "Rebate" || currBudgetNo == "New-Price" || currBudgetNo == "Selling-Out" || currBudgetNo == "Next-FY-Budget") {
+                        budgetRemainingTotalTD.text('-');
+                        budgetRemainingTR.find(".tdPRRemainingAmount").text('-');
+                    } else {
+                        budgetRemainingTotalTD.text(AutoNumeric.format(budgetRemainingTotal, { allowDecimalPadding: false }));
+                    }
+                    budgetRemainingTR.find(".lblBudgetStatus").html(budgetStatus);
+                    budgetEstimationTD.text(AutoNumeric.format(estimatePrice, { allowDecimalPadding: false }));
+
+                }
+            }
+
+            getAttachment();
+            function getAttachment() {
+                var reqNumber = $("#hfReqNumber").val();
+                var isAllowEdit = $("#hfisAllowEdit").val();
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/Purchasing/PurchaseRequest/getPRAttachment",
+                    data: {
+                        iReqNumber: reqNumber
+                    },
+                    success: function (data) {
+                        console.log(data);
+                        var liFiles = "";
+                        $(".ulFiles").empty();
+                        $.each(data.files, function (k, v) {
+                            switch (v.ext.toLowerCase()) {
+                                case ".doc":
+                                case ".docm":
+                                case ".docx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/PR/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".xls":
+                                case ".xlsx":
+                                case ".xlsm":
+                                case ".csv":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/PR/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li>";
+                                    break;
+                                case ".pdf":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/PR/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".ppt":
+                                case ".pptx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/PR/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".jpg":
+                                case ".jpeg":
+                                case ".png":
+                                case ".gif":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/PurchaseRequest/PR/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                            }
+                        });
+                        $(".ulFiles").append(liFiles);
+                        if ($(".ulFiles li").length < 1) {
+                            liFiles = "<li style = 'list-style: none; '>-</li>";
+                            $(".ulFiles").append(liFiles);
+                        }
+                        if (!isAllowEdit) {
+                            $(".ifileDelete").hide();
+                        }
+
+                        $(".mdlAttachment").modal();
+                    }, error: function () {
+                        alert("Error Occurred, Please try again !");
+                    }
+                });
+                bindBudget();
+                $(document).on("change", ".selBudgetNumber", function () {
+                    var currTR = $(this).closest("tr");
+                    var currSection = $(this).find("option:selected").data("dept-to");
+                    var currItemGroup = $(this).find("option:selected").data("itemgroup");
+                    currTR.find(".selSectionTo option[data-dept-code='" + currSection + "']").prop("selected", true);
+                    //currTR.find(".selSectionTo").prop("disabled", currSection.length > 0 && currSection != "ALL" ? true : false);
+                    currTR.find(".selSectionTo").select2();
+                    currTR.find(".selItemGroup option[value='" + currItemGroup + "']").prop("selected", true);
+                    currTR.find(".selItemGroup").prop("disabled", currItemGroup.length > 0 ? true : false);
+                    currTR.find(".selItemGroup").select2();
+                    bindBudget();
+                });
+            }
+            var budgetRemainingData = {};
+            function bindBudget() {
+                var budgetList = [];
+                $(".tblPRLine tbody .selBudgetNumber option:selected").each(function () {
+                    if ($(this).val() != "" && $.inArray($(this).val(), budgetList) < 0) {
+                        budgetList.push($(this).val());
+                    }
+                });
+                $(".tblPRBudgetRemaining tbody").empty();
+                budgetList.forEach(function (e) {
+                    var bNumber = e.split("|")[0];
+                    var bName = e.split("|")[1];
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Purchasing/PurchaseRequest/GetRemainingBudget",
+                        dataType: "json",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iBudgetNumber: bNumber,
+                            iBudgetName: bName,
+                            iQuoID: 0,
+                            iPRNumber: $("#hfReqNumber").val() || 0
+                        },
+                        success: function (data) {
+                            budgetRemainingData[bNumber] = data;
+                            var estimatePrice = 0.00;
+                            $(".tblPRLine tbody .selBudgetNumber option:selected[value='" + e + "']").each(function () {
+                                estimatePrice += parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtPrice").val())) * parseFloat(AutoNumeric.unformat($(this).closest("tr").find(".txtQty").val()));
+                            });
+                            var budgetTotal = parseFloat(data.getData.Total_Amount) || 0.00;
+                            var budgetUsage = parseFloat(data.getData.Usage) || 0.00;
+                            var budgetRemaining = parseFloat(budgetTotal) - parseFloat(budgetUsage) - parseFloat(estimatePrice);
+                            var isNotCommonBudget = (bNumber == "UNB" || bNumber == "Rebate" || bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget" ? true : false);
+                            var budgetStatus = (bNumber == "Rebate" || bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget") || budgetRemaining >= 0 ? " <span style='color:green;'>(On Budget <i class='fa fa-check'></i>)</span>" : " <span style='color:red;'>(Over Budget <i class='fa fa-triangle-exclamation'></i>)</span>";
+                            budgetStatus = bNumber == "New-Price" || bNumber == "Selling-Out" || bNumber == "Next-FY-Budget" ? "" : budgetStatus;
+                            var newRow = "<tr>";
+                            newRow += "<td class='tdPRRemainingBudget' data-budgetno='" + bNumber + "'>" + bNumber + " | " + bName + " <label class='lblBudgetStatus'>" + budgetStatus + "</label>" + "</td>";
+                            newRow += "<td class='tdPRRemainingAmount'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetTotal, { allowDecimalPadding: false })) + "</td>";
+                            newRow += "<td class='tdPRRemainingInUse'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetUsage, { allowDecimalPadding: false })) + (isNotCommonBudget ? "" : "<button type='button' class='btn btn-info btn-xs ml-1 btnBudgetInUseDetails px-2 py-1' data-budgetno='" + bNumber + "' data-budgetname='" + bName + "' title='View Budget Details'><i class='fas fa-list'></i></button>") + "</td>";
+                            newRow += "<td class='tdPRRemainingEstimation' data-remaining='" + (budgetTotal - budgetUsage) + "'>" + AutoNumeric.format(estimatePrice, { allowDecimalPadding: false }) + "<button type='button' class='btn btn-info btn-xs ml-1 btnBudgetDetails px-2 py-1' data-budgetno='" + bNumber + "' data-budgetname='" + bName + "' title='View Budget Details'><i class='fas fa-list'></i></button>" + "</td>";
+                            newRow += "<td class='tdPRRemainingTotal'>" + (isNotCommonBudget ? "-" : AutoNumeric.format(budgetRemaining, { allowDecimalPadding: false })) + "</td>";
+                            $(".tblPRBudgetRemaining tbody").append(newRow);
+                        }, error: function (xhr, textStatus) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please Try Again." + textStatus);
+                        }
+                    });
+
+                    $(document).on('click', '.btnBudgetDetails', function () {
+                        var budgetNo = $(this).data('budgetno');
+                        var budgetName = $(this).data('budgetname');
+                        var items = [];
+                        var grandTotal = 0;
+                        // Use tblPRLine for item extraction
+                        $('.tblPRLine tbody tr').each(function () {
+                            var rowBudgetNo = $(this).find('.selBudgetNumber option:selected').val();
+                            if (rowBudgetNo && rowBudgetNo.split('|')[0] === budgetNo) {
+                                var item = {
+                                    item: '',
+                                    unit: '',
+                                    qty: 0,
+                                    price: 0,
+                                    total: 0,
+                                    note: ''
+                                };
+                                // Extract item name
+                                var itemID = $(this).find('.txtItemID').val();
+                                var itemName = $(this).find('#hfItemName').val();
+                                item.item = itemID ? itemID : '';
+                                // Extract unit and qty
+                                item.unit = $(this).find('.selUnit option:selected').val() || '';
+                                var qtyText = $(this).find('.txtQty').val();
+                                item.qty = parseFloat(qtyText.replace(/,/g, '')) || 0;
+                                // Extract price
+                                var priceText = $(this).find('.txtPrice').val();
+                                item.price = parseFloat(priceText.replace(/,/g, '')) || 0;
+                                // Calculate total
+                                item.total = item.qty * item.price;
+                                grandTotal += item.total;
+                                // Extract note
+                                item.note = $(this).find('textarea').val() || '';
+                                items.push(item);
+                            }
+                        });
+                        var $tbody = $('#budgetItemsTable tbody');
+                        $tbody.empty();
+                        function formatNumber(num) {
+                            return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                        if (items.length > 0) {
+                            var rows = items.map(function (item) {
+                                return '<tr>' +
+                                    '<td>' + item.item + '</td>' +
+                                    '<td>' + item.unit + '</td>' +
+                                    '<td class="text-right">' + formatNumber(item.qty) + '</td>' +
+                                    '<td class="text-right">' + formatNumber(item.price) + '</td>' +
+                                    '<td class="text-right">' + formatNumber(item.total) + '</td>' +
+                                    '<td>' + item.note + '</td>' +
+                                    '</tr>';
+                            });
+                            $tbody.append(rows.join(''));
+                        } else {
+                            $tbody.append('<tr><td colspan="6">No items found for this budget.</td></tr>');
+                        }
+                        $('#budgetItemsGrandTotal').text(formatNumber(grandTotal));
+                        $('#budgetDetailsModalLabel').text("Items List of " + budgetNo + " | " + budgetName);
+                        $('#budgetDetailsModal').modal('show');
+                    });
+                    $(document).on('click', '.btnBudgetInUseDetails', function () {
+                        // Find the budget number and name from the row
+                        var $tr = $(this).closest('tr');
+                        var budgetNo = $(this).data('budgetno');
+                        var budgetName = $(this).data('budgetname');
+                        var details = (budgetRemainingData[budgetNo] && budgetRemainingData[budgetNo].details) ? budgetRemainingData[budgetNo].details : [];
+                        // Filter details for this budget if needed (if multiple budgets in one page)
+                        // If not needed, just use details as is
+
+                        // Build table rows
+                        var $tbody = $('#budgetUsageTable tbody');
+                        $tbody.empty();
+                        var rows = '';
+                        var grandTotal = 0;
+                        if (details.length > 0) {
+                            details.forEach(function (item) {
+                                var link = window.location.origin + "/NGKBusi/Purchasing/PurchaseRequest/Quotation" + "?QuoNumber=" + encodeURIComponent(item.reference);
+                                if (item.type == "Purchase Request") {
+                                    link = window.location.origin + "/NGKBusi/Purchasing/PurchaseRequest/PRequest" + "?ReqNumber=" + encodeURIComponent(item.reference);
+                                } else if (item.type == "E-Voucher") {
+                                    link = window.location.origin + "/NGKBusi/FA/PaymentRequest/NonPOView" + "?EVoucher=" + encodeURIComponent(item.reference);
+                                }
+                                rows += '<tr>' +
+                                    '<td>' + (item.type || '') + '</td>' +
+                                    '<td>' + (item.date || '') + '</td>' +
+                                    '<td> <a href="' + link + '" target="_blank">' + (item.reference || '') + ' <i class="fa-solid fa-arrow-up-right-from-square"></i></a></td>' +
+                                    '<td>' + (item.desc || '') + '</td>' +
+                                    '<td class="text-right">' + (item.usage != null ? item.usage.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '') + '</td>' +
+                                    '</tr>';
+                                grandTotal += item.usage || 0;
+                            });
+                            $tbody.append(rows);
+                        } else {
+                            $tbody.append('<tr><td colspan="5">No usage details found for this budget.</td></tr>');
+                        }
+                        $('#budgetUsageGrandTotal').text(grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                        $('#budgetUsageDetailsModalLabel').text("Usages List of " + budgetNo + (budgetName ? " | " + budgetName : ""));
+                        $('#budgetUsageDetailsModal').modal('show');
+                    });
+                });
+            }
+
+
+            function bindAutoComplete(e) {
+                e.autocomplete({
+                    source: function (request, response) {
+                        $.ajax({
+                            type: "POST",
+                            url: "/NGKBusi/Purchasing/PurchaseRequest/GetItemID",
+                            dataType: "json",
+                            tryCount: 0,
+                            tryLimit: 3,
+                            data: {
+                                iItemGroup: e.closest("tr").find(".selItemGroup").val(),
+                                iItemID: e.closest("tr").find('.txtItemID:focus').val()
+                            },
+                            success: function (data) {
+                                response(data);
+                            }, error: function (xhr, textStatus) {
+                                if (textStatus === "timeout") {
+                                    this.tryCount++;
+                                    if (this.tryCount <= this.tryLimit) {
+                                        $.ajax(this);
+                                        return;
+                                    }
+                                }
+                                alert("Error Occurred, Please Try Again.");
+                            }
+                        });
+                    },
+                    minLength: 1
+                    , select: function (event, ui) {
+                        $(this).closest("tr").find(".selItemGroup").val(ui.item.itemGroup).select2();
+                        $(this).closest("tr").find("#hfItemID").val(ui.item.itemID);
+                        $(this).closest("tr").find("#hfItemName").val(ui.item.itemName);
+                        $(this).closest("tr").find(".selUnit").val(ui.item.unit).change();
+                    }
+                });
+            }
+
+            $(".tblPRequestList").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+            $(".formRequestSign").submit(function () {
+                $(this).find(':submit').attr('disabled', 'disabled').text("Signing..");
+            });
+
+            $(".cbPRLineCheckAll").click(function () {
+                if ($(this).is(":checked")) {
+                    $(".cbPRLineCheck").each(function () {
+                        $(this).prop("checked", true);
+                    });
+                } else {
+                    $(".cbPRLineCheck").each(function () {
+                        $(this).prop("checked", false);
+                    });
+                }
+            });
+            $(".cbPRLineCheck,.cbPRLineCheckAll").change(function () {
+                var selectedVal = [];
+                $(".cbPRLineCheck:checked").each(function () {
+                    selectedVal.push($(this).val());
+                });
+
+                $(".hfPRReturnList").val(selectedVal);
+            });
+
+            $(".cbPRLineCheck").click(function () {
+                if ($(".cbPRLineCheck:not(:checked)").length > 0) {
+                    $(".cbPRLineCheckAll").prop("checked", false);
+                } else {
+                    $(".cbPRLineCheckAll").prop("checked", true);
+                }
+            });
+
+            $(".btnPRReturn").click(function () {
+                if ($(".hfPRReturnList").val() == "") {
+                    alert("Please checked the returned items!");
+                    return false;
+                }
+            });
+        });
+    </script>
+}
+
+@*@{ var dataCheckQuotation = (IEnumerable<Purchasing_PurchaseRequest_Header>)currData.Lines.where(w => ). ;}*@
+
+<h2>
+    Purchase Request
+    @if (Request["addNew"] == null && Request["ReqNumber"] == null)
+    {
+        <a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing", addNew = "addNew" })" class="btn btn-primary">Create PR</a>
+    }
+    else
+    {
+        <a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing" })" class="btn btn-success">Back to Request List</a>
+    }
+
+    @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 0 && currData.Created_By == currUserID)
+    {
+        <form action="@Url.Action("RequestDelete", "PurchaseRequest", new { area = "Purchasing" })" method="post" class="d-inline-block">
+            <input type="hidden" name="iReqNumber" value="@(currData?.ReqNumber)" />
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure want to delete this PR?')">Delete PR</button>
+        </form>
+    }
+    @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 0 && (currUserSectName == "INDIRECT PROCUREMENT" || currUserSectName == "DIRECT PROCUREMENT"))
+    {
+        string currReqNumber = currData.ReqNumber;
+        var checkLines = dbPR.Purchasing_PurchaseRequest_Line.Where(w => w.ReqNumber == currReqNumber && w.QuoNumber == null).ToList();
+        if (checkLines.Count() > 0)
+        {
+            <form action="@Url.Action("requestSign", "PurchaseRequest", new { area = "Purchasing" })" method="post" class="d-inline-block">
+                <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                <button type="button" class="btn btn-warning btnPRReturn" data-toggle="modal" data-target="#returnModal">Return</button>
+                <input type="hidden" name="iPRReturnList" class="hfPRReturnList" />
+            </form>
+        }
+    }
+</h2>
+<div class="modal fade" id="mdlPurchReturn" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Note</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <textarea class="form-control" rows="5" name="iBTNote" placeholder="Please give your reason.." @(ViewBag.message != null ? "readonly" : "required" )>@(ViewBag.message ?? "")</textarea>
+            </div>
+            @if (ViewBag.btnType != null)
+            {
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary" name="btnType" value="@ViewBag.btnType">OK</button>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+<div class="divPRFilter @(Request["ReqNumber"] == null && Request["addNew"] == null ? "":"d-none")">
+    <form action="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+        <select id="selPRFilterYear" class="form-control" name="iPRFilterYear">
+            <option value="">-Year-</option>
+            @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selPRFilterStatus" class="form-control" name="iPRFilterStatus">
+            <option value="">-Status-</option>
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.currUserLevels).Count() > 1)
+        {
+            <select id="selPRFilterLevel" class="form-control" name="iPRFilterLevel">
+                <option value="">-Level-</option>
+                @foreach (var data in ((IEnumerable<dynamic>)ViewBag.currUserLevels).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.UserLevel + "|" + ViewBag.UserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnPRFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+<hr />
+<input type="hidden" id="hfReqNumber" value="@(Request["ReqNumber"])" />
+<input type="hidden" id="hfisAllowEdit" value="@(isAllowEdit)" />
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <div class="tblPRequestList overflow-auto">
+        <table class="table table-bordered table-striped tblPRequestList">
+            <thead>
+                <tr>
+                    <th>ReqNumber</th>
+                    <th>Date</th>
+                    <th>ETA Date</th>
+                    <th>Description</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Section</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Created By</th>
+                    <th class="filter-select filter-exact" data-placeholder="-Select-">Status</th>
+                    <th>Quotations</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var data in currDataList)
+                {
+                    <tr>
+                        <td><a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing", ReqNumber = data.ReqNumber,iPRFilterLevel=currUserLevel + "|" + currUserLevelSub })" target="_blank">@(data.ReqNumber)</a></td>
+                        <td>@(data.Created_At.ToString("dd-MM-yyyy"))</td>
+                        <td>@(data.Due_Date.ToString("dd-MM-yyyy"))</td>
+                        <td>@(data.Description)</td>
+                        <td>@(data.Section)</td>
+                        <td>@(data.Created_By + " | " + data?.Creator?.Name)</td>
+                        <td class="text-center">
+                            @if (!data.Is_Reject)
+                            {
+                                <span class="badge badge-info">@(PR.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub))</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-danger">Rejected</span>
+                            }
+                        </td>
+                        <td>
+                            @foreach (var dt in PR.getPRQuotation(data.ReqNumber))
+                            {
+                                <span class="badge badge-light">
+                                    <a target="_blank" href="@Url.Action("Quotation", "PurchaseRequest", new { area = "Purchasing", QuoNumber = dt })">@(dt)</a>
+                                </span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="8" class="ts-pager">
+                        <div class="form-inline">
+                            <div class="btn-group btn-group-sm mx-1" role="group">
+                                <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                                <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                            </div>
+                            <span class="pagedisplay"></span>
+                            <div class="btn-group btn-group-sm mx-1" role="group">
+                                <button type="button" class="btn btn-secondary next" title="next">→</button>
+                                <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                            </div>
+                            <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                                <option selected="selected" value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="all">All Rows</option>
+                            </select>
+                            <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}
+else
+{
+    <div class="container-fluid" style="overflow:auto;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="@Url.Action((currData != null ? "RequestEdit" : "RequestAdd"), "PurchaseRequest", new { area = "Purchasing" })" method="post" enctype="multipart/form-data">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-info text-white w-100" title="Request Number">
+                                        <i class="fas fa-file-alt mr-1"></i> Request Number
+                                    </span>
+                                </div>
+                                <input type="text"
+                                       class="form-control-plaintext font-weight-bold"
+                                       readonly
+                                       value="@(currData?.ReqNumber ?? "Auto Generate after submit")"
+                                       style="background: #f8f9fa; color: #007b85; font-size: 1.1em; padding-left:15px;"
+                                       data-toggle="tooltip"
+                                       data-placement="right"
+                                       title="@(currData?.ReqNumber == null ? "This will be generated after you submit the form." : "Request Number")" />
+                            </div>
+                            <hr />
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Dept/Section</label>
+                                <div class="col-sm-10">
+                                    <input type="hidden" name="iReqNumber" value="@(currData?.ReqNumber)" />
+                                    <select id="selSection" name="iSection" class="form-control selSection" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                        @foreach (var item in ((IEnumerable<dynamic>)ViewBag.SectionList).Distinct())
+                                        {
+                                            <option data-dept-to="@( item.Dept_Code + "|" + item.Dept_Name )" @(currData != null && currData?.Section == item.Dept_Code + " | " + item.Dept_Name ? "selected" : "")>@(item.Dept_Code + " | " + item.Dept_Name)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDueDate" class="col-sm-2 col-form-label">ETA Date</label>
+                                <div class="col-sm-10">
+                                    <input type="text" id="txtDueDate" name="iDueDate" placeholder="ETA Date" class="form-control txtDueDate" autocomplete="off" value="@(currData?.Due_Date.ToString("dd-MM-yyyy"))" required @(isAllowEdit ? "" : "disabled") />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDescription" class="col-sm-2 col-form-label">Description</label>
+                                <div class="col-sm-10">
+                                    <textarea id="txtDescription" name="iDescription" placeholder="Description" class="form-control txtDescription" required @(isAllowEdit ? "" : "disabled")>@(currData?.Description)</textarea>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDescription" class="col-sm-2 col-form-label">Attachment</label>
+                                <div class="col-sm-10">
+                                    @if (isAllowEdit)
+                                    {
+                                        <input type="file" name="iFiles" multiple="multiple" @(isAllowEdit ? "" : "disabled") />
+                                    }
+                                    <ul class="ulFiles pl-0"></ul>
+                                </div>
+                            </div>
+                            <table class="table table-bordered table-striped tblPRBudgetRemaining">
+                                <thead>
+                                    <tr class="bg-info text-bg-info">
+                                        <th>Budget</th>
+                                        <th>Amount</th>
+                                        <th>Used</th>
+                                        <th>Propose</th>
+                                        <th>Total Remaining</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                            <div id="divPRLine" style="overflow:auto;width:auto;margin-bottom:10px;">
+                                <table class="table table-bordered table-striped tblPRLine">
+                                    <thead>
+                                        <tr class="bg-info">
+                                            @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 0 && (currUserSectName == "INDIRECT PROCUREMENT" || currUserSectName == "DIRECT PROCUREMENT"))
+                                            {
+                                                <th><input type="checkbox" class="cbPRLineCheckAll" /></th>
+                                            }
+                                            <th>Budget</th>
+                                            <th>Section To</th>
+                                            <th>Item Group</th>
+                                            <th>Item</th>
+                                            <th>Unit</th>
+                                            <th>Qty</th>
+                                            <th>Budget Price</th>
+                                            <th>Note</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (currDataLine?.Count > 0)
+                                        {
+                                            foreach (var data in currDataLine)
+                                            {
+                                                var checkBudget = ((IEnumerable<dynamic>)ViewBag.BudgetList).Where(w => w.Budget_No == data?.Budget_Number).FirstOrDefault();
+                                                <tr>
+                                                    @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 0 && (currUserSectName == "INDIRECT PROCUREMENT" || currUserSectName == "DIRECT PROCUREMENT"))
+                                                    {
+                                                        <td>
+                                                            @if (data.QuoNumber == null)
+                                                            {
+                                                                <input type="checkbox" name="iPRLineCheck[]" class="cbPRLineCheck" value="@data.ID" />
+                                                            }
+                                                        </td>
+                                                    }
+                                                    <td style="min-width:275px;">
+                                                        <div class="@(currData?.Approval == 1 && currData?.Approval_Sub == 0 ? "" : "d-none")">
+                                                            <select name="iBudgetNumber[]" class="form-control select2 selBudgetNumber" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                                <option value="">-Bgt. Number-</option>
+                                                                @if (checkBudget == null && (currData.Approval_Sub >= 1 || currData.Approval == 2))
+                                                                {
+                                                                    <option data-dept-to="@(data.Section_To)" data-itemgroup="@(data?.Item_Group)" data-budget-no="@( data.Budget_Number )" value="@(data.Budget_Number)" selected>@(data.Budget_Number)</option>
+                                                                }
+                                                                else
+                                                                {
+                                                                    foreach (var item in ViewBag.BudgetList)
+                                                                    {
+                                                                        <option data-dept-to="@( item.Section_To_Code )" data-itemgroup="@(item.ItemGroup?.Item_Group)" data-coa-code="@(item.COA_Code + "|" + item.COA_Name)" data-budget-no="@( item.Budget_No )" value="@(item.Budget_No + "|" + item.Description)" @(data?.Budget_Number == item.Budget_No + "|" + item.Description ? "Selected" : "")>@(item.Budget_No + " | " + item.Description)</option>
+                                                                    }
+                                                                }
+                                                                <option data-dept-to="ALL" data-budget-no="UNB" data-itemgroup="" value="@("UNB|Unbudgeted")" @(data?.Budget_Number == "UNB|Unbudgeted" ? "Selected" : "")>@("UNB | Unbudgeted")</option>
+                                                                @if (currApproval?.Dept_Code == "B3130")
+                                                                {
+                                                                    <option data-dept-to="B3130" data-budget-no="Rebate" data-itemgroup="" value="@("Rebate|Accrued Expense")" @(data?.Budget_Number == "Rebate|Accrued Expense" ? "Selected" : "")>@("Rebate | Accrued Expense")</option>
+                                                                }
+                                                                else if (currApproval?.Dept_Code == "B5130")
+                                                                {
+                                                                    <option data-dept-to="B5130" data-budget-no="New-Price" data-itemgroup="" value="@("New-Price|Propose")" @(data?.Budget_Number == "New-Price|Propose" ? "Selected" : "")>@("New-Price | Propose")</option>
+                                                                    <option data-dept-to="B5130" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")" @(data?.Budget_Number == "Selling-Out|Propose" ? "Selected" : "")>@("Selling-Out | Propose")</option>
+                                                                }
+                                                                else if (currApproval?.Dept_Code == "B5500")
+                                                                {
+                                                                    <option data-dept-to="B5500" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")" @(data?.Budget_Number == "Selling-Out|Propose" ? "Selected" : "")>@("Selling-Out | Propose")</option>
+                                                                }
+                                                                else if (currApproval?.Dept_Code == "B5600")
+                                                                {
+                                                                    <option data-dept-to="B5600" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")" @(data?.Budget_Number == "Selling-Out|Propose" ? "Selected" : "")>@("Selling-Out | Propose")</option>
+                                                                }
+                                                                else if (currApproval?.Dept_Code == "B3150")
+                                                                {
+                                                                    <option data-dept-to="B3150" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")" @(data?.Budget_Number == "Selling-Out|Propose" ? "Selected" : "")>@("Selling-Out | Propose")</option>
+                                                                }
+                                                                else if (currApproval?.Dept_Code == "B2210")
+                                                                {
+                                                                    <option data-dept-to="B2210" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")" @(data?.Budget_Number == "Selling-Out|Propose" ? "Selected" : "")>@("Selling-Out | Propose")</option>
+                                                                }
+                                                                <option data-dept-to="@(currApproval?.Dept_Code)" data-budget-no="Next-FY-Budget" data-itemgroup="" value="@("Next-FY-Budget|Transition")" @(data?.Budget_Number == "Next-FY-Budget|Transition" ? "Selected" : "")>@("Next-FY-Budget | Transition")</option>
+
+                                                            </select>
+                                                        </div>
+                                                        <label style="color:black;" class="@(currData?.Approval == 1 && currData?.Approval_Sub == 0 ? "d-none" :"")">@(data?.Budget_Number)</label>
+                                                    </td>
+                                                    <td>
+                                                        <select name="iSectionTo[]" class="form-control select2 selSectionTo" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                            <option value="">-Section-</option>
+                                                            @foreach (var item in ViewBag.Section)
+                                                            {
+                                                                <option data-dept-code="@(item.Section_Code)" value="@(item.Section_Code + "|" + item.Section_Name)" @(item.Section_Code + "|" + item.Section_Name == data?.Section_To ? "selected" : "")>@(item.Section_Code + " | " + item.Section_Name)</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td style="min-width:125px;">
+                                                        <select name="iItemGroup[]" class="form-control select2 selItemGroup" style="width:100%" @(isAllowEdit ? "" : "disabled") required>
+                                                            <option value="">-Item Group-</option>
+                                                            @foreach (var item in ViewBag.ItemGroup)
+                                                            {
+                                                                <option value="@(item)" @(data?.Item_Group == item ? "Selected" : "")>@(item)</option>
+                                                            }
+                                                            <option value="RepairBldg" @(data?.Item_Group == "RepairBldg" ? "Selected" : "")>RepairBldg</option>
+                                                            <option value="Others" @(data?.Item_Group == "Others" ? "Selected" : "")>Others</option>
+                                                        </select>
+                                                    </td>
+                                                    <td style="min-width:425px;">
+                                                        <input type="text" name="iItem[]" placeholder="Item ID" class="form-control txtItemID" value="@((data?.Item_ID != "" ? data?.Item_ID + " || " : data?.Item_ID ) + data?.Item_Name)" @(isAllowEdit ? "" : "disabled") required />
+                                                        <input type="hidden" id="hfItemID" name="iItemID[]" value="@(data?.Item_ID)" placeholder="Item ID" class="form-control" />
+                                                        <input type="hidden" id="hfItemName" name="iItemName[]" value="@(data?.Item_Name)" placeholder="Item Name" class="form-control" />
+                                                    </td>
+                                                    <td>
+                                                        <select name="iUnit[]" class="form-control select2 selUnit" style="width:100%" @(isAllowEdit ? "" : "disabled") required>
+                                                            <option value="">-Unit-</option>
+                                                            @foreach (var item in ViewBag.Units)
+                                                            {
+                                                                <option value="@(item)" @(data?.Unit == item ? "Selected" : "")>@(item)</option>
+                                                            }
+                                                        </select>
+                                                    </td>
+                                                    <td style="min-width:110px;">
+                                                        <input type="text" name="iQty[]" value="@(data?.Qty)" placeholder="Qty" class="txtQty form-control" required @(isAllowEdit ? "" : "disabled") />
+                                                    </td>
+                                                    <td style="min-width:175px;">
+                                                        <input type="text" name="iPrice[]" value="@(data?.Price_Estimation)" placeholder="Price" class="txtPrice form-control" required @(isAllowEdit ? "" : "disabled") />
+                                                    </td>
+                                                    <td style="min-width:425px;">
+                                                        <textarea placeholder="Remark" name="iRemark[]" class="form-control" @(isAllowEdit ? "" : "disabled")>@(data?.Note)</textarea>
+                                                    </td>
+                                                    <td>
+                                                        @if (isAllowEdit)
+                                                        {
+                                                            <button type="button" class="btn btn-danger btn-sm btnPRLineDelete" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button>
+                                                        }
+                                                        @*<button type="button" class="btn btn-success btn-sm btnPRLineReject" onclick="return confirm('Are you sure want to reject this item?')"><i class="fas fa-check"></i></button>*@
+                                                    </td>
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td style="min-width:275px;">
+                                                    <select name="iBudgetNumber[]" class="form-control select2 selBudgetNumber" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                        <option value="">-Bgt. Number-</option>
+                                                        @foreach (var item in ViewBag.BudgetList)
+                                                        {
+                                                            <option data-dept-to="@( item.Section_To_Code )" data-itemgroup="@(item.ItemGroup?.Item_Group)" data-coa-code="@(item.COA_Code + "|" + item.COA_Name)" data-budget-no="@( item.Budget_No )" value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                        }
+                                                        <option data-dept-to="ALL" data-budget-no="UNB" data-itemgroup="" value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                        @if (currApproval?.Dept_Code == "B3130")
+                                                        {
+                                                            <option data-dept-to="B3130" data-budget-no="Rebate" data-itemgroup="" value="@("Rebate|Accrued Expense")">@("Rebate | Accrued Expense")</option>
+                                                        }
+                                                        else if (currApproval?.Dept_Code == "B5130")
+                                                        {
+                                                            <option data-dept-to="B5130" data-budget-no="New-Price" data-itemgroup="" value="@("New-Price|Propose")">@("New-Price | Propose")</option>
+                                                            <option data-dept-to="B5130" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")">@("Selling-Out | Propose")</option>
+
+                                                        }
+                                                        else if (currApproval?.Dept_Code == "B5500")
+                                                        {
+                                                            <option data-dept-to="B5500" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")">@("Selling-Out | Propose")</option>
+                                                        }
+                                                        else if (currApproval?.Dept_Code == "B5600")
+                                                        {
+                                                            <option data-dept-to="B5600" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")">@("Selling-Out | Propose")</option>
+                                                        }
+                                                        else if (currApproval?.Dept_Code == "B3150")
+                                                        {
+                                                            <option data-dept-to="B3150" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")">@("Selling-Out | Propose")</option>
+                                                        }
+                                                        else if (currApproval?.Dept_Code == "B2210")
+                                                        {
+                                                            <option data-dept-to="B2210" data-budget-no="Selling-Out" data-itemgroup="" value="@("Selling-Out|Propose")">@("Selling-Out | Propose")</option>
+                                                        }
+                                                        <option data-dept-to="@(currApproval?.Dept_Code)" data-budget-no="Next-FY-Budget" data-itemgroup="" value="@("Next-FY-Budget|Transition")">@("Next-FY-Budget | Transition")</option>
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <select name="iSectionTo[]" class="form-control select2 selSectionTo" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                        <option value="">-Section-</option>
+                                                        @foreach (var item in ViewBag.Section)
+                                                        {
+                                                            <option data-dept-code="@(item.Section_Code)" value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td style="min-width:125px;">
+                                                    <select name="iItemGroup[]" class="form-control select2 selItemGroup" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                        <option value="">-Item Group-</option>
+                                                        @foreach (var item in ViewBag.ItemGroup)
+                                                        {
+                                                            <option value="@(item)">@(item)</option>
+                                                        }
+                                                        <option value="RepairBldg">RepairBldg</option>
+                                                    </select>
+                                                </td>
+                                                <td style="min-width:425px;">
+                                                    <input type="text" name="iItem[]" placeholder="Item ID" class="form-control txtItemID" required @(isAllowEdit ? "" : "disabled") />
+                                                    <input type="hidden" id="hfItemID" name="iItemID[]" value="" placeholder="Item ID" class="form-control" />
+                                                    <input type="hidden" id="hfItemName" name="iItemName[]" value="" placeholder="Item Name" class="form-control" />
+                                                </td>
+                                                <td>
+                                                    <select name="iUnit[]" class="form-control select2 selUnit" style="width:100%" required @(isAllowEdit ? "" : "disabled")>
+                                                        <option value="">-Unit-</option>
+                                                        @foreach (var item in ViewBag.Units)
+                                                        {
+                                                            <option value="@(item)">@(item)</option>
+                                                        }
+                                                    </select>
+                                                </td>
+                                                <td style="min-width:110px;">
+                                                    <input type="text" name="iQty[]" value="1" placeholder="Qty" class="txtQty form-control" required @(isAllowEdit ? "" : "disabled") />
+                                                </td>
+                                                <td style="min-width:175px;">
+                                                    <input type="text" name="iPrice[]" value="0" placeholder="Price" class="txtPrice form-control" required @(isAllowEdit ? "" : "disabled") />
+                                                </td>
+                                                <td style="min-width:425px;">
+                                                    <textarea placeholder="Remark" name="iRemark[]" rows="3" class="form-control" @(isAllowEdit ? "" : "disabled")></textarea>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-danger btn-sm btnPRLineDelete @(isAllowEdit ? "" : "d-none")" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button>
+                                                    @*<button type="button" class="btn btn-light btn-sm btnPRLineCopy"><i class="fas fa-copy"></i></button>*@
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="9">
+                                                <button type="button" class="btn btn-success form-control btnPRLineAdd @(isAllowEdit ? "" : "d-none")">+</button>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    @if (isAllowEdit)
+                                    {
+                                        <button type="submit" class="btn btnPRSubmit btn-primary form-control" onclick="return confirm('Are you sure want to save Purchase Request?')">Save</button>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                        @if (Request["addNew"] == null)
+                        {
+                            <table class="table table-bordered tblSign mt-3">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">Approved By</th>
+                                        <th class="text-center">Prepared By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 1 && currData.Is_Reject == false && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("requestSign", "PurchaseRequest", new { area = "Purchasing" })" method="post" class="formRequestSign">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary btnSign" onclick="return confirm('Are you sure want to sign this quotation ?');">Sign</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("requestSign", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                </form>
+                                                <hr />
+                                                <form action="@Url.Action("requestSign", "PurchaseRequest", new { area = "Purchasing" })" method="post">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 0) || currData.Approval > 1)
+                                                {
+                                                    string currReqNumber = currData.ReqNumber.ToString();
+                                                    var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 40 && w.Document_Id == 1 && w.Reveral_ID == currReqNumber && w.Approval == 2 && w.Approval_Sub == 0).OrderByDescending(o => o.id).FirstOrDefault();
+
+                                                    if (checkHistory != null && checkHistory.IsReject == true)
+                                                    {
+                                                        <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                    }
+                                                }
+                                            }
+                                        </td>
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currData != null && currData.Approval == 1 && currData.Is_Reject == false && currData.Approval_Sub == 0 && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("requestSign", "PurchaseRequest", new { area = "Purchasing" })" method="post" class="formFirstSign formRequestSign">
+                                                    <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                    <input type="hidden" name="btnType" value="Sign" />
+                                                    <button type="submit" class="btn btn-primary btnFirstSign btnSign" onclick="return confirm('Are you sure want to sign this quotation ?');" name="btnType" value="Sign">Sign</button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                                {
+                                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 1))
+                                            {
+                                                @(PR.ApprovalHistory(currData.ReqNumber, 2, 0, 1));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                            {
+                                                @(PR.ApprovalHistory(currData.ReqNumber, 1, 1, 1));
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center">
+                                            @if (currData != null && ((currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 1))
+                                            {
+                                                @(PR.ApprovalHistory(currData.ReqNumber, 2, 0, 2));
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                            {
+                                                @(PR.ApprovalHistory(currData.ReqNumber, 1, 1, 2));
+                                            }
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+<!-- Modal for Budget Details -->
+<div class="modal fade" id="budgetDetailsModal" tabindex="-1" role="dialog" aria-labelledby="budgetDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="budgetDetailsModalLabel">Budget Item Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-bordered table-striped mb-0" id="budgetItemsTable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Item</th>
+                            <th>Unit</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-right">Net Price</th>
+                            <th class="text-right">Total</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr class="table-info font-weight-bold">
+                            <td colspan="4" class="text-right">Grand Total</td>
+                            <td class="text-right" id="budgetItemsGrandTotal">0</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal for Budget Usage Details -->
+<div class="modal fade" id="budgetUsageDetailsModal" tabindex="-1" role="dialog" aria-labelledby="budgetUsageDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="budgetUsageDetailsModalLabel">Budget Item Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-bordered table-striped mb-0" id="budgetUsageTable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Type</th>
+                            <th class="text-nowrap">Date</th>
+                            <th class="text-nowrap">Reference No</th>
+                            <th>Description</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr class="table-info font-weight-bold">
+                            <td colspan="4" class="text-right">Grand Total</td>
+                            <td class="text-right" id="budgetUsageGrandTotal">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

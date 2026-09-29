@@ -1,0 +1,737 @@
+﻿@{
+    ViewBag.Title = "NWR Configuration";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Tambahkan library SortableJS untuk fitur Drag & Drop -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+<style>
+    .page-content {
+        background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+    }
+
+    .container-fluid {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Kursor khusus saat melakukan drag */
+    .drag-handle {
+        cursor: grab;
+    }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+</style>
+
+<div class="w-full px-6 mx-auto mt-8 mb-16 animate-fade-in">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div class="">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div class="flex items-center space-x-4">
+                    <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+                    <h1 class="text-2xl font-bold text-gray-50">Workspace Configuration</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 1: TABEL KATEGORI RUANGAN          -->
+    <!-- ========================================== -->
+    <div class="flex justify-between items-center mb-4 mt-8">
+        <div>
+            <h2 class="text-xl font-bold text-slate-200">Daftar Kategori Ruangan</h2>
+            <p class="text-xs text-slate-200 mt-1"><i class="fa fa-info-circle text-blue-500 mr-1"></i> Tahan dan geser (drag) baris untuk mengubah urutan Icon.</p>
+        </div>
+        <button onclick="showAddCategoryModal()"
+                class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold px-4 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 text-sm transform hover:-translate-y-0.5">
+            <i class="fa fa-plus text-xs"></i> Tambah Kategori
+        </button>
+    </div>
+
+    <div class="rounded-2xl shadow-sm overflow-hidden mb-12 border border-slate-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200" id="tableCategories">
+                <thead class="bg-slate-900 text-slate-200 text-xs font-semibold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-4 text-center w-12"><i class="fa fa-sort"></i></th>
+                        <th class="px-6 py-4 text-left w-16">No</th>
+                        <th class="px-6 py-4 text-left">Nama Kategori</th>
+                        <th class="px-6 py-4 text-center">Status</th>
+                        <th class="px-6 py-4 text-center">Maintenance</th>
+                        <th class="px-6 py-4 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="categoryTableBody" class="bg-white divide-y divide-slate-100 text-sm text-slate-600">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: TABEL RUANGAN (MASTER ROOMS)    -->
+    <!-- ========================================== -->
+    <div class="flex justify-between items-center mb-4 mt-12">
+        <h2 class="text-xl font-bold text-slate-200">Daftar Ruangan</h2>
+        <button onclick="showAddRoomModal()"
+                class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-md hover:shadow-lg transition-all duration-200 text-sm transform hover:-translate-y-0.5">
+            <i class="fa fa-plus text-xs"></i> Tambah Ruangan Baru
+        </button>
+    </div>
+
+    <div class="rounded-2xl shadow-sm overflow-hidden border border-slate-200">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200" id="tableRooms">
+                <thead class="bg-slate-900 text-slate-200 text-xs font-semibold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-6 py-4 text-left w-16">No</th>
+                        <th class="px-6 py-4 text-left">Gambar</th>
+                        <th class="px-6 py-4 text-left">Nama Ruangan</th>
+                        <th class="px-6 py-4 text-left">Kategori</th>
+                        <th class="px-6 py-4 text-left">No. Ekstensi</th>
+                        <th class="px-6 py-4 text-left">Status</th>
+                        <th class="px-6 py-4 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="roomTableBody" class="bg-white divide-y divide-slate-100 text-sm text-slate-600">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: KATEGORI RUANGAN                    -->
+<!-- ========================================== -->
+<div id="categoryModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-slate-900/40 backdrop-blur-sm p-4 transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform transition-all scale-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+            <h3 id="categoryModalTitle" class="text-lg font-bold text-slate-800">Tambah Kategori</h3>
+            <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-light transition">&times;</button>
+        </div>
+
+        <form id="formCategory" class="flex flex-col flex-1 overflow-hidden mb-0">
+            <div class="px-6 py-6 space-y-5 overflow-y-auto flex-1 style-scrollbar">
+                <input type="hidden" id="categoryId" value="0" />
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nama Kategori</label>
+                    <input type="text" id="categoryName" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm transition" placeholder="Contoh: Production Office" required />
+                </div>
+
+                <div class="flex gap-6">
+                    <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 flex-1">
+                        <input type="checkbox" id="catIsActive" class="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" checked />
+                        <label for="catIsActive" class="text-sm font-semibold text-slate-700 select-none">Aktif</label>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 flex-1">
+                        <input type="checkbox" id="catIsMaintenance" class="w-4 h-4 text-rose-600 border-slate-300 rounded focus:ring-rose-500" />
+                        <label for="catIsMaintenance" class="text-sm font-semibold text-slate-700 select-none">Maintenance</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm transition">Batal</button>
+                <button type="submit" class="px-5 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl text-sm transition shadow-sm">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: RUANGAN                             -->
+<!-- ========================================== -->
+<div id="roomModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-slate-900/40 backdrop-blur-sm p-4 transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[85vh] md:max-h-[90vh] flex flex-col overflow-hidden transform transition-all scale-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
+            <h3 id="roomModalTitle" class="text-lg font-bold text-slate-800">Tambah Ruangan</h3>
+            <button onclick="closeRoomModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-light transition">&times;</button>
+        </div>
+        <form id="formRoom" enctype="multipart/form-data" class="flex flex-col flex-1 overflow-hidden mb-0">
+            <div class="px-6 py-6 space-y-5 overflow-y-auto flex-1 style-scrollbar">
+                <input type="hidden" id="roomId" value="0" />
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nama Ruangan</label>
+                    <input type="text" id="roomTitle" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm transition" placeholder="Masukkan nama ruangan..." required />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Kategori Ruangan</label>
+                    <select id="idRoomCat" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm transition" required>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nomor Ekstensi</label>
+                    <input type="number" id="extensionNumber" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-sm transition" placeholder="Contoh: 1204" required />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Foto Ruangan</label>
+                    <div class="relative w-full">
+                        <div id="uploadZone" class="flex flex-col items-center justify-center w-full h-36 border-2 border-slate-200 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100/70 transition relative overflow-hidden">
+                            <div id="uploadPrompt" class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4 transition-all">
+                                <i class="fa fa-cloud-upload text-slate-400 text-3xl mb-2"></i>
+                                <p class="text-xs text-slate-500"><span class="font-semibold text-orange-600">Klik untuk upload</span> gambar (.jpg, .png)</p>
+                            </div>
+                            <div id="uploadPreviewZone" class="hidden absolute inset-0 w-full h-full bg-white flex items-center justify-between p-3 gap-4 z-20">
+                                <div class="flex items-center gap-4 h-full min-w-0">
+                                    <img id="imagePreview" src="#" class="w-28 h-full object-cover rounded-lg shadow-sm border border-slate-200 shrink-0" />
+                                    <div class="flex flex-col min-w-0 justify-center">
+                                        <span id="uploadFileName" class="text-xs font-bold text-slate-800 truncate block max-w-[180px]">nama_file.jpg</span>
+                                        <span id="uploadStatusBadge" class="inline-flex mt-1.5 px-2 py-0.5 text-[10px] font-semibold rounded bg-orange-50 text-orange-600 border border-orange-100 w-fit">Siap di-upload</span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="removeSelectedImage(event)" class="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl border border-rose-100 transition shrink-0 mr-1">
+                                    <i class="fa fa-trash text-sm"></i>
+                                </button>
+                            </div>
+                            <input type="file" id="roomImageFile" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <input type="checkbox" id="isActive" class="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500" checked />
+                    <label for="isActive" class="text-sm font-semibold text-slate-700 select-none">Aktifkan Ruangan ini</label>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                <button type="button" onclick="closeRoomModal()" class="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 font-semibold rounded-xl text-sm transition">Batal</button>
+                <button type="submit" class="px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold rounded-xl text-sm transition">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: PROPERTI                            -->
+<!-- ========================================== -->
+<div id="propertiesModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-slate-900/40 backdrop-blur-sm transition-all duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden transform transition-all scale-100">
+        <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-800">Kelola Properti: <span id="propModalRoomTitle" class="text-orange-600"></span></h3>
+            <button onclick="closePropertiesModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-light transition">&times;</button>
+        </div>
+        <div class="p-6 space-y-6">
+            <form id="formProperty" class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-slate-50 p-4 border border-slate-200/60 rounded-xl items-end">
+                <input type="hidden" id="propId" value="0" />
+                <input type="hidden" id="propRoomId" value="0" />
+                <div class="md:col-span-6">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Nama Properti</label>
+                    <input type="text" id="propsName" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 text-sm" required />
+                </div>
+                <div class="md:col-span-3">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Jumlah</label>
+                    <input type="number" id="quantity" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 text-sm" min="1" required />
+                </div>
+                <div class="md:col-span-3">
+                    <button type="submit" id="btnSaveProp" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition">Tambah</button>
+                </div>
+            </form>
+            <div>
+                <table class="min-w-full divide-y divide-slate-100 border border-slate-100 rounded-xl">
+                    <thead class="bg-slate-50 text-slate-500 text-xs font-semibold uppercase">
+                        <tr>
+                            <th class="px-5 py-3 text-left">Nama Properti</th>
+                            <th class="px-5 py-3 text-left w-32">Jumlah</th>
+                            <th class="px-5 py-3 text-center w-32">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="propertyTableBody" class="bg-white divide-y divide-slate-100 text-sm text-slate-600">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    let categoriesList = [];
+    let roomsList = [];
+    let currentProperties = [];
+    let sortableCat = null;
+    const baseImagePath = '@Url.Content("~/Content/Images/Room/")';
+
+    const Toast = Swal.mixin({
+        toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true
+    });
+
+    $(document).ready(function () {
+        loadRoomCategoriesForDropdown();
+
+        $("#formCategory").on("submit", function (e) {
+            e.preventDefault();
+            if (validateFormInlines(this)) saveCategory();
+        });
+
+        $("#formRoom").on("submit", function (e) {
+            e.preventDefault();
+            if (validateFormInlines(this)) saveRoom();
+        });
+
+        $("#formProperty").on("submit", function (e) {
+            e.preventDefault();
+            if (validateFormInlines(this)) saveProperty();
+        });
+
+        $(document).on("input change", "input, select", function () {
+            if ($(this).val().trim() !== "") {
+                $(this).removeClass('border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30').addClass('border-slate-200 bg-white');
+            }
+        });
+    });
+
+    function validateFormInlines(formElement) {
+        let isValid = true;
+        $(formElement).find('[required]').each(function () {
+            if (!this.value || this.value.trim() === "") {
+                isValid = false;
+                $(this).addClass('border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30').removeClass('border-slate-200 bg-white');
+            } else {
+                $(this).removeClass('border-rose-500 ring-2 ring-rose-500/20 bg-rose-50/30').addClass('border-slate-200 bg-white');
+            }
+        });
+        if (!isValid) Toast.fire({ icon: 'error', title: 'Mohon isi semua kolom wajib!' });
+        return isValid;
+    }
+
+    // ==========================================
+    // 1. KATEGORI RUANGAN
+    // ==========================================
+    function loadRoomCategoriesForDropdown() {
+        $.ajax({
+            url: "@Url.Action("GetAllRoomCat", "NWR", new { area = "Other" })",
+            type: "GET",
+            dataType: "json",
+            success: function (categories) {
+                categoriesList = categories;
+
+                let dropdown = $("#idRoomCat");
+                dropdown.empty();
+                dropdown.append('<option value="">-- Pilih Kategori --</option>');
+                categories.forEach(function (cat) {
+                    dropdown.append(`<option value="${cat.sequence}">${cat.RoomCat}</option>`);
+                });
+
+                renderCategoryTable();
+                loadRooms();
+            }
+        });
+    }
+
+    function renderCategoryTable() {
+        let rows = "";
+        if (categoriesList.length === 0) {
+            rows = `<tr><td colspan="6" class="px-6 py-10 text-center text-slate-400 font-medium">Tidak ada data kategori.</td></tr>`;
+        } else {
+            categoriesList.forEach((cat, index) => {
+                let activeBadge = cat.isActive || cat.IsActive
+                    ? `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Aktif</span>`
+                    : `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-500 border border-slate-200">Non-Aktif</span>`;
+
+                let maintenanceBadge = cat.isMaintenance
+                    ? `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100">Ya</span>`
+                    : `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-slate-100 text-slate-500 border border-slate-200">Tidak</span>`;
+
+                // Tambahkan data-id untuk proses drag & drop
+                rows += `
+                <tr class="hover:bg-slate-50/60 transition" data-id="${cat.ID}">
+                    <td class="px-4 py-4 text-center text-slate-300 hover:text-slate-500 drag-handle" title="Tahan dan geser">
+                        <i class="fa fa-grip-vertical"></i>
+                    </td>
+                    <td class="px-6 py-4 font-medium text-slate-400">${index + 1}</td>
+                    <td class="px-6 py-4 font-bold text-slate-800">${cat.RoomCat}</td>
+                    <td class="px-6 py-4 text-center">${activeBadge}</td>
+                    <td class="px-6 py-4 text-center">${maintenanceBadge}</td>
+                    <td class="px-6 py-4 text-center space-x-1.5">
+                        <button type="button" class="px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg transition" onclick="showEditCategoryModal(${cat.ID})">
+                            <i class="fa fa-edit mr-1"></i> Edit
+                        </button>
+                        <button type="button" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-semibold rounded-lg transition" onclick="deleteCategory(${cat.sequence}, '${cat.RoomCat.replace(/'/g, "\\'")}')">
+                            <i class="fa fa-trash mr-1"></i> Hapus
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        }
+        $("#categoryTableBody").html(rows);
+
+        // INITIALIZE SORTABLE JS
+        if (sortableCat) sortableCat.destroy();
+        const el = document.getElementById('categoryTableBody');
+        if (el && categoriesList.length > 0) {
+            sortableCat = new Sortable(el, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'bg-slate-100',
+                onEnd: function (evt) {
+                    let orderedIds = [];
+                    $('#categoryTableBody tr').each(function () {
+                        orderedIds.push($(this).data('id'));
+                    });
+
+                    $.ajax({
+                        url: "@Url.Action("ReorderRoomCat", "NWR", new { area = "Other" })",
+                        type: 'POST',
+                        data: { orderedIds: orderedIds },
+                        success: function (res) {
+                            if (res.errorCode === 101) {
+                                Toast.fire({ icon: 'success', title: 'Urutan Icon diperbarui!' });
+                                loadRoomCategoriesForDropdown(); // Reload data UI
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    function showAddCategoryModal() {
+        $("#categoryModalTitle").text("Tambah Kategori Baru");
+        $("#categoryId").val(0);
+        $("#formCategory")[0].reset();
+        $("#formCategory").find('[required]').removeClass('border-rose-500 ring-2 bg-rose-50/30').addClass('border-slate-200 bg-white');
+        $("#catIsActive").prop('checked', true);
+        $("#catIsMaintenance").prop('checked', false);
+        $("#categoryModal").removeClass("hidden");
+    }
+
+    function showEditCategoryModal(id) {
+        let cat = categoriesList.find(c => c.ID === id);
+        if (cat) {
+            $("#categoryModalTitle").text("Edit Kategori");
+            $("#categoryId").val(cat.ID);
+            $("#categoryName").val(cat.RoomCat);
+            $("#catIsActive").prop('checked', cat.isActive || cat.IsActive);
+            $("#catIsMaintenance").prop('checked', cat.isMaintenance);
+
+            $("#formCategory").find('[required]').removeClass('border-rose-500 ring-2 bg-rose-50/30').addClass('border-slate-200 bg-white');
+            $("#categoryModal").removeClass("hidden");
+        }
+    }
+
+    function saveCategory() {
+        let data = {
+            ID: parseInt($("#categoryId").val()),
+            RoomCat: $("#categoryName").val(),
+            isActive: $("#catIsActive").is(':checked'),
+            isMaintenance: $("#catIsMaintenance").is(':checked')
+        };
+
+        $.ajax({
+            url: "@Url.Action("SaveMasterRoomCat", "NWR", new { area = "Other" })",
+            type: 'POST',
+            data: data,
+            success: function (res) {
+                if (res.errorCode === 101) {
+                    Toast.fire({ icon: 'success', title: 'Kategori berhasil disimpan' });
+                    closeCategoryModal();
+                    loadRoomCategoriesForDropdown();
+                } else {
+                    Swal.fire('Gagal', res.message, 'warning');
+                }
+            },
+            error: function () {
+                Swal.fire('Error', 'Terjadi kesalahan sistem saat menyimpan data kategori.', 'error');
+            }
+        });
+    }
+
+    function deleteCategory(sequence, name) {
+        Swal.fire({
+            title: 'Hapus Kategori?',
+            text: `Apakah Anda yakin ingin menghapus kategori "${name}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444', confirmButtonText: 'Ya, Hapus!', cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "@Url.Action("DeleteRoomCat", "NWR", new { area = "Other" })",
+                    type: 'POST',
+                    data: { sequence: sequence },
+                    success: function (res) {
+                        if (res.errorCode === 101) {
+                            Toast.fire({ icon: 'success', title: 'Kategori berhasil dihapus' });
+                            loadRoomCategoriesForDropdown();
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function closeCategoryModal() { $("#categoryModal").addClass("hidden"); }
+
+
+    // ==========================================
+    // 2. MASTER RUANGAN
+    // ==========================================
+    function loadRooms() {
+        $.ajax({
+            url: "@Url.Action("GetMasterRooms", "NWR", new { area = "Other" })",
+            type: 'POST', dataType: 'json',
+            success: function (res) {
+                if (res.errorCode === 101) {
+                    roomsList = res.masterRooms;
+                    renderRoomTable();
+                }
+            }
+        });
+    }
+
+    function renderRoomTable() {
+        let rows = "";
+        if (roomsList.length === 0) {
+            rows = `<tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 font-medium">Tidak ada data ruangan.</td></tr>`;
+        } else {
+            roomsList.forEach((room, index) => {
+                let matchedCat = categoriesList.find(c => c.sequence === room.IDRoomCat);
+                let categoryName = matchedCat ? matchedCat.RoomCat : "Tidak Diketahui";
+                let statusBadge = room.IsActive
+                    ? `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">Aktif</span>`
+                    : `<span class="inline-flex px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-700 border border-rose-100">Non-Aktif</span>`;
+                let toggleText = room.IsActive ? "Nonaktifkan" : "Aktifkan";
+                let toggleClass = room.IsActive ? "bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200" : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200";
+                let roomImg = room.Image ? (baseImagePath + room.Image) : "https://via.placeholder.com/120x80?text=No+Image";
+
+                rows += `
+                    <tr class="hover:bg-slate-50/60 transition">
+                        <td class="px-6 py-4 font-medium text-slate-400">${index + 1}</td>
+                        <td class="px-6 py-4">
+                            <img src="${roomImg}" alt="Room" class="w-16 h-10 object-cover rounded-xl border border-slate-200/60 shadow-xs" onerror="this.onerror=null; this.src='https://via.placeholder.com/120x80?text=Error+Load';"/>
+                        </td>
+                        <td class="px-6 py-4 font-bold text-slate-800">${room.RoomTitle}</td>
+                        <td class="px-6 py-4 text-slate-500">${categoryName}</td>
+                        <td class="px-6 py-4 font-mono text-slate-500 text-xs">${room.ExtensionNumber}</td>
+                        <td class="px-6 py-4">${statusBadge}</td>
+                        <td class="px-6 py-4 text-center space-x-1.5">
+                            <button type="button" class="px-3 py-1.5 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 text-xs font-semibold rounded-lg transition" onclick="manageProperties(${room.ID}, '${room.RoomTitle}')"><i class="fa fa-cogs mr-1"></i></button>
+                            <button type="button" class="px-3 py-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-xs font-semibold rounded-lg transition" onclick="showEditRoomModal(${room.ID})"><i class="fa fa-edit mr-1"></i></button>
+                            <button type="button" class="px-3 py-1.5 text-xs font-semibold rounded-lg transition ${toggleClass}" onclick="toggleRoomStatus(${room.ID})">${toggleText}</button>
+                            <button type="button" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-semibold rounded-lg transition" onclick="deleteRoom(${room.ID}, '${room.RoomTitle.replace(/'/g, "\\'")}')"><i class="fa fa-trash mr-1"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+        $("#roomTableBody").html(rows);
+    }
+
+    function showAddRoomModal() {
+        $("#roomModalTitle").text("Tambah Ruangan Baru");
+        $("#roomId").val(0);
+        $("#formRoom")[0].reset();
+        $("#formRoom").find('[required]').removeClass('border-rose-500 ring-2 bg-rose-50/30').addClass('border-slate-200 bg-white');
+        removeSelectedImage();
+        $("#isActive").prop('checked', true);
+        $("#roomModal").removeClass("hidden");
+    }
+
+    function closeRoomModal() { $("#roomModal").addClass("hidden"); }
+
+    function showEditRoomModal(id) {
+        let room = roomsList.find(r => r.ID === id);
+        if (room) {
+            $("#roomModalTitle").text("Edit Data Ruangan");
+            $("#roomId").val(room.ID);
+            $("#roomTitle").val(room.RoomTitle);
+            $("#idRoomCat").val(room.IDRoomCat);
+            $("#extensionNumber").val(room.ExtensionNumber);
+            $("#isActive").prop('checked', room.IsActive);
+
+            $("#formRoom").find('[required]').removeClass('border-rose-500 ring-2 bg-rose-50/30').addClass('border-slate-200 bg-white');
+            $("#roomImageFile").val('').removeClass("hidden");
+
+            if (room.Image) {
+                const fullImgUrl = baseImagePath + room.Image;
+                $("#imagePreview").attr("src", fullImgUrl);
+                $("#uploadFileName").text(room.Image);
+                $("#uploadStatusBadge").text("Gambar Utama").removeClass("bg-orange-50 text-orange-600").addClass("bg-slate-100 text-slate-600 border-slate-200");
+                $("#uploadPrompt").addClass("hidden");
+                $("#uploadPreviewZone").removeClass("hidden");
+            } else {
+                removeSelectedImage();
+            }
+            $("#roomModal").removeClass("hidden");
+        }
+    }
+
+    $(document).on("change", "#roomImageFile", function () {
+        const file = this.files[0];
+        if (file) {
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                Swal.fire('Berkas Ditolak', 'Hanya gambar (.jpg, .png) yang diizinkan.', 'error');
+                removeSelectedImage(); return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                Swal.fire('Terlalu Besar', 'Batas maksimal ukuran file adalah 2MB.', 'error');
+                removeSelectedImage(); return;
+            }
+
+            let reader = new FileReader();
+            reader.onload = function (e) {
+                $("#imagePreview").attr("src", e.target.result);
+                $("#uploadFileName").text(file.name);
+                $("#uploadStatusBadge").text("Siap di-upload").removeClass("bg-slate-100 text-slate-600").addClass("bg-orange-50 text-orange-600 border-orange-100");
+                $("#uploadPrompt").addClass("hidden");
+                $("#uploadPreviewZone").removeClass("hidden");
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function removeSelectedImage(e) {
+        if (e) e.stopPropagation();
+        $("#roomImageFile").val('');
+        $("#imagePreview").attr("src", "#");
+        $("#uploadFileName").text("");
+        $("#uploadPreviewZone").addClass("hidden");
+        $("#uploadPrompt").removeClass("hidden");
+    }
+
+    function saveRoom() {
+        let formData = new FormData();
+        formData.append("id", parseInt($("#roomId").val()));
+        formData.append("roomTitle", $("#roomTitle").val());
+        formData.append("idRoomCat", parseInt($("#idRoomCat").val()));
+        formData.append("extensionNumber", parseInt($("#extensionNumber").val()));
+        formData.append("isActive", $("#isActive").is(':checked'));
+
+        let fileInput = document.getElementById('roomImageFile');
+        if (fileInput.files.length > 0) formData.append("roomImageFile", fileInput.files[0]);
+
+        $.ajax({
+            url: "@Url.Action("SaveMasterRoom", "NWR", new { area = "Other" })",
+            type: 'POST', data: formData, contentType: false, processData: false,
+            success: function (res) {
+                if (res.errorCode === 101) {
+                    Toast.fire({ icon: 'success', title: 'Data ruangan disimpan' });
+                    closeRoomModal(); loadRooms();
+                }
+            }
+        });
+    }
+
+    function toggleRoomStatus(id) {
+        Swal.fire({
+            title: 'Ubah Status?', icon: 'question', showCancelButton: true, confirmButtonColor: '#ea580c', confirmButtonText: 'Ya', cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "@Url.Action("ToggleRoomStatus", "NWR", new { area = "Other" })",
+                    type: 'POST', data: { id: id },
+                    success: function (res) {
+                        if (res.errorCode === 101) {
+                            Toast.fire({ icon: 'success', title: 'Status diperbarui.' }); loadRooms();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function deleteRoom(id, roomTitle) {
+        Swal.fire({
+            title: 'Hapus Ruangan?', text: `Menghapus "${roomTitle}" permanen?`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "@Url.Action("DeleteRoom", "NWR", new { area = "Other" })",
+                    type: 'POST', data: { id: id },
+                    success: function (res) {
+                        if (res.errorCode === 101) { Toast.fire({ icon: 'success', title: 'Berhasil dihapus' }); loadRooms(); }
+                    }
+                });
+            }
+        });
+    }
+
+    // ==========================================
+    // 3. KELOLA PROPERTI
+    // ==========================================
+    function manageProperties(roomId, roomTitle) {
+        $("#propModalRoomTitle").text(roomTitle); $("#propRoomId").val(roomId); resetPropertyForm(); loadProperties(roomId); $("#propertiesModal").removeClass("hidden");
+    }
+    function closePropertiesModal() { $("#propertiesModal").addClass("hidden"); }
+
+    function loadProperties(roomId) {
+        $.ajax({
+            url: "@Url.Action("GetRoomProperties", "NWR", new { area = "Other" })",
+            type: 'POST', data: { roomId: roomId },
+            success: function (res) {
+                if (res.errorCode === 101) { currentProperties = res.roomProperties; renderPropertyTable(); }
+            }
+        });
+    }
+
+    function renderPropertyTable() {
+        let rows = "";
+        if (currentProperties.length === 0) {
+            rows = `<tr><td colspan="3" class="px-5 py-6 text-center text-slate-400 italic">Belum ada properti terdaftar.</td></tr>`;
+        } else {
+            currentProperties.forEach(prop => {
+                rows += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="px-5 py-3 font-semibold text-slate-700">${prop.PropsName}</td>
+                        <td class="px-5 py-3"><span class="px-2 py-0.5 text-xs font-bold rounded bg-slate-100 border">${prop.Quantity}</span></td>
+                        <td class="px-5 py-3 text-center space-x-1">
+                            <button type="button" class="px-2 py-1 bg-amber-50 text-amber-600 border border-amber-200 text-xs rounded-md" onclick="editPropertyInline(${prop.ID})"><i class="fa fa-edit"></i></button>
+                            <button type="button" class="px-2 py-1 bg-rose-50 text-rose-600 border border-rose-200 text-xs rounded-md" onclick="deleteProperty(${prop.ID})"><i class="fa fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+        $("#propertyTableBody").html(rows);
+    }
+
+    function editPropertyInline(id) {
+        let prop = currentProperties.find(p => p.ID === id);
+        if (prop) {
+            $("#propId").val(prop.ID); $("#propsName").val(prop.PropsName); $("#quantity").val(prop.Quantity); $("#btnSaveProp").text("Update").removeClass('bg-emerald-600').addClass('bg-blue-600');
+        }
+    }
+
+    function saveProperty() {
+        let roomId = parseInt($("#propRoomId").val());
+        let data = { id: parseInt($("#propId").val()), roomId: roomId, propsName: $("#propsName").val(), quantity: parseInt($("#quantity").val()) };
+        $.ajax({
+            url: "@Url.Action("SaveRoomProperty", "NWR", new { area = "Other" })",
+            type: 'POST', data: data,
+            success: function (res) {
+                if (res.errorCode === 101) { Toast.fire({ icon: 'success', title: 'Properti disimpan' }); resetPropertyForm(); loadProperties(roomId); }
+            }
+        });
+    }
+
+    function deleteProperty(id) {
+        Swal.fire({
+            title: 'Hapus Properti?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Ya'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "@Url.Action("DeleteRoomProperty", "NWR", new { area = "Other" })",
+                    type: 'POST', data: { id: id },
+                    success: function (res) {
+                        if (res.errorCode === 101) { Toast.fire({ icon: 'success', title: 'Item dihapus' }); loadProperties(parseInt($("#propRoomId").val())); }
+                    }
+                });
+            }
+        });
+    }
+
+    function resetPropertyForm() {
+        $("#propId").val(0); $("#propsName").val(''); $("#quantity").val('');
+        $("#formProperty").find('[required]').removeClass('border-rose-500 ring-2').addClass('border-slate-200');
+        $("#btnSaveProp").text("Tambah").removeClass('bg-blue-600').addClass('bg-emerald-600');
+    }
+</script>
+}

@@ -1,0 +1,247 @@
+﻿@using NGKBusi.Models;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Areas.MTN.Controllers;
+@using System.Security.Claims;
+
+@{
+    ViewBag.Title = "Maintenance Schedule Monthly";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+    var MTN = ViewContext.Controller as MachineDatabaseController;
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId().Trim();
+    string FY = "FY1" + (ViewBag.Period + (Int32.Parse(Request["iMonth"]) <= 3 ? 0 : 1)).ToString().Substring(2, 2);
+    DefaultConnection db = new DefaultConnection();
+    var currHeader = ViewBag.Header;
+    int currDataApproval = (int)currHeader.Approval;
+    int currDataApprovalSub = (int)currHeader.Approval_Sub;
+    var isAllowSign = false;
+    if (currHeader != null)
+    {
+        var checkSign = db.Approval_Master.Where(w => w.User_NIK == currUserID && w.Menu_Id == 22 && w.Document_Id == 2 && w.Levels == currDataApproval && w.Levels_Sub == currDataApprovalSub).FirstOrDefault();
+        isAllowSign = checkSign != null ? true : false;
+    }
+    var IsLock = false;
+    if ((isAllowSign && currDataApproval == 1 && currDataApprovalSub == 0) || currUserID == "737.02.16")
+    {
+        IsLock = true;
+    }
+}
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/MTN/MaintenanceSchedule.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section cssHead{
+    <style type="text/css">
+        #tblMSMonthlyData tbody td.ui-selecting {
+            background-color: #FECA40;
+        }
+
+        #tblMSMonthlyData tbody td.ui-selected {
+            background-color: #F39814;
+            color: white;
+        }
+
+        #tblMSMonthlyData tbody .tdScheduleMonthData:hover, #tblMSMonthlyData tbody .tdScheduleMonthDataNote:hover {
+            cursor: pointer;
+            background-color: #FECA40 !important;
+            color: white;
+        }
+
+        #tblMSMonthlyData tbody .tdScheduleMonthData:active {
+            background-color: #ffdc81;
+            color: white;
+        }
+
+        .formSignMontly {
+            display: inline-block;
+        }
+    </style>
+}
+
+<h2>Maintenance Schedule Monthly</h2>
+<input type="hidden" id="hfIsLock" value="@(IsLock ? "Unlocked" : "Locked")" />
+<table id="tblMScheduleMonthlyHeader" border="1" style="width:100%">
+    <thead>
+        <tr>
+            <td rowspan="4" style="width:175px;" class="p-2">
+                <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+            </td>
+            <td rowspan="2" class="text-center">FORMULIR INTEGRASI</td>
+            <td>No. Dok</td>
+            <td class="text-center">PMLK3-MTN-01/L6</td>
+        </tr>
+        <tr>
+            <td style="width:75px;">Revisi</td>
+            <td style="width:125px;" class="text-center">00</td>
+        </tr>
+        <tr>
+            <td rowspan="2" class="text-center">JADWAL PERAWATAN MESIN BERKALA</td>
+            <td>Tanggal</td>
+            <td class="text-center">05-Apr-2023</td>
+        </tr>
+        <tr>
+            <td>Halaman</td>
+            <td class="text-center">1</td>
+        </tr>
+        <tr>
+            <td colspan="4" class="text-center">Fiscal : @(FY)</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td colspan="4">
+                <table id="tblMSMonthlyData" border="1" style="width:100%;">
+                    <thead>
+                        <tr style="background-color: white;" class="text-center">
+                            <th rowspan="2">No</th>
+                            <th rowspan="2" colspan="2">Mesin</th>
+                            <th colspan="@( DateTime.DaysInMonth(ViewBag.Period,ViewBag.Month).ToString())">@( new DateTime(ViewBag.Period, ViewBag.Month, 1).ToString("MMMM-yyyy"))</th>
+                            <th rowspan="2">Keterangan</th>
+                        </tr>
+                        <tr style="background-color: white;" class="text-center">
+                            @for (var i = 1; i <= DateTime.DaysInMonth(ViewBag.Period, ViewBag.Month); i++)
+                            {
+                                <th style="border-left:2px solid black;border-right:2px solid black;">
+                                    @(i)
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.MachineList)
+                        {
+                            <tr data-areaid="@(item.Area_ID)" data-area="@(item.Area)" data-machineno="@(item.Machine_No)" data-machineid="@(item.Machine_ID)" data-machinename="@(item.Machine_Name)" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)" data-month="@(ViewBag.Month)">
+                                <td rowspan="2" class="text-right">@(ViewBag.MachineList.IndexOf(item) + 1)</td>
+                                <td rowspan="2"><a class="linkMaintenanceChecklist" target="_blank" href="@("/NGKBusi/MTN/MachineDatabase/MaintenanceChecklist?iMachineName="+ HttpUtility.UrlEncode(item.Machine_Name) + "&iPeriod=" + (ViewBag.Period - (Int32.Parse(Request["iMonth"]) <= 3 ? 1 : 0)) + "&iPeriodFY=" + ViewBag.PeriodFY + "&iArea=" + HttpUtility.UrlEncode(item.Area) + "&iMachineNo=" + item.Machine_No)">@(item.Machine_Name + " (" + item.Area + ")")</a></td>
+                                <td class="text-center font-weight-bold">R</td>
+                                @for (var i = 1; i <= DateTime.DaysInMonth(ViewBag.Period, ViewBag.Month); i++)
+                                {
+                                    <td tabindex="0" class="tdScheduleMonthData text-center" data-day="@(i)" style="border-left:2px solid black; color:white;width:25px" data-toggle="popover" data-placement="top" data-trigger="focus"></td>
+                                }
+                                <td rowspan="2" class="tdScheduleMonthDataNote p-1" style="border-left:2px solid black;"></td>
+                            </tr>
+                            <tr data-areaid="@(item.Area_ID)" data-area="@(item.Area)" data-machineno="@(item.Machine_No)" data-machineid="@(item.Machine_ID)" data-machinename="@(item.Machine_Name)" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)" data-month="@(ViewBag.Month)">
+                                <td class="text-center font-weight-bold">A</td>
+                                @for (var i = 1; i <= DateTime.DaysInMonth(ViewBag.Period, ViewBag.Month); i++)
+                                {
+                                    <td tabindex="0" class="tdScheduleMonthDataActual text-center" data-day="@(i)" style="border-left:2px solid black; color:white;"></td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3"></td>
+                            <td colspan="32" align="right">
+
+                                @{
+                                    var currSignList = db.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 2).Select(s => new { Title = s.Title, Header = s.Header, Label = s.Label, Levels = s.Levels, Levels_Sub = s.Levels_Sub }).Distinct().ToList().OrderByDescending(o => o.Levels).ThenByDescending(o => o.Levels_Sub);
+                                }
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr class="bg-info text-bg-info text-center">
+                                            @foreach (var dList in currSignList)
+                                            {
+                                                <th class="text-center">
+                                                    @(dList.Label)
+                                                </th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="text-center align-middle">
+                                            @foreach (var dList in currSignList)
+                                            {
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currHeader != null && currHeader.Approval == dList.Levels && currHeader.Approval_Sub == dList.Levels_Sub && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("signMaintenanceScheduleMonthly", "MachineDatabase", new { area = "MTN" })" method="post">
+                                                            <input type="hidden" name="iPeriodFY" value="@(ViewBag.PeriodFY)" />
+                                                            <input type="hidden" name="iYear" value="@(ViewBag.Period)" />
+                                                            <input type="hidden" name="iMonth" value="@(ViewBag.Month)" />
+                                                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this data ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        if (currHeader != null && currHeader.Approval == 1 && currHeader.Approval_Sub != 0)
+                                                        {
+                                                            <hr />
+                                                            <form action="@Url.Action("signMaintenanceScheduleMonthly", "MachineDatabase", new { area = "MTN" })" method="post">
+                                                                <input type="hidden" name="iPeriodFY" value="@(ViewBag.PeriodFY)" />
+                                                                <input type="hidden" name="iYear" value="@(ViewBag.Period)" />
+                                                                <input type="hidden" name="iMonth" value="@(ViewBag.Month)" />
+                                                                @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                                <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                            </form>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currHeader != null && (currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels)
+                                                        {
+                                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                        }
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            @foreach (var dList in currSignList)
+                                            {
+                                                <td class="text-center">
+                                                    @if (currHeader != null && ((currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels))
+                                                    {
+                                                        @(MTN.ApprovalHistory(currHeader.Period_FY, dList.Levels, dList.Levels_Sub, 1, 2));
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                        <tr>
+                                            @foreach (var dList in currSignList)
+                                            {
+                                                <td class="text-center">
+                                                    @if (currHeader != null && ((currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels))
+                                                    {
+                                                        @(MTN.ApprovalHistory(currHeader.Period_FY, dList.Levels, dList.Levels_Sub, 2, 2));
+                                                    }
+                                                </td>
+                                            }
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<div class="modal fade" id="modalMonthlyNotes" tabindex="-1" aria-labelledby="modalMonthlyNotesLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMonthlyNotesLabel">Keterangan</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="hfMachineAreaID" name="iMachineAreaID" value="" />
+                <input type="hidden" id="hfMachineID" name="iMachineID" value="" />
+                <input type="hidden" id="hfMachineYear" name="iMachineYear" value="" />
+                <input type="hidden" id="hfMachineMonth" name="iMachineMonth" value="" />
+                <textarea id="txtMachineMonthlyNotes" name="iNotes" rows="5" class="form-control" placeholder="Keterangan"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btnMonthlyNote btn btn-primary form-control">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+

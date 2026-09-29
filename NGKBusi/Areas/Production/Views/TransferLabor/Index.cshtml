@@ -1,0 +1,1158 @@
+﻿@{
+    ViewBag.Title = "Transfer Labor Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var items = ViewBag.items as List<NGKBusi.Areas.Production.Models.Production_TransferLabor_Request_Header>;
+    string currentUserNik = ViewBag.CurrentNIK as string;
+}
+
+@section scriptHead{
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <script>
+        tailwind.config = {
+            important: '.labor-modern',
+            theme: {
+                extend: {
+                    fontFamily: { 'inter': ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            /* Gunakan background di sini agar mencakup seluruh dokumen */
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%) no-repeat fixed;
+            background-size: cover;
+        }
+        .swal2-container {
+            z-index: 99999 !important;
+        }
+
+        .page-content {
+            overflow: visible !important; /* Jangan ada scroll internal di sini */
+        }
+
+        .labor-modern {
+            font-family: 'Inter', sans-serif !important;
+            margin: -30px;
+        }
+
+        .modern-bg {
+            padding: 2.5rem;
+        }
+
+        .layout-modern-bg {
+            background: none !important;
+        }
+
+        .modern-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(15px);
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+        }
+
+        /* --- HEADER CONTROLS (Dropdown Kiri, Search Kanan) --- */
+        .datatable-top {
+            padding: 10px 1.5rem !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .datatable-dropdown {
+            order: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .datatable-search {
+            order: 2;
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            float: none !important;
+        }
+
+        .datatable-selector {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.5rem !important;
+            padding: 0.4rem 2rem 0.4rem 0.75rem !important;
+            font-size: 0.875rem !important;
+            appearance: none !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+            background-repeat: no-repeat !important;
+            background-position: right 0.5rem center !important;
+            background-size: 1rem !important;
+            margin-right: 8px;
+        }
+
+        .datatable-input {
+            width: 300px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.6rem 1rem 0.6rem 2.5rem !important;
+            font-size: 0.875rem !important;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 0.75rem center;
+            background-size: 1.1rem;
+            outline: none;
+        }
+
+        /* --- FOOTER CONTROLS (Total Data Kiri, Pagination Kanan) --- */
+        .datatable-bottom {
+            padding: 1.25rem 1.5rem !important;
+            display: flex !important;
+            justify-content: space-between !important; /* INI KUNCINYA */
+            align-items: center !important;
+            border-top: 1px solid #f1f5f9;
+            background: #ffffff;
+        }
+
+        .datatable-info {
+            order: 1 !important;
+            font-size: 0.813rem !important;
+            color: #64748b !important; /* Warna abu-abu Slate */
+            font-weight: 600 !important;
+            display: block !important; /* Pastikan tidak tersembunyi */
+        }
+
+        .datatable-pagination {
+            order: 2; /* Pagination di paling kanan */
+            margin-left: auto;
+        }
+
+        .datatable-pagination-list {
+            display: flex !important;
+            list-style: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            gap: 4px !important;
+        }
+
+        .datatable-pagination a, .datatable-pagination button {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-width: 32px !important;
+            height: 32px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.5rem !important;
+            font-size: 0.75rem !important;
+            font-weight: 700 !important;
+            color: #1E555C !important;
+            background: #fff !important;
+            text-decoration: none !important;
+            transition: all 0.2s;
+        }
+
+        .datatable-pagination .active a, .datatable-pagination .active button {
+            background: #1E555C !important;
+            color: #fff !important;
+            border-color: #1E555C !important;
+        }
+
+        /* --- TABLE STYLE --- */
+        .datatable-table thead th {
+            background: #f8fafc !important;
+            color: #1E555C !important;
+            font-weight: 800 !important;
+            text-transform: uppercase !important;
+            padding: 1rem 1.5rem !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+        }
+
+        .custom-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+    </style>
+}
+
+<body class="w-100 modern-bg h-full">
+    <div class="labor-modern">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 px-2">
+            <div class="flex items-center space-x-4">
+                <div class="w-1.5 h-10 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full shadow-md"></div>
+                <div>
+                    <h1 class="text-3xl font-bold text-white m-0">Transfer Labor</h1>
+                    <p class="text-white/80 text-[10px] m-0 font-bold uppercase tracking-widest">Approval Request Transfer Labor</p>
+                </div>
+            </div>
+            <button type="button" onclick="openCreateModal()"
+                    class="border border-white rounded-lg bg-gradient-to-r from-orange-500 to-yellow-600 text-white px-6 py-2.5 font-bold shadow-lg hover:from-orange-600 hover:to-orange-600 hover:scale-105 transition-all cursor-pointer">
+                + CREATE NEW REQUEST
+            </button>
+        </div>
+
+        <div class="modern-card layout-modern-bg">
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center bg-white">
+                <i class="fas fa-list text-teal-600 mr-3"></i>
+                <h3 class="text-sm font-bold text-gray-800 m-0 uppercase tracking-wider">Request Transfer Labor</h3>
+            </div>
+
+            <div class="overflow-x-auto bg-white">
+                <table id="filter-table" class="min-w-full">
+                    <thead>
+                        <tr>
+                            <th class="text-[13px]">Request ID</th>
+                            <th class="text-[13px]">Transfer Date</th>
+                            <th class="text-[13px]">Transfer Request</th>
+                            <th class="text-[13px] whitespace-nowrap">Requested By</th>
+                            <th class="text-[13px]">Status</th>
+                            <th class="text-[13px] text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (items != null && items.Any())
+                        {
+                            foreach (var item in items)
+                            {
+                                var s = item.status?.ToUpper() ?? "";
+                                <tr class="hover:bg-gray-50 transition-colors">
+
+                                    <td class="font-mono font-bold text-teal-700">
+                                        #@item.id
+                                    </td>
+
+                                    <td class="text-[13px] align-middle">
+                                        <div class="flex items-stretch justify-between w-full min-w-[220px] gap-2">
+
+                                            <div class="flex-1 w-1/2">
+                                                <div class="h-full flex items-center justify-center bg-gray-100 text-gray-700 px-2 py-1.5 rounded text-center text-[12px] font-bold leading-tight break-words">
+                                                    @item.start_date.ToString("dd MMM yy HH:mm")
+                                                </div>
+                                            </div>
+
+                                            <div class="flex-none flex items-center justify-center">
+                                                <i class="fas fa-arrow-right text-gray-300 text-[10px]"></i>
+                                            </div>
+
+                                            <div class="flex-1 w-1/2">
+                                                <div class="h-full flex items-center justify-center bg-teal-50 text-teal-700 px-2 py-1.5 rounded text-center text-[12px] font-bold leading-tight break-words">
+                                                    @item.end_date.ToString("dd MMM yy HH:mm")
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </td>
+
+                                    <td class="text-[13px] align-middle">
+                                        <div class="flex items-stretch justify-between w-full min-w-[300px] gap-2">
+
+                                            <div class="flex-1 w-1/2">
+                                                <div class="h-full flex items-center justify-center bg-gray-100 text-gray-700 px-2 py-1.5 rounded text-center text-[12px] font-bold leading-tight break-words" title="@item.from_section">
+                                                    @item.from_section
+                                                </div>
+                                            </div>
+
+                                            <div class="flex-none flex items-center justify-center">
+                                                <i class="fas fa-arrow-right text-gray-300 text-[10px]"></i>
+                                            </div>
+
+                                            <div class="flex-1 w-1/2">
+                                                <div class="h-full flex items-center justify-center bg-teal-50 text-teal-700 px-2 py-1.5 rounded text-center text-[12px] font-bold leading-tight break-words" title="@item.to_section">
+                                                    @item.to_section
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </td>
+
+                                    <td class="font-medium text-xs text-center align-middle text-gray-700">
+                                        @item.request_creator_by
+                                    </td>
+
+                                    <td class="text-center align-middle">
+                                        @{
+                                            // 1. Set default warna kuning
+                                            string badgeClass = "bg-amber-100 text-amber-700";
+
+                                            // 2. Amankan dari null dan ubah ke huruf besar semua untuk pengecekan warna
+                                            string currentStatus = item.status != null ? item.status.ToUpper() : "";
+
+                                            // 3. Tentukan warna berdasarkan kondisi
+                                            if (currentStatus == "COMPLETED")
+                                            {
+                                                badgeClass = "bg-emerald-100 text-emerald-700"; // Hijau
+                                            }
+                                            else if (currentStatus.Contains("REJECTED"))
+                                            {
+                                                badgeClass = "bg-red-100 text-red-700"; // Merah
+                                            }
+
+                                            // 4. Logika untuk membagi 4 kata menjadi 2 baris
+                                            string displayStatus = item.status ?? "";
+
+                                            // Pecah teks berdasarkan spasi
+                                            string[] words = displayStatus.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                                            if (words.Length == 4)
+                                            {
+                                                displayStatus = $"{words[0]} {words[1]}<br />{words[2]} {words[3]}";
+                                            }
+                                        }
+
+                                        <span class="whitespace-nowrap custom-badge @badgeClass" style="display: inline-block; line-height: 1.2;">
+                                            @Html.Raw(displayStatus)
+                                        </span>
+                                    </td>
+
+                                    <td class="text-center align-middle">
+                                        @if (item.created_by == currentUserNik)
+                                        {
+                                            <button type="button" onclick="openEditModal('@item.id')"
+                                                    class="text-amber-500 hover:text-amber-700 transition-all inline-block transform hover:scale-110 mr-2"
+                                                    title="Edit Request">
+                                                <i class="fas fa-edit text-xl"></i>
+                                        </button>
+                                         }
+
+                                        <a href="@Url.Action("Details","TransferLabor", new { id = item.id })"
+                                           class="text-blue-500 hover:text-blue-700 transition-all inline-block transform hover:scale-110"
+                                           title="Buka Detail">
+                                            <i class="far fa-file-lines text-xl"></i>
+                                        </a>
+                                    </td>
+
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="modalTransferLabor" class="fixed inset-0 z-[10000] hidden" aria-labelledby="modalTitle" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-5xl border border-gray-100">
+
+                    <div class="px-6 py-2 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1 h-6 bg-teal-600 rounded-full"></div>
+                            <h5 id="modalTitleText" class="text-lg font-bold text-gray-800 tracking-tight m-0">FORMULIR TRANSFER LABOR</h5>
+                        </div>
+                        <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-red-500 rounded-lg p-1.5 transition-colors cursor-pointer">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="px-4 py-4 md:p-6 max-h-[75vh] overflow-y-auto">
+                        <form id="formTransferLabor" action="@Url.Action("createRequest", "TransferLabor")" method="POST">
+                            <input type="hidden" name="id" id="requestId" value="">
+
+                            <h6 class="font-bold text-teal-700 text-sm border-b-2 border-teal-100 pb-2 mb-3 uppercase tracking-wider">A. Informasi Requestor</h6>
+
+                            <input type="hidden" name="request_creator_by" value="@User.Identity.Name">
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Request From Section</label>
+                                    <select name="from_section" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm cursor-pointer" required>
+                                        <option value="" disabled selected>-- Select Section --</option>
+                                        @if (ViewBag.UserAccess != null)
+                                        {
+                                            foreach (var item in ViewBag.UserAccess)
+                                            {
+                                                <option value="@item.Section|@item.Department">@item.Section</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Request To Section</label>
+                                    <select name="to_section" onchange="loadManpower(this.value)" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm cursor-pointer" required>
+                                        <option value="" disabled selected>-- Select Section --</option>
+                                        @if (ViewBag.AllSections != null)
+                                        {
+                                            foreach (var item in ViewBag.AllSections)
+                                            {
+                                                <option value="@item.Section|@item.Department">@item.Section</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[14px] font-semibold text-gray-700 mb-1">Start Date & Time</label>
+                                    <input type="datetime-local" name="start_date" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1">Date & Time of Completion</label>
+                                    <input type="datetime-local" name="end_date" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Job Detail</label>
+                                    <select name="job_detail" class="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-all text-sm cursor-pointer" required>
+                                        <option value="" disabled selected>-- Select Job Detail --</option>
+                                        @if (ViewBag.ListDescription != null)
+                                        {
+                                            foreach (var item in ViewBag.ListDescription)
+                                            {
+                                                <option value="@item.CodeDesc|@item.TextDesc">@item.TextDesc (@item.CodeDesc)</option>
+                                            }
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="mb-3 flex justify-between items-end border-b-2 border-teal-100 pb-2">
+                                <h6 class="font-bold text-teal-700 text-sm uppercase tracking-wider m-0">
+                                    B. Man Power
+
+                                    (Total: <span id="totalManPower">1</span>)
+                                </h6>
+                                <button type="button" onclick="addRow()" class="bg-teal-50 text-teal-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-teal-200 hover:bg-teal-100 transition-all cursor-pointer shadow-sm">
+                                    <i class="fas fa-plus mr-1"></i> Tambah Baris
+                                </button>
+                            </div>
+
+                            <div class="mb-6">
+                                <div class="border rounded-xl overflow-hidden shadow-sm">
+                                    <table class="min-w-full divide-y divide-gray-200" id="tableDetail">
+                                        <thead class="bg-gray-50 text-xs uppercase font-bold text-gray-500">
+                                            <tr>
+                                                <th class="px-3 py-2.5 text-center w-12">No</th>
+                                                <th class="px-3 py-2.5 text-left">employee name</th>
+                                                <th class="px-3 py-2.5 text-left w-44">NIK</th>
+                                                <th class="px-3 py-2.5 text-left w-48">Planning</th>
+                                                <th class="px-3 py-2.5 text-center w-28 leading-tight">
+                                                    TL
+                                                    <span class="text-[10px] text-gray-400 normal-case font-medium">(hours)</span>
+                                                </th>
+                                                <th class="px-3 py-2.5 text-center w-28 leading-tight">
+                                                    TL OT
+                                                    <span class="text-[10px] text-gray-400 normal-case font-medium">(hours)</span>
+                                                </th>
+                                                <th class="px-3 py-2.5 text-center w-14">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100">
+                                            <tr>
+                                                <td class="px-3 py-2 text-center text-sm font-semibold text-gray-500">1</td>
+                                                <td class="px-3 py-2">
+                                                    <select name="name[]" class="emp-dropdown w-full border rounded bg-gray-50 p-1.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" required onchange="setNIK(this)">
+                                                        <option value="">-- Select To Section First --</option>
+                                                    </select>
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="text" name="nik[]" class="emp-nik w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+
+                                                    <input type="hidden" name="description[]" class="emp-description w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+
+                                                    <input type="hidden" name="status[]" class="emp-status w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <select name="planning[]" class="w-full border rounded p-1.5 text-sm bg-white text-gray-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" required>
+                                                        <option value="PLANNED">PLANNED</option>
+                                                        <option value="UNPLANNED">UNPLANNED</option>
+                                                    </select>
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" step="0.1" name="transfer_labor_hours[]" oninput="validateHours(this)" class="w-full border rounded p-1.5 text-sm text-center outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                                </td>
+                                                <td class="px-3 py-2">
+                                                    <input type="number" step="0.1" name="transfer_overtime_hours[]" oninput="validateHours(this)" class="w-full border rounded p-1.5 text-sm text-center outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                                                </td>
+                                                <td class="px-3 py-2 text-center">
+                                                    <button type="button" onclick="removeRow(this)" class="text-red-400 hover:text-red-600 transition-colors cursor-pointer" title="Hapus Baris">
+                                                        <i class="fas fa-trash text-sm"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end mt-4">
+                                <div class="border border-gray-300 rounded-lg overflow-hidden w-64 text-center bg-white shadow-sm">
+                                    <div class="bg-gray-100 border-b border-gray-300 py-1.5 px-4 text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                        Requested By
+                                    </div>
+                                    <div id="signBox"
+                                         onclick="applySignature()"
+                                         class="h-24 flex flex-col items-center justify-center bg-white relative cursor-pointer hover:bg-gray-50 transition-all border-2 border-dashed border-gray-200 hover:border-teal-400 group">
+
+                                        <input type="hidden" name="request_creator_sign" id="request_creator_sign" value="">
+                                        <input type="hidden" name="request_creator_sign_date" id="request_creator_sign_date" value="">
+                                        <input type="hidden" name="created_by" id="created_by" value="@currentUserNik">
+
+                                        <div id="signUI" class="text-center z-10 select-none transition-all">
+                                            <i class="fas fa-pen-nib text-gray-300 text-xl mb-1 block group-hover:text-teal-400 transition-colors"></i>
+                                            <span class="text-gray-400 text-xs font-medium group-hover:text-teal-500 transition-colors">Klik untuk Sign</span>
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-gray-300 py-1.5 px-4 text-xs font-bold text-teal-700 truncate bg-gray-50">
+                                        @User.Identity.Name
+                                    </div>
+
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="px-6 py-2 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 rounded-b-2xl">
+                        <button type="button" onclick="closeModal()" class="px-5 py-2 bg-white border border-gray-300 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-50 transition-all cursor-pointer">Batal</button>
+                        <button type="submit" id="btnSubmitTransfer" form="formTransferLabor" class="px-5 py-2.5 bg-teal-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-500/30 hover:bg-teal-700 transition-all cursor-pointer">Create Request</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // --- 1. INISIALISASI DATATABLE ---
+        const table = document.getElementById("filter-table");
+        if (table) {
+            const dataTable = new simpleDatatables.DataTable(table, {
+                perPage: 10,
+                searchable: true,
+                fixedHeight: false,
+                labels: {
+                    placeholder: "Search...",
+                    perPage: "Display",
+                    noRows: "No data available",
+                    info: "Showing {start} to {end} of {rows} entries",
+                }
+            });
+
+            const renderEmptyState = () => {
+                const emptyCell = table.querySelector(".datatable-empty");
+                if (emptyCell) {
+                    emptyCell.setAttribute("colspan", "6");
+                    emptyCell.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-12 bg-gray-50/30">
+                            <div class="relative mb-6">
+                                <div class="absolute inset-0 bg-teal-100 rounded-full blur-xl opacity-40 animate-pulse"></div>
+                                <div class="relative w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center border border-gray-100">
+                                    <i class="fas fa-folder-open text-gray-200 text-4xl"></i>
+                                </div>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-800 m-0 tracking-tight">No Requests Found</h4>
+                            <p class="text-gray-500 text-sm mt-2 max-w-xs mx-auto leading-relaxed italic text-center">
+                                It looks like there are no transfer labor requests at the moment.
+                            </p>
+                        </div>
+                    `;
+                }
+            };
+
+            const forcePagination = () => {
+                const infoContainer = document.querySelector(".datatable-info");
+                if (infoContainer && infoContainer.innerText.trim() === "") {
+                    infoContainer.innerText = "Showing 0 to 0 of 0 entries";
+                }
+                const list = document.querySelector(".datatable-pagination-list");
+                if (list && list.children.length === 0) {
+                    list.innerHTML = `
+                        <li class="datatable-pagination-list-item disabled"><a class="datatable-pagination-list-item-link">‹</a></li>
+                        <li class="datatable-pagination-list-item active"><a class="datatable-pagination-list-item-link">1</a></li>
+                        <li class="datatable-pagination-list-item disabled"><a class="datatable-pagination-list-item-link">›</a></li>
+                    `;
+                }
+            };
+
+            dataTable.on("datatable.init", () => { renderEmptyState(); forcePagination(); });
+            dataTable.on("datatable.update", () => { renderEmptyState(); forcePagination(); });
+            dataTable.on("datatable.search", () => { renderEmptyState(); forcePagination(); });
+            dataTable.on("datatable.page", () => { renderEmptyState(); forcePagination(); });
+
+            renderEmptyState();
+            forcePagination();
+        }
+
+
+        const formTransfer = document.getElementById('formTransferLabor');
+        if (formTransfer) {
+            formTransfer.addEventListener('submit', function (e) {
+                e.preventDefault(); // Mencegah page refresh bawaan browser
+
+                // Pastikan user sudah melakukan klik sign
+                const signDate = document.getElementById('request_creator_sign_date').value;
+                if (!signDate) {
+                    Swal.fire({
+                        title: 'Peringatan',
+                        text: 'Harap klik kotak Tanda Tangan sebelum menyimpan.',
+                        icon: 'warning'
+                    });
+                    return;
+                }
+
+                // Ambil URL action form
+                const url = formTransfer.getAttribute('action');
+                // Bungkus data form
+                const formData = new FormData(formTransfer);
+
+                // --- PERBAIKAN DI SINI ---
+                // Cari tombol submit berdasarkan ID (karena tombolnya di luar form)
+                const submitBtn = document.getElementById('btnSubmitTransfer');
+                let originalBtnText = "Create Request";
+
+                // Ubah tombol submit menjadi loading state dengan aman
+                if (submitBtn) {
+                    originalBtnText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Menyimpan...';
+                    submitBtn.disabled = true;
+                }
+                // -------------------------
+
+                // Kirim data ke Controller menggunakan Fetch
+                fetch(url, {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(res => {
+                        if (res.success) {
+
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: res.message,
+                                icon: 'success',
+                                confirmButtonColor: '#1E555C'
+                            }).then(() => {
+                                closeModal();
+                                formTransfer.reset(); // Bersihkan form
+
+                                // Reset UI Tanda Tangan ke kondisi awal
+                                const signUI = document.getElementById('signUI');
+                                if (signUI) {
+                                    signUI.innerHTML = `
+                            <i class="fas fa-pen-nib text-gray-300 text-xl mb-1 block group-hover:text-teal-400 transition-colors"></i>
+                            <span class="text-gray-400 text-xs font-medium group-hover:text-teal-500 transition-colors">Klik untuk Sign</span>
+                        `;
+                                }
+                                const signBox = document.getElementById('signBox');
+                                if (signBox) {
+                                    signBox.classList.add('border-dashed', 'border-gray-200', 'hover:bg-gray-50', 'hover:border-teal-400', 'cursor-pointer');
+                                    signBox.classList.remove('bg-white', 'border-solid');
+                                    signBox.onclick = applySignature; // kembalikan event onclick
+                                }
+
+                                // (Opsional) Refresh halaman agar data di tabel terupdate
+                                 window.location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Gagal terhubung ke server.', 'error');
+                    })
+                    .finally(() => {
+                        // --- PERBAIKAN DI SINI ---
+                        // Kembalikan tombol ke kondisi semula dengan aman
+                        if (submitBtn) {
+                            submitBtn.innerHTML = originalBtnText;
+                            submitBtn.disabled = false;
+                        }
+                        // -------------------------
+                    });
+            });
+        }
+
+        // Opsional: Validasi Ulang Jika Tanggal Berubah
+        const dateInputs = document.querySelectorAll('input[name="start_date"], input[name="end_date"]');
+        dateInputs.forEach(input => {
+            input.addEventListener('change', function() {
+                const maxHours = getMaxTransferHours();
+                if (maxHours !== null && maxHours >= 0) {
+                    // Cek semua baris jika tanggal diubah
+                    const rows = document.querySelectorAll('#tableDetail tbody tr');
+                    let hasReset = false;
+
+                    rows.forEach(row => {
+                        const laborInput = row.querySelector('input[name="transfer_labor_hours[]"]');
+                        const otInput = row.querySelector('input[name="transfer_overtime_hours[]"]');
+                        if (laborInput && otInput) {
+                            const lHours = parseFloat(laborInput.value) || 0;
+                            const oHours = parseFloat(otInput.value) || 0;
+
+                            if ((lHours + oHours) > maxHours) {
+                                laborInput.value = '';
+                                otInput.value = '';
+                                hasReset = true;
+                            }
+                        }
+                    });
+
+                    if (hasReset) {
+                        Swal.fire('Informasi', `Beberapa jam kerja dikosongkan karena Anda memperpendek durasi tanggal transfer menjadi ${maxHours.toFixed(1)} jam.`, 'info');
+                    }
+                }
+            });
+        });
+    });
+
+
+    function applySignature() {
+        // 1. Ambil waktu saat ini
+        let now = new Date();
+
+        // -- Untuk Tampilan Stempel (dd.mm.yy) --
+        let day = String(now.getDate()).padStart(2, '0');
+        let month = String(now.getMonth() + 1).padStart(2, '0');
+        let shortYear = now.getFullYear().toString().slice(-2);
+        let formattedDateStamp = `${day}.${month}.${shortYear}`;
+
+        // -- Untuk Data Backend (YYYY-MM-DD HH:mm:ss) --
+        let fullYear = now.getFullYear();
+        let hours = String(now.getHours()).padStart(2, '0');
+        let minutes = String(now.getMinutes()).padStart(2, '0');
+        let seconds = String(now.getSeconds()).padStart(2, '0');
+        let backendDateTime = `${fullYear}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+        // 2. Isi value pada input hidden
+        document.getElementById('request_creator_sign').value = "Created";
+        document.getElementById('request_creator_sign_date').value = backendDateTime; // <--- INI TAMBAHANNYA
+
+        // 3. Ubah tampilan teks/icon di dalam signUI menjadi stempel merah mirip gambar
+        const signUI = document.getElementById('signUI');
+        signUI.innerHTML = `
+        <div class="flex items-center justify-center">
+            <div class="w-20 h-20 rounded-full border-2 border-red-600 flex flex-col items-center justify-center text-center text-red-600 font-mono font-bold leading-tight shadow-sm bg-white">
+                <div class="text-[10px] tracking-wider uppercase border-b border-red-600 w-11 pb-0.5">Created</div>
+                <div class="text-[11px] py-0.5">${formattedDateStamp}</div>
+                <div class="border-t border-red-600 w-11 pt-0.5 text-[8px] italic"></div>
+            </div>
+        </div>
+    `;
+
+        // 4. Ubah style kotak signBox
+        const signBox = document.getElementById('signBox');
+        signBox.classList.remove('border-dashed', 'border-gray-200', 'hover:bg-gray-50', 'hover:border-teal-400', 'cursor-pointer');
+        signBox.classList.add('bg-white', 'border-solid', 'border-gray-200');
+
+        // 5. Matikan event klik
+        signBox.onclick = null;
+    }
+    // Fungsi untuk mereset Signature UI
+    function resetSignatureUI() {
+        document.getElementById('request_creator_sign').value = "";
+        document.getElementById('request_creator_sign_date').value = "";
+        const signUI = document.getElementById('signUI');
+        signUI.innerHTML = `
+            <i class="fas fa-pen-nib text-gray-300 text-xl mb-1 block group-hover:text-teal-400 transition-colors"></i>
+            <span class="text-gray-400 text-xs font-medium group-hover:text-teal-500 transition-colors">Klik untuk Sign</span>
+        `;
+        const signBox = document.getElementById('signBox');
+        signBox.className = "h-24 flex flex-col items-center justify-center bg-white relative cursor-pointer hover:bg-gray-50 transition-all border-2 border-dashed border-gray-200 hover:border-teal-400 group";
+        signBox.onclick = applySignature;
+    }
+
+    // BUKA MODAL MODE CREATE
+    function openCreateModal() {
+        document.getElementById('modalTitleText').innerText = "CREATE FORMULIR TRANSFER LABOR";
+        document.getElementById('formTransferLabor').action = "@Url.Action("createRequest", "TransferLabor")";
+        document.getElementById('formTransferLabor').reset();
+        document.getElementById('requestId').value = "";
+
+        // Reset tabel detail ke 1 baris kosong
+        document.querySelector('#tableDetail tbody').innerHTML = '';
+        currentManpowerList = []; // Kosongkan data
+        addRow();
+        resetSignatureUI();
+
+        const modal = document.getElementById('modalTransferLabor');
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    // BUKA MODAL MODE EDIT
+    function openEditModal(id) {
+        document.getElementById('modalTitleText').innerText = "UPDATE FORMULIR TRANSFER LABOR";
+        // Ubah action form mengarah ke fungsi updateRequest di Controller
+        document.getElementById('formTransferLabor').action = `@Url.Action("updateRequest", "TransferLabor")?id=${id}`;
+        document.getElementById('formTransferLabor').reset();
+        document.getElementById('requestId').value = id;
+
+        // Tampilkan Loading Swal
+        Swal.fire({ title: 'Memuat data...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        // Panggil API untuk mengambil data Header + Detail
+        fetch(`@Url.Action("GetRequestData", "TransferLabor")?id=${id}`)
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    // 1. Set Header Data
+                    const h = res.data.header;
+
+                    // Format datetime-local requires YYYY-MM-DDThh:mm
+                    document.querySelector('[name="start_date"]').value = h.start_date.substring(0, 16);
+                    document.querySelector('[name="end_date"]').value = h.end_date.substring(0, 16);
+
+                    document.querySelector('[name="from_section"]').value = h.from_section + '|' + h.from_department;
+                    document.querySelector('[name="to_section"]').value = h.to_section + '|' + h.to_department;
+                    document.querySelector('[name="job_detail"]').value = h.code_job_detail + '|' + h.job_detail;
+
+                    // 2. Load Manpower berdasarkan to_section, lalu build tabel detail
+                    loadManpowerForEdit(h.to_section, res.data.details);
+
+                    // 3. Set Tanda Tangan jika sudah ada
+                    if(h.request_creator_sign_date) {
+                        // Bypass fungsi applySignature() agar langsung berubah jadi visual stempel
+                        document.getElementById('request_creator_sign').value = h.request_creator_sign;
+                        document.getElementById('request_creator_sign_date').value = h.request_creator_sign_date;
+
+                        // Format stempel DD.MM.YY
+                        const d = new Date(h.request_creator_sign_date);
+                        const stampDate = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getFullYear()).slice(-2)}`;
+
+                        const signUI = document.getElementById('signUI');
+                        signUI.innerHTML = `
+                            <div class="flex items-center justify-center">
+                                <div class="w-20 h-20 rounded-full border-2 border-red-600 flex flex-col items-center justify-center text-center text-red-600 font-mono font-bold leading-tight shadow-sm bg-white">
+                                    <div class="text-[10px] tracking-wider uppercase border-b border-red-600 w-11 pb-0.5">Created</div>
+                                    <div class="text-[11px] py-0.5">${stampDate}</div>
+                                    <div class="border-t border-red-600 w-11 pt-0.5 text-[8px] italic"></div>
+                                </div>
+                            </div>`;
+
+                        const signBox = document.getElementById('signBox');
+                        signBox.classList.remove('border-dashed', 'hover:bg-gray-50', 'cursor-pointer');
+                        signBox.classList.add('bg-white', 'border-solid');
+                        signBox.onclick = null;
+                    }
+
+                    Swal.close();
+                    const modal = document.getElementById('modalTransferLabor');
+                    modal.classList.remove('hidden');
+                    document.body.classList.add('overflow-hidden');
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                Swal.fire('Error', 'Gagal memuat data dari server.', 'error');
+            });
+    }
+
+    // Fungsi khusus untuk mengambil manpower dan langsung merender baris Detail pada mode EDIT
+    function loadManpowerForEdit(sectionName, detailsData) {
+        fetch(`@Url.Action("getManpower", "TransferLabor")?section=${encodeURIComponent(sectionName)}`, { cache: 'no-store' })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    currentManpowerList = res.data;
+                    const tableBody = document.querySelector('#tableDetail tbody');
+                    tableBody.innerHTML = ''; // Clear rows
+
+                    // Render masing-masing baris dari data yang tersimpan
+                    detailsData.forEach((detail, index) => {
+                        addRow(); // Panggil addRow bawaan Anda
+
+                        // Setelah baris ditambah, set nilainya berdasarkan data di database
+                        const lastRow = tableBody.rows[tableBody.rows.length - 1];
+                        const selectName = lastRow.querySelector('select[name="name[]"]');
+                        selectName.value = detail.name;
+
+                        // Trigger setNIK untuk memunculkan NIK
+                        setNIK(selectName);
+
+                        const planningSelect = lastRow.querySelector('select[name="planning[]"]');
+                        if (planningSelect) planningSelect.value = detail.planning || '';
+
+                        // Set Jam TL dan OT
+                        lastRow.querySelector('input[name="transfer_labor_hours[]"]').value = detail.transfer_labor_hours;
+                        lastRow.querySelector('input[name="transfer_overtime_hours[]"]').value = detail.transfer_overtime_hours;
+                    });
+                    updateTotalManPower();
+                }
+            });
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('modalTransferLabor');
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function updateTotalManPower() {
+        const tableBody = document.querySelector('#tableDetail tbody');
+        const totalSpan = document.getElementById('totalManPower');
+        if (totalSpan && tableBody) {
+            totalSpan.innerText = tableBody.rows.length;
+        }
+    }
+
+    // Fungsi untuk menghitung maksimal jam dari Start Date & End Date
+    function getMaxTransferHours() {
+        const startInput = document.querySelector('input[name="start_date"]').value;
+        const endInput = document.querySelector('input[name="end_date"]').value;
+
+        if (!startInput || !endInput) return null; // Jika salah satu belum diisi
+
+        const startDate = new Date(startInput);
+        const endDate = new Date(endInput);
+        const diffMs = endDate - startDate;
+
+        if (diffMs < 0) return -1; // Jika End Date lebih kecil (salah input)
+
+        // Konversi milisecond ke jam
+        return diffMs / (1000 * 60 * 60);
+    }
+
+    // Fungsi validasi saat user memasukkan jam
+    function validateHours(inputElement) {
+        const maxHours = getMaxTransferHours();
+
+        // 1. Cek apakah tanggal sudah diisi
+        if (maxHours === null) {
+            Swal.fire('Peringatan', 'Silakan isi Start Date & Time dan End Date terlebih dahulu!', 'warning');
+            inputElement.value = '';
+            return;
+        }
+
+        // 2. Cek apakah tanggal valid (End > Start)
+        if (maxHours < 0) {
+            Swal.fire('Error', 'Date of Completion harus lebih besar dari Start Date!', 'error');
+            inputElement.value = '';
+            return;
+        }
+
+        // 3. Ambil nilai TL dan OT di baris (tr) yang sama
+        const tr = inputElement.closest('tr');
+        const laborInput = tr.querySelector('input[name="transfer_labor_hours[]"]');
+        const otInput = tr.querySelector('input[name="transfer_overtime_hours[]"]');
+
+        const laborHours = parseFloat(laborInput.value) || 0;
+        const otHours = parseFloat(otInput.value) || 0;
+        const totalRowHours = laborHours + otHours;
+
+        // 4. Validasi jumlahnya
+        if (totalRowHours > maxHours) {
+            Swal.fire({
+                title: 'Melebihi Batas!',
+                text: `Total jam (TL + TL OT) pada baris ini adalah ${totalRowHours} jam. Maksimal durasi berdasarkan tanggal yang dipilih adalah ${maxHours.toFixed(1)} jam.`,
+                icon: 'warning',
+                confirmButtonColor: '#1E555C'
+            });
+
+            // Kosongkan input terakhir yang memicu error
+            inputElement.value = '';
+        }
+    }
+
+    // Variabel global untuk menyimpan data karyawan hasil AJAX
+let currentManpowerList = [];
+
+// 1. Fungsi AJAX untuk mengambil data dari Controller
+function loadManpower(sectionName) {
+    if(!sectionName) return;
+
+    // --- PERBAIKAN 1: BUSTER CACHE ---
+    // Tambahkan timestamp di URL agar browser selalu menganggap ini URL baru dan tidak mengambil dari cache
+    const timestamp = new Date().getTime();
+    const url = `@Url.Action("getManpower", "TransferLabor")?section=${encodeURIComponent(sectionName)}`;
+
+    // Reset dropdown yang sudah ada ke status loading
+    const allDropdowns = document.querySelectorAll('.emp-dropdown');
+    allDropdowns.forEach(dd => {
+        dd.innerHTML = '<option value="">Loading data...</option>';
+    });
+
+    // Reset semua kotak NIK agar tidak ada NIK lama yang nyangkut
+    document.querySelectorAll('.emp-nik').forEach(nikInput => {
+        nikInput.value = "";
+    });
+    document.querySelectorAll('.emp-description').forEach(descriptionInput => {
+        descriptionInput.value = "";
+    });
+    document.querySelectorAll('.emp-status').forEach(statusInput => {
+        statusInput.value = "";
+    });
+
+    // --- PERBAIKAN 2: PAKSA FETCH AGAR TIDAK CACHE ---
+    fetch(url, {
+        method: 'GET',
+        cache: 'no-store', // Mencegah caching secara ketat
+        headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+        }
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.success) {
+            // Kosongkan list lama terlebih dahulu untuk mencegah tumpang tindih
+            currentManpowerList = [];
+            currentManpowerList = res.data; // Simpan data baru ke global
+            populateDropdowns(); // Isi semua dropdown di tabel
+        } else {
+            Swal.fire('Gagal', "Gagal memuat data karyawan: " + res.message, 'error');
+            allDropdowns.forEach(dd => {
+                dd.innerHTML = '<option value="">-- Gagal Load Data --</option>';
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching manpower:', error);
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+        allDropdowns.forEach(dd => {
+            dd.innerHTML = '<option value="">-- Error Jaringan --</option>';
+        });
+    });
+}
+
+// 2. Fungsi untuk mengisi ulang SEMUA dropdown di tabel dengan data baru
+function populateDropdowns() {
+    const allDropdowns = document.querySelectorAll('.emp-dropdown');
+
+    let optionsHTML = '<option value="">-- Pilih Karyawan --</option>';
+
+    console.log(currentManpowerList);
+    currentManpowerList.forEach(emp => {
+        // Kita simpan NIK di atribut custom 'data-nik'
+        // Membaca versi huruf besar ATAU huruf kecil. Jika keduanya null, ganti jadi teks kosong ('')
+        optionsHTML += `<option value="${emp.Name}" data-nik="${emp.NIK}" data-description="${emp.Description || emp.description || ''}" data-status="${emp.Status || emp.status || ''}">${emp.Name} (${emp.NIK})</option>`;
+    });
+
+    allDropdowns.forEach(dd => {
+        dd.innerHTML = optionsHTML;
+        // --- PERBAIKAN 3: KEMBALIKAN KE PILIHAN PERTAMA ---
+        dd.value = "";
+    });
+
+    // Reset input NIK karena dropdown berubah (kembali ke "Pilih Karyawan")
+    document.querySelectorAll('.emp-nik').forEach(nikInput => {
+        nikInput.value = "";
+    });
+    document.querySelectorAll('.emp-description').forEach(descriptionInput => {
+        descriptionInput.value = "";
+    });
+    document.querySelectorAll('.emp-status').forEach(statusInput => {
+        statusInput.value = "";
+    });
+}
+
+// 3. Fungsi yang dipanggil otomatis saat user memilih NAMA di dropdown
+function setNIK(selectElement) {
+    // Cari input NIK di baris yang sama (<tr>)
+    const tr = selectElement.closest('tr');
+    const nikInput = tr.querySelector('.emp-nik');
+    const descriptionInput = tr.querySelector('.emp-description');
+    const statusInput = tr.querySelector('.emp-status');
+
+    // Ambil data-nik dari <option> yang sedang dipilih
+    const selectedOption = selectElement.options[selectElement.selectedIndex];
+
+    if (selectedOption && selectedOption.value !== "") {
+        nikInput.value = selectedOption.getAttribute('data-nik');
+        descriptionInput.value = selectedOption.getAttribute('data-description');
+        statusInput.value = selectedOption.getAttribute('data-status');
+    } else {
+        nikInput.value = "";
+        descriptionInput.value = "";
+        statusInput.value = "";
+    }
+}
+
+    // 4. Fungsi addRow
+    function addRow() {
+        const tableBody = document.querySelector('#tableDetail tbody');
+        const rowCount = tableBody.rows.length;
+        const newRow = document.createElement('tr');
+
+        // Buat HTML option berdasarkan data terkini
+        let currentOptions = '<option value="">-- Pilih To Section Dulu --</option>';
+        if (currentManpowerList.length > 0) {
+            currentOptions = '<option value="">-- Pilih Karyawan --</option>';
+            currentManpowerList.forEach(emp => {
+                currentOptions += `<option value="${emp.Name}" data-nik="${emp.NIK}" data-description="${emp.Description}" data-status="${emp.Status}">${emp.Name} (${emp.NIK})</option>`;
+            });
+        }
+
+        // --- FITUR BARU: Ambil value dari baris sebelumnya (jika ada) ---
+        let lastLaborHours = "";
+        let lastOvertimeHours = "";
+
+        if (rowCount > 0) {
+            // Ambil baris terakhir
+            const lastRow = tableBody.rows[rowCount - 1];
+
+            // Cari input berdasarkan name-nya di baris terakhir tersebut
+            const inputLabor = lastRow.querySelector('input[name="transfer_labor_hours[]"]');
+            const inputOvertime = lastRow.querySelector('input[name="transfer_overtime_hours[]"]');
+
+            // Simpan nilainya (jika input ditemukan)
+            if (inputLabor) lastLaborHours = inputLabor.value;
+            if (inputOvertime) lastOvertimeHours = inputOvertime.value;
+        }
+
+        newRow.innerHTML = `
+        <td class="px-3 py-2 text-center text-sm font-semibold text-gray-500">${rowCount + 1}</td>
+        <td class="px-3 py-2">
+            <select name="name[]" class="emp-dropdown w-full border rounded bg-gray-50 p-1.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" required onchange="setNIK(this)">
+                ${currentOptions}
+            </select>
+        </td>
+        <td class="px-3 py-2">
+            <input type="text" name="nik[]" class="emp-nik w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+
+            <input type="hidden" name="description[]" class="emp-description w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+
+            <input type="hidden" name="status[]" class="emp-status w-full border rounded p-1.5 text-sm bg-gray-100 text-gray-500 outline-none" required readonly placeholder="Otomatis terisi">
+        </td>
+        <td class="px-3 py-2">
+            <select name="planning[]" class="w-full border rounded p-1.5 text-sm bg-white text-gray-700 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" required>
+                <option value="PLANNED">PLANNED</option>
+                <option value="UNPLANNED">UNPLANNED</option>
+            </select>
+        </td>
+        <td class="px-3 py-2">
+            <input type="number" step="0.1" name="transfer_labor_hours[]" oninput="validateHours(this)" class="w-full border rounded p-1.5 text-sm text-center outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value="${lastLaborHours}">
+        </td>
+        <td class="px-3 py-2">
+            <input type="number" step="0.1" name="transfer_overtime_hours[]" oninput="validateHours(this)" class="w-full border rounded p-1.5 text-sm text-center outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500" value="${lastOvertimeHours}">
+        </td>
+        <td class="px-3 py-2 text-center">
+            <button type="button" onclick="removeRow(this)" class="text-red-400 hover:text-red-600 transition-colors cursor-pointer" title="Hapus Baris">
+                <i class="fas fa-trash text-sm"></i>
+            </button>
+        </td>
+    `;
+        tableBody.appendChild(newRow);
+
+        if (typeof updateTotalManPower === "function") updateTotalManPower();
+    }
+
+    // Fungsi removeRow yang sudah Anda miliki (ditambahkan panggilan updateTotalManPower)
+    function removeRow(btn) {
+        const row = btn.closest('tr');
+        row.remove();
+
+        // Re-index nomor baris
+        const rows = document.querySelectorAll('#tableDetail tbody tr');
+        rows.forEach((r, index) => {
+            r.cells[0].innerText = index + 1;
+        });
+
+        // Update total setelah menghapus baris
+        updateTotalManPower();
+    }
+</script>

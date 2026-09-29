@@ -1,0 +1,1044 @@
+
+@{
+    ViewBag.Title = "List Product Received";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link rel="stylesheet" href="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.css">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+<!-- bootstrap-select -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+<!-- bootstrap-select -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.1/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.1/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.1/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-table@1.22.6/dist/extensions/copy-rows/bootstrap-table-copy-rows.min.js"></script>
+
+@*<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>*@
+<style>
+    /* css tab */
+
+    .container .title {
+        color: #3c4858;
+        text-decoration: none;
+        margin-top: 30px;
+        margin-bottom: 25px;
+        min-height: 32px;
+    }
+
+        .container .title h3 {
+            font-size: 25px;
+            font-weight: 300;
+        }
+
+    div.card {
+        border: 0;
+        margin-bottom: 30px;
+        margin-top: 30px;
+        border-radius: 6px;
+        color: rgba(0,0,0,.87);
+        background: #fff;
+        width: 100%;
+        box-shadow: 0 2px 2px 0 rgba(0,0,0,.14), 0 3px 1px -2px rgba(0,0,0,.2), 0 1px 5px 0 rgba(0,0,0,.12);
+    }
+
+        div.card.card-plain {
+            background: transparent;
+            box-shadow: none;
+        }
+
+        div.card .card-header {
+            border-radius: 3px;
+            margin-left: 15px;
+            margin-right: 15px;
+            margin-top: -30px;
+            border: 0;
+            background: linear-gradient(60deg,#eee,#bdbdbd);
+        }
+
+    .card-plain .card-header:not(.card-avatar) {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .div.card .card-body {
+        padding: 15px 30px;
+    }
+
+    div.card .card-header-primary {
+        background: linear-gradient(60deg,#47b1bc,#1ea19b);
+        box-shadow: 0 5px 20px 0 rgba(0,0,0,.2), 0 13px 24px -11px rgba(156,39,176,.6);
+    }
+
+    div.card .card-header-danger {
+        background: linear-gradient(60deg,#ef5350,#d32f2f);
+        box-shadow: 0 5px 20px 0 rgba(0,0,0,.2), 0 13px 24px -11px rgba(244,67,54,.6);
+    }
+
+
+    .card-nav-tabs .card-header {
+        margin-top: -30px !important;
+    }
+
+    .card .card-header .nav-tabs {
+        padding: 0;
+    }
+
+    .nav-tabs {
+        border: 0;
+        border-radius: 3px;
+    }
+
+    .nav {
+        display: flex;
+        flex-wrap: wrap;
+        padding-left: 0;
+        margin-bottom: 0;
+        list-style: none;
+    }
+
+    .nav-tabs .nav-item {
+        margin-bottom: -1px;
+    }
+
+        .nav-tabs .nav-item .nav-link.active {
+            background-color: hsla(0,0%,100%,.2);
+            transition: background-color .3s .2s;
+        }
+
+        .nav-tabs .nav-item .nav-link {
+            border: 0 !important;
+            color: #fff !important;
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-item .nav-link {
+            color: #fff;
+            border: 0;
+            margin: 0;
+            border-radius: 3px;
+            line-height: 24px;
+            text-transform: uppercase;
+            font-size: 12px;
+            padding: 10px 15px;
+            background-color: transparent;
+            transition: background-color .3s 0s;
+        }
+
+    .nav-link {
+        display: block;
+    }
+
+    .nav-tabs .nav-item .material-icons {
+        margin: -1px 5px 0 0;
+        vertical-align: middle;
+    }
+
+    .nav .nav-item {
+        position: relative;
+        width: 20%;
+    }
+
+    /* css tab */
+
+    .card {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card .card-header {
+            /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+            padding: 0px;
+        }
+
+    .bootstrap-select.is-invalid .dropdown-toggle, .error .bootstrap-select .dropdown-toggle, .has-error .bootstrap-select .dropdown-toggle, .was-validated .bootstrap-select select:invalid + .dropdown-toggle {
+        border-color: #dc3545;
+    }
+
+    .table-detail {
+        display: none;
+        position: absolute;
+    }
+
+        .table-detail td {
+            border: 1px solid red;
+        }
+</style>
+
+<div class="row">
+    <div class="col-md-12">
+
+        <!-- Tabs with icons on Card -->
+        <div class="card card-nav-tabs">
+            <div class="card-header card-header-primary">
+                <!-- colors: "header-primary", "header-info", "header-success", "header-warning", "header-danger" -->
+                <div class="nav-tabs-navigation">
+                    <div class="nav-tabs-wrapper">
+                        <ul class="nav nav-tabs" data-tabs="tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#intransit" data-toggle="tab">
+                                    <h1><i class="fa fa-truck-moving"></i> </h1><span style="font-weight:500;font-size:14px">in Transit</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#arrived" data-toggle="tab">
+                                    <h1><i class="fa fa-home"></i> </h1><span style="font-weight:500;font-size:14px">Arrived in Warehouse</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#received" data-toggle="tab">
+                                    <h1><i class="fa fa-receipt"></i> </h1><span style="font-weight:500;font-size:14px">Document Received</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#JournalTransfer" data-toggle="tab">
+                                    <h1><i class="fa fa-random"></i> </h1><span style="font-weight:500;font-size:14px">Journal Transfer</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#PostedJournal" data-toggle="tab">
+                                    <h1><i class="fa fa-check-square"></i> </h1><span style="font-weight:500;font-size:14px">Posted Journal</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div><div class="card-body ">
+                      <div class="tab-content text-center">
+                          <div class="tab-pane active" id="intransit">
+                              <div class="row">
+                                  <div class="col-lg-12">
+                                      <div id="toolbar">
+
+                                      </div>
+                                      <table id="table"
+                                             data-filter-control="true"
+                                             data-filter="true"
+                                             data-id-table="advancedTable"
+                                             data-toggle="table"
+                                             data-toolbar="#toolbar"
+                                             data-ajax="ajaxRequest"
+                                             data-detail-view="false"
+                                             data-pagination="true"
+                                             data-pagination-v-align="bottom"
+                                             data-show-columns-toggle-all="true"
+                                             data-page-list="[10, 25, 50, 100, all]"
+                                             class="table table-sm table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th data-field="No" data-filter-control="input" align="center">No</th>
+                                                  <th data-field="ProductReceipt" data-filter-control="input" data-sortable="true">Packing Slip ID</th>
+                                                  <th data-field="Periode" data-filter-control="input" data-sortable="true">Periode</th>
+                                                  <th data-field="InvoiceAccount" data-filter-control="input" data-sortable="true">Invoice Account</th>
+                                                  <th data-field="VendorName" data-filter-control="input" data-sortable="true">Vendor Name</th>
+                                                  <th data-field="Date" data-filter-control="input" data-sortable="true">Date</th>
+                                                  <th data-field="Button">Action</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              <tr>
+                                                  <td align="center"></td>
+                                                  <td></td>
+                                                  <td></td>
+                                                  <td></td>
+                                              </tr>
+
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="tab-pane" id="arrived">
+                              <div class="row">
+                                  <div class="col-lg-12">
+                                      <div id="toolbar">
+
+                                      </div>
+                                      <table id="arrival-table"
+                                             data-filter-control="true"
+                                             data-filter="true"
+                                             data-id-table="advancedTable"
+                                             data-toggle="table"
+                                             data-toolbar="#toolbar"
+                                             data-ajax="ajaxRequestarrived"
+                                             data-detail-view="false"
+                                             data-pagination="true"
+                                             data-pagination-v-align="bottom"
+                                             data-show-columns-toggle-all="true"
+                                             data-page-list="[10, 25, 50, 100, all]"
+                                             class="table table-sm table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th data-field="No" data-filter-control="input" align="center">No</th>
+                                                  <th data-field="ProductReceipt" data-filter-control="input" data-sortable="true">Packing Slip ID</th>
+                                                  <th data-field="Periode" data-filter-control="input" data-sortable="true">Periode</th>
+                                                  <th data-field="InvoiceAccount" data-filter-control="input" data-sortable="true">Invoice Account</th>
+                                                  <th data-field="VendorName" data-filter-control="input" data-sortable="true">Vendor Name</th>
+                                                  <th data-field="Date" data-filter-control="input" data-sortable="true">Date</th>
+                                                  <th data-field="ReceivedBy" data-filter-control="input" data-sortable="true">Received By</th>
+                                                  <th data-field="Button">Action</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              <tr>
+                                                  <td align="center"></td>
+                                                  <td></td>
+                                                  <td></td>
+                                                  <td></td>
+                                              </tr>
+
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="tab-pane" id="received">
+                              <div class="row">
+                                  <div class="col-lg-12">
+                                      <div id="toolbar">
+
+                                      </div>
+                                      <table id="receive-table"
+                                             data-filter-control="true"
+                                             data-filter="true"
+                                             data-id-table="advancedTable"
+                                             data-toggle="table"
+                                             data-toolbar="#toolbar"
+                                             data-ajax="ajaxRequestReceived"
+                                             data-detail-view="false"
+                                             data-pagination="true"
+                                             data-pagination-v-align="bottom"
+                                             data-show-columns-toggle-all="true"
+                                             data-page-list="[10, 25, 50, 100, all]"
+                                             class="table table-sm table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th data-field="No" data-filter-control="input" align="center">No</th>
+                                                  <th data-field="ProductReceipt" data-filter-control="input" data-sortable="true">Packing Slip ID</th>
+                                                  <th data-field="Periode" data-filter-control="input" data-sortable="true">Periode</th>
+                                                  <th data-field="InvoiceAccount" data-filter-control="input" data-sortable="true">Invoice Account</th>
+                                                  <th data-field="VendorName" data-filter-control="input" data-sortable="true">Vendor Name</th>
+                                                  <th data-field="Date" data-filter-control="input" data-sortable="true">Date</th>
+                                                  <th data-field="ReceivedBy" data-filter-control="input" data-sortable="true">Received By</th>
+                                                  <th data-field="Button">Action</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody>
+                                              <tr>
+                                                  <td align="center"></td>
+                                                  <td></td>
+                                                  <td></td>
+                                                  <td></td>
+                                              </tr>
+
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="tab-pane" id="JournalTransfer">
+                              <div class="row">
+                                  <div class="col-lg-12">
+                                      <div id="toolbar">
+
+                                      </div>
+                                      <table id="journalTransfer-table"
+                                             data-filter-control="true"
+                                             data-filter="true"
+                                             data-id-table="advancedTable"
+                                             data-toggle="table"
+                                             data-toolbar="#toolbar"
+                                             data-ajax="ajaxRequestJournalTransfer"
+                                             data-detail-view="false"
+                                             data-pagination="true"
+                                             data-pagination-v-align="bottom"
+                                             data-show-columns-toggle-all="true"
+                                             data-page-list="[10, 25, 50, 100, all]"
+                                             class="table table-sm table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th data-field="No" data-filter-control="input" align="center">No</th>
+                                                  <th data-field="ProductReceipt" data-filter-control="input" data-sortable="true">Packing Slip ID</th>
+                                                  <th data-field="Periode" data-filter-control="input" data-sortable="true">Periode</th>
+                                                  <th data-field="InvoiceAccount" data-filter-control="input" data-sortable="true">Invoice Account</th>
+                                                  <th data-field="VendorName" data-filter-control="input" data-sortable="true">Vendor Name</th>
+                                                  <th data-field="Date" data-filter-control="input" data-sortable="true">Date</th>
+                                                  <th data-field="ReceivedBy" data-filter-control="input" data-sortable="true">Received By</th>
+                                                  <th data-field="JournalTransferNumber">Journal Number</th>
+                                                  <th data-field="JournalTransferBy">Journal By</th>
+                                                  <th data-field="JournalTransferTime">Journal Time</th>
+                                                  <th data-field="Button">Action</th>
+                                              </tr>
+                                          </thead>
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="tab-pane" id="PostedJournal">
+                              <div class="row">
+                                  <div class="col-lg-12">
+                                      <div id="toolbar">
+
+                                      </div>
+                                      <table id="journalTransfer-table"
+                                             data-filter-control="true"
+                                             data-filter="true"
+                                             data-id-table="advancedTable"
+                                             data-toggle="table"
+                                             data-toolbar="#toolbar"
+                                             data-ajax="ajaxRequestPostedJournal"
+                                             data-detail-view="false"
+                                             data-pagination="true"
+                                             data-pagination-v-align="bottom"
+                                             data-show-columns-toggle-all="true"
+                                             data-page-list="[10, 25, 50, 100, all]"
+                                             class="table table-sm table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th data-field="No" data-filter-control="input" align="center">No</th>
+                                                  <th data-field="ProductReceipt" data-filter-control="input" data-sortable="true">Packing Slip ID</th>
+                                                  <th data-field="Periode" data-filter-control="input" data-sortable="true">Periode</th>
+                                                  <th data-field="InvoiceAccount" data-filter-control="input" data-sortable="true">Invoice Account</th>
+                                                  <th data-field="VendorName" data-filter-control="input" data-sortable="true">Vendor Name</th>
+                                                  <th data-field="Date" data-filter-control="input" data-sortable="true">Date</th>
+                                                  <th data-field="ReceivedBy" data-filter-control="input" data-sortable="true">Received By</th>
+                                                  <th data-field="JournalTransferNumber">Journal Number</th>
+                                                  <th data-field="JournalTransferBy">Journal By</th>
+                                                  <th data-field="JournalTransferTime">Journal Time</th>
+                                                  <th data-field="PostingJournalBy">Posting Journal By</th>
+                                                  <th data-field="PostingJournalTime">Posting Journal Time</th>
+                                              </tr>
+                                          </thead>
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+            </div>
+        </div>
+        <!-- End Tabs with icons on Card -->
+
+    </div>
+
+</div>
+<div id="ReceiveModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("ConfirmArrival", "MITtransferBNGK", new { area = "SCM" })" id="formConfirmReceive" name="formConfirmReceive">
+                <div class="modal-header">
+                    <h4 class="modal-title">Received Packing Slip</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ProductReceipt">Packing Slip Id</label>
+                        <input name="Invoice" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Periode</label>
+                        <input name="PeriodEDI" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Invoice Account</label>
+                        <input name="InvoiceAccount" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Vendor Name</label>
+                        <input name="PurchName" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Date Arrival</label>
+                        <input name="DateReceive" id="datepicker" type="text" class="form-control" required="required" autocomplete="off" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <button type="Submit" class="btn btn-warning" value="NotComplete" id="notCompleteReceive" >Not Complete</button>
+                    <button type="Submit" class="btn btn-primary" value="Complete" id="completeReceive" >Complete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="JournalTransferModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("ProcessJournalNumber", "MITtransferBNGK", new { area = "SCM" })" id="formJournalNumber" name="formJournalNumber">
+                <div class="modal-header">
+                    <h4 class="modal-title">Received Packing Slip</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ProductReceipt">Packing Slip Id</label>
+                        <input name="Invoice" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Periode</label>
+                        <input name="PeriodEDI" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Invoice Account</label>
+                        <input name="InvoiceAccount" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Vendor Name</label>
+                        <input name="PurchName" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Journal Number</label>
+                        <input name="JournalNumber" type="text" class="form-control" required="required" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Flexnet Item</label><br />
+                        <input class="checkbox"  type="checkbox" name="IsFlexnet" id="checkFlexnetItem" value="true"  style="height:30px; width:30px"/>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-primary" value="Confirm" id="confirmJournalTransfer" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="ProductModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title ProduclistModalTitle"></h5>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">X</button>
+            </div>
+            <div class="modal-body">
+                <div id="toolbar">
+                    <button id="copyButton" class="btn btn-primary mb-3">Copy Selected Rows</button>
+                </div>
+                <table id="ProductTable"
+                       data-toggle="table"
+                       data-height="345"
+                       data-toolbar="#toolbar"
+                       data-ajax="ajaxProductList"
+                       data-search="true"
+                       data-pagination="true"
+                       data-click-to-select="true"
+                       data-unique-id="id"
+                       >
+                    <thead>
+                        <tr>
+                            <th data-field="state" data-checkbox="true"></th>
+                            <th data-field="No" data-filter-control="input" align="center">No</th>
+                            <th data-field="ITEMID" data-filter-control="input" data-sortable="true">ITEM ID</th>
+                            <th data-field="ProductName" data-filter-control="input" data-sortable="true">Product Name</th>
+                            <th data-field="ReceivedQuantity" data-filter-control="input" data-sortable="true">Received Quantity</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+    var invoiceId;
+    var confirmArrivalType;
+
+    var $table2 = $('#ProductTable');
+    $(function () {
+        $('#ProductTable').bootstrapTable()
+    });
+
+    $(function () {
+        $('.selectpicker').selectpicker();
+
+        var $table = $('#table');
+
+    });
+
+    $('#ReceiveModal, #JournalTransferModal').on('shown.bs.modal', function () {
+        $("#datepicker").datepicker({
+            format: "dd/mm/yyyy",
+            startDate: "01-01-2015",
+            endDate: "01-01-2020",
+            endDate: "01-01-2020",
+            todayBtn: "linked",
+            autoclose: true,
+            todayHighlight: true,
+            container: '#myModal modal-body'
+        });
+    });
+
+    $(document).on('click', '.SeeProductList', function (e) {
+        e.preventDefault();
+        invoiceId = $(this).data('id');
+        $('#ProductTable').bootstrapTable('refresh', function () {
+            console.log(invoiceId);
+        });
+        $('.ProduclistModalTitle').html(invoiceId);
+        $('#ProductModal').modal('show');
+    });
+
+    function ajaxRequest(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("MITList", "MITtransferBNGK", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+    function ajaxRequestarrived(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("MITListArrived", "MITtransferBNGK", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+    function ajaxRequestReceived(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("MITListReceived", "MITtransferBNGK", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+    function ajaxRequestJournalTransfer(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("MITListJournalTransfer", "MITtransferBNGK", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+    function ajaxRequestPostedJournal(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("MITListPostedJournal", "MITtransferBNGK", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+    function ajaxProductList(params) {
+        params.data["invoiceId"] = invoiceId;
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("ProductList", "MITtransferBNGK", new { area = "SCM" })",
+            data: $.param(params.data),
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                });
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+    $(document).on('click', '.btnReceive', function (e) {
+        e.preventDefault();
+
+        var urlString = "@Url.Action("EditQuantityItem", "Sparepart", new { area = "SCM" })";
+        var ProductReceipt = $(this).attr("data-ProductReceipt");
+        var Periode = $(this).attr("data-Periode");
+        var InvoiceAccount = $(this).attr("data-InvoiceAccount");
+        var VendorName = $(this).attr("data-VendorName");
+
+        $('#ReceiveModal input[name="Invoice"]').val(ProductReceipt);
+        $('#ReceiveModal input[name="PeriodEDI"]').val(Periode);
+        $('#ReceiveModal input[name="InvoiceAccount"]').val(InvoiceAccount);
+        $('#ReceiveModal input[name="PurchName"]').val(VendorName);
+                //var selStock = response[0].Stock;
+
+    });
+
+    $(document).on('click', '.btnJournalTransfer', function (e) {
+        e.preventDefault();
+
+        var urlString = "@Url.Action("EditQuantityItem", "Sparepart", new { area = "SCM" })";
+        var ProductReceipt = $(this).attr("data-ProductReceipt");
+        var Periode = $(this).attr("data-Periode");
+        var InvoiceAccount = $(this).attr("data-InvoiceAccount");
+        var VendorName = $(this).attr("data-VendorName");
+
+        $('#JournalTransferModal input[name="Invoice"]').val(ProductReceipt);
+        $('#JournalTransferModal input[name="PeriodEDI"]').val(Periode);
+        $('#JournalTransferModal input[name="InvoiceAccount"]').val(InvoiceAccount);
+        $('#JournalTransferModal input[name="PurchName"]').val(VendorName);
+                //var selStock = response[0].Stock;
+
+    });
+
+
+    // Event saat mouse diarahkan ke link
+    $(document).on('mouseenter', '.tooltip-link', function () {
+        //var rowId = $(this).data('row-id');
+        //getTableData(rowId);
+    });
+
+    // Inisialisasi tooltip Bootstrap
+    $('[data-toggle="tooltip"]').tooltip();
+
+    $(document).on('click', '#completeReceive, #notCompleteReceive', function () {
+
+
+        if ($(this).attr('id') == 'notCompleteReceive') {
+            confirmArrivalType = "notcomplete";
+
+        } else if ($(this).attr('id') == 'completeReceive') {
+            confirmArrivalType = "complete";
+
+        }
+        console.log(confirmArrivalType);
+        validateConfirmReceive.form();
+
+    });
+
+    var validateConfirmReceive =
+        $("form[name='formConfirmReceive']").validate({
+            // Specify validation rules
+            rules: {
+                // The key name on the left side is the name attribute
+                // of an input field. Validation rules are defined
+                // on the right side
+                DatePhysical: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                quantity: {
+                    required: "Please enter Receive Date"
+
+                }
+            },
+            errorElement: 'span',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function (element, errorClass, validClass) {
+
+                var elem = $(element);
+                if (elem.hasClass("select2-offscreen")) {
+                    $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                } else {
+                    $(element).addClass('is-invalid');
+                }
+                jQuery(element).closest('.form-group').addClass('has-error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
+                jQuery(element).closest('.form-group').removeClass('has-error');
+            },
+            // Make sure the form is submitted to the destination defined
+            // in the "action" attribute of the form when valid
+            submitHandler: function (form) {
+                ProcessConfirmReceive();
+            }
+        });
+
+    var validateProcessJournalTransfer =
+        $("form[name='formJournalNumber']").validate({
+            // Specify validation rules
+            rules: {
+                // The key name on the left side is the name attribute
+                // of an input field. Validation rules are defined
+                // on the right side
+                JournalNumber: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                JournalNumber: {
+                    required: "Please enter journal Number"
+
+                }
+            },
+            errorElement: 'span',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function (element, errorClass, validClass) {
+
+                var elem = $(element);
+                if (elem.hasClass("select2-offscreen")) {
+                    $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                } else {
+                    $(element).addClass('is-invalid');
+                }
+                jQuery(element).closest('.form-group').addClass('has-error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
+                jQuery(element).closest('.form-group').removeClass('has-error');
+            },
+            // Make sure the form is submitted to the destination defined
+            // in the "action" attribute of the form when valid
+            submitHandler: function (form) {
+                ProcessJournalNumber();
+            }
+        });
+
+    function ProcessConfirmReceive() {
+
+        $.ajax({
+            url: $('#formConfirmReceive').attr('action'),
+            type: "POST",
+            cache: false,
+            data: $('#formConfirmReceive').serialize() + "&confirmArrivalType=" + confirmArrivalType,
+            dataType: 'json',
+            success: function (json) {
+                if (json.status == 1) {
+                    toastr.options.positionClass = 'toast-bottom-right';
+                    toastr.success(json.msg);
+                    $('#ReceiveModal').modal('toggle');
+                    $('#table, #arrival-table, #receive-table, #journalTransfer-table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                }
+                else {
+                    toastr.error(json.msg);
+                    $('#ReceiveModal').modal('toggle');
+                    $('#table, #receive-table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                }
+            }
+        });
+    }
+
+    function ProcessJournalNumber() {
+
+        $.ajax({
+            url: $('#formJournalNumber').attr('action'),
+            type: "POST",
+            cache: false,
+            data: $('#formJournalNumber').serialize(),
+            dataType: 'json',
+            success: function (json) {
+                if (json.status == 1) {
+                    toastr.options.positionClass = 'toast-bottom-right';
+                    toastr.success(json.msg);
+                    $('#JournalTransferModal').modal('toggle');
+                    $('#table, #receive-table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                }
+                else {
+                    toastr.error(json.msg);
+                    $('#JournalTransferModal').modal('toggle');
+                    $('#table, #arrival-table, #receive-table, #journalTransfer-table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                }
+            }
+        });
+    }
+
+    /* Cancel Received */
+    $(document).on('click', '.btnReceiveDocument', function (e) {
+        e.preventDefault();
+        var id = $(this).attr("data-Invoice");
+        console.log(id);
+        var urlString = "@Url.Action("ConfirmReceiveDocument", "MITtransferBNGK", new { area = "SCM" })";
+        var Msg = "Receive The Document ?";
+        var MsgBtn = "Yes, Receive it";
+        confirmDelete(urlString, id, Msg, MsgBtn);
+    });
+
+    /* return process in arrival list */
+    $(document).on('click', '.btnReturnProcess', function (e) {
+        e.preventDefault();
+        var id = $(this).attr("data-Invoice");
+        console.log(id);
+        var urlString = "@Url.Action("ProcessReturn", "MITtransferBNGK", new { area = "SCM" })";
+        var Msg = "Return Process ?";
+        var MsgBtn = "Yes, Return it";
+        confirmDelete(urlString, id, Msg, MsgBtn);
+    });
+
+    /* posting journal */
+    $(document).on('click', '.btnPostingJournal', function (e) {
+        e.preventDefault();
+        var id = $(this).attr("data-Invoice");
+        console.log(id);
+        var urlString = "@Url.Action("ProcessPostingJournal", "MITtransferBNGK", new { area = "SCM" })";
+        var Msg = "Already Posting Journa ?";
+        var MsgBtn = "Yes, Posting it";
+        confirmDelete(urlString, id, Msg, MsgBtn);
+    });
+
+    function confirmDelete(Link, id, Msg, MsgBtn) {
+        // migrated to SweetAlert2 (swal.fire)
+        Swal.fire({
+            title: "Are you sure?",
+            text: Msg,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#007bff",
+            confirmButtonText: MsgBtn,
+            allowOutsideClick: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: { Invoice: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Success!",
+                                text: json.msg,
+                                icon: "success"
+                            }).then(function () {
+                                $('#table, #receive-table, #arrival-table').bootstrapTable('refresh', function () {
+                                    console.log('tes');
+                                })
+                            });
+
+                        } else {
+                            Swal.fire({
+                                title: "Failed!",
+                                text: json.msg,
+                                icon: "error"
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            title: "Error",
+                            text: Link,
+                            icon: "error"
+                        });
+                    }
+
+                })
+            } else {
+                Swal.fire({
+                    title: "Cancelled",
+                    text: "Your imaginary file is safe :)",
+                    icon: "info"
+                });
+            }
+        });
+    }
+
+    function copyRowsToClipboard(rows) {
+        const rowData = rows.map(row => {
+            const cells = $(row).find('td').not(':first'); // exclude checkbox cell
+            return cells.map((_, cell) => cell.innerText).get().join('\t');
+        }).join('\n');
+
+        const el = document.createElement('textarea');
+        el.value = rowData;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+    }
+
+
+    $(document).on('click', '#copyButton', function () {
+        const selectedRows = $('#ProductTable').bootstrapTable('getSelections');
+        if (selectedRows.length > 0) {
+            copyRowsToClipboard(selectedRows);
+            alert('Selected rows copied to clipboard!');
+        } else {
+            alert('No rows selected!');
+        }
+    });
+
+    $("#checkFlexnetItem").change(function () {
+        if (this.checked) {
+            $('input[name="JournalNumber"]').attr('disabled', 'disabled');
+        } else {
+            $('input[name="JournalNumber"]').removeAttr("disabled");
+        }
+    });
+</script>

@@ -1,0 +1,1074 @@
+<!doctype html>
+@{
+    ViewBag.Title = "Detail Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+<script src="http://html2canvas.hertzen.com/dist/html2canvas.js"></script>
+
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.js"></script>
+<script src="https://rawgit.com/schmich/instascan-builds/master/instascan.min.js"></script>
+
+<style>
+    #preview {
+        width: 400px;
+        height: 400px;
+        margin: 0px auto;
+    }
+
+    @@media print {
+        #printArea {
+            display: none;
+        }
+    }
+</style>
+<link rel="stylesheet" href="@Url.Content("~/Content/font-awesome/css/fontawesome.css")">
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+
+        .icon-background {
+            color: #11ba27;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+<div class="row">
+
+    <div class="col-12">
+        @*<nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Home</a></li>
+                    <li class="breadcrumb-item"><a href="#">Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Data</li>
+                </ol>
+            </nav>*@
+        <div class="card shadow-sm  mb-5 bg-white rounded">
+
+            <div class="card-header bg-info" style="color:white; font-weight:bold">
+                <a href="@Url.Action("RequestData", "MatProm", new { area = "Marketing" })" data-tooltip="Previous Pagge" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                    <i class="fa fa-arrow-left"></i>
+                </a>
+                Detail Request
+
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-11">
+                        <table class="table table-sm table-borderless" width="100%">
+                            <tr>
+                                <td><strong>Requested Time</strong></td>
+                                <td>@(ViewBag.header.Create_Time)</td>
+                                <td><strong>Request No</strong></td>
+                                <td>@(ViewBag.RequestNo)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type</strong></td>
+                                <td>
+                                    @ViewBag.header.FormType
+                                    @*@ViewBag.header.AddressTitle<br />@ViewBag.header.AddressDetail<br />@ViewBag.header.AddressCity<br />Up : @ViewBag.header.AddressPerson*@
+                                </td>
+                                <td><strong>Usage</strong></td>
+                                <td>@ViewBag.header.Usage</td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>
+
+                                        @{
+                                            var Recip = "";
+                                            if (@ViewBag.header.FormType == "bengkel-points")
+                                            {
+                                                Recip = "Event";
+
+                                            }
+                                            else if (@ViewBag.header.FormType == "distributor")
+                                            {
+                                                Recip = "Distributor";
+                                            }
+                                            else if (ViewBag.header.FormType == "community")
+                                            {
+                                                Recip = "Community Names";
+                                            }
+                                            else if (ViewBag.header.FormType == "internal")
+                                            {
+                                                Recip = "Department";
+                                            }
+                                            else { Recip = "Event"; }
+                                        }
+                                        @(Recip) <br />
+                                    </strong>
+                                </td>
+                                <td>
+                                    <div class="row">
+                                        @{ foreach (var item in ViewBag.Recipient)
+                                            {
+                                                // jika formtype = distributor
+                                                if (ViewBag.header.FormType == "distributor")
+                                                {
+                                                    <div class="col-12">
+                                                        <span>@item.RecipientName</span><br />
+
+                                                        <span>@item.RecipientAddress</span>
+                                                    </div>
+
+                                                }
+                                                // jika formtype = bengkel-points / community / internal
+                                                else if (ViewBag.header.FormType == "bengkel-points" || ViewBag.header.FormType == "community" || ViewBag.header.FormType == "internal")
+                                                {
+                                                    <div class="col-12">
+                                                        <span>@item.RecipientName</span><br />
+                                                    </div>
+                                                }
+
+                                            }
+
+                                        }
+                                        @* khusus form type sales marketing tampilkan event name *@
+                                        @if (ViewBag.header.FormType == "SalesMarketing")
+                                        {
+
+                                            <div class="col-12">
+                                                <span>@ViewBag.header.Event<br />
+                                            </div>
+                                        }
+
+                                    </div>
+                                </td>
+                                <td><strong>Packing Date</strong></td>
+                                <td>
+                                    @{
+                                        DateTime? PackingDate = ViewBag.header.VerifiedTime as DateTime?;
+                                    }
+
+                                    @if (PackingDate.HasValue)
+                                    {
+                                        <p>@ViewBag.header.VerifiedTime.ToString("dd MMM yyyy")</p>
+                                    }
+                                    else
+                                    {
+                                        <p></p>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>
+
+                                        @{
+                                            var additionalRecip = "";
+                                            if (@ViewBag.header.FormType == "SalesMarketing")
+                                            {
+                                                additionalRecip = "Recipient";
+                                            }
+
+                                            else { additionalRecip = ""; }
+                                        }
+                                        @(additionalRecip) <br />
+                                    </strong>
+                                </td>
+                                <td>
+                                    @{ if (ViewBag.header.FormType == "SalesMarketing")
+
+                                        {
+                                            foreach (var item in ViewBag.additionalRecipient)
+                                            {
+                                                <span><strong>@item.RecipientName</strong></span><br />
+
+                                                <span>@item.RecipientAddress</span>
+
+                                            }
+
+                                        }
+
+                                    }
+                                </td>
+                                <td><strong></strong></td>
+                                <td>
+                                </td>
+                            </tr>
+                        </table>
+
+                    </div>
+                    @if (ViewBag.header.Status == "Verified")
+                    {
+                        <div class="col-1">
+                            <button id="printButton" onclick="" class="btn btn-success btn-lg" style="float:right"><i class="fa fa-print"></i></button>
+
+                        </div>
+                    }
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        @if (ViewBag.header.Status == "Cancelled")
+                        {
+                            <!-- jika request canclled, tampilkan alert berikut -->
+                            <div class="alert alert-danger" role="alert">
+                                <i class="fa fa-window-close"></i>
+                                Request Has Been <strong>Cancelled</strong>
+                            </div>
+                        }
+                        <div id="toolbar">
+
+                        </div>
+
+                        <table id="table"
+                               data-toggle="table"
+                               data-toolbar="#toolbar"
+                               data-ajax="ajaxRequest"
+                               data-query-params="queryParams"
+                               data-show-footer="true"
+                               data-click-to-select="true"
+                               data-url=""
+                               class="table-sm">
+                            <thead>
+                                <tr class="">
+                                    @*<th data-field="state" data-checkbox="true"></th>*@
+                                    <th data-field="ITEMID" data-footer-formatter="idFormatter">ITEM ID</th>
+                                    <th data-field="ProductName" data-footer-formatter="nameFormatter">Product Name</th>
+                                    <th data-field="Quantity">Qty Request</th>
+                                    <th data-field="Weight" data-footer-formatter="priceFormatter">Weight (Kg)</th>
+                                    <th data-field="RequestNotes">Request Notes</th>
+                                    @*<th data-field="Qty_Realization" data-sortable="Quantity">Qty Realization</th>*@
+                                    @*<th data-field="Qty_Retur">Qty Return</th>*@
+                                    @if (ViewBag.header.Status == "Approved" || ViewBag.header.Status == "WaitingSign")
+                                    {
+                                        <th data-field="Tools">Action</th>
+                                    }
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <hr />
+                <div class="row">
+                    <div class="col-12">
+                        <table class="table table-responsive-lg table-bordered text-center">
+                            <tr>
+                                <td style="width:25%; text-align:center">Prepared By</td>
+                                <td style="width: 25%; text-align: center">Acknowledged by</td>
+                                <td style="width: 25%; text-align: center">Approved by</td>
+                                <td style="width: 25%; text-align: center">Verified by</td>
+                            </tr>
+                            <tr>
+                                <td style="width:20%; text-align:center">
+                                    @if (ViewBag.header.Status == "WaitingSign" && ViewBag.header.UserRequest == ViewBag.currUser)
+                                    {<button class="btn btn-outline-primary" id="btnApprovalProcess" value="Sign">Sign</button> <button class="btn btn-outline-danger" id="btnCancelRequest" value="Cancel">Cancel Request</button>}
+                                    @if (ViewBag.header.Status == "Signed" || ViewBag.header.Status == "Acknowledgment" || ViewBag.header.Status == "Approved" || ViewBag.header.Status == "Verified")
+                                    {
+                                        <div class="alert alert-success" role="alert">
+
+                                            <h6 class="alert-heading"><i class="fa fa-circle-check"></i> Signed on @ViewBag.header.SignTime</h6>
+
+                                        </div>
+                                        @*<i class="fa-solid fa-user-check " ></i> <br />*@
+                                    }
+                                </td>
+                                <td style="width:20%; text-align:center">
+                                    @{
+
+                                        if (ViewBag.header.Status == "Signed")
+                                        {
+                                            foreach (var approval in ViewBag.approval)
+                                            {
+
+                                                if (ViewBag.currUser == approval.ApprovalUser)
+                                                {
+                                                    <button class="btn btn-outline-primary" id="btnApprovalProcess" value="Acknowledgment">Sign</button>
+                                                    <button data-target="#RejectModal" data-toggle="modal" value="Acknowledgment" class="btn btn-outline-danger" id="btnReject">Reject</button>
+                                                }
+
+                                            }
+                                        }
+                                        if (ViewBag.header.AcknowledgeStatus == 2)
+                                        {
+                                            <div class="alert alert-success" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-check"></i> Signed on @ViewBag.header.AcknowledgeTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                            </div>
+
+                                        }
+                                        else if (ViewBag.header.AcknowledgeStatus == 1)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-xmark"></i> Rejected on @ViewBag.header.AcknowledgeTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                                <hr>
+                                                <p class="mb-0">@ViewBag.header.AcknowledgeNotes</p>
+                                            </div>
+                                        }
+                                    }
+                                </td>
+                                <td style="width:20%; text-align:center">
+                                    @{ if (ViewBag.header.Status == "Acknowledgment" && ViewBag.currUser == ViewBag.header.ApprovedBy)
+                                        {
+                                            <button class="btn btn-outline-primary" id="btnApprovalProcess" value="Approve">Approve</button>
+                                            <button data-target="#RejectModal" data-toggle="modal" value="Approve" class="btn btn-outline-danger" id="btnReject">Reject</button>
+                                        }
+                                        if (ViewBag.header.ApprovedStatus == 2)
+                                        {
+                                            <div class="alert alert-success" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-check"></i> Approved on @ViewBag.header.ApprovedTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                            </div>
+
+                                        }
+                                        else if (ViewBag.header.ApprovedStatus == 1)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-xmark"></i> Rejected on @ViewBag.header.ApprovedTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                                <hr>
+                                                <p class="mb-0">@ViewBag.header.ApprovedNotes</p>
+                                            </div>
+                                        }
+                                    }
+                                </td>
+                                <td style="width:20%; text-align:center">
+                                    @{ if (ViewBag.header.Status == "Approved" && ViewBag.currUser == ViewBag.header.VerifiedBy)
+                                        {
+                                            bool btnChange;
+                                            if (ViewBag.header.IsChangeQty == 1)
+                                            {
+                                                btnChange = true;
+                                            }
+                                            else
+                                            {
+                                                btnChange = false;
+                                            }
+                                            <button class="btn btn-outline-primary" id="btnConfirmVerified" value="Verified" style="display:@(btnChange ? "none" : "")" disabled>Verified</button>
+                                            <button data-target="#RejectModal" data-toggle="modal" value="Verified" class="btn btn-outline-danger" id="btnReject" style="display:@(btnChange ? "none" : "")">Reject</button>
+                                            <button data-target="#ConfirmChangeModal" data-toggle="modal" value="ConfirmChange" class="btn btn-outline-warning" id="btnConfirmChange" style="display:@(btnChange ? "" : "none") ">Confirm Changes</button>
+
+
+                                        }
+                                        if (ViewBag.header.VerifiedStatus == 2)
+                                        {
+                                            <div class="alert alert-success" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-check"></i> Verified on @ViewBag.header.VerifiedTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                            </div>
+                                        }
+                                        else if (ViewBag.header.VerifiedStatus == 1)
+                                        {
+                                            <div class="alert alert-danger" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-xmark"></i> Rejected on @ViewBag.header.VerifiedTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                                <hr>
+                                                <p class="mb-0">@ViewBag.header.VerifiedNotes</p>
+                                            </div>
+                                        }
+                                        else if (ViewBag.header.VerifiedStatus == 3)
+                                        {
+                                            <div class="alert alert-warning" role="alert">
+
+                                                <h6 class="alert-heading"><i class="fa fa-circle-xmark"></i> Change Item Quantity on @ViewBag.header.VerifiedTime</h6>
+                                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                                                <hr>
+                                                <p class="mb-0">@ViewBag.header.VerifiedNotes</p>
+                                            </div>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>@ViewBag.header.Name</td>
+                                <td>
+                                    @ViewBag.header.AcknowledgeName
+                                </td>
+                                <td>
+
+                                    @ViewBag.header.ApprovedByName
+                                </td>
+                                <td>
+
+                                    @ViewBag.header.VerifiedByName
+                                </td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<div id="EditQuantityModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("EditQuantityItemOpen", "MatProm", new { area = "Marketing" })" id="formUpdateQuantityItemOpen" name="formUpdateQuantityItemOpen">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Item Quantity</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ITEMID">ITEM ID</label>
+                        <input name="ITEMID" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Name</label>
+                        <input name="ProductName" type="text" class="form-control" required="required" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="txtQty">Quantity</label>
+                        <input name="Qty_Change_Temp" id="txtQuantity" type="text" class="form-control" required="required" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-info" value="Update" id="updateQuantityItemOpen" />
+                    <input type="hidden" id="id" name="Id" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="RejectModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("RejectProcess", "MatProm", new { area = "Marketing" })" id="formRejectProcess" name="formRejectProcess">
+                <div class="modal-header">
+                    <h4 class="modal-title">Reject Notes</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ITEMID">Type Notes</label>
+                        <textarea name="RejectNotes" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-info" value="Save" id="submitRejectProcess" />
+                    <input type="hidden" id="RequestNo" name="RequestNo" value="@ViewBag.RequestNo" />
+                    <input type="hidden" id="ProcessAction" name="ProcessAction" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div id="ConfirmChangeModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("ConfirmChangeQty", "MatProm", new { area = "Marketing" })" id="formConfirmChangeQty" name="formConfirmChangeQty">
+                <div class="modal-header">
+                    <h4 class="modal-title">Confirm Change Notes</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="ChangeNotes">Type Notes</label>
+                        <textarea name="ChangeNotes" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="button" class="btn btn-info" value="Save" id="submitConfirmChangeQty" />
+                    <input type="hidden" id="RequestNo" name="RequestNo" value="@ViewBag.RequestNo" />
+                    <input type="hidden" id="ProcessAction" name="ProcessAction" />
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<!--<div id="printArea">-->
+<!-- Isi area yang ingin dicetak -->
+<!--<h1>Ini adalah area yang akan dicetak</h1>
+    <p>Konten lainnya...</p>
+</div>-->
+
+
+<script>
+    var $process = $('#confirmPickup');
+    var $close = $('#confirmClose');
+    var $btnApproval = $('#btnApprovalProcess');
+    var $btnApprovalValues = $('#btnApprovalProcess').val();
+    var $confirmVerified = $('#btnConfirmVerified');
+    var $confirmChangeQty = $('#btnConfirmChange');
+
+
+    $(function () {
+        $("#printButton").click(function () {
+            //$("input[name='ExportData']").val($("#PrintPDF").html());
+            window.open('@Url.Action("GeneratePdf", "MatProm", new { area = "Marketing", RequestNo = ViewBag.RequestNo })', '_blank');
+        });
+    });
+
+    function printToPDF() {
+        var pdf = new jsPDF();
+        var options = {
+            pagesplit: true
+        };
+
+        pdf.addHTML($('#' + areaId), options, function () {
+            pdf.save('output.pdf');
+        });
+    }
+
+    function genPDF(areaId) {
+        html2canvas(document.body, {
+            onrendered: function (canvas) {
+
+                var img = canvas.toDataURL("image/png");
+                var doc = new jsPDF();
+                doc.addImage(img, 'JPEG', 20, 20);
+                doc.save('test.pdf');
+            }
+
+        });
+
+    }
+
+    $btnApproval.click(function () {
+
+        var Link = "@Url.Action("ApprovalProcess", "MatProm", new { area = "Marketing" })";
+        var id = "@ViewBag.RequestNo";
+        ConfirmSendRequest(Link, "Confirm To " + $btnApprovalValues + " ?", id, $btnApprovalValues,  '#28a745', 'Yes, Confirm' );
+        //$table.bootstrapTable('remove', {
+        //    field: 'id',
+        //    values: ids
+        //})
+
+    });
+
+    $confirmVerified.click(function () {
+
+        var Link = "@Url.Action("ConfirmVerified", "MatProm", new { area = "Marketing" })";
+        var id = "@ViewBag.RequestNo";
+        ConfirmSendRequest(Link, "Confirm To Ready Verified ?", id, 'Verified', '#0275d8', 'Yes, Verified');
+        //$table.bootstrapTable('remove', {
+        //    field: 'id',
+        //    values: ids
+        //})
+
+    });
+
+    @*$confirmChangeQty.click(function () {
+
+        var Link = "@Url.Action("ConfirmChangeQty", "MatProm", new { area = "Marketing" })";
+        var id = "@ViewBag.RequestNo";
+        ConfirmSendRequest(Link, "Confirm To Change Quantity ?", id, 'Verified', '#0275d8', 'Yes, Verified');
+        //$table.bootstrapTable('remove', {
+        //    field: 'id',
+        //    values: ids
+        //})
+
+    });*@
+
+    function ConfirmSendRequest(Link, Text, id, BtnValues, BtnColor, BtnText) {
+       Swal.fire({
+            title: "Are you sure?",
+            text: Text,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: BtnColor,
+            confirmButtonText: BtnText,
+            cancelButtonText: "Close"
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: "Please wait...",
+                    html: "Processing request...",
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: "json",
+                    data: { requestNo: id, ProcessAction: BtnValues },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Success",
+                                text: json.msg,
+                                icon: "success"
+                            }).then(function () {
+                                location.reload();
+                            });
+
+                        } else {
+                            Swal.fire("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Canceled!", Link, "error");
+                    }
+
+                })
+            } else {
+                Swal.fire("Cancelled", "Process Canceled", "info");
+            }
+        });
+    }
+
+    function idFormatter() {
+        return 'Total'
+    }
+
+    function nameFormatter(data) {
+        return data.length
+    }
+
+    function priceFormatter(data) {
+        var field = this.field
+        return  data.map(function (row) {
+            return + row[field]
+        }).reduce(function (sum, i) {
+            return sum + i
+        }, 0)
+    }
+
+    $('#txtScanItem').keydown(function (e) {
+        var RequestNo = "@ViewBag.RequestNo";
+
+            if (e.keyCode == 13) {
+                $.ajax({
+                    type: "post",
+                    url: "@Url.Action("PostScanItem", "Sparepart", new { area = "SCM" })",
+                    dataType: 'json',
+                    data: { "RequestNo": RequestNo, "ITEMID": $(this).val() },
+                    success: function (json)
+                    {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-right';
+                            toastr.success(json.msg);
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('tes');
+                            })
+                            $('#txtScanItem').val("");
+                        }
+                        else {
+
+                            $('.alertMsg').append(json.msg);
+                            $('#txtScanItem').val("");
+                        }
+                    },
+                    error: function (er) {
+                        console.log(params.error(er))
+                        console.log("error", er);
+                    }
+                })
+            }
+    })
+
+    function submitScanner(itemid) {
+        var RequestNo = "@ViewBag.RequestNo";
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("PostScanItem", "Sparepart", new { area = "SCM" })",
+            dataType: 'json',
+            data: { "RequestNo": RequestNo, "ITEMID": itemid },
+            success: function (json)
+            {
+                if (json.status == 1) {
+                    toastr.options.positionClass = 'toast-bottom-right';
+                    toastr.success(json.msg);
+                    $('#table').bootstrapTable('refresh', function () {
+                        console.log('tes');
+                    })
+                    $('#txtScanItem').val("");
+                }
+                else {
+
+                    $('.alertMsg').append(json.msg);
+                    $('#txtScanItem').val("");
+                }
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+
+        function queryParams(params) {
+            params.switch = "@(ViewBag.RequestNo)";//   <<<----------catch like this
+            return params;
+        }
+
+        function ajaxRequest(params) {
+            var RequestNo = "@(ViewBag.RequestNo)";
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("DetailItemListRequest", "MatProm", new { area = "Marketing" })",
+                dataType: 'json',
+                data: { "RequestNo": params.data.switch, "Status":'@ViewBag.header.Status' },
+                success: function (items) {
+                    //console.log(items.notReady);
+                    if (items.notReady === 0) {
+                        console.log('test');
+                        $('#btnConfirmVerified').prop('disabled', false);
+                    }
+
+
+                    params.success({
+                        rows: items
+                    }, null);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            })
+        }
+
+        $(function () {
+            $('#table').bootstrapTable({
+                exportDataType: "all",
+                exportTypes: ['excel', 'pdf'],
+                buttonsClass: 'primary',
+                rowStyle: function (row, index) {
+                    // Ganti 2 dengan ID yang diinginkan
+                    if (row.IsChangeQty === 1) {
+                        return {
+                            classes: 'table-warning'
+                        };
+                    }
+                    return {};
+                }
+            })
+        });
+
+        $(document).on('click', '#procItem', function (e) {
+            var a = $(this).data("id");
+            var urlString = "@Url.Action("ReadyItem", "MatProm", new { area = "Marketing" })";
+            //$(this).hide();
+                $.ajax({
+                    url: urlString,
+                    type: "POST",
+                    cache: false,
+                    data: { Id: a },
+                    dataType: 'json',
+                    success: function (json) {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-left';
+                            toastr.success(json.msg);
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('tes');
+                            })
+                        }
+                        else {
+
+                            toastr.error(json.msg);
+                        }
+                    }
+                });
+        });
+
+    var formValidate =
+        $("form[name='formRejectProcess']").validate({
+            // Specify validation rules
+            rules: {
+                // The key name on the left side is the name attribute
+                // of an input field. Validation rules are defined
+                // on the right side
+                RejectNotes: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                Qty_Realization: {
+                    required: "Please type notes"
+                }
+            },
+            errorElement: 'span',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function (element, errorClass, validClass) {
+
+
+                var elem = $(element);
+                if (elem.hasClass("select2-offscreen")) {
+                    $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                } else {
+                    $(element).addClass('is-invalid');
+                }
+                jQuery(element).closest('.form-group').addClass('has-error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
+                jQuery(element).closest('.form-group').removeClass('has-error');
+            },
+            // Make sure the form is submitted to the destination defined
+            // in the "action" attribute of the form when valid
+            submitHandler: function (form) {
+                RejectProcess();
+            }
+        });
+
+        $("#submitConfirmChangeQty").click(function () {
+            $.ajax({
+                url: $('#formConfirmChangeQty').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formConfirmChangeQty').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#ConfirmChangeModal').modal('toggle');
+                        location.reload();
+
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#ConfirmChangeModal').modal('toggle');
+                    }
+                }
+            });
+        });
+
+        $('#updateQuantity').click(function (e) {
+            //e.preventDefault();
+            formValidate.form();
+        });
+
+        $(document).on('click', '#btnReject', function (e) {
+
+            var ProcessAction = $(this).val();
+
+            $('#ProcessAction').val(ProcessAction)
+            $('#RejectModal input[name="rejectNotes"]').rules('add', {
+                required: true,
+                messages: {
+                    max: "Please type Notes"
+                }
+            });
+
+
+        });
+
+        var formValidateOpen =
+            $("form[name='formUpdateQuantityItemOpen']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    Quantity: {
+                        required: true,
+                        min: 1
+                    }
+                },
+                // Specify validation error messages
+                messages: {
+                    Quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    updateQuantityItemOpen();
+                }
+            });
+
+        $(document).on('click', '#EditQtyItem', function (e) {
+
+            var urlString = "@Url.Action("EditQuantityItemOpen", "MatProm", new { area = "Marketing" })";
+            var a = $(this).data("id");
+            console.log(urlString, a);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { DetailId: a },
+                success: function (response) {
+
+                    var selStock = response[0].Stock;
+                    $('#EditQuantityModal input[name="Quantity"]').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "Stock Available " + selStock
+                        }
+                    });
+                    $('#EditQuantityModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityModal input[name="Id"]').val(response[0].Id);
+                    $('#EditQuantityModal input[name="Quantity"]').val(response[0].Quantity);
+                }
+            })
+
+        });
+
+        $('#updateQuantityItemOpen').click(function (e) {
+            //e.preventDefault();
+            formValidateOpen.form();
+        });
+
+        function RejectProcess() {
+            $.ajax({
+                url: $('#formRejectProcess').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formRejectProcess').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#RejectModal').modal('toggle');
+                        location.reload();
+
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#RejectModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+        function updateQuantityItemOpen() {
+            $.ajax({
+                url: $('#formUpdateQuantityItemOpen').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantityItemOpen').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                        $('#table').bootstrapTable('refresh', function () {
+                            console.log('refresh');
+                        });
+                        if (json.showButton == "1") {
+                            $('#btnConfirmVerified').hide();
+                            $('#btnReject').hide();
+                            $('#btnConfirmChange').show();
+                        }
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+    $(document).on('click', '#DeleteItem', function (e) {
+        var id = $(this).data("id");
+        var urlString = "@Url.Action("DeleteItemRequest", "MatProm", new { area = "Marketing" })";
+        confirmDelete(urlString, id);
+    });
+    function confirmDelete(Link, id) {
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Delete This Item !",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#DD6B55",
+            confirmButtonText: "Yes, delete it!"
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: { Id: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire("Deleted!", "Item has been deleted.", "success");
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('refresh');
+                            });
+                        } else {
+                            Swal.fire("Deleted!", "Failed To Delete Item.", "error");
+                        }
+                    },
+                    error: function () {
+                       Swal.fire("Error", "Unable to delete.", "error");
+                    }
+
+                })
+            } else {
+                Swal.fire("Cancelled", "Cancel Delete Item", "info");
+            }
+        });
+        }
+
+        //cancel request
+        $(document).on('click', '#btnCancelRequest', function (e) {
+            var a = $(this).data("id");
+            var Link = "@Url.Action("CancelRequest", "MatProm", new { area = "Marketing" })";
+            var id = "@ViewBag.RequestNo";
+            ConfirmSendRequest(Link, "Cancel this request ?", id, 'Cancel', '#DC4C64', 'Yes, Cancel it');
+
+        });
+
+
+</script>

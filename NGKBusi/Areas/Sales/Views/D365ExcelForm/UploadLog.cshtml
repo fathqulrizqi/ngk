@@ -1,0 +1,422 @@
+@* 
+    Upload Log History View
+    Location: NGKBusi\Areas\Sales\Views\D365ExcelForm\UploadLog.cshtml
+    Purpose: Menampilkan history dan statistik upload Excel
+*@
+
+@{
+    ViewBag.Title = "Upload Log History";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+    <style>
+        .stat-card {
+            border-left: 5px solid #007bff;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .stat-card.success {
+            border-left-color: #28a745;
+        }
+
+        .stat-card.danger {
+            border-left-color: #dc3545;
+        }
+
+        .stat-card.warning {
+            border-left-color: #ffc107;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .badge-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .badge-pending {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        table tbody tr {
+            transition: background-color 0.2s;
+        }
+
+        table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .error-message {
+            max-width: 300px;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Content/bootstrap-table-dist/bootstrap-table.min.js")"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3/dist/chart.min.js"></script>
+}
+
+<div class="container-fluid mt-4">
+
+    <!-- Page Title -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2>
+                <i class="fa fa-upload"></i> Upload Log History
+            </h2>
+            <p class="text-muted">Track and monitor all Excel file uploads</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-value" id="todayTotal">0</div>
+                <div class="stat-label">Today's Uploads</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card success">
+                <div class="stat-value" id="todaySuccess">0</div>
+                <div class="stat-label">Successful Today</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card danger">
+                <div class="stat-value" id="todayFailed">0</div>
+                <div class="stat-label">Failed Today</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card warning">
+                <div class="stat-value" id="totalRows">0</div>
+                <div class="stat-label">Total Rows (Success)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Actions -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="filterType">Upload Type:</label>
+                            <select id="filterType" class="form-control">
+                                <option value="">All Types</option>
+                                <option value="OrderLines">Order Lines</option>
+                                <option value="SalesBI">Sales BI</option>
+                                <option value="Sales">Sales</option>
+                                <option value="SalesPackingQuantity">Sales Packing Quantity</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="filterStatus">Status:</label>
+                            <select id="filterStatus" class="form-control">
+                                <option value="">All Status</option>
+                                <option value="Success">Success</option>
+                                <option value="Failed">Failed</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="filterFromDate">From Date:</label>
+                            <input type="date" id="filterFromDate" class="form-control" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-primary btn-block" id="btnRefresh">
+                                <i class="fa fa-refresh"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload History Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fa fa-history"></i> Upload History</h5>
+                </div>
+                <div class="card-body">
+                    <div id="toolbar" class="mb-3">
+                        <button id="btn-reload" class="btn btn-sm btn-primary">
+                            <i class="fa fa-refresh"></i> Reload
+                        </button>
+                        <button id="btn-export" class="btn btn-sm btn-success">
+                            <i class="fa fa-download"></i> Export to Excel
+                        </button>
+                    </div>
+                    <table id="uploadLogTable"
+                           class="table table-sm table-hover table-striped"
+                           data-toggle="table"
+                           data-search="true"
+                           data-pagination="true"
+                           data-page-size="25"
+                           data-page-list="[10, 25, 50, 100]">
+                        <thead>
+                            <tr>
+                                <th data-field="No" data-sortable="true">No</th>
+                                <th data-field="UploadType" data-sortable="true">Upload Type</th>
+                                <th data-field="FileName" data-sortable="true">File Name</th>
+                                <th data-field="RowCount" data-sortable="true" data-align="right">Row Count</th>
+                                <th data-field="UploadDateTime" data-sortable="true">Upload Date Time</th>
+                                <th data-field="UploadedBy" data-sortable="true">Uploaded By</th>
+                                <th data-field="Status" data-sortable="true">Status</th>
+                                <th data-field="ErrorMessage">Error Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="uploadLogBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Type Statistics Chart -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fa fa-bar-chart"></i> Uploads by Type (This Month)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="uploadTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fa fa-pie-chart"></i> Success Rate by Type</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="successRateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+$(document).ready(function () {
+    // Load statistics
+    loadStatistics();
+    loadUploadHistory();
+
+    // Auto-refresh setiap 5 menit
+    setInterval(function () {
+        loadStatistics();
+        loadUploadHistory();
+    }, 5 * 60 * 1000);
+
+    // Event handlers
+    $('#btn-reload').click(function () {
+        loadUploadHistory();
+    });
+
+    $('#btnRefresh').click(function () {
+        loadUploadHistory();
+    });
+
+    $('#btn-export').click(function () {
+        exportToExcel();
+    });
+
+    // Initialize Bootstrap Table
+    $('#uploadLogTable').bootstrapTable({
+        sortName: 'UploadDateTime',
+        sortOrder: 'desc'
+    });
+});
+
+function loadStatistics() {
+    $.ajax({
+        type: 'POST',
+        url: '@Url.Action("GetUploadStatistics", "D365ExcelForm", new { area = "Sales" })',
+        dataType: 'json',
+        success: function (response) {
+            // Update stat cards
+            $('#todayTotal').text(response.TodayTotal);
+            $('#todaySuccess').text(response.TodaySuccess);
+            $('#todayFailed').text(response.TodayFailed);
+            $('#totalRows').text(response.TotalRowsTodaySuccess.toLocaleString());
+
+            // Update charts
+            updateTypeChart(response.UploadTypeStats);
+            updateSuccessRateChart(response.UploadTypeStats);
+        },
+        error: function () {
+            console.log("Error loading statistics");
+        }
+    });
+}
+
+function loadUploadHistory() {
+    $.ajax({
+        type: 'POST',
+        url: '@Url.Action("GetUploadHistory", "D365ExcelForm", new { area = "Sales" })',
+        dataType: 'json',
+        success: function (response) {
+            if (response.status === 1) {
+                var tbody = $('#uploadLogBody');
+                tbody.empty();
+
+                var filteredData = response.data;
+
+                // Apply filters
+                var typeFilter = $('#filterType').val();
+                var statusFilter = $('#filterStatus').val();
+                var fromDateFilter = $('#filterFromDate').val();
+
+                if (typeFilter) {
+                    filteredData = filteredData.filter(x => x.UploadType === typeFilter);
+                }
+                if (statusFilter) {
+                    filteredData = filteredData.filter(x => x.Status === statusFilter);
+                }
+                if (fromDateFilter) {
+                    var fromDate = new Date(fromDateFilter);
+                    filteredData = filteredData.filter(x => {
+                        var uploadDate = new Date(x.UploadDateTime);
+                        return uploadDate >= fromDate;
+                    });
+                }
+
+                $.each(filteredData, function (index, log) {
+                    var statusBadge = log.Status === 'Success'
+                        ? '<span class="badge badge-success">Success</span>'
+                        : '<span class="badge badge-danger">Failed</span>';
+
+                    var errorMsg = log.ErrorMessage && log.ErrorMessage !== '-'
+                        ? '<small class="error-message">' + log.ErrorMessage + '</small>'
+                        : '-';
+
+                    tbody.append('<tr>' +
+                        '<td>' + log.No + '</td>' +
+                        '<td><strong>' + log.UploadType + '</strong></td>' +
+                        '<td><code>' + log.FileName + '</code></td>' +
+                        '<td class="text-right"><strong>' + log.RowCount + '</strong></td>' +
+                        '<td>' + log.UploadDateTime + '</td>' +
+                        '<td>' + log.UploadedBy + '</td>' +
+                        '<td>' + statusBadge + '</td>' +
+                        '<td>' + errorMsg + '</td>' +
+                        '</tr>');
+                });
+
+                $('#uploadLogTable').bootstrapTable('refresh');
+            }
+        },
+        error: function () {
+            console.log("Error loading upload history");
+        }
+    });
+}
+
+var uploadTypeChart = null;
+var successRateChart = null;
+
+function updateTypeChart(data) {
+    var ctx = document.getElementById('uploadTypeChart').getContext('2d');
+    
+    if (uploadTypeChart) {
+        uploadTypeChart.destroy();
+    }
+
+    uploadTypeChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(x => x.UploadType),
+            datasets: [{
+                label: 'Upload Count',
+                data: data.map(x => x.Count),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }, {
+                label: 'Total Rows',
+                data: data.map(x => x.TotalRows),
+                backgroundColor: 'rgba(75, 192, 75, 0.8)',
+                borderColor: 'rgba(75, 192, 75, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateSuccessRateChart(data) {
+    var ctx = document.getElementById('successRateChart').getContext('2d');
+    
+    if (successRateChart) {
+        successRateChart.destroy();
+    }
+
+    successRateChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(x => x.UploadType),
+            datasets: [{
+                data: data.map(x => x.Count),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 75, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function exportToExcel() {
+    // Implement Excel export logic
+    alert('Export functionality coming soon!');
+}
+</script>

@@ -1,0 +1,110 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($("#tblSCMShippingSchedule").length) {
+                $("#tblSCMShippingSchedule").tablesorter({
+                    theme: 'metro-dark',
+                    widthFixed: true,
+                    widgets: ['zebra', 'columns', 'filter', 'stickyHeaders']
+                }).tablesorterPager({
+                    container: $(".pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: 50
+                });
+            }
+        });
+    </script>
+}
+
+<h2>KD Part Shipping Schedule</h2>
+<button type="button" class="btn btn-success" data-toggle="modal" data-target="#uploadKDPartModal">Upload Data</button>
+<hr />
+<table id="tblSCMShippingSchedule">
+    <thead>
+        <tr>
+            <th class="filter-select" data-placeholder="-Origin-">Origin</th>
+            <th>Invoice</th>
+            <th>ETD</th>
+            <th class="filter-select" data-placeholder="-Freight-">Freight</th>
+            <th>GIMS Code</th>
+            <th>PO No</th>
+            <th>PO Qty</th>
+            <th>Ship. Qty</th>
+            <th>Original ETD</th>
+            <th>Order Month</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.ShippingSchedule)
+        {
+            <tr>
+                <td>@data.Origin</td>
+                <td>@data.Invoice</td>
+                <td>@data.ETD.ToString("yyyy/MM/dd")</td>
+                <td>@data.Freight</td>
+                <td>@data.GIMS</td>
+                <td>@data.PO_Number</td>
+                <td>@data.PO_Qty</td>
+                <td>@data.Ship_Qty</td>
+                <td>@(data.Original_ETD.ToString("MM/dd") + "VSL")</td>
+                <td>@data.Order_Month</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="10">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="modal fade" id="uploadKDPartModal" tabindex="-1" role="dialog" aria-labelledby="uploadKDPartModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadKDPartModalLabel">Upload Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("UploadData","KDPart",new { area = "SCM" })" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    @Html.AntiForgeryToken()
+                    <div class="input-group mb-3">
+                        <input type="file" name="iKDPartUpload" id="inputGroupFile01" required multiple />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

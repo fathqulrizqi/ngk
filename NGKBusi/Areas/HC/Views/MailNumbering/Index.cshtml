@@ -1,0 +1,160 @@
+﻿@using Microsoft.AspNet.Identity
+@using System.Security.Claims;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = ((ClaimsIdentity)User.Identity);
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-math.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-filter.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#tblHCMailNumbering").tablesorter({
+                theme: 'metro-dark',
+                widthFixed: true,
+                widgets: ['zebra', 'columns', 'filter', 'stickyHeaders'],
+                widgetOptions: {
+                    filter_saveFilters: true
+                }
+            }).tablesorterPager({
+                container: $(".pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 50,
+                removeRows: true
+            });
+            $(".btnHCMNAdd").click(function () {
+                $("#formHCMailNumbering")[0].reset();
+                $("#formHCMailNumbering").attr("action", "/NGKBusi/HC/MailNumbering/MailNumberingAdd");
+
+            });
+
+            $(".btnHCMNEdit").click(function () {
+                var currTR = $(this).closest('tr');
+                var currPurpose = currTR.find("td:eq(2)").text();
+                var currSubject = currTR.find("td:eq(3)").text();
+                var currID = $(this).data("id");
+                $("#formHCMailNumbering").attr("action", "/NGKBusi/HC/MailNumbering/MailNumberingEdit");
+                $("#HCMailNumberingModal").modal();
+                $("#hfHCMNDataID").val(currID);
+                $("#txtHCMNPurpose").val(currPurpose);
+                $("#txtHCMNSubject").val(currSubject);
+            });
+            $("#selHCNMPeriod").change(function () {
+                $("#btnHCNMSubmit").click();
+            });
+        });
+    </script>
+}
+    <form action="@Url.Action("Index", "MailNumbering", new { area = "HC" })" method="post">
+        <select id="selHCNMPeriod" name="iHCNMPeriod" class="form-control">
+            @for (var i = DateTime.Now.Year; i >= 2019; i--)
+            {
+                <option value="@(i)" @(ViewBag.Period == i ? "selected" : "")>@(i)</option>
+            }
+        </select>
+        <button type="submit" id="btnHCNMSubmit" class="d-none">Submit</button>
+    </form>
+<table id="tblHCMailNumbering" class="tablesorter">
+    <thead>
+        <tr>
+            <th colspan="6" class="sorter-false">
+                <h2 class="d-inline-block">NGK Mail Numbering</h2>
+                @if (Request.IsAuthenticated)
+                {
+                    <button class="btn btn-success d-inline-block ml-2 btnHCMNAdd" data-toggle="modal" data-target="#HCMailNumberingModal">Add New</button>
+                }
+            </th>
+        </tr>
+        <tr>
+            <th>Nomor</th>
+            <th>Tanggal</th>
+            <th>Tujuan</th>
+            <th>Perihal</th>
+            <th>User</th>
+            <th class="sorter-false filter-false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.DataList)
+        {
+            <tr>
+                <td>@(item.Number)</td>
+                <td>@(item.Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Purpose)</td>
+                <td>@(item.Subject)</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @if (item.User_By == currUser.GetUserId() || currUser.GetUserId() == "407.02.93" || currUser.GetUserId() == "767.11.16")
+                    {
+                    <button class="btn btn-warning btn-sm btnHCMNEdit" data-id="@(item.ID)"><i class="fas fa-edit fa-xs"></i></button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="6">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+
+<div id="HCMailNumberingModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Mail Numbering</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formHCMailNumbering" action="@Url.Action("MailNumberingAdd", "MailNumbering", new { area = "HC" })" class="form-horizontal" method="post">
+                <input type="hidden" name="iHCMNDataID" id="hfHCMNDataID" value="" />
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Tujuan</label>
+                        <div class="col-sm-8">
+                            <input type="text" id="txtHCMNPurpose" name="iHCMNPurpose" class="form-control" placeholder="Tujuan" value="" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Perihal</label>
+                        <div class="col-sm-8">
+                            <textarea id="txtHCMNSubject" name="iHCMNSubject" rows="7" class="form-control" placeholder="Perihal" required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnDataLCSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button type="reset" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

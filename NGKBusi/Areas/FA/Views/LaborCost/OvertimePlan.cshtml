@@ -1,0 +1,400 @@
+﻿@using NGKBusi.Models
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Overtime Plan";
+    ViewBag.SideMenuHeader = "Labor Cost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currSection = "";
+    var beforeGroup = "";
+    var beforeSection = "";
+    var beforeStatus = "";
+    var beforeSign = "";
+    var beforeApproved = "";
+    var beforeApproved2 = "";
+    var beforeApproved3 = "";
+    var beforeHCSign = "";
+    var beforeHCApproved = "";
+    var a = 0;
+    var cntSummary = ViewBag.SectionSummary?.Count;
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var currDate2 = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Month >=4 ? DateTime.Now.Year : DateTime.Now.AddYears(-1).Year;
+    int dateDiff = Math.Abs(12 * (currDate.Year - lastDate.Year) + currDate.Month - lastDate.Month);
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Scripts/jexcel/dist/css/jquery.jexcel.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        #divOvertimePlanWrapper {
+            position: relative;
+        }
+
+        #divOvertimePlan {
+            margin-left: 510px;
+            overflow-x: scroll;
+            overflow-y: visible;
+            padding-bottom: 5px;
+        }
+
+            #divOvertimePlan table td {
+                height: 31px;
+            }
+
+            #divOvertimePlan table thead td.jexcel_label, #divOvertimePlan table tbody td.jexcel_label {
+                left: 0;
+                position: absolute;
+                top: auto;
+                width: 30px;
+            }
+
+            #divOvertimePlan table .c0, #divOvertimePlan table thead #col-0 {
+                left: 30px;
+                position: absolute;
+                top: auto;
+                width: 80px;
+            }
+
+            #divOvertimePlan table .c1, #divOvertimePlan table thead #col-1 {
+                left: 110px;
+                position: absolute;
+                top: auto;
+                width: 200px;
+            }
+
+            #divOvertimePlan table .c2, #divOvertimePlan table thead #col-2 {
+                left: 310px;
+                position: absolute;
+                top: auto;
+                width: 200px;
+            }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-math.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-filter.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/jquery.jexcel.js")"></script>
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/excel-formula.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/OvertimePlan.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+    <h2>
+        Overtime Plan
+        @*@if (ViewBag.Employee.Count > 0 && (ViewBag.LastLevel != "5" || ViewBag.LastLevel != "6"))*@
+        @if (ViewBag.Employee.Count > 0)
+        {
+            <button id="btnUploadOTP" type="button" class="btn btn-success">Upload OTP List</button>
+            <button id="btnLCOvertimePlanSave" class="btn btn-success" title="Upload">Save</button>
+        }
+        <input type="file" name="iLCUpload" id="fileLCUpload" style="display:none;" />
+        <button id="btnDownloadOTPSummary" type="button" class="btn btn-success">Download OTP Summary</button>
+        <button id="btnDownloadOTP" type="button" class="btn btn-success">Download OTP List</button>
+        <input type="file" id="flLCUpload" name="iLCUpload" value="" style="display:none;" accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" />
+    </h2>
+<form action="@Url.Action("OverTimePlan", "LaborCost", new { area = "FA" })" method="post">
+    <select id="selLCOvertimePlanPeriod" name="iLCOvertimePlanPeriod" class="form-control selLCOvertimePlanPeriod" style="width:125px; display:inline-block;">
+        @for (var z = beginYear; z <= endYear; z++)
+        {
+            <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+        }
+    </select>
+    <select id="selLCOverTimePlanLevel" name="iLCOverTimePlanLevel" class="form-control" style="width:125px; display:inline-block;">
+        @if (ViewBag.CheckLevel0 > 0)
+        {
+            <option value="0" @(ViewBag.LastLevel == "0" ? "selected" : "")>Level 0</option>
+        }
+        @if (ViewBag.CheckLevel1 > 0)
+        {
+            <option value="1" @(ViewBag.LastLevel == "1" ? "selected" : "")>Level 1</option>
+        }
+        @if (ViewBag.CheckLevel2 > 0)
+        {
+            <option value="2" @(ViewBag.LastLevel == "2" ? "selected" : "")>Level 2</option>
+        }
+        @if (ViewBag.CheckLevel3 > 0)
+        {
+            <option value="3" @(ViewBag.LastLevel == "3" ? "selected" : "")>Level 3</option>
+        }
+        @if (ViewBag.CheckLevel4 > 0)
+        {
+            <option value="4" @(ViewBag.LastLevel == "4" ? "selected" : "")>Level 4</option>
+        }
+        @if (ViewBag.CheckLevel5 > 0)
+        {
+            <option value="5" @(ViewBag.LastLevel == "5" ? "selected" : "")>Level 5</option>
+        }
+        @if (ViewBag.CheckLevel6 > 0)
+        {
+            <option value="6" @(ViewBag.LastLevel == "6" ? "selected" : "")>Level 6</option>
+        }
+    </select>
+    <button type="submit" id="btnLCOverTimePlanLevel" style="display:none;">Submit</button>
+</form>
+<form action="@Url.Action("ManPowerPlanSign", "LaborCost", new { area = "FA" })" method="post">
+    <div id="divLCOTPSectionSummary" style="overflow:auto;">
+        <input type="hidden" name="iOTPSignLevel" id="hfOTPSignLevel" value="@(ViewBag.LastLevel == "1" ? "1" : (ViewBag.LastLevel == "2" ? "2" : (ViewBag.LastLevel == "3" ? "3" :(ViewBag.LastLevel == "4" ? "4" : (ViewBag.LastLevel == "5" ? "5" : ViewBag.LastLevel == "6" ? "6" : "0")))))" />
+        <table id="tblLCOTPSectionSummary" class="tablesorter">
+            <thead>
+                <tr>
+                    <th class="filter-false sorter-false text-nowrap c0">
+                    </th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Group-">Group</th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Section-">Section</th>
+                    <th class="filter-false text-nowrap" data-placeholder="-Position-">Position</th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Status-">Status</th>
+                    @for (var q = 0; q <= dateDiff; q++)
+                    {
+                        <th class="text-nowrap sorter-false filter-false">@(currDate.ToString("yyyy-MM"))</th>
+                        currDate = currDate.AddMonths(1);
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.SectionSummary != null)
+                {
+                    foreach (var item in ViewBag.SectionSummary)
+                    {
+                        currSection = item.DeptName;
+                        a++;
+                        if (beforeStatus != "" && beforeSection == item.DeptName && beforeStatus != item.Status)
+                        {
+                            <tr id="@("row"+ beforeStatus + beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+beforeStatus)" data-section="@(beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(beforeGroup)</th>
+                                <th class="bold c0 text-nowrap" style="@(beforeStatus == "Permanent" ? "" : "color:#333;")">@(beforeStatus == "Permanent" ? beforeSection : beforeSection)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + beforeStatus)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+                        if (beforeSection != "" && beforeSection != item.DeptName)
+                        {
+                            <tr id="@("row"+ beforeStatus + beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+beforeStatus)" data-section="@(beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(beforeGroup)</th>
+                                <th class="bold c0 text-nowrap" style="@(beforeStatus == "Permanent" ? "" : "color:#333;")">@(beforeStatus == "Permanent" ? beforeSection : beforeSection)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + beforeStatus)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+                        <tr>
+                            <td class="c0"></td>
+                            <td>@(item.Group)</td>
+                            <td class="text-nowrap">@(item.DeptName)</td>
+                            <td class="text-nowrap">@(item.Position)</td>
+                            <td>@(item.Status)</td>
+                            <td class="text-right">@(item.M011)</td>
+                            <td class="text-right">@(item.M012)</td>
+                            <td class="text-right">@(item.M101)</td>
+                            <td class="text-right">@(item.M102)</td>
+                            <td class="text-right">@(item.M103)</td>
+                            <td class="text-right">@(item.M104)</td>
+                            <td class="text-right">@(item.M105)</td>
+                            <td class="text-right">@(item.M106)</td>
+                            <td class="text-right">@(item.M107)</td>
+                            <td class="text-right">@(item.M108)</td>
+                            <td class="text-right">@(item.M109)</td>
+                            <td class="text-right">@(item.M110)</td>
+                            <td class="text-right">@(item.M111)</td>
+                            <td class="text-right">@(item.M112)</td>
+                            <td class="text-right">@(item.M201)</td>
+                            <td class="text-right">@(item.M202)</td>
+                            <td class="text-right">@(item.M203)</td>
+                            <td class="text-right">@(item.M204)</td>
+                            <td class="text-right">@(item.M205)</td>
+                            <td class="text-right">@(item.M206)</td>
+                            <td class="text-right">@(item.M207)</td>
+                            <td class="text-right">@(item.M208)</td>
+                            <td class="text-right">@(item.M209)</td>
+                            <td class="text-right">@(item.M210)</td>
+                            <td class="text-right">@(item.M211)</td>
+                            <td class="text-right">@(item.M212)</td>
+                            <td class="text-right">@(item.M301)</td>
+                            <td class="text-right">@(item.M302)</td>
+                            <td class="text-right">@(item.M303)</td>
+                            <td class="text-right">@(item.M304)</td>
+                            <td class="text-right">@(item.M305)</td>
+                            <td class="text-right">@(item.M306)</td>
+                            <td class="text-right">@(item.M307)</td>
+                            <td class="text-right">@(item.M308)</td>
+                            <td class="text-right">@(item.M309)</td>
+                            <td class="text-right">@(item.M310)</td>
+                            <td class="text-right">@(item.M311)</td>
+                            <td class="text-right">@(item.M312)</td>
+                            <td class="text-right">@(item.M401)</td>
+                            <td class="text-right">@(item.M402)</td>
+                            <td class="text-right">@(item.M403)</td>
+                        </tr>
+                        if (a == cntSummary)
+                        {
+                            <tr id="@("row"+ item.Status + item.DeptName.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+item.Status)" data-section="@(item.DeptName.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(item.Group)</th>
+                                <th class="bold c0 text-nowrap" style="@(item.Status == "Permanent" ? "" : "color:#333;")">@(item.Status == "Permanent" ? item.DeptName : item.DeptName)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + item.Status)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+
+                        beforeGroup = item.Group;
+                        beforeSection = item.DeptName;
+                        beforeStatus = item.Status;
+                        beforeSign = item.Sign_By;
+                        beforeApproved = item.Approved_By;
+                        beforeApproved2 = item.Approved_By2;
+                        beforeApproved3 = item.Approved_By3;
+                        beforeHCSign = item.HCSign_By;
+                        beforeHCApproved = item.HCApproved_By;
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="c0"></th>
+                    <th></th>
+                    <th colspan="3" class="text-right">Grand Total</th>
+                    @for (var q = 0; q <= dateDiff; q++)
+                    {
+                        <th class="bold text-right" data-math="col-sum">above-sum</th>
+                    }
+                </tr>
+                <tr class="dark-row">
+                    <th class="c0"></th>
+                    <th colspan="45">
+                        <div class="pager">
+                            <button type="button" class="first"><<</button>
+                            <button type="button" class="prev"><</button>
+                            <span class="pagedisplay"></span>
+                            <button type="button" class="next">></button>
+                            <button type="button" class="last">>></button>
+                            <select class="pagesize" title="Select page size" style="color:black;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="40">40</option>
+                                <option value="80">80</option>
+                                <option value="160">160</option>
+                                <option value="320">320</option>
+                                <option value="640">640</option>
+                            </select>
+                            <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</form>
+
+<table id="tblOTPList" style="display:none;">
+    <thead>
+        <tr>
+            <td>NIK</td>
+            <td>Name</td>
+            <td>Department</td>
+            <td>Position</td>
+            <td>Status</td>
+            <td>Category</td>
+            @for (var q = 0; q <= dateDiff; q++)
+            {
+                <th class="text-nowrap sorter-false">@(currDate2.ToString("yyyy-MM"))</th>
+                currDate2 = currDate2.AddMonths(1);
+            }
+            <td>Remark</td>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.OTPList)
+        {
+            string OTP_NIK = item.OTP_NIK?.ToString();
+            string Related_ID = item.Related_ID.ToString();
+            <tr>
+                <td>@(item.OTP_NIK)</td>
+                <td class="text-nowrap">@(item.Name)</td>
+                <td class="text-nowrap">@(item.Section)</td>
+                <td class="text-nowrap">@(item.Position)</td>
+                <td>@(item.Status)</td>
+                <td class="text-nowrap">@(item.Category)</td>
+                <td class="text-right">@(item.M011)</td>
+                <td class="text-right">@(item.M012)</td>
+                <td class="text-right">@(item.M101)</td>
+                <td class="text-right">@(item.M102)</td>
+                <td class="text-right">@(item.M103)</td>
+                <td class="text-right">@(item.M104)</td>
+                <td class="text-right">@(item.M105)</td>
+                <td class="text-right">@(item.M106)</td>
+                <td class="text-right">@(item.M107)</td>
+                <td class="text-right">@(item.M108)</td>
+                <td class="text-right">@(item.M109)</td>
+                <td class="text-right">@(item.M110)</td>
+                <td class="text-right">@(item.M111)</td>
+                <td class="text-right">@(item.M112)</td>
+                <td class="text-right">@(item.M201)</td>
+                <td class="text-right">@(item.M202)</td>
+                <td class="text-right">@(item.M203)</td>
+                <td class="text-right">@(item.M204)</td>
+                <td class="text-right">@(item.M205)</td>
+                <td class="text-right">@(item.M206)</td>
+                <td class="text-right">@(item.M207)</td>
+                <td class="text-right">@(item.M208)</td>
+                <td class="text-right">@(item.M209)</td>
+                <td class="text-right">@(item.M210)</td>
+                <td class="text-right">@(item.M211)</td>
+                <td class="text-right">@(item.M212)</td>
+                <td class="text-right">@(item.M301)</td>
+                <td class="text-right">@(item.M302)</td>
+                <td class="text-right">@(item.M303)</td>
+                <td class="text-right">@(item.M304)</td>
+                <td class="text-right">@(item.M305)</td>
+                <td class="text-right">@(item.M306)</td>
+                <td class="text-right">@(item.M307)</td>
+                <td class="text-right">@(item.M308)</td>
+                <td class="text-right">@(item.M309)</td>
+                <td class="text-right">@(item.M310)</td>
+                <td class="text-right">@(item.M311)</td>
+                <td class="text-right">@(item.M312)</td>
+                <td class="text-right">@(item.M401)</td>
+                <td class="text-right">@(item.M402)</td>
+                <td class="text-right">@(item.M403)</td>
+                <td class="text-right">@((item.Category == "Current Employee" ? db.FA_Labor_Cost_Employee_List.Where(w => w.NIK == OTP_NIK).Select(o => o.Remark).FirstOrDefault() : db.FA_Labor_Cost_MPP.Where(w => w.ID.ToString() == Related_ID).Select(o => o.Remark).FirstOrDefault()))</td>
+            </tr>
+        }
+
+    </tbody>
+</table>
+
+<select id="selOTPFilterDept" class="select2" multiple data-placeholder="Filter Department">
+    @foreach (var item in ViewBag.Section)
+    {
+        <option value="@(item.Section_Name)">@(item.Section_Name)</option>
+    }
+</select>
+<input type="text" id="txtOTPFilterRemark" class="form-control" placeholder="Filter Remark" />
+<div id="divOvertimePlanWrapper" style="overflow-x:auto;">
+    <div id="divOvertimePlan"></div>
+</div>

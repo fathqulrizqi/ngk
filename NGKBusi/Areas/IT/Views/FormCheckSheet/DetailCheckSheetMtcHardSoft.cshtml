@@ -1,0 +1,402 @@
+﻿@{
+    ViewBag.Title = "Check Sheet Machine Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+
+}
+
+@section cssHead{
+
+    <style type="text/css">
+        .TblForm thead th {
+            text-align: center;
+        }
+
+        @@page {
+            size: landscape;
+            margin: 0;
+        }
+
+        @@media print {
+            #sidebar {
+                display: none;
+            }
+
+            footer {
+                display: none;
+            }
+
+            #printarea {
+                display: block;
+            }
+
+            #contentPrint, #contentPrint * {
+                display: block;
+            }
+        }
+
+        .select2-container--default .select2-selection__choice {
+            background-color: #f2f2f2;
+            color: #333;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 5px;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+
+        input[type="checkbox"] {
+            width: 1.5em;
+            height: 1.5em;
+        }
+    </style>
+}
+<style>
+    @@media print {
+        .sidebar {
+            display: none;
+        }
+
+        #btnPrint {
+            display: none;
+        }
+
+        #printarea {
+            display: block;
+        }
+
+        #contentPrint, #contentPrint * {
+            display: block;
+        }
+    }
+</style>
+<form  id="formUpdateMTC" action="@Url.Action("UpdateCheckSheetMtcHardSoft", "FormCheckSheet", new { area = "IT" })">
+    <input type="hidden" name="HeaderID" value="@(ViewBag.DataMTCHardSoft.ID)" />
+    <table style="margin-bottom:20px">
+        <tr>
+            <td><a href="@Url.Action("IndexMTCHardSoft", "FormCheckSheet", new { area = "IT" })" class="btn btn-danger"><span><i class="fa fa-arrow-circle-left"></i> Back To List</span></a></td>
+            @* <td><button id="btnPrint" class="btn btn-primary"><span><i class="fa fa-print"></i> Download PDF</span></button></td>*@
+            <td>@{  if (ViewBag.DataMTCHardSoft.Status == 1) { <button type="button" id="btnSave" class="btn btn-primary"><span><i class="fa fa-floppy-disk"></i> Update</span></button>} }</td>
+
+        </tr>
+    </table>
+    <div id="content">
+
+        <table id="tblMScheduleHeader" border="1" style="width:100%" class="contentPrint">
+            <thead>
+                <tr>
+                    <td rowspan="4" style="width:175px;" class="p-2">
+                        <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+                    </td>
+                    <td rowspan="2" class="text-center">FORMULIR INTEGRASI SISTEM MANAJEMEN MUTU, LINGKUNGAN & K3 TERINTEGRASI</td>
+                    <td>No. Dok</td>
+                    <td class="text-center">PML-IT-01/L3</td>
+                </tr>
+                <tr>
+                    <td style="width:85px; padding-left:5px">Revisi</td>
+                    <td style="width:125px;" class="text-center">02</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" class="text-center">CHECK SHEET PEMELIHARAAN PERANGKAT KERAS DAN LUNAK</td>
+                    <td>Tanggal</td>
+                    <td class="text-center">1-FEB-2017</td>
+                </tr>
+                <tr>
+                    <td>Halaman</td>
+                    <td class="text-center">1 of 1</td>
+                </tr>
+            </thead>
+            <tbody>
+
+                <table width="100%">
+                    <tr style="padding-top:5px;">
+                        <td colspan="4" align="center" style="font-weight:bold; padding:5px;">Mesin / InfraStruktur</td>
+                    </tr>
+                    <tr>
+                        <td width="10%">Dept</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><span id="DeptName">@(ViewBag.DataMTCHardSoft.Dept)</span></td>
+                        <td width="10%">Nama / No</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%">@(ViewBag.DataMTCHardSoft.Nama)</td>
+                    </tr>
+                    <tr>
+                        <td width="10%">Section</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><span id="SectionName"></span>@(ViewBag.DataMTCHardSoft.Section)</td>
+                        <td width="10%">Spesifikasi</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><input name="spec" type="text" class="form-control" value="@(ViewBag.DataMTCHardSoft.Spesifikasi)" @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("readonly") }  /></td>
+                    </tr>
+                    <tr>
+                        <td width="10%"></td>
+                        <td width="2%" style="text-align:center"></td>
+                        <td width="38%"></td>
+                        <td width="10%">Tahun Mulai Pemakaian</td>
+                        <td width="2%" style="text-align:center">:</td>
+                        <td width="38%"><input name="year" type="text" class="form-control" value="@(ViewBag.DataMTCHardSoft.TahunMulaiPemakaian)" @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("readonly") } /></td>
+                    </tr>
+                </table>
+
+                <table class="TblForm" border="1" width="100%" align="center" style="margin-top:20px; padding:10px">
+                    <thead>
+                        <tr>
+                            <th width="3%" align="center">No</th>
+                            <th width="12%" align="center">Type</th>
+                            <th width="15%" align="center">Tools</th>
+                            <th width="40%" align="center">Device</th>
+                            <th colspan="3">Checklist</th>
+                        </tr>
+
+                    </thead>
+                    <tbody style="padding:20px">
+                        @{ int i = 0;}
+            @foreach (var item in ViewBag.DeviceHardware)
+            {
+
+                            <tr style="text-align:center">
+
+                                @if (i == 0)
+                                {
+                                    <td rowspan="@ViewBag.countDevicesHardware">
+                                        1
+                                    </td>
+                                    <td rowspan="@ViewBag.countDevicesHardware">
+                                        Hardware
+                                    </td>
+                                }
+                                else
+                {
+                }
+                                <td>
+                                    @item.Tools
+                                </td>
+                                <td>@item.Device</td>
+                                <td style="padding:5px"><span>Lepas </span> <span style="float:right; margin-right:10px"><input type="checkbox" name="Lepas" value="@item.ID" @if (item.Lepas == 1) { @("Checked") } ) @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("Disabled") } /></span></td>
+                                <td style="padding:5px"><span>Pasang </span>  <span style="float:right; margin-right:10px"><input type="checkbox" name="Pasang" value="@item.ID" @if (item.Pasang == 1) { @("Checked") } ) @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("Disabled") }  /></span></td>
+                                <td style="padding:5px"><span>Bersihkan </span>  <span style="float:right; margin-right:10px"><input type="checkbox" name="Bersihkan" value="@item.ID" @if (item.Bersihkan == 1) { @("Checked") } @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("Disabled") }  ) /></span></td>
+                            </tr>
+                            i++;
+                        }
+                        <tr>
+                            <td colspan="7" style="background-color:darkgray">&nbsp;</td>
+                        </tr>
+                        @{ int s = 0;}
+                        @foreach (var item in ViewBag.DeviceSoftware)
+                        {
+
+                            <tr style="text-align:center">
+                                @if (s == 0)
+                                {
+                                    <td rowspan="@ViewBag.countDevicesSoftware">
+                                        2
+                                    </td>
+                                    <td rowspan="@ViewBag.countDevicesSoftware">
+                                        Software
+                                    </td>
+                                }
+                                else
+                                {
+                                }
+                                <td>
+                                    @item.Tools
+                                </td>
+                                <td>@item.Device</td>
+                                <td colspan="3" style="padding:5px"><span>Check </span> <span style="float:right; margin-right:10px"><input type="checkbox" name="Check" value="@item.ID" @if (item.Check == 1) { @("Checked") } @if (ViewBag.DataMTCHardSoft.Status >= 2) { @("Disabled") } /></span></td>
+                            </tr>
+                            s++;
+                        }
+                    </tbody>
+
+                </table>
+
+            </tbody>
+        </table>
+
+        <table class="TblForm" border="1" style="width:65%;margin-top:30px; text-align:center; float:right">
+            <tbody>
+                <tr style="height:140px; padding:20px">
+                    <td style="text-align:center; padding:20px 20px; width:33%">
+                    @if (ViewBag.DataMTCHardSoft.Status == 1 && ViewBag.CurrUser == ViewBag.DataMTCHardSoft.CreateBy)
+                    { <button class="btn btn-primary" type="button" value="Checked" name="Checked" id="btnCheck">Sign</button> }
+                    @if (ViewBag.DataMTCHardSoft.Status >= 2)
+                    {
+                    <div class="alert alert-success" role="alert">
+                        <h3><i class="fa fa-circle-check"></i></h3>
+                        <h6 class="alert-heading"> Signed on @ViewBag.DataMTCHardSoft.CheckedTime</h6>
+                        <hr />
+                        <p><h6>Signed By @ViewBag.DataMTCHardSoft.CheckedByName</h6></p>
+                        @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                    </div>
+                    }
+                    </td>
+                    <td style="text-align:center; padding:20px 20px; width:33%">
+                        @if (ViewBag.DataMTCHardSoft.Status == 2 && ViewBag.Curruser == ViewBag.DataMTCHardSoft.NIK)
+                        {<button class="btn btn-primary" type="button" value="Checked" name="Checked" id="btnSign">Sign</button>}
+                        @if (ViewBag.DataMTCHardSoft.Status >= 3)
+                        {
+                        <div class="alert alert-success" role="alert">
+                            <h3><i class="fa fa-circle-check"></i></h3>
+                            <h6 class="alert-heading"> Signed on @ViewBag.DataMTCHardSoft.SignTime</h6>
+                            <hr />
+                            <p><h6>Signed By @ViewBag.DataMTCHardSoft.SignByName</h6></p>
+                            @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                        </div>
+                        }
+                    </td>
+                    <td style="text-align:center; padding:20px 20px; width:33%">
+                        @{
+                            if (ViewBag.DataMTCHardSoft.Status == 3)
+                            {
+                                foreach (var approvalUserIT in ViewBag.ApprovalUser)
+                                {
+                                    if (approvalUserIT.OrganizationUser == ViewBag.Curruser)
+                                    {
+                                        <button class="btn btn-primary" type="button" value="Checked" name="Approve" id="btnApprove">Sign</button>
+                                    }
+                                }
+
+                            }
+                        }
+
+                        @if (ViewBag.DataMTCHardSoft.Status >= 4)
+                        {
+                            <div class="alert alert-success" role="alert">
+
+                                <h6 class="alert-heading"><i class="fa fa-circle-check"></i> Signed on @ViewBag.DataMTCHardSoft.CheckedTime</h6>
+                                <hr />
+                                <p><h6 class="alert-heading"><strong>Signed By @ViewBag.DataMTCHardSoft.ApproveByName</strong></h6></p>
+                                @*<p>Aww yeah, you successfully read this important alert message. This example text is going to run a bit longer so that you can see how spacing within an alert works with this kind of content.</p>*@
+                            </div>
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <td>Diperiksa</td>
+                    <td>User/Pengguna</td>
+                    <td>Disetujui</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</form>
+
+<script>
+    $(document).ready(function () {
+        $('#selUser').select2({
+            closeOnSelect: true
+        });
+
+        $("#btnSave").click(function () {
+            var x = $("#formUpdateMTC").serializeArray();
+            //$.each(x, function (i, field) {
+            //    console.log(field.name + " : " + field.value + " ");
+            //});
+            $.ajax({
+                url: $("#formUpdateMTC").attr('action'),
+                type: "POST",
+                cache: false,
+                data: $("#formUpdateMTC").serialize(),
+                dataType: 'json',
+                beforeSend: function () {
+                    $('#btnSave').prop('disabled', true);
+                },
+                success: function (json) {
+                    if (json.status == 1) {
+                        // $('#ResponseInput').html(json.pesan);
+                        toastr.options.positionClass = 'toast-bottom-center';
+                        toastr.success(json.msg);
+
+                    }
+                    else {
+                        toastr.error(json.msg);
+                    }
+                },
+                complete: function () {
+                    $('#btnSave').prop('disabled', false);
+                }
+            });
+
+            console.log(x);
+        });
+
+        function ConfirmSendRequest(Link, Text, id, BtnValues, BtnColor, BtnText) {
+            swal({
+                title: "Are you sure?",
+                text: Text,
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: BtnColor,
+                confirmButtonText: BtnText,
+                cancelButtonText: "Close",
+                closeOnConfirm: true,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        data: { HeaderID: id, ProcessAction: BtnValues },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                swal({
+                                    title: "Success",
+                                    text: json.msg,
+                                    type: "success"
+                                }, function () {
+                                    location.reload();
+                                });
+
+                            } else {
+                                swal("Failed!", json.msg, "error");
+                            }
+                        },
+                        error: function () {
+                            swal("Canceled!", Link, "error");
+                        }
+
+                    })
+                } else {
+                    swal("Cancelled", "Process Canceled", "error");
+                }
+            });
+        }
+        $("#btnCheck").click(function () {
+
+            var Link = "@Url.Action("SignCheckSheetMtcHardSoft", "FormCheckSheet", new { area = "IT" })";
+            var id = "@ViewBag.DataMTCHardSoft.ID";
+            ConfirmSendRequest(Link, "Confirm To Sign ?", id, 'Check', '#0275d8', 'Yes, Sign');
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        });
+        $("#btnSign").click(function () {
+
+            var Link = "@Url.Action("SignCheckSheetMtcHardSoft", "FormCheckSheet", new { area = "IT" })";
+            var id = "@ViewBag.DataMTCHardSoft.ID";
+            ConfirmSendRequest(Link, "Confirm To Sign ?", id, 'Sign', '#0275d8', 'Yes, Sign');
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        });
+        $("#btnApprove").click(function () {
+
+            var Link = "@Url.Action("SignCheckSheetMtcHardSoft", "FormCheckSheet", new { area = "IT" })";
+            var id = "@ViewBag.DataMTCHardSoft.ID";
+            ConfirmSendRequest(Link, "Confirm To Sign ?", id, 'Approve', '#0275d8', 'Yes, Sign');
+            //$table.bootstrapTable('remove', {
+            //    field: 'id',
+            //    values: ids
+            //})
+
+        });
+    });
+
+</script>

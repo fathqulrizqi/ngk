@@ -1,0 +1,390 @@
+﻿@{
+    ViewBag.Title = "QR Code Generator";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@* Menambahkan Tailwind CSS dan library lainnya *@
+@section scriptHead{
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/umd/simple-datatables.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <style>
+        /* Styling untuk Simple Datatables agar sesuai Tailwind */
+        .datatable-input, .datatable-selector {
+            border: 1px solid #d1d5db; /* gray-300 */
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .datatable-dropdown label {
+            font-weight: 400;
+        }
+
+        .datatable-input:focus {
+            border-color: #6b7280; /* gray-500 */
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(199, 210, 254, 0.5);
+        }
+
+        .modal-overlay {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-overlay:not(.hidden) {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 90vw;
+            max-width: 850px;
+            display: flex;
+            justify-content: center;
+            margin: 20px !important;
+        }
+
+        .a4-paper {
+            background-color: white;
+            width: 15.75cm;
+            border-radius: 5px;
+            height: 22.275cm;
+            padding: 0.9cm;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+        }
+
+        .page-viewport {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .page-container {
+            display: flex;
+            height: 100%;
+            transition: transform 0.4s ease-in-out;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            font-size: 32px;
+            color: white;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            z-index: 1010;
+        }
+
+            .nav-btn:hover {
+                background-color: rgba(0,0,0,0.8);
+            }
+
+            .nav-btn:disabled {
+                opacity: 0.2;
+                cursor: not-allowed;
+            }
+
+            .nav-btn.prev {
+                left: -60px;
+            }
+
+            .nav-btn.next {
+                right: -60px;
+            }
+
+        .page-counter {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.6);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 14px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .page {
+            flex: 0 0 100%;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 15px;
+            height: 100%;
+        }
+
+        .parts-card {
+            border: 1.5px solid black;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            grid-template-rows: auto 1fr;
+            grid-template-areas:
+                "left-col mid-col right-col"
+                "left-col mid-col right-col";
+            gap: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 10px;
+            overflow: hidden;
+        }
+
+            .parts-card.empty {
+                border: 2px dashed #ccc;
+                background-color: #f9f9f9;
+            }
+
+        .main-barcode, .hanko-barcode {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Helper classes (bisa dihapus jika tidak digunakan di kartu) */
+        .b {
+            border: 1px solid black;
+        }
+
+        .flex-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .flex-row {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .space-between {
+            justify-content: space-between;
+        }
+
+        .flex-grow {
+            flex-grow: 1;
+        }
+
+        .p-1 {
+            padding: 4px;
+        }
+
+        .px-1 {
+            padding-left: 4px;
+            padding-right: 4px;
+        }
+
+        .pt-1 {
+            padding-top: 4px;
+        }
+
+        .card-left-col {
+            grid-area: left-col;
+        }
+
+        .card-mid-col {
+            grid-area: mid-col;
+        }
+
+        .card-right-col {
+            grid-area: right-col;
+        }
+    </style>
+}
+
+@{
+    var items = ViewBag.items as List<NGKBusi.Areas.SCM.Models.SCM_HPMQRGenerator_Items>;
+}
+
+<div class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-gray-800">HPM QR Code Generator</h2>
+    </div>
+
+    @* ... (Bagian form unggah dan status tidak diubah) ... *@
+    <div class="grid grid-cols-1 lg:grid-cols-2 lg:gap-8 mb-10">
+
+        <div class="bg-white rounded-xl shadow-lg p-8 h-full">
+            <div class="flex items-center mb-4">
+                <div class="bg-blue-100 text-blue-600 p-3 rounded-full mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Unggah Data Baru</h3>
+            </div>
+
+            @using (Html.BeginForm("readTxt", "HPMQRCodeGenerator", FormMethod.Post, new { enctype = "multipart/form-data", @class = "space-y-6" }))
+            {
+                @Html.AntiForgeryToken()
+                <div>
+                    <label for="file" class="block mb-2 text-sm font-medium text-gray-700">Pilih File TXT</label>
+                    <input type="file" name="file" id="file"
+                           class="w-full text-sm text-gray-700 border border-gray-300 rounded-lg cursor-pointer
+                                   file:mr-4 file:py-2.5 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold
+                                   file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                           accept=".txt" required />
+                </div>
+
+                <div>
+                    <button type="submit" class="w-full flex justify-center items-center px-4 py-2.5 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-200 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Unggah dan Proses File
+                    </button>
+                </div>
+            }
+        </div>
+
+        <div class="bg-white rounded-xl shadow-lg p-8 mt-8 lg:mt-0 h-full">
+            <div class="flex items-center mb-4">
+                <div class="bg-green-100 text-green-600 p-3 rounded-full mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Status Proses</h3>
+            </div>
+            @if (TempData["StatusMessages"] != null)
+            {
+
+                <p class="text-md text-gray-800 mb-2"> <b>NOTED :</b> Hiraukan gagal di baris 1 dan baris terakhir yang memiliki 1 kata.</p>
+
+                <ul class="space-y-3 text-sm text-gray-700">
+                    @foreach (var message in (List<string>)TempData["StatusMessages"])
+                    {
+                        <li class="flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 mt-0.5 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>@message</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p class="text-sm text-gray-500">Belum ada proses unggah yang dilakukan. Silakan unggah file di samping untuk melihat statusnya di sini.</p>
+            }
+        </div>
+    </div>
+
+    <div class="w-full bg-white rounded-xl shadow-lg p-8">
+        <h3 class="text-xl font-bold text-gray-800 mb-6">Riwayat File QR</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200" id="filter-table">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Nama File TXT
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Tanggal Dibuat
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Aksi
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @if (items != null && items.Any())
+                    {
+                        foreach (var item in items)
+                        {
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900 flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        @item.filename
+                                        <a href="@Url.Action("DownloadFile", "HPMQRCodeGenerator", new { filePath = item.path })"
+                                           class="inline-flex items-center bg-transparent text-gray-300 text-md font-semibold border-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @item.created_at.ToString("dd MMMM yyyy, HH:mm")
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                    <div class="flex items-center justify-center space-x-3">
+                                        <a href="@Url.Action("DetailTxt", "HPMQRCodeGenerator", new {id = item.id})" class="inline-flex items-center pr-4 pl-3 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-lg shadow-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition-all">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Detail
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="3" class="px-6 py-10 text-center text-gray-500">
+                                <div class="flex flex-col items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <p class="font-semibold">Belum ada riwayat file.</p>
+                                    <p class="text-sm">Data akan muncul di sini setelah Anda mengunggah file.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // Inisialisasi DataTable
+    if (document.getElementById("filter-table")) {
+        new simpleDatatables.DataTable("#filter-table");
+    }
+</script>

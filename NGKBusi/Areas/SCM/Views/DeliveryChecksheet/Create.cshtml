@@ -1,0 +1,430 @@
+@model IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_VehicleChecksheet_Item>
+@{
+    ViewBag.Title = "Tambah Checksheet Kendaraan";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    
+    var vehicles = ViewBag.Vehicles as IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_Master_Vehicle>;
+    var destinations = ViewBag.Destinations as IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_Master_Destination>;
+    var items = ViewBag.Items as IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_VehicleChecksheet_Item>;
+    
+    string driverName = ViewBag.DriverName;
+    string driverNIK = ViewBag.DriverNIK;
+    DateTime checkDate = ViewBag.CheckDate;
+}
+
+<!-- Load Tailwind CSS -->
+<script src="@Url.Content("~/Scripts/tailwind/tailwind.js")"></script>
+
+<div class="container mx-auto p-4 md:p-6 font-sans max-w-5xl">
+
+    <!-- Form Container Card -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        
+        <!-- HEADER BLOCK (Matches Physical Form Style) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 border-b border-gray-300 bg-white text-gray-800">
+            <!-- Niterra Logo Block -->
+            <div class="p-6 flex flex-col justify-center border-b md:border-b-0 md:border-r border-gray-300">
+                <span class="text-2xl font-bold tracking-tight text-blue-900 flex items-center">
+                    <img src="~/Images/niterra-logo.jpg" />
+                </span>
+            </div>
+
+            <!-- Form Title Block -->
+            <div class="p-3 md:col-span-2 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-300 text-center overflow-hidden">
+                <h1 class="font-bold uppercase tracking-wide text-gray-900" style="font-size: 24px !important; white-space: nowrap !important;">
+                    Checksheet Kendaraan Operasional
+                </h1>
+            </div>
+
+            <!-- Document Meta Box -->
+            <div class="p-4 text-xs flex flex-col justify-center space-y-1.5 bg-white">
+                <div class="flex justify-between">
+                    <span class="text-gray-400 font-medium">No. Dok:</span>
+                    <span class="font-bold text-gray-800">LOG / WHF / 045</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-250 pt-1">
+                    <span class="text-gray-400 font-medium">Revisi:</span>
+                    <span class="font-bold text-gray-800">00</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-250 pt-1">
+                    <span class="text-gray-400 font-medium">Tanggal:</span>
+                    <span class="font-bold text-gray-800">08-Jun-2020</span>
+                </div>
+            </div>
+        </div>
+
+        @using (Html.BeginForm("Create", "DeliveryChecksheet", FormMethod.Post, new { id = "checksheetForm", @class = "p-6 space-y-6" }))
+        {
+            @Html.AntiForgeryToken()
+            
+            @Html.ValidationSummary(true, "", new { @class = "p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm font-medium mb-4" })
+
+            <!-- VEHICLE METADATA GRID (Mobile Responsive: stacks on mobile) -->
+            <div class="bg-gray-55 p-4 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-4">
+                    <!-- Supplier -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Supplier</label>
+                        <input type="text" value="PT. NITERRA MOBILITY INDONESIA" readonly class="w-full text-sm bg-gray-100 border border-gray-300 text-gray-600 rounded-lg px-3 py-2 outline-none cursor-not-allowed">
+                    </div>
+                    
+                    <!-- Driver Name & NIK -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Driver</label>
+                        <input type="text" value="@driverName" readonly class="w-full text-sm bg-gray-100 border border-gray-300 text-gray-700 rounded-lg px-3 py-2 outline-none font-medium cursor-not-allowed">
+                        <span class="text-xxs text-gray-400 mt-1 block">Tersimpan dengan NIK: @driverNIK</span>
+                    </div>
+
+                    <!-- Check Date -->
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 mb-1">Tanggal</label>
+                        <input type="text" value="@checkDate.ToString("dd-MMM-yyyy")" readonly class="w-full text-sm bg-gray-100 border border-gray-300 text-gray-700 rounded-lg px-3 py-2 outline-none font-medium cursor-not-allowed">
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Nopol Selection -->
+                    <div>
+                        <label for="vehicleId" class="block text-xs font-bold uppercase text-gray-600 mb-1">Nopol (No. Polisi) <span class="text-red-500">*</span></label>
+                        <select id="vehicleId" name="vehicleId" required class="w-full text-sm bg-white border border-gray-300 text-gray-800 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            <option value="">-- Pilih Nopol --</option>
+                            @if (vehicles != null)
+                            {
+                                foreach (var v in vehicles)
+                                {
+                                    <option value="@v.VehicleID">@v.LicensePlate @(!string.IsNullOrEmpty(v.VehicleType) ? $"({v.VehicleType})" : "")</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Tujuan Selection -->
+                    <div>
+                        <label for="destinationId" class="block text-xs font-bold uppercase text-gray-600 mb-1">Tujuan <span class="text-red-500">*</span></label>
+                        <select id="destinationId" name="destinationId" required class="w-full text-sm bg-white border border-gray-300 text-gray-800 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                            <option value="">-- Pilih Tujuan --</option>
+                            @if (destinations != null)
+                            {
+                                foreach (var d in destinations)
+                                {
+                                    <option value="@d.DestinationID">@d.DestinationName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHECKLIST ITEMS TABLE -->
+            <div class="space-y-2">
+                <h3 class="text-md font-bold text-gray-800 tracking-wide border-b border-gray-200 pb-2">Item Pemeriksaan Armada</h3>
+                
+                <!-- Responsive Scroll Container -->
+                <div class="overflow-x-auto border border-gray-300 rounded-xl">
+                    <table class="min-w-full divide-y divide-gray-300 text-sm text-gray-700">
+                        <thead class="bg-gray-100 text-gray-700 font-bold">
+                            <tr>
+                                <th class="px-3 py-3 text-left w-24 border-r border-gray-300">Kategori</th>
+                                <th class="px-2 py-3 text-center w-12 border-r border-gray-300">No.</th>
+                                <th class="px-4 py-3 text-left w-64 border-r border-gray-300">Item Check</th>
+                                <th class="px-4 py-3 text-left border-r border-gray-300">Standard</th>
+                                <th class="px-2 py-3 text-center w-16 border-r border-gray-300">V (OK)</th>
+                                <th class="px-2 py-3 text-center w-16 border-r border-gray-300">X (NG)</th>
+                                <th class="px-2 py-3 text-center w-20">N/A</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white" id="itemsTableBody">
+                            @{
+                                int lastRowSpan = 0;
+                                string currentCategory = "";
+                            }
+                            @if (items != null)
+                            {
+                                for (int idx = 0; idx < items.Count(); idx++)
+                                {
+                                    var item = items.ElementAt(idx);
+                                    bool isNewCategory = (item.Category != currentCategory);
+                                    if (isNewCategory)
+                                    {
+                                        currentCategory = item.Category;
+                                        lastRowSpan = items.Count(i => i.Category == currentCategory);
+                                    }
+
+                                    <tr class="hover:bg-gray-55 transition-colors item-row" data-item-name="@item.ItemName">
+                                        <!-- Category Group Cell -->
+                                        @if (isNewCategory)
+                                        {
+                                            <td rowspan="@lastRowSpan" class="px-3 py-4 text-xs font-bold text-gray-900 border-r border-gray-200 bg-gray-50 align-top uppercase leading-relaxed text-center tracking-wide">
+                                                @item.Category
+                                            </td>
+                                        }
+                                        
+                                        <!-- Item Number -->
+                                        <td class="px-2 py-4 text-center font-semibold text-gray-500 border-r border-gray-200">
+                                            @item.ItemNumber
+                                        </td>
+                                        
+                                        <!-- Item Check Name -->
+                                        <td class="px-4 py-4 font-medium text-gray-900 border-r border-gray-200">
+                                            @item.ItemName
+                                        </td>
+                                        
+                                        <!-- Standard Text -->
+                                        <td class="px-4 py-4 text-xs text-gray-500 border-r border-gray-200 leading-normal">
+                                            @item.Standard
+                                        </td>
+                                        
+                                        <!-- V (OK) Choice -->
+                                        <td class="px-1 py-1 text-center border-r border-gray-200">
+                                            <label class="flex items-center justify-center p-3 cursor-pointer group hover:bg-green-50 rounded-lg transition-colors">
+                                                <input type="radio" name="result_@item.ItemID" value="V" required class="w-5 h-5 text-green-600 border-gray-300 focus:ring-green-500">
+                                            </label>
+                                        </td>
+                                        
+                                        <!-- X (NG) Choice -->
+                                        <td class="px-1 py-1 text-center border-r border-gray-200">
+                                            <label class="flex items-center justify-center p-3 cursor-pointer group hover:bg-red-50 rounded-lg transition-colors">
+                                                <input type="radio" name="result_@item.ItemID" value="X" required class="w-5 h-5 text-red-600 border-gray-300 focus:ring-red-500">
+                                            </label>
+                                        </td>
+                                        
+                                        <!-- N/A Choice -->
+                                        <td class="px-1 py-1 text-center">
+                                            <label class="flex items-center justify-center p-3 cursor-pointer group hover:bg-gray-100 rounded-lg transition-colors">
+                                                <input type="radio" name="result_@item.ItemID" value="NA" required class="w-5 h-5 text-gray-500 border-gray-300 focus:ring-gray-400">
+                                            </label>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- REMARKS INPUT -->
+            <div>
+                <label for="remarks" class="block text-sm font-bold text-gray-700 mb-2">Catatan / Remarks</label>
+                <textarea id="remarks" name="remarks" rows="3" class="w-full text-sm border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" placeholder="Masukkan keterangan tambahan jika ada (misal detail bagian yang NG)..."></textarea>
+            </div>
+
+            <!-- LEGEND AND ACTION BUTTONS -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between border-t border-gray-200 pt-6 gap-4">
+                <div class="text-xs text-gray-400 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <span class="font-bold text-gray-600 mr-2">Keterangan Legend:</span>
+                    <span class="mr-3 font-semibold text-green-700">V = Sesuai Standar (OK)</span>
+                    <span class="mr-3 font-semibold text-red-700">X = Tidak Sesuai Standar (NG)</span>
+                    <span class="font-semibold text-gray-500">N/A = Tidak Berlaku</span>
+                </div>
+                
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <a href="@Url.Action("Index")" class="w-1/2 md:w-auto text-center px-5 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none">
+                        Batal
+                    </a>
+                    <button type="submit" class="w-1/2 md:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm rounded-lg shadow-sm hover:shadow transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Simpan Checksheet
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    // Helper function to turn a standard select into a searchable select
+    function makeSearchableSelect(selectId, placeholder) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // Create wrapper container
+        const wrapper = document.createElement("div");
+        wrapper.className = "relative w-full";
+
+        // Create the trigger button
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "w-full text-left text-sm bg-white border border-gray-300 text-gray-800 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex justify-between items-center shadow-sm cursor-pointer";
+        
+        const selectedOption = select.options[select.selectedIndex];
+        const buttonText = document.createElement("span");
+        buttonText.textContent = (selectedOption && selectedOption.value !== "") ? selectedOption.text : placeholder;
+        buttonText.className = "block truncate";
+        button.appendChild(buttonText);
+
+        // Dropdown arrow icon
+        const arrow = document.createElement("span");
+        arrow.className = "ml-2 text-gray-400 pointer-events-none";
+        arrow.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>`;
+        button.appendChild(arrow);
+
+        wrapper.appendChild(button);
+
+        // Create dropdown menu container
+        const dropdown = document.createElement("div");
+        dropdown.className = "absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg hidden flex flex-col max-h-60 overflow-hidden";
+
+        // Create search input container
+        const searchWrapper = document.createElement("div");
+        searchWrapper.className = "p-2 border-b border-gray-200 bg-gray-50 flex items-center";
+        
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.placeholder = "Cari...";
+        searchInput.className = "w-full text-xs rounded border border-gray-300 px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
+        searchWrapper.appendChild(searchInput);
+        dropdown.appendChild(searchWrapper);
+
+        // Create list container for options
+        const list = document.createElement("ul");
+        list.className = "overflow-y-auto flex-1 max-h-48 text-sm divide-y divide-gray-100";
+        
+        // Populate list from select options
+        const items = [];
+        Array.from(select.options).forEach((opt, idx) => {
+            // Skip placeholder option (empty value)
+            if (opt.value === "") return;
+
+            const li = document.createElement("li");
+            li.className = "px-3 py-2 hover:bg-indigo-50 cursor-pointer text-gray-700 transition-colors flex items-center justify-between";
+            li.textContent = opt.text;
+            li.dataset.value = opt.value;
+            li.dataset.index = idx;
+
+            if (opt.selected) {
+                li.classList.add("bg-indigo-50", "text-indigo-900", "font-semibold");
+            }
+
+            li.addEventListener("click", () => {
+                select.selectedIndex = idx;
+                // Trigger change event
+                select.dispatchEvent(new Event("change"));
+                
+                // Update button text
+                buttonText.textContent = opt.text;
+                
+                // Highlight selected in list
+                list.querySelectorAll("li").forEach(el => {
+                    el.className = "px-3 py-2 hover:bg-indigo-50 cursor-pointer text-gray-700 transition-colors flex items-center justify-between";
+                });
+                li.className = "px-3 py-2 bg-indigo-55 text-indigo-900 font-semibold cursor-pointer flex items-center justify-between";
+
+                // Close dropdown
+                dropdown.classList.add("hidden");
+            });
+
+            list.appendChild(li);
+            items.push({ element: li, text: opt.text.toLowerCase() });
+        });
+
+        // Handle search input filtering
+        searchInput.addEventListener("input", () => {
+            const query = searchInput.value.toLowerCase().trim();
+            let matchCount = 0;
+            items.forEach(item => {
+                if (item.text.includes(query)) {
+                    item.element.style.display = "";
+                    matchCount++;
+                } else {
+                    item.element.style.display = "none";
+                }
+            });
+            
+            // Handle empty search results
+            let noResult = list.querySelector(".no-result-item");
+            if (matchCount === 0) {
+                if (!noResult) {
+                    noResult = document.createElement("div");
+                    noResult.className = "no-result-item px-3 py-3 text-center text-xs text-gray-400 font-medium";
+                    noResult.textContent = "Tidak ada hasil ditemukan";
+                    list.appendChild(noResult);
+                }
+            } else {
+                if (noResult) noResult.remove();
+            }
+        });
+
+        dropdown.appendChild(list);
+        wrapper.appendChild(dropdown);
+
+        // Insert wrapper before the original select
+        select.parentNode.insertBefore(wrapper, select);
+        
+        // Hide original select but keep it in the DOM (for validation/POST)
+        select.style.position = "absolute";
+        select.style.opacity = "0";
+        select.style.pointerEvents = "none";
+        select.style.width = "0";
+        select.style.height = "0";
+        select.style.margin = "0";
+        select.style.padding = "0";
+        select.style.border = "none";
+
+        // Toggle dropdown open/close
+        button.addEventListener("click", (e) => {
+            e.stopPropagation();
+            
+            // Close other dropdowns first
+            document.querySelectorAll("[id^='select-dropdown-']").forEach(d => {
+                if (d !== dropdown) d.classList.add("hidden");
+            });
+
+            const isHidden = dropdown.classList.contains("hidden");
+            if (isHidden) {
+                dropdown.classList.remove("hidden");
+                searchInput.value = "";
+                searchInput.dispatchEvent(new Event("input")); // Reset list display
+                searchInput.focus();
+            } else {
+                dropdown.classList.add("hidden");
+            }
+        });
+
+        // Setup an ID for identification
+        dropdown.id = "select-dropdown-" + selectId;
+
+        // Close dropdown on click outside
+        document.addEventListener("click", (e) => {
+            if (!wrapper.contains(e.target)) {
+                dropdown.classList.add("hidden");
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Initialize searchable select options
+        makeSearchableSelect("vehicleId", "-- Pilih Nopol --");
+        makeSearchableSelect("destinationId", "-- Pilih Tujuan --");
+    });
+
+    document.getElementById("checksheetForm").addEventListener("submit", function (e) {
+        const rows = document.querySelectorAll(".item-row");
+        let allChecked = true;
+        let firstUncheckedRow = null;
+
+        rows.forEach(row => {
+            const radios = row.querySelectorAll("input[type='radio']");
+            let checked = false;
+            radios.forEach(radio => {
+                if (radio.checked) checked = true;
+            });
+
+            if (!checked) {
+                allChecked = false;
+                row.classList.add("bg-red-50", "border-red-300");
+                if (!firstUncheckedRow) {
+                    firstUncheckedRow = row;
+                }
+            } else {
+                row.classList.remove("bg-red-50", "border-red-300");
+            }
+        });
+
+        if (!allChecked) {
+            e.preventDefault();
+            alert("Harap isi semua item pengecekan sebelum menyimpan form.");
+            if (firstUncheckedRow) {
+                firstUncheckedRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
+</script>

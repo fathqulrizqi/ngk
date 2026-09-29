@@ -1,0 +1,855 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+    string eVoucherNumber = ViewBag.EVoucherNumber;
+    var currEVoucher = db.FA_Payment_Request_Non_PO.Where(w => w.Receive_Number == eVoucherNumber).FirstOrDefault();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .dpDelete, .dpDelete i {
+            color: red;
+            cursor: pointer
+        }
+
+            .dpDelete:hover, .dpDelete i:hover {
+                opacity: .95;
+            }
+
+        #tblDirectPayment tbody tr:first-child .dpDelete {
+            display: none;
+        }
+
+        #tblDirectPayment tbody tr:nth-child(0) {
+            vertical-align: middle;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(0) {
+            min-width: 215px;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(2) {
+            min-width: 230px;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(3) {
+            min-width: 190px;
+        }
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+            $(".txtPRDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $("#txtTaxInvoiceDate,.txtAllocTaxInvoiceDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $(".tblPRNPO").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    filter_excludeFilter: {
+                        // zero-based column index
+                        7: 'range',
+                        8: 'range',
+                        10: 'range'
+                    },
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+            $('.tablesorter').delegate('.toggle', 'click', function () {
+
+                $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+
+                return false;
+            });
+
+            $("#selWHTCode").change(function () {
+                if ($(this).val() == "") {
+                    $(".divWHTAmount").hide("blind");
+                    $("#txtWHTAmount").val("");
+                    $("#txtWHTAmount").prop("required", false);
+                } else {
+                    $("#txtWHTAmount").prop("required", true);
+                    $(".divWHTAmount").show("blind");
+                }
+            });
+
+            $(".rbPaymentType").change(function () {
+                $(".divDirectPayment").show("blind");
+                $(".divSettlementFor").hide();
+                if ($(this).val() == "Pre-Payment") {
+                    $(".divDirectPayment").hide("blind");
+                    $("#tblDirectPayment tbody").find("input").prop("required", false);
+                    $("#tblDirectPayment tbody").find("textarea").prop("required", false);
+                    $("#tblDirectPayment tbody").find(".select2").prop("required", false);
+                    $("#selSettlementFor").prop("required", false);
+                } else {
+                    $(".divDirectPayment").show("blind");
+                    $("#tblDirectPayment tbody").find("textarea").prop("required", true);
+                    $("#tblDirectPayment tbody").find("input:not(.txtAllocTaxInvoiceDate):not(.txtAllocTaxInvoiceNumber):not(.txtAllocTaxInvoiceNumber17Digit)").prop("required", true);
+                    $("#tblDirectPayment tbody").find(".select2").prop("required", true);
+                    if ($(this).val() == "Settlement") {
+                        $(".divSettlementFor").show();
+                        //$("#selSettlementFor").prop("required", true);
+                    }
+                }
+            });
+
+            $("#selSettlementFor").change(function () {
+                var currency = $(this).find(':selected').data("currency");
+                var thirdparty = $(this).find(':selected').data("thirdparty");
+                var amount = $(this).find(':selected').data("amount");
+                $("#selVendor").val(thirdparty).change();
+                $("#selCurrency").val(currency);
+                $("#txtInvoiceAmount").val(accounting.formatNumber(amount, 2));
+            });
+            $("#selVATRate").change(function () {
+                if ($(this).val() == "0") {
+                    $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").hide("blind");
+                    $("#txtTaxInvoiceNumber,#txtTaxInvoiceNumber17Digit,#txtTaxInvoiceDate").val("");
+                    //$("#txtTaxInvoiceNumber,#txtTaxInvoiceDate").prop("required", false);
+                } else {
+                    //$("#txtTaxInvoiceNumber,#txtTaxInvoiceDate").prop("required", true);
+                    $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").show("blind");
+                }
+            });
+
+            $(document).on("click", ".dpDelete", function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    $(this).closest("tr").remove();
+                    totalAlloc();
+                }
+            });
+
+            function totalAlloc() {
+                var totalAllocation = 0;
+                $(".txtAllocationAmount").each(function () {
+                    totalAllocation += accounting.unformat($(this).val()) || 0;
+                });
+                $("#tdTotalAllocation").text(accounting.formatNumber(totalAllocation, 2));
+            }
+
+            $(document).on("keyup", ".txtAllocationAmount", function () {
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+                $(this).parent().find(".txtAllocationAmountHolder").val(accounting.unformat(input));
+                totalAlloc();
+            });
+
+            $("#txtInvoiceAmount").on("keyup", function (event) {
+                // When user select text in the document, also abort.
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+            });
+            $("#txtTaxInvoiceNumber").inputmask("999.999-99.99999999");
+            $("#txtTaxInvoiceNumber17Digit").inputmask("99999999999999999");
+
+            $(document).on("change", ".selSectionTo", function () {
+                var ctr = $(this);
+                var currTR = $(this).closest("tr");
+                currTR.find(".selBudgetNumber").val("");
+                currTR.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                currTR.find(".selBudgetNumber option[data-dept-to ='ALL']").prop("disabled", false);
+                currTR.find(".selBudgetNumber option[data-dept-to ='" + ctr.find(":selected").data("dept-code") + "']").prop("disabled", false);
+                currTR.find(".selBudgetNumber").select2();
+            });
+
+            $(document).on("change", ".selBudgetNumber", function () {
+                var coa = $(this).find(':selected').data("coa-code");
+                if ($(this).val() != "" || $(this).val() != "UNB|Unbudgeted" || $(this).val() != undefined) {
+                    $(this).closest("tr").find(".selCOA").val(coa).change();
+                }
+            });
+            var newRowIndex = 0;
+            getNonPOData();
+            function getNonPOData() {
+                $.ajax({
+                    url: "/NGKBusi/FA/PaymentRequest/NonPOEditData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iNonPOID: $("#hfNonPOID").val()
+                    }, success: function (data) {
+                        console.log(data[0])
+                        $("#selSettlementFor").val(data[0].Settlement_For).change();
+                        $("#txtEntryDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Entry_Date.substr(6)))));
+                        $("#formNonPO").attr("action", $("#formNonPO").data("edit"));
+                        $(".divReceiveNumber").show();
+                        $("#txtRecNumber").val(data[0].Receive_Number);
+                        $("#selCurrency").val(data[0].Currency_Code);
+                        $("#selSection").val(data[0].Section_From_Code + "|" + data[0].Section_From_Name).change();
+                        $("#txtInvoiceNumber").val(data[0].Invoice_Number);
+                        $("#selVendor").val(data[0].Third_Party_Id + "|" + data[0].Third_Party_Name).change();
+                        $("#txtInvoiceAmount").val(accounting.formatNumber(data[0].Amount_of_Invoice, 2));
+                        $("#txtDescription").val(data[0].Description);
+                        $("#txtDueDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Due_Date.substr(6)))));
+                        $(".rbPaymentType[value='" + data[0].Payment_Type + "']").prop("checked", true).change();
+                        $(".rbPaymentMethod[value='" + data[0].Payment_Method + "']").prop("checked", true);
+                        $("#selVATRate").val(data[0].VAT).change();
+                        if (data[0].Tax_Date != null) {
+                            $("#txtTaxInvoiceDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Tax_Date.substr(6)))));
+                        } else {
+                            $("#txtTaxInvoiceDate").val("");
+                        }
+                        $("#txtTaxInvoiceNumber").val(data[0].Tax_Number);
+                        $("#txtTaxInvoiceNumber17Digit").val(data[0].Tax_Number_17);
+                        $("#tblDirectPayment tbody tr:not(:first)").remove();
+                        var subRow = $("#tblDirectPayment tbody tr:first()");
+                        var newRow = subRow.clone();
+
+                        $(data[0].Non_PO_Sub).each(function (i, el) {
+                            newRowIndex++;
+                            var currRow = subRow;
+                            if (i != 0) {
+                                currRow = newRow.clone();
+                            }
+                            currRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + i);
+                            currRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + i);
+                            currRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + i);
+                            currRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + i);
+                            currRow.find(".txtAllocTaxInvoiceDate").removeClass('hasDatepicker').datepicker({ dateFormat: 'mm/dd/yy' });
+                            currRow.find(".txtAllocTaxInvoiceNumber").inputmask("999.999-99.99999999");
+                            currRow.find(".txtAllocTaxInvoiceNumber17Digit").inputmask("99999999999999999");
+                            currRow.find("input").val("");
+                            currRow.find("textarea").val("");
+                            currRow.find(".select2-container").remove();
+                            currRow.find(".selSectionTo").val(el.Section_To_Code + "|" + el.Section_To_Name).change();
+                            currRow.find(".txtAllocationAmount").val(accounting.formatNumber(el.Allocation_Amount, 2));
+                            currRow.find(".txtAllocationAmountHolder").val(el.Allocation_Amount);
+                            currRow.find(".selCOA").val(el.COA_Code + "|" + el.COA_Name).change();
+                            currRow.find(".selProcate").val(el.Procate_Code + "|" + el.Procate_Name).change();
+                            currRow.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='ALL']").prop("disabled", false);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='" + el.Section_To_Code + "']").prop("disabled", false);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='" + (el.Budget_Number == "UNB" ? "ALL" : el.Section_To_Code) + "'][value='" + el.Budget_Number + "|" + el.Budget_Desc.replace(/(['])/g, "\\$1") + "']").prop("selected", true);
+                            currRow.find(".txtAllocationDesc").val(el.Description);
+                            currRow.find(".selAllocVATRate").val(el.VAT || "");
+                            if (el.Tax_Date) {
+                                currRow.find(".txtAllocTaxInvoiceDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(el.Tax_Date.substr(6)))));
+                            }
+                            currRow.find(".txtAllocTaxInvoiceNumber").val(el.Tax_Number);
+                            currRow.find(".txtAllocTaxInvoiceNumber17Digit").val(el.Tax_Number_17);
+                            if (i != 0) {
+                                $("#tblDirectPayment tbody").append(currRow);
+                            }
+                            if (currRow.find(".selCOA").val() == "1851104|Prepaid Tax - VAT IN") {
+                                currRow.find(".selAllocVATRate").show();
+                                currRow.find(".txtAllocTaxInvoiceDate").show();
+                                currRow.find(".txtAllocTaxInvoiceNumber").show();
+                                currRow.find(".txtAllocTaxInvoiceNumber17Digit").show();
+                                currRow.find(".selAllocVATRate").prop("required", true);
+                            }
+
+                            currRow.find(".select2").select2();
+                        });
+                        totalAlloc();
+                        $("#h1Loading").hide("blind");
+                        $("#divNonPOForm").show("blind");
+                        $("html, body").animate({ scrollTop: 0 }, "slow");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            };
+
+        });
+    </script>
+}
+<h2>
+    E-Voucher - Non PO
+</h2>
+<hr />
+@if (ViewBag.ErrorMessage != null)
+{
+    <h5 style="color:indianred">
+        @ViewBag.ErrorMessage
+    </h5>
+}
+<h1 id="h1Loading">Loading Data Please Wait...</h1>
+<div id="divNonPOForm" style="display:none;">
+    <div class="form-group row">
+        <label for="entryDate" class="control-label col-3 text-right font-weight-bold">Entry Date:</label>
+        <div class="col-9">
+            <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Entry Date" name="iEntryDate" id="txtEntryDate" value="@(DateTime.Now.ToString("MM/dd/yyyy"))" required disabled>
+        </div>
+    </div>
+    <div class="form-group row divReceiveNumber" style="display:none;">
+        <label for="receiveNumber" class="control-label col-3 text-right font-weight-bold">E-Voucher :</label>
+        <div class="col-9">
+            <input type="text" class="form-control txtRecNumber" placeholder="Receive Number" name="iReceiveNumber" id="txtRecNumber" disabled>
+            <input type="hidden" id="hfNonPOID" name="iNonPOID" value="@(currEVoucher?.id)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Section From:</label>
+        <div class="col-9">
+            <select id="selSection" name="iSection" class="form-control" required disabled>
+                <option value="">-Section-</option>
+                @foreach (var item in ViewBag.Section)
+                {
+                    <option value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                }
+            </select>
+            <select id="selSectionFrom" name="iSectionFrom" class="form-control" style="display:none;" disabled>
+                <option value="">-Section-</option>
+                @foreach (var item in ViewBag.Section)
+                {
+                    <option value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="invoiceNumber" class="control-label col-3 text-right font-weight-bold">Invoice Number:</label>
+        <div class="col-9">
+            <input type="text" class="form-control" placeholder="Invoice Number" name="iInvoiceNumber" id="txtInvoiceNumber" required disabled>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Third Party:</label>
+        <div class="col-9">
+            <select id="selVendor" name="iVendor" class="form-control select2" style="width:100%;" required disabled>
+                <option value="">-Third Party-</option>
+                @foreach (var item in ViewBag.ThirdParty)
+                {
+                    <option value="@(item.ACCOUNTNUM + "|" + item.Name)">@(item.ACCOUNTNUM + " | " + item.Name)</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Currency:</label>
+        <div class="col-9">
+            <select id="selCurrency" name="iCurrency" class="form-control" required disabled>
+                <option value="">-Currency-</option>
+                @foreach (var item in ViewBag.Currency)
+                {
+                    <option value="@(item.CURRENCY_CODE)">@(item.CURRENCY_CODE + " | " + item.TXT)</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Amount of Invoice:</label>
+        <div class="col-9">
+            <input type="text" class="form-control" placeholder="Amount of Invoice" name="iInvoiceAmount" id="txtInvoiceAmount" required disabled>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Description:</label>
+        <div class="col-9">
+            <textarea class="form-control" placeholder="Description" name="iDescription" id="txtDescription" maxlength="60" rows="2" required disabled></textarea>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="DueDate" class="control-label col-3 text-right font-weight-bold">Due Date:</label>
+        <div class="col-9">
+            <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Due Date" name="iEntryDueDate" id="txtDueDate" required disabled>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Payment Type:</label>
+        <div class="col-9">
+            <div class="form-check-inline">
+                <label class="form-check-label">
+                    <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Pre-Payment" required disabled>Pre Payment
+                </label>
+            </div>
+            <div class="form-check-inline">
+                <label class="form-check-label">
+                    <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Direct-Payment" required disabled>Direct Payment
+                </label>
+            </div>
+            <div class="form-check-inline">
+                <label class="form-check-label">
+                    <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Settlement" required disabled>Settlement
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row divSettlementFor" style="display:none;">
+        <label for="receiveNumber" class="control-label col-3 text-right font-weight-bold">Settlement For:</label>
+        <div class="col-9">
+            <select id="selSettlementFor" name="iSettlementFor" class="form-control select2" style="width:100%;" disabled>
+                <option value="">-Settlement-</option>
+                @foreach (var item in ViewBag.SettlementList)
+                {
+                    <option value="@(item.Receive_Number)" data-thirdparty="@(item.Third_Party_Id + "|" + item.Third_Party_Name)" data-currency="@(item.Currency_Code)" data-amount="@(item.Amount_of_Invoice)">@(item.Receive_Number + "|" + item.Description)</option>
+                }
+            </select>
+        </div>
+    </div>
+    <div class="form-group row divDirectPayment" style="display:none;overflow:auto;">
+        <div class="col-12">
+            <table id="tblDirectPayment" class="table">
+                <thead>
+                    <tr>
+                        <th>Section To</th>
+                        <th>Allocation Amount</th>
+                        <th>Chart of Account</th>
+                        <th>Procate</th>
+                        <th>Budget Number</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <select name="iSectionTo[]" class="form-control select2 selSectionTo" style="width:100%" required disabled>
+                                <option value="">-Section-</option>
+                                @foreach (var item in ViewBag.Section)
+                                {
+                                    <option data-dept-code="@(item.Section_Code)" value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                                }
+                            </select>
+                        </td>
+                        <td style="width:200px;">
+                            <input type="text" class="form-control txtAllocationAmount" placeholder="Allocation Amount" required disabled>
+                            <input type="text" class="form-control d-none txtAllocationAmountHolder" placeholder="Allocation Amount" name="iAllocationAmount[]" disabled>
+                        </td>
+                        <td>
+                            <select name="iCOA[]" class="form-control select2 selCOA" style="width:100%" required disabled>
+                                <option value="">-COA-</option>
+                                @foreach (var item in ViewBag.COA)
+                                {
+                                    <option value="@(item.MAINACCOUNTID + "|" + item.NAME)">@(item.MAINACCOUNTID + " | " + item.NAME)</option>
+                                }
+                            </select>
+                            <select name="iAllocVATRate[]" class="form-control selAllocVATRate" style="display:none;" disabled>
+                                <option value="">NON VAT</option>
+                                <option value="1">VAT 1%</option>
+                                <option value="1.1">VAT 1.1%</option>
+                                <option value="1.2">VAT 1.2%</option>
+                                <option value="10">VAT 10%</option>
+                                <option value="11">VAT 11%</option>
+                                <option value="12">VAT 12%</option>
+                            </select>
+                            <input type="text" class="form-control txtAllocTaxInvoiceDate" placeholder="Tax Invoice Date" name="iAllocTaxInvoiceDate[]" style="display:none;" autocomplete="off" disabled>
+                            <input type="text" class="form-control txtAllocTaxInvoiceNumber" placeholder="Tax Invoice Number" name="iAllocTaxInvoiceNumber[]" style="display:none;" disabled>
+                            <input type="text" class="form-control txtAllocTaxInvoiceNumber17Digit" placeholder="Tax Invoice Number 17 Digit" name="iAllocTaxInvoiceNumber17Digit[]" style="display:none;" disabled>
+                        </td>
+                        <td>
+                            <select name="iProcate[]" class="form-control select2 selProcate" style="width:100%" required disabled>
+                                <option value="">-Procate-</option>
+                                @foreach (var item in ViewBag.Procate)
+                                {
+                                    <option value="@(item.Procate_Code + "|" + item.Procate_Name)">@(item.Procate_Code + " | " + item.Procate_Name)</option>
+                                }
+                            </select>
+                        </td>
+                        <td>
+                            <select name="iBudgetNumber[]" class="form-control select2 selBudgetNumber" style="width:100%" required disabled>
+                                <option value="">-Bgt. Number-</option>
+                                @foreach (var item in ViewBag.Budget)
+                                {
+                                    <option data-dept-to="@( item.Section_To_Code )" data-coa-code="@(item.COA_Code + "|" + item.COA_Name)" disabled value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                }
+                                <option data-dept-to="ALL" disabled value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                <option data-dept-to="B3130" value="@("Rebate|Accrued Expense")" data-coa-code="@("3195101" + "|" + "Accrued Expense")">@("Rebate | Accrued Expense")</option>
+                            </select>
+                        </td>
+                        <td style="min-width:350px;">
+                            <textarea class="form-control txtAllocationDesc" maxlength="60" rows="1" placeholder="Description" name="iAllocationDesc[]" required disabled></textarea>
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td>Total Allocation</td>
+                        <td id="tdTotalAllocation"></td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">VAT Rate:</label>
+        <div class="col-9">
+            <select id="selVATRate" name="iVATRate" class="form-control" required disabled>
+                <option value="0">NON VAT</option>
+                <option value="1">VAT 1%</option>
+                <option value="1.1">VAT 1.1%</option>
+                <option value="1.2">VAT 1.2%</option>
+                <option value="10">VAT 10%</option>
+                <option value="11">VAT 11%</option>
+                <option value="12">VAT 12%</option>
+            </select>
+            <div class="form-group row divTaxInvoiceDate mt-2" style="display:none;">
+                <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Date:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Tax Invoice Date" name="iTaxInvoiceDate" id="txtTaxInvoiceDate" autocomplete="off" disabled>
+                </div>
+            </div>
+            <div class="form-group row divTaxInvoiceNumber mt-2" style="display:none;">
+                <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Tax Invoice Number" name="iTaxInvoiceNumber" id="txtTaxInvoiceNumber" disabled>
+                </div>
+            </div>
+            <div class="form-group row divTaxInvoiceNumber17Digit mt-2" style="display:none;">
+                <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number 17 Digit:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Tax Invoice Number 17 Digit" name="iTaxInvoiceNumber17Digit" id="txtTaxInvoiceNumber17Digit" disabled>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="control-label col-3 text-right font-weight-bold">Payment Method:</label>
+        <div class="col-9">
+            <div class="form-check-inline">
+                <label class="form-check-label">
+                    <input type="radio" class="form-check-input rbPaymentMethod" name="iPaymentMethod" value="Cash" required disabled>Cash
+                </label>
+            </div>
+            <div class="form-check-inline">
+                <label class="form-check-label">
+                    <input type="radio" class="form-check-input rbPaymentMethod" name="iPaymentMethod" value="Transfer" required disabled>Transfer
+                </label>
+            </div>
+        </div>
+    </div>
+    <hr />
+</div>
+
+<div class="modal fade" id="calculateModal" tabindex="-1" role="dialog" aria-labelledby="calculateModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Calculate Total</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h5>We're sorry, your <span style="color:red;">Total Amount</span> and <span style="color:red;">Amount of Invoice</span> is <span style="color:red;">not match!!</span></h5>
+                <br /><br />
+                <label class="font-weight-bold">Allocation Amount: </label> <span class="spanAllocation">0</span><br />
+                <label class="font-weight-bold">VAT (<span class="spanVAT">0</span>%) : </label> <span class="spanVATAmount">0</span><br />
+                <hr />
+                <label class="font-weight-bold">Total Amount : </label> <span class="spanGrandTotal">0</span>
+                <hr />
+                <label class="font-weight-bold">Amount of Invoice : </label> <span class="spanInvoiceAmount">0</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="tblPRNPO table table-striped">
+    <thead>
+        <tr>
+            <th>
+                @if (ViewBag.currFilterStatus == "Open")
+                {
+                    <input type="checkbox" class="cbCheckSignAll" />
+                }
+                Receive Number
+            </th>
+            <th>Entry Date</th>
+            <th>Section From</th>
+            <th>Third Party</th>
+            <th class="filter-select" data-placeholder="Select">Currency</th>
+            <th>Amount of Invoice</th>
+            <th>Due Date</th>
+            <th class="filter-select" data-placeholder="Select">Payment Method</th>
+            <th class="filter-select" data-placeholder="Select">Payment Type</th>
+            <th>Created By</th>
+            <th class="filter-select" data-placeholder="Select">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @{ var idx = 0;}
+        @foreach (var item in ViewBag.NonPOList)
+        {
+            idx++;
+            var currID = (int)item.id;
+            var nonPOSub = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList().Sum(s => s.Allocation_Amount);
+            <tr>
+                <td class="text-nowrap">
+                    @(item.Receive_Number)
+                </td>
+                <td class="text-nowrap">@( item.Entry_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@( "(" + item.Section_From_Code + ") " + item.Section_From_Name)</td>
+                <td>@( "(" + item.Third_Party_Id + ") " + item.Third_Party_Name)</td>
+                <td class="text-center">@(item.Currency_Code)</td>
+                @if (item.Payment_Type == "Pre-Payment")
+                {
+                    <td class="text-right">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                }
+                else
+                {
+                    <td class="text-right">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                }
+                <td class="text-nowrap">@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Payment_Method)</td>
+                <td>@(item.Payment_Type)</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @(PaymentRequestController.ApprovalStatus(item.Approval, item.Approval_Sub, item.Is_Reject, item.Amount_of_Invoice))
+                </td>
+            </tr>
+
+            <tr class="tablesorter-childRow">
+                <td colspan="12">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Invoice</th>
+                                <th>Bgt. Number</th>
+                                <th>Description</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var subItem in nonPOSub)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + subItem.COA_Name + "'>" + subItem.COA_Code.Trim() + "</span>" + "--" + "<span title='" + subItem.Procate_Name + "'>" + subItem.Procate_Code + "</span>" + "-" + "<span title='" + subItem.Section_To_Name + "'>" + subItem.Section_To_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("(" + subItem.Budget_Number + ")" + subItem.Budget_Desc)</td>
+                                    <td>@(subItem.Description)</td>
+                                    <td class="tdDebit">@(subItem.Allocation_Amount.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.Payment_Type == "Pre-Payment")
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@(item.Description)</td>
+                                    <td class="tdDebit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            else if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice != TotalAllocation)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    @if (item.Amount_of_Invoice > TotalAllocation)
+                                    {
+                                        <td>@("AR Other")</td>
+                                        <td class="tdDebit">@((item.Amount_of_Invoice - TotalAllocation).ToString("N2"))</td>
+                                        <td class="tdCredit">0</td>
+                                    }
+                                    else
+                                    {
+                                        <td>@("AP Other")</td>
+                                        <td class="tdDebit">0</td>
+                                        <td class="tdCredit">@((TotalAllocation - item.Amount_of_Invoice).ToString("N2"))</td>
+                                    }
+                                </tr>
+                            }
+
+                            @if (item.VAT > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Tax - VAT IN'>1851104</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("Prepaid Tax - VAT IN")</td>
+                                    @if (item.Payment_Type == "Pre-Payment")
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.WHT_Amount > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.WHT_COA_Name + "'>" + item.WHT_COA_Code + "</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@(item.WHT_COA_Name)</td>
+                                    <td class="tdDebit">@(0)</td>
+                                    <td class="tdCredit">@(item.WHT_Amount.ToString("N2"))</td>
+                                </tr>
+                            }
+
+                            <tr>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                }
+                                else
+                                {
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                }
+                                <td>@(item.Invoice_Number)</td>
+                                <td>@("-")</td>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>Prepaid Expense</td>
+                                }
+                                else
+                                {
+                                    <td>@(item.Description)</td>
+                                }
+                                <td class="tdDebit">@(0)</td>
+                                @if (item.Payment_Type == "Pre-Payment")
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        <td class="tdCredit">@(((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)) - item.WHT_Amount).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                }
+                                else
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        <td class="tdCredit">@((item.Amount_of_Invoice - item.WHT_Amount).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    }
+                                }
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th>Total</th>
+                                <th class="thDebitTotal">Debit</th>
+                                <th class="thCreditTotal">Credit</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="12" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>

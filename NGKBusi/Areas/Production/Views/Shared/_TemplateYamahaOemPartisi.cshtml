@@ -1,0 +1,112 @@
+﻿@{
+    var data = ViewBag.Data as NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History;
+    var details = ViewBag.Details as List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail>();
+
+    bool isDetailEmpty = details.Count == 0;
+    string displayFrontQr = ViewBag.DisplayFrontQr as string;
+    var type_cust = data.Part_No.Split(' ', '-')[0];
+
+    // PERBAIKAN: Karena layout menggunakan col-6 dan h-50% (berarti 4 item per halaman)
+    // Maka totalChunks dan pembagian data harus dibagi 4 (bukan 9)
+    int totalChunks = isDetailEmpty ? 1 : (int)Math.Ceiling(details.Count / 4.0);
+}
+
+<style>
+    .ymh-border {
+        border: 1px solid black !important;
+    }
+</style>
+
+@for (int c = 0; c < totalChunks; c++)
+{
+    var chunkDetails = isDetailEmpty ? null : details.Skip(c * 4).Take(4).ToList();
+
+    <!-- PAGE DEPAN -->
+    <div class="page bg-white border shadow-lg flex flex-col m-0 @(c > 0 ? "page-break" : "")" style="width: 29.7cm; height: 21cm; padding: 0.5cm 1.5cm; box-sizing: border-box;">
+        <div class="flex flex-wrap h-[100%] border" style="border-color: black !important;">
+            @for (int i = 0; i < 4; i++)
+            {
+                bool shouldRenderBox = isDetailEmpty || (chunkDetails != null && i < chunkDetails.Count);
+                var currentDetail = shouldRenderBox && chunkDetails != null ? chunkDetails[i] : null;
+
+                <div class="col-6 h-[50%] border p-2" style="border-color: black !important; box-sizing: border-box;">
+                    @if (shouldRenderBox)
+                    {
+                        <div class="py-0 pr-0 relative h-100 w-100">
+                            <table class="w-100 h-100" style="border-collapse: collapse; border-spacing: 0 !important; width: 100%; height: 100%;">
+                                <colgroup>
+                                    <col style="width: 32%;">
+                                    <col style="width: 1%;">
+                                    <col style="width: 40%;">
+                                    <col style="width: 27%;">
+                                </colgroup>
+                                <!-- Penyesuaian Font Size di tbody -->
+                                <tbody class="font-bold align-middle" style="font-size: 11px; font-family: Arial, sans-serif;">
+                                    <tr style="max-height:0.8cm">
+                                        <td rowspan="4" class="ymh-border border-black pb-1 text-center align-middle" style="border-left:none !important; border-top:none !important;">
+                                            @if (currentDetail != null)
+                                            {
+                                                <div class="qrcode-partisi-container flex justify-center items-center w-full h-full" data-qr-text="@currentDetail.QR_String"></div>
+                                            }
+                                        </td>
+                                        <td colspan="3" class="ymh-border border-black text-center" style="font-size: 22px; font-weight: bolder;">PART TAG</td>
+                                    </tr>
+                                    <tr style="max-height:1cm">
+                                        <td colspan="3" class="ymh-border border-black text-center" style="font-size: 14px; font-weight: 10;">PT. NITERRA MOBILITY INDONESIA</td>
+                                    </tr>
+                                    <tr style="max-height:0.4cm">
+                                        <td colspan="3" class="ymh-border border-black pl-1" style="font-size: 12px; font-weight: 10; border-bottom: none !important; margin: 0 !important; height: 0.4cm ;">PART NAME</td>
+                                    </tr>
+                                    <tr style="max-height: 1.2cm;">
+                                        <td colspan="3" class="ymh-border border-black text-center" style="font-size: 22px; font-weight: 100; border-top:none !important; padding: 0; margin: 0; ">@data.Part_Name</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10; line-height: 1;border-right: none !important">NGK TYPE</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 22px; font-weight: bolder; line-height: 1; border-left: none !important;"><strong>@data.Product_name</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1;border-right: none !important">PART NO.</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 22px; font-weight: bolder; line-height: 1; border-left: none !important;"><strong>@data.Part_No</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1;border-right: none !important">QUANTITY</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 16px; font-weight: 10; line-height: 1; border-left: none !important;">@data.Qty Pcs</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1;border-right: none !important">No. Lot Prod.</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 16px; font-weight: 10; line-height: 1; border-left: none !important;">@data.Lot_No</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1;border-right: none !important">Tgl re-packing</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 16px; font-weight: 10; line-height: 1; border-left: none !important;">@(data.Tgl_Inspection.HasValue ? data.Tgl_Inspection.Value.ToString("dd-MMM-yyyy") : "")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1;border-right: none !important">Opr. Packing</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10; line-height: 1; border-left: none !important;">@data.Operator_Packing</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10;line-height: 1; border-right: none !important">Inspector</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important">:</td>
+                                        <td colspan="2" class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 10; line-height: 1; border-left: none !important;">@data.Inspector</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="ymh-border border-black p-1" style="font-size: 18px; font-weight: 100; line-height: 1; border-right: none !important">B/N</td>
+                                        <td class="ymh-border border-black p-1" style="border-left:none !important; border-right:none !important; line-height: 1;">:</td>
+                                        <td class="ymh-border border-black p-1" style="font-size: 22px; font-weight: bolder; line-height: 1; border-left: none !important; border-right: none !important;"><strong>@(currentDetail != null ? currentDetail.QR_Header.ToString().Substring(1) + currentDetail.Sequence_No.ToString() : "")|</strong></td>
+                                        <td class="ymh-border border-black text-center font-bold" style="font-size: 22px; font-weight: bolder; line-height: 1; border-left:none !important">OK</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}

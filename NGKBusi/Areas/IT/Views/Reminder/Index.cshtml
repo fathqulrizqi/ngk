@@ -1,0 +1,123 @@
+﻿
+@{
+    ViewBag.Title = "Reminder List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+
+    <style>
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card {
+            text-align: left;
+            box-shadow: 0 5px 10px rgba(0,0,0,.2);
+        }
+
+            .card img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 50%;
+            }
+
+            .card .card-header {
+                text-align: center;
+                color: white;
+                font-weight: bold;
+                font-size: medium;
+                box-shadow: inherit;
+            }
+
+        #txtQuantity-error {
+            font-size: 18px;
+        }   
+    </style>
+}
+
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+
+@*<h2>Reminder List</h2>*@
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary rounded-top rounded-5">
+                Reminder List
+            </div>
+
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-12">
+                        <a href="@Url.Action("AddReminder", "Reminder", new { Area = "IT" })" class="btn btn-primary"><i class="fa fa-plus"></i> | Add New</a>
+                        <a href="@Url.Action("Home", "Reminder", new { Area = "IT" })" class="btn btn-success"><i class="fa fa-home"></i> | Dashboard</a>
+                    </div>
+                </div>
+                <table id="fresh-table"
+                       data-ajax="ajaxRequest"
+                       data-query-params="queryParams"
+                       data-filter-control="true"
+                       data-id-table="advancedTable"
+                       data-pagination="true"
+                       data-pagination-v-align="both"
+                       data-toolbar="#toolbar"
+                       data-show-columns-toggle-all="true"
+                       data-page-list="[10, 25, 50, 100, all]"
+                       class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th data-width="100" data-field="No" data-sortable="true">No</th>
+                            <th data-field="ReminderTitle" data-sortable="true" data-filter-control="input">Title</th>
+                            <th data-field="DueDate" data-sortable="true" data-filter-control="input">Due Date</th>
+                            <th data-field="Module" data-sortable="true" data-filter-control="input">Module</th>
+                            <th data-field="Type" data-sortable="true" data-filter-control="input">Type</th>
+                            <th data-field="Thirdparty" data-sortable="true" data-filter-control="select">Third Party</th>
+                            <th data-field="Description" data-sortable="true" data-filter-control="select"> Description </th>
+                            <th data-field="NextNotif" data-sortable="true" data-filter-control="input">Next Notification</th>
+                            <th data-field="ActionButton">Action</th>
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        $('#fresh-table').bootstrapTable({
+            exportDataType: "all",
+            exportTypes: ['excel', 'pdf'],
+            buttonsClass: 'primary'
+        })
+    });
+
+    function queryParams(params) {
+        params.switch = "";//   <<<----------catch like this
+        return params;
+    }
+
+    function ajaxRequest(params) {
+        //var RequestNo = "@(ViewBag.RequestNo)";
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("GetReminderList", "Reminder", new { area = "IT" })",
+            dataType: 'json',
+            data: '',
+            success: function (items) {
+                //console.log(items.notReady);
+                params.success({
+                    rows: items
+                }, null);
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+</script>

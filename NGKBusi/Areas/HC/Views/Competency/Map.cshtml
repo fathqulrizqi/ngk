@@ -1,0 +1,159 @@
+﻿
+@{
+    ViewBag.Title = "Competency Map";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+
+    <link href="@Url.Content("~/Content/handsontable/handsontable.full.min.css")" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/HC/Competency/Map.css")" rel="stylesheet" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/handsontable/handsontable.full.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/HC/Competency/Map.js")"></script>
+}
+
+
+@if (Request["TitleName"] == null)
+{
+    <h2>
+        Competency Map
+        <a href="@Url.Action("result", "Competency", new { area = "HC" })" class="btn btn-success">Go to Competency Result List</a>
+    </h2>
+    <hr />
+    <table class="table table-bordered table-striped tblCMFormList">
+        <thead>
+            <tr>
+                <th class="filter-select" data-placeholder="Select">Division</th>
+                <th class="filter-select" data-placeholder="Select">Department</th>
+                <th class="filter-select" data-placeholder="Select">Section</th>
+                <th class="filter-select" data-placeholder="Select">CostName</th>
+                <th class="filter-select" data-placeholder="Select">Job Title</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in ViewBag.DeptList)
+            {
+                <tr>
+                    <td>@data.DivisionName</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    <td>@data.CostName</td>
+                    <td>
+                        <a href="@Url.Action("Map", "Competency", new { area = "HC",Division = data.DivisionName,Department = data.DeptName,Section=data.SectionName,CostName=data.CostName,TitleName=data.TitleName })">
+                            @data.TitleName.Trim()
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="6" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <a href="@Url.Action("map", "Competency", new { area = "HC" })" class="btn btn-success mb-2">Back to Competency Map List</a>
+
+    <div id="divKPIFormWrapper">
+        <table id="tblHeader" border="1" style="width:100%;">
+            <tr>
+                <td rowspan="4" class="text-center" style="width:235px">
+                    <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                </td>
+                <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h4>COMPETENCY MAP</h4></td>
+                <td style="width:150px">No. Dok</td>
+                <td style="width:150px">PMLK3-HRD-03-/L2</td>
+            </tr>
+            <tr>
+                <td>Revisi</td>
+                <td>01</td>
+            </tr>
+            <tr>
+                <td>Tanggal</td>
+                <td>28 Juni 2023</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td>1 of 1</td>
+            </tr>
+        </table>
+        <div class="container-fluid">
+            <div class="row p-3">
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Div.: </label>
+                        <div class="col-10 lblDivision" data-division="@(Request["Division"])">
+                            @(Request["Division"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Dept.: </label>
+                        <div class="col-10 lblDepartment" data-department="@(Request["Department"])">
+                            @(Request["Department"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Sect.: </label>
+                        <div class="col-10 lblSection" data-section="@(Request["Section"])">
+                            @(Request["Section"])
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Cost Name: </label>
+                        <div class="col-10 lblCostName" data-costname="@(Request["CostName"])">
+                            @(Request["CostName"])
+                        </div>
+                    </div>
+                    @*<div class="form-group row">
+                        <label class="col-2 text-right">Post.: </label>
+                        <div class="col-10 lblPosition" data-position="@(Request["Position"])">
+                            @(Request["Position"])
+                        </div>
+                    </div>*@
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Title.: </label>
+                        <div class="col-10 lblTitleName" data-titlename="@(Request["TitleName"])">
+                            @(Request["TitleName"])
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="btn btn-info btnCMSaveData">Save Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="divCompetencyMap"></div>
+}

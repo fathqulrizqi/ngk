@@ -1,0 +1,294 @@
+﻿@{
+    ViewBag.Title = "Sales D365 Import Form Sales";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead
+{
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/clockpicker/0.0.7/bootstrap-clockpicker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+    #selected-total-container {
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: 0;
+    }
+    @@media (max-width: 576px) {
+        #selected-total-container {
+            max-width: 100%;
+        }
+    }
+    </style>
+}
+
+@section scriptHead{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clockpicker/0.0.7/bootstrap-clockpicker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+}
+
+
+<h2 style="
+    padding-left: 20px;
+    padding-bottom: 10px;
+    padding-top: 10px;
+    border-left: 7px solid #848e99;
+    font-family:serif;
+    border-radius:20px;
+    background: linear-gradient(90deg,rgba(164, 199, 222, 0.98) 0%, rgba(255, 255, 255, 0.14) 90%); ">
+    Form Invoice Number
+</h2>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-8">
+                        <form class="form-inline mb-3">
+                            <div class="form-group mr-3">
+                                <label for="input-invoice-no" class="mr-2">Original Invoice No:</label>
+                                <input type="text" id="input-invoice-no" class="form-control" />
+                            </div>
+                            <div class="form-group mr-3">
+                                <label for="input-invoice-date" class="mr-2">Invoice Date:</label>
+                                <input type="text" id="input-invoice-date" class="form-control" autocomplete="off" />
+                            </div>
+                            <button id="btn-update-selected" type="button" class="btn btn-primary">Update Selected</button>
+                        </form>
+                    </div>
+                    <div class="col-4">
+                        <div id="selected-total-container" class="mb-3">
+                            <div class="card shadow-sm border-0" style="background: linear-gradient(90deg, #e0eafc 0%, #cfdef3 100%);">
+                                <div class="card-body d-flex align-items-center">
+                                    <span class="mr-3" style="font-size:1.5rem; color:#007bff;">
+                                        <i class="fas fa-coins"></i>
+                                    </span>
+                                    <div>
+                                        <div style="font-size:1.1rem; color:#6c757d;">Total Selected Amount</div>
+                                        <div id="selected-total-amount" style="font-size:2rem; font-weight:bold; color:#007bff;">Rp 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <table id="sales-table" class="table table-striped table-bordered table-sm" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all"></th>
+                            <th>Packing Slip</th>
+                            <th>Sales Order</th>
+                            <th>Customer Name</th>
+                            <th>Product Name</th>
+                            <th>Packing Qty</th>
+                            <th>Invoice Date</th>
+                            <th>Invoice No</th>
+                            <th>Amount</th>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Packing Slip ID" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Sales Order" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Customer Name" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Product Name" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Packing Qty" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Invoice Date" /></td>
+                            <td><input type="text" class="form-control form-control-sm column-search" placeholder="Search Invoice No" /></td>
+                            <td>
+                                @*<input type="text" class="form-control form-control-sm column-search" placeholder="Search Invoice No" />*@
+                            </td>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+    $(document).ready(function () {
+        
+
+    $("#input-invoice-date").datepicker({ dateFormat: "yy-mm-dd" });
+
+    $('#input-invoice-time').clockpicker({
+        autoclose: true
+    });
+
+    var table = $('#sales-table').DataTable({
+        processing: true,
+        serverSide: true,
+        orderCellsTop: true,
+        fixedHeader: true,
+        ajax: {
+            url: '@Url.Action("GetSalesDataDT", "InvoiceNumber", new { area = "FA" })',
+            type: 'POST'
+        },
+        columns: [
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                render: function (data, type, row) {
+                    return '<input type="checkbox" class="row-select" value="' + row.ID + '">';
+                }
+            },
+            { data: "PackingSlipID" },
+            { data: "SalesOrder" },
+            { data: "CustomerName" },
+            { data: "ProductName" },
+            { data: "PackingQty" },
+            {
+                data: "Date_Inv",
+                render: function (data, type, row) {
+                    if (!data) return "";
+                    var dateObj = new Date(data);
+                    if (isNaN(dateObj)) {
+                        var match = /\/Date\((\d+)\)\//.exec(data);
+                        if (match) {
+                            dateObj = new Date(parseInt(match[1]));
+                        } else {
+                            return data;
+                        }
+                    }
+                    var day = ("0" + dateObj.getDate()).slice(-2);
+                    var month = ("0" + (dateObj.getMonth() + 1)).slice(-2);
+                    var year = dateObj.getFullYear();
+                    return day + "-" + month + "-" + year;
+                }
+            },
+            { data: "OriginalInvoiceNo" },
+            {
+                data: "AmountNetLocalCurrency",
+                render: function (data, type, row) {
+                    if (data == null || data === "") return "";
+                    // Format accounting: Rp 1.234.567,89
+                    return "Rp " + parseFloat(data).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            }
+        ],
+        order: [[1, 'asc']],
+        initComplete: function () {
+            // Pasang event handler setelah DataTable selesai inisialisasi
+            var api = this.api();
+            api.columns().every(function (i) {
+                var that = this;
+                $('input', api.table().header().rows[1].cells[i]).on('keyup change', function () {
+                    console.log("Kolom ke-", i, "value:", this.value);
+                    if (that.search() !== this.value) {
+                        that.search(this.value).draw();
+                    }
+                });
+            });
+        }
+    });
+
+    // Select all handler
+    $('#select-all').on('click', function () {
+        var rows = table.rows({ 'search': 'applied' }).nodes();
+        $('input[type="checkbox"].row-select', rows).prop('checked', this.checked);
+    });
+
+    // Deselect "select all" if any checkbox is unchecked
+    $('#sales-table tbody').on('change', 'input[type="checkbox"].row-select', function () {
+        if (!this.checked) {
+            var el = $('#select-all').get(0);
+            if (el && el.checked && ('indeterminate' in el)) {
+                el.indeterminate = true;
+            }
+        }
+    });
+
+    // Update handler
+    $("#btn-update-selected").click(function () {
+        var selectedIds = [];
+        $('#sales-table tbody input[type="checkbox"].row-select:checked').each(function () {
+            selectedIds.push($(this).val());
+        });
+
+        var invoiceNo = $("#input-invoice-no").val();
+        var invoiceDate = $("#input-invoice-date").val();
+
+        if (selectedIds.length === 0) {
+            Swal.fire("Pilih minimal satu baris pada tabel.");
+            return;
+        }
+        if (!invoiceNo && !invoiceDate) {
+            Swal.fire("Isi Original Invoice No atau Invoice Date.");
+            return;
+        }
+
+        Swal.fire({
+            title: 'Yakin update data terpilih?',
+            text: "Data yang dipilih akan diupdate sesuai input.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, update!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '@Url.Action("UpdateSalesRows", "InvoiceNumber", new { area = "FA" })',
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(selectedIds.map(function (id) {
+                        return {
+                            ID: id,
+                            OriginalInvoiceNo: invoiceNo,
+                            Date_Inv: invoiceDate
+                        };
+                    })),
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire("Berhasil!", "Data berhasil diupdate!", "success");
+                            table.ajax.reload(null, false);
+                            $("#input-invoice-no").val("");
+                            $("#input-invoice-date").val("");
+                        } else {
+                            Swal.fire("Gagal", "Update gagal: " + res.message, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Error updating data.", "error");
+                    }
+                });
+            }
+        });
+    });
+    function updateSelectedTotal() {
+        var total = 0;
+        $('#sales-table tbody input[type="checkbox"].row-select:checked').each(function () {
+            var row = $(this).closest('tr');
+            var rowData = table.row(row).data();
+            var amount = parseFloat(rowData.AmountNetLocalCurrency) || 0;
+            total += amount;
+        });
+        // Format accounting: Rp 1.234.567,89
+        var formatted = "Rp " + total.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        $('#selected-total-amount').text(formatted);
+
+        // Show/hide container
+        //if (total > 0) {
+        //    $('#selected-total-container').fadeIn();
+        //} else {
+        //    $('#selected-total-container').fadeOut();
+        //}
+    }
+
+    // Trigger update on checkbox change and table redraw
+    $('#sales-table tbody').on('change', 'input[type="checkbox"].row-select', updateSelectedTotal);
+    $('#select-all').on('change', updateSelectedTotal);
+    table.on('draw', function () {
+        setTimeout(updateSelectedTotal, 100); // ensure checkboxes are rendered
+    });
+});
+</script>

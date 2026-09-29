@@ -1,0 +1,853 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Tailwind via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Inline Styles to override Bootstrap conflicts and style premium components -->
+<style>
+    .bcp-table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        letter-spacing: 0.05em !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .bcp-table td {
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155 !important;
+        font-size: 0.875rem !important;
+    }
+    .bcp-btn-primary {
+        background-color: #007581 !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .bcp-btn-primary:hover {
+        background-color: #00555e !important;
+    }
+    .bcp-glass {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+
+    /* Style Select2 to match premium Tailwind look */
+    .select2-container {
+        width: 100% !important;
+    }
+    .select2-container--default .select2-selection--single {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        padding-left: 12px !important;
+    }
+    .select2-dropdown {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        padding: 6px 10px !important;
+        font-size: 0.875rem !important;
+    }
+    .select2-results__option {
+        font-size: 0.875rem !important;
+        padding: 8px 12px !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #007581 !important;
+    }
+</style>
+
+<div class="container-fluid py-4 px-md-5">
+    <!-- Breadcrumb & Header -->
+    <div class="bg-gradient-to-r from-white to-ngk-primaryLight border border-slate-200/60 rounded-2xl p-6 sm:p-8 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors no-underline">BCP Dashboard</a>
+                <span>/</span>
+                <span class="text-ngk-primary font-semibold">Organization Committe Structure</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight m-0">BCP Committee Members</h1>
+            <p class="text-slate-500 mt-1 text-sm md:text-base m-0">Manage roles, departments, and superior decision hierarchy for continuity operations.</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <button id="btnNewMember" class="inline-flex items-center gap-2 px-5 py-3 bcp-btn-primary text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold cursor-pointer border-0">
+                <i class="fas fa-user-plus text-ngk-primaryLight"></i>
+                Add Member
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive Form Panel (Inline, Expandable) -->
+    <div id="formPanel" class="hidden transition-all duration-300 ease-in-out mb-8">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="formTitle" class="text-lg font-bold text-slate-800 m-0">Add BCP Committee Member</h3>
+                <button id="btnCancelForm" class="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="memberForm" class="p-6 m-0">
+                <input type="hidden" id="memberId" name="ID" />
+                <input type="hidden" id="employeeName" name="Name" />
+                <input type="hidden" id="deptName" name="DepartmentName" />
+                <input type="hidden" id="deptCode" name="DepartmentCode" />
+
+                <div class="row">
+                    <!-- Searchable Portal NIK Select -->
+                    <div class="col-md-4 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Employee Selection</label>
+                        <select id="userSelect" name="NIK" class="form-control rounded-lg w-full" required>
+                            <option value="">-- Search Employee --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Select employee from portal system database.</p>
+                    </div>
+
+                    <!-- BCP Role Selection -->
+                    <div class="col-md-4 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">BCP Role</label>
+                        <select id="roleSelect" name="BCP_Role" class="form-control rounded-lg" required>
+                            <option value="">-- Select BCP Role --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Role inside the BCP hierarchy framework.</p>
+                    </div>
+
+                    <!-- Parent Hierarchy Selection -->
+                    <div class="col-md-4 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Direct Superior (Superior Report)</label>
+                        <select id="parentSelect" name="ParentID" class="form-control rounded-lg w-full">
+                            <option value="">-- None / Root --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Direct reporter/superior in BCP command.</p>
+                    </div>
+                </div>
+
+                <!-- Auto-populated Info Section -->
+                <div id="infoSection" class="hidden mb-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Full Name</span>
+                            <span id="lblFullName" class="font-bold text-slate-700">-</span>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-xs font-bold text-slate-400 block uppercase">Department Mapped</span>
+                            <span id="lblDepartment" class="font-bold text-slate-700">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Status</label>
+                        <div class="flex items-center gap-2 mt-2">
+                            <input type="checkbox" id="isActiveCheckbox" name="IsActive" value="true" checked class="w-4 h-4 text-ngk-primary border-slate-300 rounded focus:ring-ngk-primary" />
+                            <span class="text-sm font-semibold text-slate-600">Active Member</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 mt-2">
+                    <button type="button" id="btnDiscard" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-semibold border-0 cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 bcp-btn-primary text-white rounded-xl transition-all font-semibold border-0 cursor-pointer shadow-sm">
+                        Save Member
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    @*<div class="row mb-8">
+        <div class="col-md-4 mb-4 mb-md-0">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Committee Members</p>
+                    <h3 id="statTotalMembers" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-slate-400 font-medium mt-2">Historical count</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-primaryLight flex items-center justify-center text-ngk-primary">
+                    <i class="fas fa-users-cog text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4 mb-md-0">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Committee</p>
+                    <h3 id="statActiveMembers" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-emerald-600 font-medium mt-2"><i class="fas fa-check-circle mr-1"></i> Ready for duty</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="fas fa-user-check text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Inactive/Deactivated</p>
+                    <h3 id="statInactiveMembers" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-rose-600 font-medium mt-2"><i class="fas fa-ban mr-1"></i> Revoked permissions</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600">
+                    <i class="fas fa-user-slash text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>*@
+
+    <!-- Main List Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="relative w-full md:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </span>
+                <input type="text" id="tableSearch" placeholder="Search members..." class="form-control pl-10 rounded-xl border-slate-200 text-sm py-2" />
+            </div>
+            <div class="text-slate-400 text-sm font-medium" id="recordCountLabel">
+                Showing 0 members
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table bcp-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="pl-6 w-16 text-center">No</th>
+                        <th>Member Details</th>
+                        <th>Position</th>
+                        <th>BCP Role</th>
+                        <th>Department</th>
+                        <th>Direct Superior</th>
+                        <th>Status</th>
+                        <th class="pr-6 w-32 text-center">Actions</th>
+                    </tr>
+                    <tr class="bg-slate-50/50 filter-row">
+                        <th></th>
+                        <th class="p-2">
+                            <input type="text" id="filterMemberDetails" placeholder="Filter NIK/Name..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterMemberPosition" placeholder="Filter Position..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <select id="filterMemberRole" class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full">
+                                <option value="">All Roles</option>
+                            </select>
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterMemberDept" placeholder="Filter Dept..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterMemberSuperior" placeholder="Filter Superior..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <select id="filterMemberStatus" class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="memberTableBody">
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            <div class="spinner-border spinner-border-sm text-primary mr-2" role="status"></div>
+                            Loading organization members...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Section -->
+        <div class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50" id="paginationWrapper">
+            <div class="text-xs font-semibold text-slate-500" id="paginationInfo">
+                Showing 0 to 0 of 0 entries
+            </div>
+            <div class="flex items-center gap-1.5" id="paginationControls">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Select2 Script -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Data stores
+            let allMembers = [];
+            let portalUsers = [];
+            let potentialParents = [];
+            let currentPage = 1;
+            const rowsPerPage = 10;
+
+            // Initialize Select2 elements
+            $('#userSelect').select2({
+                placeholder: "-- Search Employee --",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            $('#parentSelect').select2({
+                placeholder: "-- None / Root --",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            // Fetch Form Data (Portal active users and parents)
+            function loadFormData(currentId = null) {
+                $.ajax({
+                    url: '@Url.Action("GetOrganizationFormData", "BCP")',
+                    type: 'GET',
+                    data: { currentMemberId: currentId },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            portalUsers = res.users;
+                            potentialParents = res.parents;
+                            
+                            // Populate User Dropdown
+                            let userHtml = '<option value="">-- Search Employee --</option>';
+                            res.users.forEach(function (user) {
+                                userHtml += `<option value="${user.NIK}">${user.NIK} - ${user.Name} (${user.DeptName})</option>`;
+                            });
+                            $('#userSelect').html(userHtml).trigger('change');
+
+                            // Populate Parent Dropdown
+                            let parentHtml = '<option value="">-- None / Root --</option>';
+                            res.parents.forEach(function (parent) {
+                                let roleLabel = parent.PositionName && parent.PositionName.trim() !== '' ? parent.PositionName : parent.BCP_Role;
+                                parentHtml += `<option value="${parent.ID}">${parent.Name} (${roleLabel})</option>`;
+                            });
+                            $('#parentSelect').html(parentHtml).trigger('change');
+
+                            // Populate BCP Role Dropdown dynamically
+                            if (res.roles) {
+                                let roleHtml = '<option value="">-- Select BCP Role --</option>';
+                                res.roles.forEach(function (role) {
+                                    roleHtml += `<option value="${role}">${role}</option>`;
+                                });
+                                $('#roleSelect').html(roleHtml);
+
+                                // Populate filter dropdown
+                                let filterRoleHtml = '<option value="">All Roles</option>';
+                                res.roles.forEach(function (role) {
+                                    filterRoleHtml += `<option value="${role}">${role}</option>`;
+                                });
+                                $('#filterMemberRole').html(filterRoleHtml);
+                            }
+                        } else {
+                            Swal.fire("Error", "Failed to load lookup data: " + res.message, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Network connection failed.", "error");
+                    }
+                });
+            }
+
+            // Detect when user selection changes to auto-fill metadata fields
+            $('#userSelect').on('change', function () {
+                let nik = $(this).val();
+                if (nik) {
+                    let userObj = portalUsers.find(x => x.NIK === nik);
+                    if (userObj) {
+                        $('#employeeName').val(userObj.Name);
+                        $('#deptName').val(userObj.DeptName);
+                        $('#deptCode').val(userObj.DeptID);
+
+                        // Render auto-filled panel info
+                        $('#lblFullName').text(userObj.Name);
+                        $('#lblDepartment').text(`${userObj.DeptID} - ${userObj.DeptName}`);
+                        $('#infoSection').removeClass('hidden');
+                    }
+                } else {
+                    $('#employeeName').val('');
+                    $('#deptName').val('');
+                    $('#deptCode').val('');
+                    $('#infoSection').addClass('hidden');
+                }
+            });
+
+            // Fetch Main Organization List Table Data
+            function loadMembers() {
+                $.ajax({
+                    url: '@Url.Action("GetOrganizationList", "BCP")',
+                    type: 'GET',
+                    data: { search: '' },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allMembers = res.data;
+                            currentPage = 1;
+                            applyFiltersAndPagination();
+                        } else {
+                            $('#memberTableBody').html(`<tr><td colspan="8" class="text-center py-8 text-danger">Error: ${res.message}</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        $('#memberTableBody').html('<tr><td colspan="8" class="text-center py-8 text-danger">Failed to fetch data from server.</td></tr>');
+                    }
+                });
+            }
+
+            // Filter and Paginate logic
+            function applyFiltersAndPagination() {
+                let generalSearch = ($('#tableSearch').val() || '').toLowerCase().trim();
+                let detailsFilter = ($('#filterMemberDetails').val() || '').toLowerCase().trim();
+                let positionFilter = ($('#filterMemberPosition').val() || '').toLowerCase().trim();
+                let roleFilter = $('#filterMemberRole').val();
+                let deptFilter = ($('#filterMemberDept').val() || '').toLowerCase().trim();
+                let superiorFilter = ($('#filterMemberSuperior').val() || '').toLowerCase().trim();
+                let statusFilter = $('#filterMemberStatus').val();
+
+                let filtered = allMembers.filter(function(item) {
+                    // General search
+                    if (generalSearch) {
+                        let matchGeneral = (item.Name || '').toLowerCase().includes(generalSearch) ||
+                                           (item.NIK || '').toLowerCase().includes(generalSearch) ||
+                                           (item.PositionName || '').toLowerCase().includes(generalSearch) ||
+                                           (item.BCP_Role || '').toLowerCase().includes(generalSearch) ||
+                                           (item.DepartmentName || '').toLowerCase().includes(generalSearch) ||
+                                           (item.DepartmentCode || '').toLowerCase().includes(generalSearch);
+                        if (!matchGeneral) return false;
+                    }
+                    // Details filter (NIK or Name)
+                    if (detailsFilter) {
+                        let matchDetails = (item.Name || '').toLowerCase().includes(detailsFilter) ||
+                                           (item.NIK || '').toLowerCase().includes(detailsFilter);
+                        if (!matchDetails) return false;
+                    }
+                    // Position filter
+                    if (positionFilter && !(item.PositionName || '').toLowerCase().includes(positionFilter)) {
+                        return false;
+                    }
+                    // Role filter
+                    if (roleFilter && item.BCP_Role !== roleFilter) {
+                        return false;
+                    }
+                    // Department filter
+                    if (deptFilter) {
+                        let matchDept = (item.DepartmentName || '').toLowerCase().includes(deptFilter) ||
+                                        (item.DepartmentCode || '').toLowerCase().includes(deptFilter);
+                        if (!matchDept) return false;
+                    }
+                    // Superior filter
+                    if (superiorFilter && !(item.ParentName || '').toLowerCase().includes(superiorFilter)) {
+                        return false;
+                    }
+                    // Status filter
+                    if (statusFilter) {
+                        let isActiveMatch = (statusFilter === 'active');
+                        if (item.IsActive !== isActiveMatch) return false;
+                    }
+                    return true;
+                });
+
+                let totalItems = filtered.length;
+                let totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                let startIndex = (currentPage - 1) * rowsPerPage;
+                let endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+                let paginatedItems = filtered.slice(startIndex, endIndex);
+
+                renderTable(paginatedItems, startIndex);
+                renderPagination(totalItems, totalPages, startIndex, endIndex);
+                calculateStats(allMembers);
+            }
+
+            // Render Table Rows
+            function renderTable(members, startIndex) {
+                if (members.length === 0) {
+                    $('#memberTableBody').html('<tr><td colspan="8" class="text-center py-12 text-slate-400"><i class="fas fa-folder-open text-3xl mb-2 block"></i>No organization members found.</td></tr>');
+                    return;
+                }
+
+                let html = '';
+                members.forEach(function (item, index) {
+                    let initials = item.Name.substring(0, 2).toUpperCase() || "BC";
+                    let randomColors = [
+                        'bg-teal-500 text-teal-50',
+                        'bg-sky-500 text-sky-50',
+                        'bg-indigo-500 text-indigo-50',
+                        'bg-purple-500 text-purple-50',
+                        'bg-emerald-500 text-emerald-50'
+                    ];
+                    let avatarColor = randomColors[index % randomColors.length];
+
+                    // Styling badges for BCP roles
+                    let roleBadgeClass = 'bg-slate-100 text-slate-700';
+                    if (item.BCP_Role === 'Presdir') roleBadgeClass = 'bg-slate-900 text-slate-100 font-bold';
+                    else if (item.BCP_Role === 'DGM' || item.BCP_Role === 'DGMDeputy') roleBadgeClass = 'bg-indigo-100 text-indigo-800 font-semibold';
+                    else if (item.BCP_Role === 'SrManager') roleBadgeClass = 'bg-sky-100 text-sky-800';
+                    else if (item.BCP_Role === 'Manager' || item.BCP_Role === 'AssManager') roleBadgeClass = 'bg-teal-100 text-teal-800';
+
+                    // Status dot
+                    let statusHtml = item.IsActive 
+                        ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>Active</span>`
+                        : `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-500"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Inactive</span>`;
+
+                    // Position name display
+                    let positionDisplay = item.PositionName && item.PositionName.trim() !== ''
+                        ? `<span class="text-sm font-medium text-slate-700">${item.PositionName}</span>`
+                        : `<span class="text-xs text-slate-300 italic">-</span>`;
+
+                    html += `
+                        <tr class="${!item.IsActive ? 'opacity-65' : ''}">
+                            <td class="pl-6 text-center font-semibold text-slate-400">${startIndex + index + 1}</td>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+                                        ${initials}
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-slate-800">${item.Name}</div>
+                                        <div class="text-xs text-slate-400 font-mono">${item.NIK}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${positionDisplay}</td>
+                            <td>
+                                <span class="px-2.5 py-1 rounded-full text-xs font-medium ${roleBadgeClass}">
+                                    ${item.BCP_Role}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="text-xs font-bold text-slate-400">${item.DepartmentCode || '-'}</div>
+                                <div class="text-sm text-slate-600">${item.DepartmentName || '-'}</div>
+                            </td>
+                            <td class="font-medium text-slate-600">
+                                ${item.ParentName ? `<i class="fas fa-chevron-up text-slate-300 mr-1.5 text-xs"></i>${item.ParentName}` : '<span class="text-slate-300 italic text-xs">No Superior</span>'}
+                            </td>
+                            <td>${statusHtml}</td>
+                            <td class="pr-6 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary rounded-lg edit-btn p-2" data-id="${item.ID}" title="Edit Member">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    ${item.IsActive ? `
+                                        <button class="btn btn-sm btn-outline-danger rounded-lg delete-btn p-2" data-id="${item.ID}" title="Deactivate Member">
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                $('#memberTableBody').html(html);
+            }
+
+            // Render pagination controls
+            function renderPagination(totalItems, totalPages, startIndex, endIndex) {
+                $('#recordCountLabel').text(`Showing ${totalItems} member${totalItems !== 1 ? 's' : ''}`);
+
+                if (totalItems === 0) {
+                    $('#paginationInfo').text('Showing 0 to 0 of 0 entries');
+                    $('#paginationControls').html('');
+                    return;
+                }
+
+                $('#paginationInfo').text(`Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+
+                let paginationHtml = '';
+                if (currentPage === 1) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-left"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-prev-btn"><i class="fas fa-chevron-left"></i></button>`;
+                }
+
+                let maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                if (startPage > 1) {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === currentPage) {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-ngk-primary text-white border border-ngk-primary shadow-sm">${i}</button>`;
+                    } else {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${totalPages}">${totalPages}</button>`;
+                }
+
+                if (currentPage === totalPages) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-right"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-next-btn"><i class="fas fa-chevron-right"></i></button>`;
+                }
+
+                $('#paginationControls').html(paginationHtml);
+            }
+
+            // Stats calculator
+            function calculateStats(members) {
+                $('#statTotalMembers').text(members.length);
+                $('#statActiveMembers').text(members.filter(x => x.IsActive).length);
+                $('#statInactiveMembers').text(members.filter(x => !x.IsActive).length);
+            }
+
+            // Pagination button events
+            $(document).on('click', '.page-num-btn', function() {
+                currentPage = parseInt($(this).attr('data-page'));
+                applyFiltersAndPagination();
+            });
+
+            $(document).on('click', '.page-prev-btn', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    applyFiltersAndPagination();
+                }
+            });
+
+            $(document).on('click', '.page-next-btn', function() {
+                currentPage++;
+                applyFiltersAndPagination();
+            });
+
+            // Bind column filter inputs and table search
+            $('#filterMemberDetails, #filterMemberPosition, #filterMemberRole, #filterMemberDept, #filterMemberSuperior, #filterMemberStatus, #tableSearch').on('input change', function () {
+                currentPage = 1;
+                applyFiltersAndPagination();
+            });
+
+            // Expand Inline Form panel (New Member)
+            $('#btnNewMember').click(function () {
+                resetForm();
+                loadFormData(); // Load lookups with null ID
+                $('#formTitle').text('Add BCP Committee Member');
+                $('#formPanel').removeClass('hidden');
+                $('html, body').animate({
+                    scrollTop: $("#formPanel").offset().top - 100
+                }, 500);
+            });
+
+            // Cancel Form Action
+            $('#btnCancelForm, #btnDiscard').click(function () {
+                $('#formPanel').addClass('hidden');
+                resetForm();
+            });
+
+            // Edit Click Handler
+            $(document).on('click', '.edit-btn', function () {
+                let id = $(this).data('id');
+                let item = allMembers.find(x => x.ID == id);
+                if (item) {
+                    resetForm();
+                    $('#memberId').val(item.ID);
+                    $('#formTitle').text('Edit BCP Committee Member');
+
+                    // Load dropdowns excluding this member ID from parents
+                    $.ajax({
+                        url: '@Url.Action("GetOrganizationFormData", "BCP")',
+                        type: 'GET',
+                        data: { currentMemberId: item.ID },
+                        success: function (res) {
+                            if (res.status === 'success') {
+                                portalUsers = res.users;
+                                potentialParents = res.parents;
+                                
+                                // Render user selection options
+                                let userHtml = '<option value="">-- Search Employee --</option>';
+                                res.users.forEach(function (user) {
+                                    userHtml += `<option value="${user.NIK}">${user.NIK} - ${user.Name} (${user.DeptName})</option>`;
+                                });
+                                $('#userSelect').html(userHtml);
+
+                                // Render parent options
+                                let parentHtml = '<option value="">-- None / Root --</option>';
+                                res.parents.forEach(function (parent) {
+                                    let roleLabel = parent.PositionName && parent.PositionName.trim() !== '' ? parent.PositionName : parent.BCP_Role;
+                                    parentHtml += `<option value="${parent.ID}">${parent.Name} (${roleLabel})</option>`;
+                                });
+                                $('#parentSelect').html(parentHtml);
+
+                                // Render role selection options dynamically
+                                if (res.roles) {
+                                    let roleHtml = '<option value="">-- Select BCP Role --</option>';
+                                    res.roles.forEach(function (role) {
+                                        roleHtml += `<option value="${role}">${role}</option>`;
+                                    });
+                                    $('#roleSelect').html(roleHtml);
+                                }
+
+                                // Select exact values
+                                $('#userSelect').val(item.NIK).trigger('change');
+                                $('#roleSelect').val(item.BCP_Role);
+                                $('#parentSelect').val(item.ParentID || '').trigger('change');
+                                $('#isActiveCheckbox').prop('checked', item.IsActive);
+
+                                // Populate text values
+                                $('#employeeName').val(item.Name);
+                                $('#deptName').val(item.DepartmentName);
+                                $('#deptCode').val(item.DepartmentCode);
+
+                                // Show auto-populated info section
+                                $('#lblFullName').text(item.Name);
+                                $('#lblDepartment').text(`${item.DepartmentCode} - ${item.DepartmentName}`);
+                                $('#infoSection').removeClass('hidden');
+
+                                // Expand Panel and scroll
+                                $('#formPanel').removeClass('hidden');
+                                $('html, body').animate({
+                                    scrollTop: $("#formPanel").offset().top - 100
+                                }, 500);
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Form Submit Action
+            $('#memberForm').submit(function (e) {
+                e.preventDefault();
+
+                let data = {
+                    ID: $('#memberId').val(),
+                    NIK: $('#userSelect').val(),
+                    Name: $('#employeeName').val(),
+                    BCP_Role: $('#roleSelect').val(),
+                    DepartmentName: $('#deptName').val(),
+                    DepartmentCode: $('#deptCode').val(),
+                    ParentID: $('#parentSelect').val(),
+                    IsActive: $('#isActiveCheckbox').is(':checked')
+                };
+
+                $.ajax({
+                    url: '@Url.Action("SaveOrganization", "BCP")',
+                    type: 'POST',
+                    data: data,
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire("Success", res.message, "success");
+                            $('#formPanel').addClass('hidden');
+                            resetForm();
+                            loadMembers();
+                        } else {
+                            Swal.fire("Warning", res.message, "warning");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Request failed. Please try again.", "error");
+                    }
+                });
+            });
+
+            // Delete (Deactivate) Action Click
+            $(document).on('click', '.delete-btn', function () {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: "Deactivate Member?",
+                    text: "This will toggle their active status to Inactive inside BCP workflows.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Yes, deactivate!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteOrganization", "BCP")',
+                            type: 'POST',
+                            data: { ID: id },
+                            success: function (res) {
+                                if (res.status === 'success') {
+                                    Swal.fire("Deactivated!", res.message, "success");
+                                    loadMembers();
+                                } else {
+                                    Swal.fire("Error", res.message, "error");
+                                }
+                            },
+                            error: function () {
+                                Swal.fire("Error", "Request failed. Please try again.", "error");
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Reset helper
+            function resetForm() {
+                $('#memberId').val('');
+                $('#memberForm')[0].reset();
+                $('#userSelect').val('').trigger('change');
+                $('#parentSelect').val('').trigger('change');
+                $('#roleSelect').val('');
+                $('#isActiveCheckbox').prop('checked', true);
+                $('#infoSection').addClass('hidden');
+            }
+
+            // Initial load
+            loadFormData();
+            loadMembers();
+        });
+    </script>
+}

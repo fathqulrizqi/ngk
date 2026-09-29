@@ -1,0 +1,123 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+
+@{
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+<script type="text/javascript">
+    $(document).ready(function () {
+        $(".thDebitTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdDebit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+        $(".thCreditTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdCredit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+    });
+</script>
+<table class="table tblJournal">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Account Name</th>
+            <th>Section Name</th>
+            <th>Description</th>
+            <th>Currency</th>
+            <th>Debit</th>
+            <th>Credit</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.NonPOList)
+        {
+            var currID = (int)item.id;
+            var nonPOSub = db.FA_Payment_Request_Non_Payment_Sub.Where(w => w.Non_PO_ID == currID).ToList();
+            var nonPOSubCredit = db.FA_Payment_Request_Non_Payment_Sub.Where(w => w.Non_PO_ID == currID && w.Credit_Amount > 0).ToList();
+            var TotalAllocation = db.FA_Payment_Request_Non_Payment_Sub.Where(w => w.Non_PO_ID == currID).ToList().Sum(s => s.Allocation_Amount);
+            double totalCredit = 0;
+            double totalDebit = 0;
+
+            <tr>
+                <td class="p-2" colspan="7">
+                    <label style="width:20%">
+                        <span class="font-weight-bold">Pay. Number :</span>
+                        <span class="spanPayNumber">@(item.Receive_Number)</span>
+                    </label>
+                    <label style="width:20%">
+                        <span class="font-weight-bold">AP Journal :</span>
+                        <span class="spanAPJournal">@(!string.IsNullOrEmpty(item.AP_Number) ? item.AP_Number : "-")</span>
+                    </label>
+                </td>
+            </tr>
+            foreach (var subItem in nonPOSub)
+            {
+                totalDebit += subItem.Credit_Amount > 0 ? 0 : (double)subItem.Allocation_Amount;
+                totalCredit += subItem.Credit_Amount > 0 ? (double)subItem.Allocation_Amount : 0;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@(subItem.COA_Name)</td>
+                    <td>@(subItem.Section_To_Name)</td>
+                    <td>@(subItem.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(subItem.Allocation_Amount.ToString("N2"))</td>
+                    <td class="tdCredit">@(subItem.Credit_Amount.ToString("N2"))</td>
+                </tr>
+            }
+
+
+
+            if (nonPOSubCredit.Count() == 0)
+            {
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@("(" + item.Third_Party_Id + ")" + item.Third_Party_Name)</td>
+                    <td>@(item.Section_From_Name)</td>
+                    <td>@(item.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(0)</td>
+                    @if (item.WHT_Amount > 0)
+                    {
+                        totalCredit += (item.Amount_of_Invoice - item.WHT_Amount);
+                        <td class="tdCredit">@((item.Amount_of_Invoice - item.WHT_Amount).ToString("N2"))</td>
+                    }
+                    else
+                    {
+                        totalCredit += item.Amount_of_Invoice;
+                        <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                    }
+                </tr>
+            }
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Total</th>
+                <th>@(totalDebit.ToString("N2"))</th>
+                <th>@(totalCredit.ToString("N2"))</th>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+    </tfoot>
+</table>

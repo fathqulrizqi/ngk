@@ -1,0 +1,597 @@
+﻿@{
+    ViewBag.Title = "Audit Event";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+</style>
+
+<div class="min-h-screen pt-3 sm:px-0">
+
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold  text-blue-50 tracking-tight">Audit Events</h1>
+            <p class="text-sm sm:text-base text-blue-200">Manage and track all audit activities</p>
+        </div>
+        @if (ViewBag.Role != null && ViewBag.Role == "Administrator")
+        {
+            <button onclick="openModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-opacity text-white px-4 py-2.5 rounded-lg flex items-center transition-colors font-semibold shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2">
+                    <path fill-rule="evenodd" d="M10.5 4.5a1.5 1.5 0 0 1 3 0v6h6a1.5 1.5 0 0 1 0 3h-6v6a1.5 1.5 0 0 1-3 0v-6h-6a1.5 1.5 0 0 1 0-3h6v-6Z" clip-rule="evenodd" />
+                </svg>
+                New Audit Event
+            </button>
+        }
+    </div>
+
+    <div class="relative mb-8">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
+
+        <input type="text"
+               id="searchInput"
+               placeholder="Search audit events (press Enter to search)..."
+               class="block w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm">
+
+        <button id="clearSearch" class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors">
+            Clear
+        </button>
+    </div>
+
+    <div id="auditContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    </div>
+
+    <div id="paginationContainer" class="mt-8 flex justify-center hidden">
+    </div>
+
+</div>
+
+<div id="createEventModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-xl overflow-hidden transition-all">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-90 flex items-center gap-3">
+            <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Create New Audit Event</h3>
+                <p class="text-sm text-cyan-50 mt-0.5">Fill in the information below to start a new audit.</p>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <form id="createEventForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Name</label>
+                    <input type="text" name="audit_name" placeholder="e.g. Q3 Internal Quality Audit" required
+                           class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Standard</label>
+                    <select id="audit_standard" name="audit_standard" class="block w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-sm text-slate-800 font-medium appearance-none cursor-pointer">
+                        @if (ViewBag.AuditStandard != null)
+                        {
+                            foreach (var at in ViewBag.AuditStandard)
+                            {
+                                <option value="@at.audit_standard_name">@at.audit_standard_name</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Type</label>
+                        <select name="audit_type" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all bg-white cursor-pointer">
+                            <option value="Internal">Internal</option>
+                            <option value="External">External</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Fiscal Year</label>
+                        <input type="text" name="fiscal_year" required placeholder="YYYY"
+                               class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Start Date</label>
+                        <input type="date" name="audit_start" required
+                               class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit End Date</label>
+                        <input type="date" name="audit_end" required
+                               class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Person In Charge (PIC)</label>
+                    <input type="text" name="PIC" placeholder="Enter PIC name" required
+                           class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all">
+                </div>
+            </form>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button type="button" onclick="closeModal()"
+                    class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Cancel
+            </button>
+            <button type="submit" form="createEventForm"
+                    class="px-3 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-90 hover:opacity-100 transition-opacity text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30">
+                Create Audit Event
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="editAuditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-xl overflow-hidden transition-all">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-orange-400 to-amber-300 opacity-90 flex items-center gap-3">
+            <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/30 text-white rounded-xl backdrop-blur-sm shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Edit Audit Event</h3>
+                <p class="text-sm text-orange-50 font-medium mt-0.5">Perbarui informasi audit di bawah ini.</p>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <form id="editEventForm" class="space-y-5">
+                <input type="hidden" id="modalInputId">
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Name</label>
+                    <input type="text" id="modalInputName" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Standard</label>
+                        <select id="modalInputStandard" name="audit_standard" class="block w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-sm text-slate-800 font-medium appearance-none cursor-pointer">
+                            @if (ViewBag.AuditStandard != null)
+                            {
+                                foreach (var at in ViewBag.AuditStandard)
+                                {
+                                    <option value="@at.audit_standard_name">@at.audit_standard_name</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Type</label>
+                        <select id="modalInputType" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all bg-white cursor-pointer">
+                            <option value="Internal">Internal</option>
+                            <option value="External">External</option>
+                        </select>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Fiscal Year</label>
+                        <input type="text" id="modalInputYear" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-5">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Start Date</label>
+                        <input type="date" id="modalInputStart" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit End Date</label>
+                        <input type="date" id="modalInputEnd" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Person In Charge (PIC)</label>
+                    <input type="text" id="modalInputPic" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2.5 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all">
+                </div>
+            </form>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button type="button" onclick="closeEditModal()" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Cancel
+            </button>
+            <button type="button" onclick="submitUpdate()" class="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 transition-colors text-white rounded-lg text-sm font-semibold shadow-sm focus:outline-none focus:ring-4 focus:ring-orange-500/30">
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ambil Role dari C# dan simpan di variabel JS
+    const userRole = '@Html.Raw(ViewBag.Role ?? "")';
+
+    $(document).ready(function () {
+        loadAuditData(1);
+
+        let typingTimer;
+        const doneTypingInterval = 500;
+
+        $('#searchInput').on('input', function () {
+            clearTimeout(typingTimer);
+
+            const searchVal = $(this).val();
+
+            if (searchVal.trim() !== "") {
+                $('#clearSearch').removeClass('hidden');
+            } else {
+                $('#clearSearch').addClass('hidden');
+            }
+
+            typingTimer = setTimeout(function() {
+                loadAuditData(1);
+            }, doneTypingInterval);
+        });
+
+        $('#searchInput').on('keypress', function (e) {
+            if (e.which == 13) {
+                e.preventDefault();
+            }
+        });
+
+        $('#clearSearch').on('click', function() {
+            $('#searchInput').val('');
+            $(this).addClass('hidden');
+            loadAuditData(1);
+        });
+    });
+
+    function loadAuditData(page) {
+        const searchString = $('#searchInput').val();
+
+        $('#auditContainer').addClass('opacity-50 pointer-events-none transition-opacity duration-300');
+
+        $.ajax({
+            url: '@Url.Action("GetAuditData", "EAudit", new { area = "Quality" })',
+            type: 'GET',
+            data: { page: page, searchString: searchString },
+            success: function (res) {
+                if (res.success) {
+                    $('#auditContainer').removeClass('opacity-50 pointer-events-none');
+                    renderAuditCards(res.data);
+                    renderPagination(res.currentPage, res.totalPages);
+                }
+            },
+            error: function () {
+                $('#auditContainer').removeClass('opacity-50 pointer-events-none');
+                $('#auditContainer').html('<div class="col-span-full text-center py-10 text-red-500">Terjadi kesalahan saat memuat data.</div>');
+            }
+        });
+    }
+
+    function renderAuditCards(data) {
+        const container = $('#auditContainer');
+        container.empty();
+
+        if (data.length === 0) {
+            container.html('<div class="col-span-full text-center py-10 text-gray-500">Data audit tidak ditemukan.</div>');
+            return;
+        }
+
+        let html = '';
+        data.forEach(function (audit) {
+            const safeStart = audit.audit_start || '';
+            const safeEnd = audit.audit_end || '';
+
+            // Render tombol View (selalu tampil)
+            let actionButtons = `
+                <a href="@Url.Action("DetailEvent", "EAudit")?eventId=${audit.audit_event_id}" class="flex-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-sm font-semibold py-2.5 px-3 rounded-lg border border-slate-200 hover:border-blue-200 flex items-center justify-center transition-all shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                    View
+                </a>
+            `;
+
+            // Jika role adalah Administrator, tambahkan tombol Edit dan Delete
+            if (userRole === "Administrator") {
+                actionButtons += `
+                    <button type="button" onclick="openEditModal('${audit.audit_event_id}', '${audit.audit_name}', '${audit.audit_type}', '${audit.audit_standard || ''}', '${audit.fiscal_year}', '${audit.PIC}', '${safeStart}', '${safeEnd}')" class="flex-1 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold py-2.5 px-3 rounded-lg border border-slate-200 flex items-center justify-center transition-all shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-1.5"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
+                        Edit
+                    </button>
+                    <button type="button" onclick="deleteEvent('${audit.audit_event_id}')" class="flex-none w-11 h-[42px] bg-red-600 hover:bg-red-700 text-white rounded-lg border border-red-600 hover:border-red-700 transition-all flex justify-center items-center shadow-sm" title="Hapus Event">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    </button>
+                `;
+            }
+
+            html += `
+                    <div id="card-${audit.audit_event_id}" class="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 border border-slate-200 px-4 py-5 flex flex-col justify-between overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2 mb-2.5 mt-1">
+                                <span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded border border-blue-100 uppercase tracking-wider">
+                                    ${audit.audit_type}
+                                </span>
+                                <span class="bg-yellow-50 text-yellow-600 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-100 uppercase tracking-wider">
+                                    ${audit.audit_status || 'PENDING'}
+                                </span>
+                                <span class="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-100 uppercase tracking-wider">
+                                    ${audit.audit_standard || 'N/A'}
+                                </span>
+                            </div>
+
+                            <h3 class="text-lg sm:text-xl font-bold text-slate-800 leading-tight mb-4 group-hover:text-blue-600 transition-colors">
+                                ${audit.audit_name}
+                            </h3>
+
+                            <div class="bg-slate-50 rounded-xl p-4 space-y-3 text-sm border border-slate-100 mb-6">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex items-center text-slate-500 shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                        </svg>
+                                        PIC
+                                    </div>
+                                    <span class="text-slate-800 font-semibold text-right break-words line-clamp-1">${audit.PIC}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-4">
+                                    <div class="flex items-center text-slate-500 shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                        </svg>
+                                        Fiscal Year
+                                    </div>
+                                    <span class="text-slate-800 font-semibold text-right">${audit.fiscal_year}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-4 pt-3 border-t border-slate-200/60">
+                                    <div class="flex items-center text-slate-500 shrink-0">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 mr-2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                        </svg>
+                                        Created
+                                    </div>
+                                    <span class="text-slate-800 font-medium text-right">${audit.created_at}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            ${actionButtons}
+                        </div>
+                    </div>`;
+        });
+
+        container.html(html);
+    }
+
+    function renderPagination(currentPage, totalPages) {
+        const container = $('#paginationContainer');
+
+        if (totalPages <= 1) {
+            container.addClass('hidden');
+            return;
+        }
+
+        container.removeClass('hidden');
+        let html = '<nav class="inline-flex flex-wrap justify-center items-center gap-1 bg-white p-1 rounded-xl shadow-sm border border-gray-200">';
+
+        // Tombol Prev
+        if (currentPage > 1) {
+            html += `<button onclick="loadAuditData(${currentPage - 1})" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">Prev</button>`;
+        } else {
+            html += `<span class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-300 cursor-not-allowed">Prev</span>`;
+        }
+
+        html += '<div class="flex flex-wrap justify-center items-center gap-1 border-x border-gray-100 px-2 max-w-[200px] sm:max-w-none">';
+
+        // Render nomor halaman
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === currentPage) {
+                html += `<span class="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-semibold text-white bg-blue-600 rounded-lg shadow-sm">${i}</span>`;
+            } else {
+                html += `<button onclick="loadAuditData(${i})" class="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
+            }
+        }
+
+        html += '</div>';
+
+        if (currentPage < totalPages) {
+            html += `<button onclick="loadAuditData(${currentPage + 1})" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">Next</button>`;
+        } else {
+            html += `<span class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-300 cursor-not-allowed">Next</span>`;
+        }
+
+        html += '</nav>';
+        container.html(html);
+    }
+
+
+    function openEditModal(id, name, type, standard, year, pic, start, end) {
+        $('#modalInputId').val(id);
+        $('#modalInputName').val(name);
+        $('#modalInputType').val(type);
+        $('#modalInputStandard').val(standard);
+        $('#modalInputYear').val(year);
+        $('#modalInputPic').val(pic);
+
+        // Helper untuk memformat string menjadi YYYY-MM-DD yang diterima input type="date"
+        const formatDateForInput = (dateStr) => {
+            if (!dateStr) return '';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return ''; // Jika invalid date
+                const month = ('0' + (d.getMonth() + 1)).slice(-2);
+                const day = ('0' + d.getDate()).slice(-2);
+                return `${d.getFullYear()}-${month}-${day}`;
+            } catch (e) {
+                return '';
+            }
+        };
+
+        $('#modalInputStart').val(formatDateForInput(start));
+        $('#modalInputEnd').val(formatDateForInput(end));
+
+        $('#editAuditModal').removeClass('hidden').addClass('flex');
+    }
+
+    function closeEditModal() {
+        $('#editAuditModal').addClass('hidden').removeClass('flex');
+    }
+
+    function deleteEvent(eventId) {
+        Swal.fire({
+            title: 'Hapus Audit Event?',
+            text: "Anda yakin? Data yang dihapus tidak dapat dikembalikan!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+
+                Swal.fire({
+                    title: 'Menghapus data...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("DeleteEvent", "EAudit")',
+                    type: 'POST',
+                    data: { id: eventId },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire('Terhapus!', response.message, 'success');
+
+                            $('#card-' + eventId).fadeOut(400, function() {
+                                $(this).remove();
+
+                                loadAuditData(1);
+                                window.reload()
+                            });
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        Swal.fire('Error', 'Terjadi kesalahan saat menghubungi server.', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    function submitUpdate() {
+        const eventId = $('#modalInputId').val();
+
+        const formData = {
+            audit_name: $('#modalInputName').val(),
+            audit_type: $('#modalInputType').val(),
+            audit_standard: $('#modalInputStandard').val(),
+            fiscal_year: $('#modalInputYear').val(),
+            PIC: $('#modalInputPic').val(),
+            audit_start: $('#modalInputStart').val(),
+            audit_end: $('#modalInputEnd').val()
+        };
+
+        Swal.fire({
+            title: 'Menyimpan...',
+            text: 'Sedang memperbarui data event.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            // Sesuaikan URL jika ada penambahan area.
+            url: '@Url.Action("UpdateEvent", "EAudit", new { area = "Quality" })',
+            type: 'POST',
+            data: {
+                id: eventId,
+                dto: formData
+            },
+            success: function (response) {
+                if (response.success) {
+                    Swal.fire('Berhasil!', response.message, 'success').then(() => {
+                        closeEditModal();
+                        loadAuditData(1); // Reload data otomatis
+                    });
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire('Error', 'Terjadi kesalahan pada server', 'error');
+            }
+        });
+    }
+
+    function openModal() {
+        $('#createEventModal').removeClass('hidden');
+    }
+
+    function closeModal() {
+        $('#createEventModal').addClass('hidden');
+    }
+
+    $('#createEventForm').on('submit', function (e) {
+        e.preventDefault();
+
+        const formData = {
+            audit_name: $('input[name="audit_name"]').val(),
+            audit_type: $('select[name="audit_type"]').val(),
+            audit_standard: $('select[name="audit_standard"]').val(),
+            PIC: $('input[name="PIC"]').val(),
+            fiscal_year: $('input[name="fiscal_year"]').val(),
+            audit_start: $('input[name="audit_start"]').val(),
+            audit_end: $('input[name="audit_end"]').val()
+        };
+
+        Swal.fire({
+            title: 'Memproses...',
+            text: 'Sedang membuat event dan men-generate pertanyaan.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: '@Url.Action("CreateEvent", "EAudit")',
+            type: 'POST',
+            data: formData,
+            success: function (response) {
+                if (response.success) {
+                    Swal.fire('Berhasil!', response.message, 'success').then(() => {
+                        closeModal();
+                        $('#createEventForm')[0].reset();
+                        loadAuditData(1);
+                    });
+                } else {
+                    Swal.fire('Gagal', response.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire('Error', 'Terjadi kesalahan pada server', 'error');
+            }
+        });
+    });
+
+</script>

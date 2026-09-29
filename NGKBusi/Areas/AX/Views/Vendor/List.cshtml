@@ -1,0 +1,186 @@
+﻿@model NGKBusi.Areas.AX.Models.AX_Vendor_List
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+
+@{
+    ViewBag.Title = "D365 Vendor List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId().Trim();
+    var currData = ViewBag.CurrData;
+    var currDataList = ViewBag.CurrDataList;
+    var errMSG = TempData["errMSG"];
+    var isAllowEdit = Request["addNew"] != null || currUserID == currData?.Created_By ? true : false;
+}
+
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+    </style>
+
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".tblD635VendorList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                widgets: ["filter", "columns", "stickyHeaders"],
+                widgetOptions: {
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+        });
+    </script>
+}
+
+<h2>
+    D365 Vendor List
+    @if (Request["addNew"] == null && Request["AccNumber"] == null)
+    {
+        <a href="@Url.Action("List", "Vendor", new { area = "AX", addNew = "addNew" })" class="btn btn-primary">Add New</a>
+    }
+    else
+    {
+        <a href="@Url.Action("List", "Vendor", new { area = "AX" })" class="btn btn-success">Back to Vendor List</a>
+    }
+</h2>
+
+@if (Request["addNew"] == null && Request["AccNumber"] == null)
+{
+    <table class="table table-bordered table-striped tblD635VendorList">
+        <thead>
+            <tr>
+                <th>Account Number</th>
+                <th>Vendor Group</th>
+                <th>Name</th>
+                <th>Search Name</th>
+                <th class="filter-select filter-exact" data-placeholder="-Select-">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in currDataList)
+            {
+                <tr>
+                    <td><a href="@Url.Action("List", "Vendor", new { area = "AX", AccNumber = data.AccountNum})" target="_blank">@(data.AccountNum)</a></td>
+                    <td>@(data.VendGroup)</td>
+                    <td>@(data.Name)</td>
+                    <td>@(data.SearchName)</td>
+                    <td class="text-center">@(data.IsActive ? "Active" : "Not-Actice")</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <div class="container-fluid" style="overflow:auto;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="@Url.Action((currData != null ? "Edit" : "Add"), "Vendor", new { area = "AX" })" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="iCurrAccNumber" value="@(currData?.AccountNum)" />
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Account Number:</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="iAccountNum" id="txtAccountNum" placeholder="Account Number" value="@(currData?.AccountNum)" oninput="this.value = this.value.toUpperCase()"  @(!isAllowEdit ? "disabled":"") maxlength="5" />
+                                    @if (errMSG != "")
+                                    {
+                                        <span class="text-danger">@(errMSG)</span>
+                                    }
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Vendor Group:</label>
+                                <div class="col-sm-10">
+                                    <select name="iVendorGroup" id="selVendorGroup" class="form-control" @(!isAllowEdit ? "disabled":"")>
+                                        <option value="">-Choose-</option>
+                                        <option value="NGK-JP" @(currData?.VendGroup == "NGK-JP" ? "Selected" : "")>NGK-JP</option>
+                                        <option value="NGK" @(currData?.VendGroup == "NGK" ? "Selected" : "")>NGK</option>
+                                        <option value="DOM-OTH" @(currData?.VendGroup == "DOM-OTH" ? "Selected" : "")>DOM-OTH</option>
+                                        <option value="OTH" @(currData?.VendGroup == "OTH" ? "Selected" : "")>OTH</option>
+                                        <option value="EX-OTH" @(currData?.VendGroup == "EX-OTH" ? "Selected" : "")>EX-OTH</option>
+                                        <option value="DOM-TRADE" @(currData?.VendGroup == "DOM-TRADE" ? "Selected" : "")>DOM-TRADE</option>
+                                        <option value="EX-TRADE" @(currData?.VendGroup == "EX-TRADE" ? "Selected" : "")>EX-TRADE</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Name:</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="iVendorName" id="txtVendorName" placeholder="Vendor Name" value="@(currData?.Name)" @(!isAllowEdit ? "disabled":"") maxlength="100" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Search Name:</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="iVendorSearchName" id="txtVendorSearchName" placeholder="Vendor Search Name" value="@(currData?.SearchName)"  @(!isAllowEdit ? "disabled":"")  maxlength="20"/>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Is Active:</label>
+                                <div class="col-sm-10">
+                                    <div class="form-group form-check">
+                                        <input type="checkbox" class="form-check-input" id="cbIsActive" name="iIsActive" @(currData?.IsActive == true || Request["addNew"] != null ? "Checked" : "") value="true"  @(!isAllowEdit ? "disabled":"")>
+                                        <label class="form-check-label" for="cbIsActive">Is Actice</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    @if (isAllowEdit)
+                                    {
+                                        <button type="submit" class="btn btn-primary form-control" id="btnVendorSubmit">Submit</button>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+

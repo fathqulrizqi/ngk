@@ -1,0 +1,80 @@
+﻿
+@{
+    ViewBag.Title = "All Policy";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    #pdfContainer {
+        height: 850px;
+        width: 970px;
+        margin-left: 30px
+    }
+</style>
+<!-- Tambahkan referensi PDFObject -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.1.1/pdfobject.min.js"></script>
+
+
+<div class="row">
+    <div class="col-4">
+        <div class="card">
+            <div class="card-header">
+                <strong>IT Document Policy</strong>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    @foreach (var doc in ViewBag.Document)
+                    {
+                        <a href="#" data-id="@doc.Filename" class="list-group-item list-group-item-action pdfLink">
+                            <span><i class="fa fa-file-pdf"></i></span> @doc.DocumentID - @doc.DocumentName
+                        </a>
+                    }
+
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <div class="col-8">
+        <div id="pdfContainer"></div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        // Event handler untuk klik pada link PDF
+        $('.pdfLink').click(function () {
+
+            // Hapus kelas 'active' dari semua link
+            $('.pdfLink').removeClass('active');
+
+            // Tambahkan kelas 'active' pada link yang diklik
+            $(this).addClass('active');
+
+            // URL PDF yang akan ditampilkan
+            var doc = $(this).data("id");
+            var pdfUrl = '@Url.Content("~/Files/IT/ITRegulation/")' + doc;
+            console.log(pdfUrl);
+            ;        // Memanggil fungsi untuk menampilkan PDF
+            displayPDF(pdfUrl);
+        });
+    });
+
+    function displayPDF(pdfUrl) {
+        // Ambil elemen kontainer PDF
+        var container = $('#pdfContainer')[0];
+
+        var options = {
+            pdfOpenParams: {
+                navpanes: 0,
+                toolbar: 0,
+                statusbar: 0,
+                view: "FitH"
+            },
+            forcePDFJS: true // Menggunakan PDF.js jika plugin Adobe Reader tidak tersedia
+        };
+
+        // Gunakan PDFObject untuk menampilkan PDF
+        PDFObject.embed(pdfUrl, container, options, { scale: 1.5 });
+
+    }
+</script>

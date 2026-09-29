@@ -1,0 +1,827 @@
+﻿@{
+    ViewBag.Title = "Manage Stock Wiredies";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+<script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+<script src="@Url.Content("~/Content/jquery/jquery-3.6.0.min.js")"></script>
+<script src="@Url.Content("~/Content/highcharts/highcharts.js")"></script>
+<script src="@Url.Content("~/Content/html5-qrcode/html5-qrcode.min.js")"></script>
+
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .swal2-container {
+        z-index: 9999999 !important;
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        position: relative;
+        z-index: 1;
+    }
+
+    .table-container::-webkit-scrollbar {
+        height: 6px;
+        width: 6px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    .scan-indicator {
+        animation: pulse-border 2s infinite;
+    }
+
+    #qr-reader {
+        width: 100%;
+        margin: 0 auto;
+        border: none !important;
+    }
+
+        #qr-reader video {
+            max-height: 50vh !important;
+            width: 100% !important;
+            object-fit: contain !important; /* Menjaga agar tidak ter-stretch */
+            border-radius: 0.5rem;
+        }
+
+    @@keyframes pulse-border {
+        0% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+        }
+    }
+</style>
+
+<div class="min-h-screen pt-3 pb-8 sm:px-
+0">
+    <!-- LOW STOCK ALERTS (INLINE TABLE) -->
+    <!-- LOW STOCK ALERTS (INLINE TABLE) -->
+    <div class="glass-card rounded-xl p-4 mb-4 border-l-4 border-emerald-500 transition-colors duration-300" id="alertSectionContainer">
+        <!-- Header / Toggle Button -->
+        <div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleAlertTable()">
+            <div class="flex items-center gap-2">
+                <svg id="alertIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 text-emerald-500 transition-colors">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 class="text-base font-bold text-slate-800">Low Stock Alerts</h3>
+                <span id="inlineLowStockBadge" class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white font-bold shadow-sm transition-colors">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-500 font-medium hidden sm:inline" id="alertToggleText">Click to expand</span>
+                <button class="p-1 text-slate-400 hover:text-slate-600 transition-transform duration-300 transform" id="alertToggleIcon">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Table Area -->
+        <div id="alertTableWrapper" class="hidden mt-4">
+            <!-- Pindahkan border, rounded, bg-white dan bayangan ke div kontainer scroll ini -->
+            <div class="overflow-y-auto table-container max-h-[35vh] bg-white rounded-lg shadow-sm border border-slate-200">
+                <table class="min-w-full text-left whitespace-nowrap">
+                    <!-- Gunakan z-20, top-0, sticky, dan background solid agar tidak tertembus konten -->
+                    <thead class="bg-slate-100 sticky top-0 z-20 shadow-[0_1px_0_0_#e2e8f0]">
+                        <tr>
+                            <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase">Spec Name</th>
+                            <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase text-center">Current Qty</th>
+                            <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase text-center">Min Target</th>
+                            <th class="px-4 py-3 font-bold text-xs text-rose-600 uppercase text-center">Shortage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="alertStockBody" class="alert-body divide-y divide-slate-100 text-sm">
+                        <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">Loading alerts...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- CHART SECTION -->
+    <div class="glass-card rounded-xl p-4 mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Monitoring Stock</h3>
+                <p id="chartSubtitle" class="text-xs text-slate-500 font-medium tracking-wide">Area: <span class="text-emerald-600 font-bold">Total Stock</span></p>
+            </div>
+
+            <div class="flex gap-2 items-center">
+                <button onclick="loadChartData()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded transition-colors border border-slate-200 shadow-sm" title="Refresh Chart">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chart Slideshow Container -->
+        <div class="w-full relative overflow-hidden mt-4 h-[320px]">
+            <div id="chartSlider" class="flex transition-transform duration-500 ease-in-out w-full h-full">
+                <div class="min-w-full h-full shrink-0 relative" id="chartStock"></div>
+                <div class="min-w-full h-full shrink-0 relative" id="chartStaging"></div>
+            </div>
+        </div>
+
+        <!-- Slideshow Controls -->
+        <div class="flex justify-center items-center gap-2 mt-3">
+            <button id="toggleSlideshowBtn" onclick="toggleSlideshow()" class="p-1 text-slate-400 hover:text-blue-600 transition-colors mr-2" title="Pause Auto-Play">
+                <svg id="iconPause" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 0 1 .75-.75H9a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H7.5a.75.75 0 0 1-.75-.75V5.25Zm7.5 0A.75.75 0 0 1 15 4.5h1.5a.75.75 0 0 1 .75.75v13.5a.75.75 0 0 1-.75.75H15a.75.75 0 0 1-.75-.75V5.25Z" clip-rule="evenodd" />
+                </svg>
+                <svg id="iconPlay" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 hidden">
+                    <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <button onclick="goToSlide(0)" class="indicator-dot w-2.5 h-2.5 rounded-full bg-emerald-500 transition-colors"></button>
+            <button onclick="goToSlide(1)" class="indicator-dot w-2.5 h-2.5 rounded-full bg-slate-300 transition-colors"></button>
+        </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+        <!-- STOCK -->
+        <div onclick="openKPIDetail('Stock', 'Total Available Stock')" class="glass-card rounded-xl p-4 flex flex-col justify-center border-b-4 border-emerald-500 hover:-translate-y-1 hover:shadow-lg hover:bg-emerald-50/30 transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-600 transition-colors">Total Stock</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+            </div>
+            <h4 id="kpiStock" class="text-2xl font-black text-slate-800">0</h4>
+        </div>
+
+        <!-- STAGING -->
+        <div onclick="openKPIDetail('Staging', 'In Staging Area')" class="glass-card rounded-xl p-4 flex flex-col justify-center border-b-4 border-purple-500 hover:-translate-y-1 hover:shadow-lg hover:bg-purple-50/30 transition-all cursor-pointer group">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-purple-600 transition-colors">Staging</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-purple-400 group-hover:text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l-7-7m7 7l.001.001M10.5 10.5l-1.414-1.414a1.5 1.5 0 010-2.122l1.414-1.414a1.5 1.5 0 012.122 0l1.414 1.414a1.5 1.5 0 010 2.122l-1.414 1.414z" /></svg>
+            </div>
+            <h4 id="kpiStaging" class="text-2xl font-black text-slate-800">0</h4>
+        </div>
+
+        <!-- DISPOSE -->
+        <div onclick="openKPIDetail('TotalDispose', 'Total Disposed Toolings')" class="glass-card rounded-xl p-4 border-b-4 border-rose-600 hover:-translate-y-1 hover:shadow-lg hover:bg-rose-50/40 transition-all cursor-pointer group flex flex-col justify-center relative">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-700 transition-colors">Total Dispose</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-500 group-hover:text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </div>
+            <h4 id="kpiDispose" class="text-2xl font-black text-rose-600">0</h4>
+        </div>
+
+        <div onclick="openKPIDetail('MonthDispose', 'Disposed Toolings (This Month)')" class="glass-card rounded-xl p-4 flex flex-col justify-center border-b-4 border-rose-400 hover:-translate-y-1 hover:shadow-lg hover:bg-rose-50/40 transition-all cursor-pointer group relative">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-600 transition-colors">Month Dispose</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-400 group-hover:text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            </div>
+            <h4 id="kpiDisposeMonth" class="text-2xl font-black text-rose-500">0</h4>
+        </div>
+
+        <div onclick="openKPIDetail('WeekDispose', 'Disposed Toolings (This Week)')" class="glass-card rounded-xl p-4 flex flex-col justify-center border-b-4 border-rose-300 hover:-translate-y-1 hover:shadow-lg hover:bg-rose-50/40 transition-all cursor-pointer group relative">
+            <div class="flex items-center justify-between mb-1">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-500 transition-colors">Week Dispose</p>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-300 group-hover:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <h4 id="kpiDisposeWeek" class="text-2xl font-black text-rose-400">0</h4>
+        </div>
+    </div>
+
+    <!-- FORM TRANSAKSI & RECENT LOGS -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-4 flex flex-col gap-4">
+            <div class="glass-card rounded-xl p-4 flex-1">
+                <h3 class="text-base font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-blue-600"><path fill-rule="evenodd" d="M3 4.5A1.5 1.5 0 0 1 4.5 3h15A1.5 1.5 0 0 1 21 4.5v15a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5v-15ZM5.25 6a.75.75 0 0 0-.75.75v3c0 .414.336.75.75.75h3a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75h-3Zm0 8.25a.75.75 0 0 0-.75.75v3c0 .414.336.75.75.75h3a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75h-3Zm8.25-8.25a.75.75 0 0 0-.75.75v3c0 .414.336.75.75.75h3a.75.75 0 0 0 .75-.75v-3a.75.75 0 0 0-.75-.75h-3Z" clip-rule="evenodd" /></svg>
+                    Record Transaction
+                </h3>
+                <form id="transactionForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Type</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="transaction_type" value="STAGING" class="peer sr-only">
+                                <div class="text-center px-1 py-1.5 text-[11px] sm:text-[11px] rounded border border-slate-200 peer-checked:border-purple-500 peer-checked:bg-purple-50 peer-checked:text-purple-700 font-bold transition-all whitespace-nowrap overflow-hidden">STAGING</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="transaction_type" value="STOCK" class="peer sr-only" checked>
+                                <div class="text-center px-1 py-1.5 text-[11px] sm:text-[11px] rounded border border-slate-200 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 font-bold transition-all whitespace-nowrap overflow-hidden">STOCK</div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="transaction_type" value="DISPOSE" class="peer sr-only">
+                                <div class="text-center px-1 py-1.5 text-[11px] sm:text-[11px] rounded border border-slate-200 peer-checked:border-rose-500 peer-checked:bg-rose-50 peer-checked:text-rose-700 font-bold transition-all whitespace-nowrap overflow-hidden">DISPOSE</div>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">Tooling Spec <span class="text-red-500">*</span></label>
+                        <select id="spec_id" name="spec_id" required class="block w-full border border-slate-300 rounded py-1.5 px-2 text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-600 outline-none transition-all">
+                            <option value="" disabled selected>-- Select Target Spec --</option>
+                        </select>
+                    </div>
+                    <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 relative">
+                        <label class="block text-[11px] font-semibold text-blue-900 mb-1 flex justify-between items-center">
+                            <span>Scan Barcode / Code <span class="text-red-500">*</span></span>
+                            <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded animate-pulse">Ready</span>
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="text" id="tooling_code" name="tooling_code" required autofocus autocomplete="off" placeholder="Scan or type..." class="scan-indicator block w-full border border-blue-300 rounded py-1.5 px-2 text-xs font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 outline-none transition-all">
+                            <button type="button" onclick="openCameraScanner()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded flex items-center justify-center transition-colors shadow-sm" title="Scan via Camera">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" /></svg>
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold text-blue-900 mb-1">Item No. (Auto-Extracted)</label>
+                            <input type="text" id="item_no" name="item_no" readonly placeholder="Wait for scan..." class="block w-full border border-blue-200 bg-white/70 rounded py-1.5 px-2 text-xs font-mono text-blue-800 cursor-not-allowed outline-none">
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <button type="button" onclick="submitTransaction()" class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-2.5 px-3 text-sm rounded shadow hover:shadow-md transition-all focus:ring-2 focus:ring-blue-500/30">
+                            Process Transaction
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="lg:col-span-8">
+            <div class="glass-card rounded-xl p-4 h-full flex flex-col min-h-[300px]">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+                    <h3 class="text-base font-bold text-slate-800 flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-slate-600"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                        Recent Logs
+                    </h3>
+                    <div>
+                        <input type="text" id="searchLog" oninput="filterLogs()" placeholder="Search logs..." class="border border-slate-300 rounded py-1 px-2 text-xs focus:ring-1 focus:ring-blue-500 outline-none w-32 sm:w-48">
+                    </div>
+                </div>
+                <div class="flex-1 overflow-hidden relative">
+                    <div class="absolute inset-0 overflow-y-auto table-container">
+                        <table class="min-w-full text-left whitespace-nowrap">
+                            <thead class="bg-slate-50/80 border-b border-slate-200 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-3 py-2 font-bold text-[11px] text-slate-500 uppercase">Time</th>
+                                    <th class="px-3 py-2 font-bold text-[11px] text-slate-500 uppercase">Type</th>
+                                    <th class="px-3 py-2 font-bold text-[11px] text-slate-500 uppercase">Code & Item No.</th>
+                                    <th class="px-3 py-2 font-bold text-[11px] text-slate-500 uppercase">Spec Name</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logTableBody" class="divide-y divide-slate-100 text-xs">
+                                <tr><td colspan="4" class="px-3 py-6 text-center text-slate-400">Loading logs...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS -->
+<div id="cameraScannerModal" class="fixed inset-0 bg-slate-900/80 hidden flex items-center justify-center p-4 sm:p-8" style="z-index: 999999;">
+    <!-- flex, flex-col, max-h-[90vh] prevent camera to full screen, keeping the close button accessible -->
+    <div class="relative w-full max-w-2xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+
+        <div class="bg-slate-800 px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0">
+            <h3 class="text-white text-lg font-semibold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                Camera Scanner
+            </h3>
+            <button type="button" onclick="closeCameraScanner()" class="text-slate-300 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-2 sm:p-4 bg-black flex-1 overflow-y-auto flex items-center justify-center">
+            <div id="qr-reader"></div>
+        </div>
+
+        <div class="bg-slate-50 p-3 sm:p-4 text-center border-t border-slate-200 shrink-0">
+            <p class="text-sm sm:text-base text-slate-600 font-medium">Point your camera at the Barcode/QR Code.</p>
+        </div>
+    </div>
+</div>
+
+<div id="kpiDetailModal" class="fixed inset-0 bg-slate-900/80 hidden flex items-center justify-center p-4 sm:p-8" style="z-index: 999999;">
+    <div class="relative w-full max-w-5xl bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+        <div class="bg-blue-600 px-4 py-3 sm:px-6 sm:py-4 flex justify-between items-center shrink-0">
+            <h3 class="text-white text-lg font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span id="kpiDetailModalTitle">Detail Overview</span>
+            </h3>
+            <button type="button" onclick="closeKPIDetailModal()" class="text-blue-200 hover:text-white transition-colors"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <div class="p-4 overflow-y-auto flex-1 bg-slate-50 table-container">
+            <table class="min-w-full text-left whitespace-nowrap bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                <thead class="bg-slate-100 border-b border-slate-200 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase">Last Update</th>
+                        <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase">Category Name</th>
+                        <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase">Spec Name</th>
+                        <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase">Tooling Code</th>
+                        <th class="px-4 py-3 font-bold text-xs text-blue-600 uppercase text-center w-24">Repair Count</th>
+                        <th class="px-4 py-3 font-bold text-xs text-slate-600 uppercase text-center w-24">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="kpiDetailTableBody" class="divide-y divide-slate-100 text-sm">
+                    <tr><td colspan="6" class="px-4 py-6 text-center text-slate-400">Loading details...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const urlGetSpecs        = '@Url.Action("GetSpecsDropdown", "BMS", new { area = "PE" })';
+        const urlGetChart        = '@Url.Action("GetStockChartData", "BMS", new { area = "PE" })';
+        const urlGetLogs         = '@Url.Action("GetTransactionLogs", "BMS", new { area = "PE" })';
+        const urlProcess         = '@Url.Action("ProcessTransaction", "BMS", new { area = "PE" })';
+        const urlGetAlerts       = '@Url.Action("GetLowStockAlerts", "BMS", new { area = "PE" })';
+        const urlGetKPIs         = '@Url.Action("GetStockKPIs", "BMS", new { area = "PE" })';
+        const urlGetKPIDetails   = '@Url.Action("GetKPICategoryDetails", "BMS", new { area = "PE" })';
+        const urlCancelDispose   = '@Url.Action("CancelDispose", "BMS", new { area = "PE" })';
+
+        let html5QrCode;
+        let currentSlide = 0;
+        let chartSlideInterval;
+        let isAutoPlay = true;
+        let allLogs = [];
+
+        $(document).ready(function () {
+            const initialType = $('input[name="transaction_type"]:checked').val();
+            loadSpecsDropdown(initialType === "STAGING");
+
+            $('input[name="transaction_type"]').on('change', function () {
+                const selectedType = $(this).val();
+                loadSpecsDropdown(selectedType === "STAGING");
+            });
+
+            loadChartData();
+            loadLogs();
+            loadAlerts();
+            loadKPIs();
+
+            $('#tooling_code').on('input', function () {
+                const code = $(this).val().trim();
+                if (code.length > 0) {
+                    $('#item_no').val(code.substring(0, 13));
+                } else {
+                    $('#item_no').val('');
+                }
+            });
+
+            $('#tooling_code').keypress(function (e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    if ($('#spec_id').val() !== null) {
+                        submitTransaction();
+                    } else {
+                        Swal.fire('Warning', 'Please select Tooling Spec first before scanning.', 'warning');
+                        $('#spec_id').focus();
+                    }
+                }
+            });
+        });
+
+        function loadSpecsDropdown(isStaging = false) {
+            $.get(urlGetSpecs, { isStaging: isStaging }, function (response) {
+                const select = $('#spec_id');
+                select.empty().append('<option value="" disabled selected>-- Select Target Spec --</option>');
+                if (response.success) {
+                    response.data.forEach(s => select.append(`<option value="${s.id}">${s.name}</option>`));
+                }
+            });
+        }
+
+        // Toggle Table Visibility
+        function toggleAlertTable() {
+            $('#alertTableWrapper').slideToggle(300, function() {
+                const isHidden = $(this).is(':hidden');
+                const icon = $('#alertToggleIcon');
+
+                if(isHidden) {
+                    $('#alertToggleText').text('Click to expand');
+                    icon.removeClass('rotate-180');
+                } else {
+                    $('#alertToggleText').text('Click to collapse');
+                    icon.addClass('rotate-180');
+                }
+            });
+        }
+
+        function loadAlerts() {
+            $.get(urlGetAlerts, function(response) {
+                if (response.success) {
+                    let dataStock = [];
+
+                    if (response.data) {
+                        if (Array.isArray(response.data)) {
+                            dataStock = response.data;
+                        } else {
+                            dataStock = response.data.stockAlerts || response.data.workshopAlerts || [];
+                        }
+                    }
+
+                    const totalAlerts = dataStock.length;
+                    const badge = $('#inlineLowStockBadge');
+                    const container = $('#alertSectionContainer');
+                    const icon = $('#alertIcon');
+
+                    badge.text(totalAlerts);
+
+                    if(totalAlerts > 0) {
+                        // Jika Ada Alert -> Merah, dan expand tabel otomatis
+                        badge.removeClass('bg-emerald-500').addClass('bg-rose-500');
+                        icon.removeClass('text-emerald-500').addClass('text-rose-500');
+                        container.removeClass('border-emerald-500').addClass('border-rose-500');
+
+                        if($('#alertTableWrapper').is(':hidden')) {
+                            toggleAlertTable();
+                        }
+                    } else {
+                        // Jika Aman -> Hijau, tutup tabel
+                        badge.removeClass('bg-rose-500').addClass('bg-emerald-500');
+                        icon.removeClass('text-rose-500').addClass('text-emerald-500');
+                        container.removeClass('border-rose-500').addClass('border-emerald-500');
+                    }
+
+                    renderAlertTableBody('#alertStockBody', dataStock);
+                }
+            });
+        }
+
+        function renderAlertTableBody(tbodySelector, dataArray) {
+            const tbody = $(tbodySelector);
+            tbody.empty();
+
+            if (dataArray.length > 0) {
+                dataArray.forEach(item => {
+                    const tr = `
+                        <tr class="hover:bg-rose-50/50 transition-colors">
+                            <td class="px-4 py-3">
+                                <div class="font-bold text-slate-800">${item.spec_name}</div>
+                                <div class="text-[10px] text-slate-500">${item.category_name}</div>
+                            </td>
+                            <td class="px-4 py-3 text-center font-semibold text-slate-700">${item.current_stock}</td>
+                            <td class="px-4 py-3 text-center font-medium text-slate-500">${item.min_stock}</td>
+                            <td class="px-4 py-3 text-center">
+                                <span class="bg-rose-100 text-rose-700 font-bold px-2.5 py-1 rounded text-xs">- ${item.shortage} pcs</span>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.append(tr);
+                });
+            } else {
+                tbody.html('<tr><td colspan="4" class="px-4 py-8 text-center text-emerald-600 font-semibold"><svg class="w-8 h-8 mx-auto mb-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>All stock levels are secure!</td></tr>');
+            }
+        }
+
+        function loadChartData() {
+            $.get(urlGetChart, function(response) {
+                if (response.success) {
+                    const labels = response.labels || [];
+                    const stockData = response.currentStock || response.stockData || [];
+                    const minStock = response.minStock || [];
+
+                    const stagingLabels = response.stagingLabels || [];
+                    const newStagingStock = response.newStagingStock || [];
+                    const repairStagingStock = response.repairStagingStock || [];
+
+                    renderHighchart('chartStock', labels, stockData, minStock, '#10b981', 'Total Stock');
+                    renderStagingChart('chartStaging', stagingLabels, newStagingStock, repairStagingStock);
+
+                    setTimeout(() => { Highcharts.charts.forEach(chart => { if (chart) chart.reflow(); }); }, 200);
+                    startChartSlideshow();
+                }
+            });
+        }
+
+        function renderHighchart(containerId, labels, currentData, minData, barColor, seriesName) {
+            const isTabletOrMobile = window.innerWidth < 1024;
+            const labelFontSize = isTabletOrMobile ? '7px' : '11px';
+
+            Highcharts.chart(containerId, {
+                chart: { backgroundColor: 'transparent', style: { fontFamily: 'Inter, system-ui, sans-serif' } },
+                title: { text: null }, credits: { enabled: false },
+                xAxis: [{ categories: labels, crosshair: true, labels: { rotation: -90, style: { color: '#64748b', fontSize: labelFontSize } } }],
+                yAxis: [{ min: 0, tickInterval: 1, allowDecimals: false, title: { text: null }, labels: { style: { color: '#64748b', fontSize: '11px' } }, gridLineColor: 'rgba(0,0,0,0.05)' }],
+                tooltip: { outside: true, shared: true, backgroundColor: 'rgba(255, 255, 255, 0.95)', borderColor: '#cbd5e1', borderRadius: 4, style: { fontSize: '12px' } },
+                legend: { itemStyle: { color: '#475569', fontSize: '11px' }, margin: 5 },
+                plotOptions: { column: { pointPadding: 0.2, borderWidth: 0, minPointLength: 5 } },
+                series: [
+                    { name: seriesName, type: 'column', data: currentData, color: barColor, borderRadius: 2 },
+                    { name: 'Min Stock Limit', type: 'spline', data: minData, color: '#e11d48', dashStyle: 'ShortDash', marker: { enabled: true, radius: 3 } }
+                ]
+            });
+        }
+
+        function renderStagingChart(containerId, labels, newData, repairData) {
+            Highcharts.chart(containerId, {
+                chart: { type: 'column', backgroundColor: 'transparent', style: { fontFamily: 'Inter, system-ui, sans-serif' } },
+                title: { text: null }, credits: { enabled: false },
+                xAxis: [{ categories: labels, crosshair: true, labels: { style: { color: '#64748b', fontSize: '11px' } } }],
+                yAxis: [{ min: 0, tickInterval: 1, allowDecimals: false, title: { text: null }, labels: { style: { color: '#64748b', fontSize: '11px' } }, gridLineColor: 'rgba(0,0,0,0.05)' }],
+                tooltip: { outside: true, shared: true, backgroundColor: 'rgba(255, 255, 255, 0.95)', borderColor: '#cbd5e1', borderRadius: 4, style: { fontSize: '12px' } },
+                legend: { itemStyle: { color: '#475569', fontSize: '11px' }, margin: 5 },
+                plotOptions: { column: { pointPadding: 0.2, borderWidth: 0, borderRadius: 2 } },
+                series: [
+                    { name: 'New (Staging)', data: newData, color: '#3b82f6' },
+                    { name: 'Repair (Staging)', data: repairData, color: '#d946ef' }
+                ]
+            });
+        }
+
+        function startChartSlideshow() {
+            clearInterval(chartSlideInterval);
+            if(isAutoPlay) {
+                chartSlideInterval = setInterval(() => {
+                    currentSlide = (currentSlide + 1) % 2;
+                    goToSlide(currentSlide, true);
+                }, 6000);
+            }
+        }
+
+        function toggleSlideshow() {
+            isAutoPlay = !isAutoPlay;
+            if(isAutoPlay) {
+                $('#iconPlay').addClass('hidden');
+                $('#iconPause').removeClass('hidden');
+                $('#toggleSlideshowBtn').attr('title', 'Pause Auto-Play');
+                startChartSlideshow();
+            } else {
+                $('#iconPause').addClass('hidden');
+                $('#iconPlay').removeClass('hidden');
+                $('#toggleSlideshowBtn').attr('title', 'Start Auto-Play');
+                clearInterval(chartSlideInterval);
+            }
+        }
+
+        function goToSlide(index, isAuto = false) {
+            currentSlide = index;
+            const translateX = index * -100;
+            $('#chartSlider').css('transform', `translateX(${translateX}%)`);
+
+            if(index === 0) {
+                $('#chartSubtitle').html('Area: <span class="text-emerald-600 font-bold">Total Stock</span>');
+            } else {
+                $('#chartSubtitle').html('Area: <span class="text-purple-600 font-bold">Staging</span>');
+            }
+
+            $('.indicator-dot').removeClass('bg-emerald-500 bg-purple-600').addClass('bg-slate-300');
+            if(index === 0) $($('.indicator-dot')[0]).removeClass('bg-slate-300').addClass('bg-emerald-500');
+            if(index === 1) $($('.indicator-dot')[1]).removeClass('bg-slate-300').addClass('bg-purple-600');
+
+            setTimeout(() => { Highcharts.charts.forEach(chart => { if (chart) chart.reflow(); }); }, 100);
+
+            if(!isAuto && isAutoPlay) {
+                startChartSlideshow();
+            }
+        }
+
+        function submitTransaction() {
+            const specId = $('#spec_id').val();
+            const code = $('#tooling_code').val().trim();
+            const type = $('input[name="transaction_type"]:checked').val();
+            const autoItemNo = $('#item_no').val();
+
+            if (!specId || !code) {
+                Swal.fire('Validation Error', 'Spec and Barcode are required!', 'error');
+                return;
+            }
+
+            Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            $.post(urlProcess, { spec_id: specId, tooling_code: code, item_no: autoItemNo, transaction_type: type, quantity: 1 }, function(response) {
+                if (response.success) {
+                    Swal.fire({ title: 'Success!', text: response.message, icon: 'success', timer: 1000, showConfirmButton: false });
+                    $('#tooling_code').val(''); $('#item_no').val(''); $('#tooling_code').focus();
+
+                    loadChartData();
+                    loadLogs();
+                    loadAlerts();
+                    loadKPIs();
+                } else {
+                    Swal.fire('Failed', response.message, 'error');
+                }
+            }).fail(function() {
+                Swal.fire('Error', 'Failed to communicate with server.', 'error');
+            });
+        }
+
+        function loadLogs() {
+            $.get(urlGetLogs, function(response) {
+                if (response.success) {
+                    allLogs = response.data;
+                    renderLogs(allLogs);
+                }
+            });
+        }
+
+        function renderLogs(data) {
+            const tbody = $('#logTableBody'); tbody.empty();
+            if (data.length === 0) {
+                tbody.html('<tr><td colspan="4" class="px-3 py-6 text-center text-slate-400">No transactions recorded yet.</td></tr>');
+                return;
+            }
+
+            data.forEach(log => {
+                let dateObj = (typeof log.created_at === 'string' && log.created_at.includes('/Date('))
+                    ? new Date(parseInt(log.created_at.replace(/\/Date\((.*?)\)\//gi, "$1")))
+                    : new Date(log.created_at);
+
+                const timeStr = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+                let isCanceled = (log.transaction_type === 'DISPOSE' && log.delete_at != null);
+
+                let typeStyle = log.transaction_type === 'STOCK' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                log.transaction_type === 'STAGING' ? 'bg-purple-100 text-purple-700 border-purple-200' :
+                                'bg-rose-100 text-rose-700 border-rose-200';
+
+                if (isCanceled) typeStyle = 'bg-slate-100 text-slate-400 border-slate-200';
+
+                let badgeHtml = `<span class="px-1.5 py-0.5 text-[10px] font-bold rounded border ${typeStyle}">${log.transaction_type}</span>`;
+                if (isCanceled) {
+                    badgeHtml += `<div class="mt-1.5"><span class="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-rose-50 text-rose-600 border border-rose-200 shadow-sm">Canceled</span></div>`;
+                }
+
+                tbody.append(`
+                    <tr class="hover:bg-slate-50 transition-colors ${isCanceled ? 'bg-slate-50/50' : ''}">
+                        <td class="px-3 py-2 text-slate-500">
+                            <div class="text-[10px]">${dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+                            <div class="text-xs font-medium ${isCanceled ? 'text-slate-400 line-through' : 'text-slate-800'}">${timeStr}</div>
+                        </td>
+                        <td class="px-3 py-2 leading-tight">${badgeHtml}</td>
+                        <td class="px-3 py-2">
+                            <div class="font-mono font-semibold ${isCanceled ? 'text-slate-400' : 'text-slate-800'}">${log.tooling_code}</div>
+                            <div class="text-[10px] text-slate-500">Item No: <span class="font-semibold">${log.item_no || '-'}</span></div>
+                        </td>
+                        <td class="px-3 py-2">
+                            <div class="font-bold ${isCanceled ? 'text-slate-400' : 'text-slate-700'}">${log.spec_name || '-'}</div>
+                            <div class="text-[10px] text-slate-500">${log.category_name || '-'}</div>
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function filterLogs() {
+            const term = $('#searchLog').val().toLowerCase();
+            const filtered = allLogs.filter(l =>
+                (l.tooling_code && l.tooling_code.toLowerCase().includes(term)) ||
+                (l.item_no && l.item_no.toLowerCase().includes(term)) ||
+                (l.transaction_type && l.transaction_type.toLowerCase().includes(term)) ||
+                (l.spec_name && l.spec_name.toLowerCase().includes(term)) ||
+                (l.category_name && l.category_name.toLowerCase().includes(term))
+            );
+            renderLogs(filtered);
+        }
+
+        function loadKPIs() {
+            $.get(urlGetKPIs, function (response) {
+                if (response.success) {
+                    $('#kpiStock').text(response.inStock || response.inWarehouse || 0);
+                    $('#kpiStaging').text(response.staging || 0);
+                    $('#kpiDispose').text(response.totalDispose);
+                    $('#kpiDisposeMonth').text(response.disposeThisMonth);
+                    $('#kpiDisposeWeek').text(response.disposeThisWeek);
+                }
+            });
+        }
+
+        function openCameraScanner() {
+            $('#cameraScannerModal').removeClass('hidden');
+            html5QrCode = new Html5Qrcode("qr-reader");
+
+            const config = {
+                fps: 15,
+                formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A ],
+                videoConstraints: { facingMode: "environment", width: { min: 640, ideal: 1280, max: 1920 }, height: { min: 480, ideal: 720, max: 1080 } }
+            };
+
+            html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+                .catch((err) => {
+                    Swal.fire('Camera Error', 'Gagal mengakses kamera. Pastikan izin kamera aktif.', 'error');
+                    closeCameraScanner();
+                });
+        }
+
+        function closeCameraScanner() {
+            $('#cameraScannerModal').addClass('hidden');
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e));
+            }
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            closeCameraScanner();
+            
+            $('#tooling_code').val(decodedText).trigger('input');
+
+            if ($('#spec_id').val() !== null) {
+                submitTransaction();
+            } else {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Barcode scanned!', showConfirmButton: false, timer: 1500 });
+                $('#spec_id').focus();
+            }
+        }
+
+        function openKPIDetail(type, titleText) {
+            $('#kpiDetailModalTitle').text(titleText);
+            $('#kpiDetailModal').removeClass('hidden');
+            const tbody = $('#kpiDetailTableBody');
+            tbody.html('<tr><td colspan="6" class="px-4 py-8 text-center text-slate-400">Fetching detail data...</td></tr>');
+
+            $.get(urlGetKPIDetails, { type: type }, function (response) {
+                if (response.success) {
+                    tbody.empty();
+                    if (response.data.length === 0) {
+                        tbody.html('<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500 font-medium">No toolings found for this category.</td></tr>');
+                        return;
+                    }
+
+                    response.data.forEach(item => {
+                        let dateObj = (typeof item.last_update === 'string' && item.last_update.includes('/Date('))
+                            ? new Date(parseInt(item.last_update.replace(/\/Date\((.*?)\)\//gi, "$1")))
+                            : new Date(item.last_update);
+
+                        const dateStr = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                        const timeStr = dateObj.getHours().toString().padStart(2, '0') + ':' + dateObj.getMinutes().toString().padStart(2, '0');
+
+                        let actionHtml = '-';
+                        if (type.includes("Dispose")) {
+                            actionHtml = `<button onclick="cancelDispose('${item.tooling_code}')" class="bg-white border border-rose-200 text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 px-2 py-1 rounded text-[10px] font-bold transition-colors w-full">Cancel</button>`;
+                        }
+
+                        tbody.append(`
+                            <tr class="hover:bg-blue-50/30 transition-colors">
+                                <td class="px-4 py-3"><div class="text-xs text-slate-700 font-medium">${dateStr}</div><div class="text-[10px] text-slate-500">${timeStr}</div></td>
+                                <td class="px-4 py-3"><span class="bg-slate-100 text-slate-600 font-semibold px-2 py-1 rounded text-[10px]">${item.category_name}</span></td>
+                                <td class="px-4 py-3 font-bold text-slate-700">${item.spec_name}</td>
+                                <td class="px-4 py-3 font-mono font-bold text-slate-800">${item.tooling_code}</td>
+                                <td class="px-4 py-3 text-center"><span class="font-black text-sm text-blue-600">${item.repair_count} Times</span></td>
+                                <td class="px-4 py-3 text-center">${actionHtml}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    tbody.html(`<tr><td colspan="6" class="px-4 py-8 text-center text-rose-500 font-medium">Error: ${response.message}</td></tr>`);
+                }
+            });
+        }
+
+        function closeKPIDetailModal() { $('#kpiDetailModal').addClass('hidden'); }
+
+        function cancelDispose(toolingCode) {
+            Swal.fire({
+                title: 'Cancel Dispose?',
+                text: `Are you sure you want to cancel the dispose for Tooling: ${toolingCode}? This data will become active again.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#cbd5e1',
+                confirmButtonText: 'Yes, Cancel it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                    $.post(urlCancelDispose, { tooling_code: toolingCode }, function (response) {
+                        if (response.success) {
+                            Swal.fire({ title: 'Canceled!', text: response.message, icon: 'success', timer: 1500, showConfirmButton: false });
+                            closeKPIDetailModal();
+                            loadChartData(); loadLogs(); loadAlerts(); loadKPIs();
+                        } else {
+                            Swal.fire('Failed', response.message, 'error');
+                        }
+                    }).fail(() => Swal.fire('Error', 'Failed to connect to the server.', 'error'));
+                }
+            });
+        }
+    </script>
+}

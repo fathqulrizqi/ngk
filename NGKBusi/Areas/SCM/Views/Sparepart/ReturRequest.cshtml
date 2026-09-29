@@ -1,0 +1,546 @@
+<!doctype html>
+@{
+    ViewBag.Title = "Detail Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+
+<!--   Fonts and icons   -->
+@*<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+    <link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">*@
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.js"></script>
+@*<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>*@
+@*<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+    <script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+    <script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>*@
+
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+
+
+<div class="row">
+
+    <div class="col-12">
+        @*<nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Home</a></li>
+                    <li class="breadcrumb-item"><a href="#">Library</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Data</li>
+                </ol>
+            </nav>*@
+        <div class="card shadow-sm  mb-5 bg-white rounded">
+
+            <div class="card-header bg-info" style="color:white; font-weight:bold">
+                <a href="@Url.Action("RequestData", "Sparepart", new { area = "SCM" })" data-tooltip="Previous Pagge" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                    <i class="fa fa-arrow-left"></i>
+                </a>
+                Detail Request
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-3 bold"><strong>Request No</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.RequestNo)</p></div>
+                    <div class="col-3 bold"><strong>Requested Time</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.Create_Time)</p></div>
+                </div>
+                <div class="row">
+                    <div class="col-3 bold"><strong>Requested By</strong></div>
+                    <div class="col-3"><p>@(ViewBag.header.UserRequest)</p></div>
+                    <div class="col-3 bold"><strong>Status</strong></div>
+                    <div class="col-3">
+                        <h5>
+
+                            @if (ViewBag.header.Status == 1)
+                            {
+                                @Html.Raw("<span class=\"badge badge-primary\">Open</span>");
+
+                            }
+                            else if (ViewBag.header.Status == 2)
+                            {
+                                @Html.Raw("<span class=\"badge badge-warning\">Preparing</span>");
+                            }
+                            else if (ViewBag.header.Status == 3)
+                            {
+                                @Html.Raw("<span class=\"badge badge-success\">Ready To Pickup</span>");
+
+                            }
+                            else if (ViewBag.header.Status == 4)
+                            {
+                                @Html.Raw("<span class=\"badge badge-secondary\">Request Closed</span>");
+                            }
+                            else if (ViewBag.header.Status == 10)
+                            {
+                                @Html.Raw("<span class=\"badge badge-dark\">Cancelled</span>");
+                            }
+                        </h5>
+                    </div>
+                </div>
+
+                <hr />
+                <form action="@Url.Action("SaveReturRequest", "Sparepart", new { area = "SCM" })" method="post" id="formReturRequest">
+                    <table id="table"
+                           data-toggle="table"
+                           data-toolbar="#toolbar"
+                           data-ajax="ajaxRequest"
+                           data-query-params="queryParams"
+                           data-click-to-select="true"
+                           data-url=""
+                           class="table-sm">
+                        <thead>
+                            <tr>
+                                @*<th data-field="state" data-checkbox="true"></th>*@
+                                <th data-field="ITEMID" data-sortable="true">ITEM ID</th>
+                                <th data-field="ProductName" data-sortable="true">Product Name</th>
+                                <th data-field="Quantity" data-sortable="Quantity">Qty Request</th>
+                                <th data-field="Qty_Realization" data-sortable="Quantity">Qty Realization</th>
+                                <th data-field="Qty_Retur">Qty Retur</th>
+                                <th data-field="ReturNotes">Notes</th> 
+                            </tr>
+                        </thead>
+                    </table>
+                    <div class="row mt-4 mb-4">
+                        <input type="hidden" name="RequestNo" value="@(ViewBag.header.RequestNo)" />
+                        <div class="col-12">
+                            <button class="btn btn-primary" type="button" id="submitRetur">Submit</button>
+                            <button class="btn btn-danger" type="reset">Cancel</button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    var $process = $('#submitRetur');
+
+    $process.click(function () {
+        ConfirmSendRequest("Confirm Send Retur Request ?", "#0275d8", "Yes, Send");
+    })
+
+        function ConfirmSendRequest(Text, Button, BtnText) {
+            // migrated to SweetAlert2 (swal.fire)
+            Swal.fire({
+                title: "Are you sure?",
+                text: Text,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: Button,
+                confirmButtonText: BtnText,
+                cancelButtonText: "Close",
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: $('#formReturRequest').attr('action'),
+                        type: "POST",
+                        cache: false,
+                        data: $('#formReturRequest').serialize(),
+                        dataType: "json",
+                        success: function (json) {
+                            if (json.status == 1) {
+                                var redirectUrl = "@Url.Action("DataReturn", "SparepartReturn", new { area = "SCM" })";
+                                Swal.fire({
+                                    title: "Success",
+                                    text: json.msg,
+                                    icon: "success"
+                                }).then(function () {
+                                    location.href = redirectUrl;
+                                });
+
+                            } else {
+                                Swal.fire({
+                                    title: "Failed!",
+                                    text: json.msg,
+                                    icon: "error"
+                                });
+                            }
+                        },
+                        error: function () {
+                            Swal.fire({
+                                title: "Canceled!",
+                                text: Link,
+                                icon: "error"
+                            });
+                        }
+
+                    })
+                } else {
+                    Swal.fire({
+                        title: "Cancelled",
+                        text: "Retur Not Send",
+                        icon: "error"
+                    });
+                }
+            });
+        }
+
+        function queryParams(params) {
+            params.switch = "@(ViewBag.RequestNo)";//   <<<----------catch like this
+            return params;
+        }
+
+        function ajaxRequest(params) {
+            var RequestNo = "@(ViewBag.RequestNo)";
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("ItemListRetur", "Sparepart", new { area = "SCM" })",
+                dataType: 'json',
+                data: { "RequestNo": params.data.switch },
+                success: function (items) {
+                    //console.log(items.notReady);
+                    if (items.notReady === 0) {
+
+                        $('#confirmPickup').removeClass("btn btn-secondary").addClass("btn btn-warning").prop('disabled', false);
+                    }
+                    params.success({
+                        rows: items
+                    }, null);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            })
+        }
+
+        $(function () {
+            $('#table').bootstrapTable({
+                exportDataType: "all",
+                exportTypes: ['excel', 'pdf'],
+                buttonsClass: 'primary'
+            })
+        });
+
+        $(document).on('click', '#procItem', function (e) {
+            var a = $(this).data("id");
+            var urlString = "@Url.Action("ReadyItem", "Sparepart", new { area = "SCM" })";
+            //$(this).hide();
+                $.ajax({
+                    url: urlString,
+                    type: "POST",
+                    cache: false,
+                    data: { Id: a },
+                    dataType: 'json',
+                    success: function (json) {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-left';
+                            toastr.success(json.msg);
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('tes');
+                            })
+                        }
+                        else {
+
+                            toastr.error(json.msg);
+                        }
+                    }
+                });
+        });
+
+    var formValidate =
+        $("form[name='formUpdateQuantity']").validate({
+            // Specify validation rules
+            rules: {
+                // The key name on the left side is the name attribute
+                // of an input field. Validation rules are defined
+                // on the right side
+                Qty_Realization: {
+                    required: true,
+                    min: 1
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                Qty_Realization: {
+                    required: "Please enter quantity",
+                    min: "please ente minimal 1 quantity"
+                }
+            },
+            errorElement: 'span',
+            errorPlacement: function (error, element) {
+                error.addClass('invalid-feedback');
+                element.closest('.form-group').append(error);
+            },
+            highlight: function (element, errorClass, validClass) {
+
+
+                var elem = $(element);
+                if (elem.hasClass("select2-offscreen")) {
+                    $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                } else {
+                    $(element).addClass('is-invalid');
+                }
+                jQuery(element).closest('.form-group').addClass('has-error');
+            },
+            unhighlight: function (element, errorClass, validClass) {
+                $(element).removeClass('is-invalid');
+                jQuery(element).closest('.form-group').removeClass('has-error');
+            },
+            // Make sure the form is submitted to the destination defined
+            // in the "action" attribute of the form when valid
+            submitHandler: function (form) {
+                updateQuantity();
+            }
+        });
+
+        $('#updateQuantity').click(function (e) {
+            //e.preventDefault();
+            formValidate.form();
+        });
+
+        $(document).on('click', '#editQty', function (e) {
+
+            var urlString = "@Url.Action("EditQuantityRealization", "Sparepart", new { area = "SCM" })";
+            var a = $(this).data("id");
+            console.log(urlString, a);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { DetailId: a },
+                success: function (response) {
+
+                    var selStock = response[0].Quantity;
+                    $('#EditQuantityRealizationModal input[name="Qty_Realization"]').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "You Can Only Reduce Quantity"
+                        }
+                    });
+                    $('#EditQuantityRealizationModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityRealizationModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityRealizationModal input[name="Qty_Realization"]').val(response[0].Qty_Realization);
+                    $('#EditQuantityRealizationModal input[name="Id"]').val(response[0].Id);
+                }
+            })
+
+        });
+
+        var formValidateOpen =
+            $("form[name='formUpdateQuantityItemOpen']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    Quantity: {
+                        required: true,
+                        min: 1
+                    }
+                },
+                // Specify validation error messages
+                messages: {
+                    Quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    updateQuantityItemOpen();
+                }
+            });
+
+        $(document).on('click', '#EditQtyItem', function (e) {
+
+            var urlString = "@Url.Action("EditQuantityItemOpen", "Sparepart", new { area = "SCM" })";
+            var a = $(this).data("id");
+            console.log(urlString, a);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { DetailId: a },
+                success: function (response) {
+
+                    var selStock = response[0].Stock;
+                    $('#EditQuantityModal input[name="Quantity"]').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "Stock Available " + selStock
+                        }
+                    });
+                    $('#EditQuantityModal input[name="ITEMID"]').val(response[0].ITEMID);
+                    $('#EditQuantityModal input[name="ProductName"]').val(response[0].ProductName);
+                    $('#EditQuantityModal input[name="Id"]').val(response[0].Id);
+                    $('#EditQuantityModal input[name="Quantity"]').val(response[0].Quantity);
+                }
+            })
+
+        });
+
+        $('#updateQuantityItemOpen').click(function (e) {
+            //e.preventDefault();
+            formValidateOpen.form();
+        });
+
+        function updateQuantity() {
+            $.ajax({
+                url: $('#formUpdateQuantity').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantity').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#EditQuantityRealizationModal').modal('toggle');
+                        $('#table').bootstrapTable('refresh', function () {
+                            console.log('refresh');
+                        })
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#EditQuantityRealizationModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+        function updateQuantityItemOpen() {
+            $.ajax({
+                url: $('#formUpdateQuantityItemOpen').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantityItemOpen').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.success(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                        $('#table').bootstrapTable('refresh', function () {
+                            console.log('refresh');
+                        })
+                    }
+                    else {
+                        toastr.options.positionClass = 'toast-bottom-left';
+                        toastr.error(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                    }
+                }
+            });
+
+        }
+
+    $(document).on('click', '#DeleteItem', function (e) {
+        var id = $(this).data("id");
+        var urlString = "@Url.Action("DeleteItemRequest", "Sparepart", new { area = "SCM" })";
+        confirmDelete(urlString, id);
+    });
+    function confirmDelete(Link, id) {
+        // migrated to SweetAlert2 swal.fire
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Delete This Item !",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#DD6B55",
+            confirmButtonText: "Yes, delete it!",
+            allowOutsideClick: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: { Id: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Deleted!",
+                                text: "Item has been deleted.",
+                                icon: "success"
+                            });
+                            $('#table').bootstrapTable('refresh', function () {
+                                console.log('refresh');
+                            });
+                        } else {
+                            Swal.fire({
+                                title: "Deleted!",
+                                text: "Failed To Delete Item.",
+                                icon: "error"
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            title: "Deleted!",
+                            text: Link,
+                            icon: "error"
+                        });
+                    }
+
+                })
+            } else {
+                Swal.fire({
+                    title: "Cancelled",
+                    text: "Cancel Delete Item",
+                    icon: "error"
+                });
+            }
+        });
+    }
+
+        $(document).on('click', '#cancelRequest', function (e) {
+            var a = $(this).data("id");
+            var Link = "@Url.Action("CancelRequest", "Sparepart", new { area = "SCM" })";
+            var id = "@ViewBag.RequestNo";
+            ConfirmSendRequest(Link, "Cancel this request ?", id, '#DC4C64', 'Yes, Cancel it');
+        });
+
+</script>

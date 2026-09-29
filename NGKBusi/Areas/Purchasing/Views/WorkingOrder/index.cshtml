@@ -1,0 +1,583 @@
+﻿
+@{
+    ViewBag.Title = "Working Order";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isLogin = (System.Web.HttpContext.Current.User != null) && System.Web.HttpContext.Current.User.Identity.IsAuthenticated;
+
+}
+
+@section cssHead {
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.3.0/css/dataTables.bootstrap5.css" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-x..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/45.0.0/ckeditor5.css" />
+
+    <style>
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+        }
+
+        div.dataTables_wrapper .dataTables_length,
+        div.dataTables_wrapper .dataTables_filter {
+            display: flex;
+            align-items: center;
+        }
+
+        div.dataTables_wrapper .dataTables_length,
+        div.dataTables_wrapper .dataTables_filter {
+            margin-bottom: 0.5rem;
+        }
+
+        div.dataTables_wrapper .dataTables_length {
+            order: 1;
+            width: 100%;
+        }
+
+        .select2-selection.is-invalid {
+            border: 1px solid #dc3545 !important;
+            border-radius: 0.25rem;
+            z-index: 999;
+        }
+
+        /* .dt-search {
+                    display: flex;
+                    margin: 0;
+                    max-width: 150px;
+                    padding: 4px 0;
+                }
+
+                    .dt-search > label {
+                        font-size: 0;
+                        position: relative;
+                        display: block;
+                    }
+
+                    .dt-search input[type="search"] {
+                        display: flex;
+                        width: 100%;
+                        padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+                        margin-right: 5px;
+                        font-size: 0.875rem;
+                        color: #111827;
+                        border: 1px solid #d1d5db;
+                        border-radius: 0.5rem;
+                        background-color: #f9fafb;
+                        background-image: url("data:image/svg+xml,%3Csvg fill='gray' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' d='M12.9 14.32a8 8 0 111.414-1.414l5.387 5.387a1 1 0 01-1.414 1.414l-5.387-5.387zM14 8a6 6 0 11-12 0 6 6 0 0112 0z' clip-rule='evenodd'%3E%3C/path%3E%3C/svg%3E");
+                        background-repeat: no-repeat;
+                        background-position: 0.75rem center;
+                        background-size: 1rem 1rem;
+                        outline: none;
+                    }
+
+                        .dt-search input[type="search"]::placeholder {
+                            color: #6b7280;
+                            font-size: 0.875rem;
+                        }*/
+
+        table {
+            width: 100%;
+            table-layout: auto;
+        }
+
+        .myTable-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        #myTable_length select {
+            padding: 4px 10px 4px 40px;
+            font-size: 14px;
+            color: #111827;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            background-image: url("data:image/svg+xml,%3Csvg fill='gray' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.178l3.71-3.947a.75.75 0 111.08 1.04l-4.24 4.51a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: 12px center;
+            background-size: 16px 16px;
+            outline: none;
+            display: none;
+        }
+
+        .dataTables_length {
+            display: flex;
+        }
+
+        .dataTables_wrapper .myTable-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        /* .dt-orderable-asc {
+                    width: 100px;
+                }
+
+                    .dt-orderable-asc th[data-dt-column="0"] {
+                        width: 80px
+                    }
+        */
+        .dataTables_scrollBody {
+            overflow-y: auto;
+        }
+
+        .main-container {
+            width: 795px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .dt-column-title {
+            color: #2C3E50;
+        }
+        .dt-search {
+            padding: 10px 0;
+        }
+
+            .dt-search.clicked {
+                padding: 10px 5px;
+                border: 0.5px #2C3E50 solid !important;
+                border-radius: 5px;
+                color: black;
+            }
+
+        #dt-search-0:focus {
+            border: none;
+            outline: none;
+            box-shadow: none;
+        }
+
+    </style>
+
+}
+
+@section scriptHead {
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.bootstrap5.js"></script>
+
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+    <script type="text/javascript">
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
+    </script>
+    <script>
+            const currUserId = '@ViewBag.currUsr';
+
+            $(document).on('focus', '.dt-search', function () {
+                $(this).addClass('clicked');
+            });
+
+            $(document).on('blur', '.dt-search', function () {
+                $(this).removeClass('clicked');
+            });
+
+        $(document).ready(function () {
+
+        $("#summaryWObutton").on("click", function (e) {
+        e.preventDefault();
+
+        window.location.href = '@Url.Action("DownloadWorkingOrderReport", "WorkingOrder", new { area = "Purchasing" })';
+    });
+
+
+            $(".selVendorList").select2({
+                dropdownParent: $("#createWOModal"),
+                width: "100%",
+            });
+
+            const table = $("#myTable").DataTable({
+                search: {
+                    return: true,
+                },
+                responsive: true,
+                autoWidth: true,
+                fixedHeader: true,
+                order: [[0, 'desc']],
+                ajax: {
+                url: '@Url.Action("GetDatas", "WorkingOrder", new { area = "Purchasing" })',
+                    type: 'GET',
+                    dataSrc: 'datas'
+                },
+                columns: [
+                    {
+                        data: 'Date',
+                        title: 'Date',
+                        width: '120px',
+                        render: {
+                            display: function (data, type, row) {
+                                const parts = data.split('-'); // ['2023', '01', '12']
+                                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            },
+                            sort: function (data, type, row) {
+                                return data;
+                            }
+                        }
+                    },
+                    { title: 'Number', data: 'Number', width: '180px' },
+                    { title: 'Vendor', data: 'VendorName' },
+                    { title: 'Subject', data: 'Subject'  },
+                    { title: 'User', data: 'NIKName' },
+                    {
+                        data: null,
+                        title: 'Action',
+                        searchable: false,
+                        width: '180px',
+                        orderable: false,
+                        render: function (data, type, row) {
+                            return `
+                                <button title="Add details" class="btn btn-pen" data-id="${row.ID}"><i class="fa-solid fa-file-circle-exclamation" style="color: #66ACB4;"></i>
+                                <button title="Edit" class="btn btn-edit" data-user="${row.NIK}" data-id="${row.ID}"><i class="fa-solid fa-pen" style="color: #F6AA04;"></i></button>
+                            `;
+                        }
+                    }],
+                initComplete: function () {
+                    this.api().columns().every(function () {
+                        var column = this;
+                        $('input', this.header()).on('keyup change clear', function () {
+                            if (column.search() !== this.value) {
+                                column.search(this.value).draw();
+                            }
+                        });
+                    });
+                },
+                layout: {
+                    topStart: "pageLength",
+                    bottomStart: "info",    
+                    bottomEnd: "paging",
+                },
+                language: {
+                    searchPlaceholder: "Search all tables...",
+                    search: "",
+                },
+            });
+
+
+            $('#myTable thead').on('keyup change', 'input', function () {
+                const colIdx = $(this).parent().index();
+                table.column(colIdx).search(this.value).draw();
+            });
+
+            $('#myTable').on('click', '.btn-edit', function () {
+                const rowId = $(this).data('id');
+                const userId = $(this).data('user');
+                if (userId != currUserId) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Unauthorized',
+                        text: 'You are not authorized to edit this data.',
+                    });
+                    return;
+                }
+                $.ajax({
+                url: "@Url.Action("GetDataById", "WorkingOrder", new { area = "Purchasing" })",
+                type: "POST",
+                data: { id: rowId },
+                dataType: "json",
+                cache: false,
+                    success: function (res) {
+                        if (res && res.datas) {
+
+                            if ($("#hfIsLogin").val() == "True") {
+
+                            const data = res.datas;
+                            $("#NIK").val(data.NIKName || "");
+                            $("#subject").val(data.Subject || "");
+                            const vendorName = data.VendorName;
+                            $('#selVendorList').val(data.Vendor).trigger('change');
+                            $('#selVendorList').valid();
+                            $('#select2-selVendorList-container').text(data.Vendor + " | " + data.VendorName);
+                            $('#timestamps').val(data.Timestamps);
+                            $('#number').val(data.Number);
+                            $('#idWO').val(rowId);
+
+
+                            let rawDate = data.Date;
+                            if (rawDate) {
+                                const parts = rawDate.split('-');
+                                const formatted = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                                $("#Date").val(formatted);
+                            }
+                            $('#btnSave').hide();
+                            $('#btnEdit').show();
+
+                            $('#exampleModalLabel').text("Edit Working Order");
+                            $("#createWOModal").modal("show");
+                            $('#timestampsDiv').show();
+                                $('#numberDiv').show();
+                            } else {
+                                Swal.fire("Failed!", "Please login first!");
+                            }
+
+                        } else {
+                            Swal.fire('Error!', 'No data found for the selected ID.', 'error');
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error!', 'Failed to retrieve schedule data.', 'error');
+                    }
+
+            });
+
+
+            });
+
+            $('#myTable').on('click', '.btn-pen', function () {
+                if ($("#hfIsLogin").val() == "True") {
+
+                const rowId = $(this).data('id');
+                const url = '@Url.Action("Detail", "WorkingOrder", new { area = "Purchasing" })' + '?id=' + rowId;
+                    window.open(url, '_blank');
+                } else {
+                    Swal.fire("Failed!", "Please login first!");
+                }
+            });
+
+
+           $('#createWObutton').off('click').on('click', function () {
+               if ($("#hfIsLogin").val() == "True") {
+                   $("#createWOModal").modal("show");
+                   $('#exampleModalLabel').text("Create Working Order");
+                   $('#timestampsDiv').hide();
+                   $('#btnEdit').hide();
+                   $('#btnSave').show();
+                   $('#numberDiv').hide();
+               } else {
+                   Swal.fire("Failed!", "Please login first!");
+               }
+           });
+
+            $('#btnSave').off('click').on('click', function(e) {
+                e.preventDefault();
+
+                if (!$('#formWO').valid()) {
+                    return;
+                }
+
+                var formData = {
+                    Date: $('#Date').val(),
+                    NIK: $('#NIK').attr('name'),
+                    selVendorList: $('#selVendorList').val(),
+                    Subject: $('#subject').val()
+                };
+
+
+                $.ajax({
+                    url: '@Url.Action("CreateData", "WorkingOrder", new { area = "Purchasing" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        console.log("Response:", response);
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: response.message
+                            }).then((result) => {
+                                $('#createWOModal').modal('hide');
+                                $('#myTable').DataTable().ajax.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX Error:", error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred while creating the Working Order'
+                        });
+                    }
+                });
+            });
+
+            $('#btnEdit').off('click').on('click', function(e) {
+                e.preventDefault();
+
+                if (!$('#formWO').valid()) {
+                    return;
+                }
+
+                var selectedVendor = $('#selVendorList').val();
+
+                var formData = {
+                    id: $('#idWO').val(),
+                    Date: $('#Date').val(),
+                    NIK: $('#NIK').attr('name'),
+                    selVendorList: selectedVendor,
+                    Subject: $('#subject').val(),
+                    Number: $('#number').val(),
+                    Timestamps: $('#timestamps').val()
+                };
+
+
+                $.ajax({
+                    url: '@Url.Action("UpdateData", "WorkingOrder", new { area = "Purchasing" })',
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        console.log("Response:", response);
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: response.message
+                            }).then((result) => {
+                                $('#createWOModal').modal('hide');
+                                $('#myTable').DataTable().ajax.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error("AJAX Error:", error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred while creating the Working Order'
+                        });
+                    }
+                });
+            });
+
+            $('#createWOModal').off('hidden.bs.modal').on('hidden.bs.modal', function () {
+                $('#formWO')[0].reset();
+                $('#formWO .invalid-feedback').remove();
+                $('#formWO .form-control').removeClass('is-invalid');
+
+                $("#selVendorList").val(null).trigger('change');
+                $("#selVendorList").next('.select2-container').find('.select2-selection').removeClass('is-invalid');
+
+                formWOValidate.resetForm();
+            });
+
+
+
+        });
+        DataTable.type('date', 'className', ' ');
+
+    </script>
+}
+
+<div class="p-4 mb-2">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+            <h1 class="text-2xl font-bold text-gray-50">Working Order</h1>
+
+        </div>
+        <div>
+            <button id="createWObutton"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <i class="fas fa-plus mr-2"></i>
+                Create Working Order
+            </button>
+            <button id="summaryWObutton"
+                    class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-500 hover:to-green-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <i class="fas fa-table mr-2"></i>
+                Summary
+            </button>
+        </div>
+      
+    </div>
+</div>
+
+<input type="hidden" id="hfIsLogin" value="@(isLogin.ToString())" />
+
+<div class="max-w-full mx-auto bg-white p-6 rounded-xl shadow-lg">
+    <div class="overflow-x-auto">
+        <table id="myTable" class="hover min-w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+
+            </thead>
+            <thead>
+                <tr>
+                    <th><input style=" font-size: 12px;" type="text" placeholder="Search Date" class="dt-search" /></th>
+                    <th><input style="font-size: 12px;" type="text" placeholder="Search Number" class="dt-search" /></th>
+                    <th><input style=" font-size: 12px;" type="text" placeholder="Search Vendor" class="dt-search" /></th>
+                    <th><input style="font-size: 12px;" type="text" placeholder="Search Subject" class="dt-search" /></th>
+                    <th><input style="font-size: 12px;" type="text" placeholder="Search User" class="dt-search" /></th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+            </tbody>
+
+        </table>
+    </div>
+</div>
+
+@Html.Partial("Partial/Modal")
+
+<script>
+
+    var formWOValidate = $("#formWO").validate({
+        rules: {
+            selVendorList: { required: true },
+            Subject: { required: true, maxlength: 100 },
+        },
+        messages: {
+            selVendorList: { required: "Please select a vendor." },
+            Subject: { required: "Please enter a subject.", maxlength: "Maximum 100 characters allowed." },
+        },
+        errorElement: 'div',
+        errorPlacement: function (error, element) {
+            error.addClass('invalid-feedback');
+            if (element.hasClass('selVendorList')) {
+                error.insertAfter(element.next('.select2-container'));
+            } else {
+                error.insertAfter(element);
+            }
+            error.show();
+        },
+        highlight: function (element, errorClass, validClass) {
+            if ($(element).hasClass('selVendorList')) {
+                $(element).next('.select2-container').find('.select2-selection').addClass('is-invalid');
+            } else {
+                $(element).addClass('is-invalid');
+            }
+        },
+        unhighlight: function (element, errorClass, validClass) {
+            if ($(element).hasClass('selVendorList')) {
+                $(element).next('.select2-container').find('.select2-selection').removeClass('is-invalid');
+            } else {
+                $(element).removeClass('is-invalid');
+            }
+        }
+    });
+
+
+</script>

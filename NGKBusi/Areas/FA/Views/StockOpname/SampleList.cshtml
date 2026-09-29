@@ -1,0 +1,272 @@
+﻿
+@{
+    ViewBag.Title = "Sample List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, maximum-scale=12.0, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ui-autocomplete {
+            z-index: 215000000 !important;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $(function () {
+                $("#selWarehouse").change();
+            });
+            $("#selWarehouse").change(function () {
+                var iWarehouse = $(this).val();
+                $("#selProduct").LoadingOverlay("show");
+                $("#hfItemProduct").val("");
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/FA/StockOpname/CountingGetProduct",
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iWarehouse: iWarehouse
+                    },
+                    success: function (data) {
+                        $("#selProduct option[value != '']").remove();
+                        $.each(data, function (i, v) {
+                            var newOption = new Option;
+                            newOption.value = v;
+                            newOption.text = v;
+                            $("#selProduct").append(newOption);
+                        });
+                        var currProduct = $("#hfItemProduct").val();
+                        if (currProduct.length > 0) {
+                            $("#selProduct").val(currProduct);
+                        }
+                        $("#selProduct").LoadingOverlay("hide");
+                    }, error: function () {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#selProduct").LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            $("#selProduct").change(function () {
+                $("#txtDimension").val("");
+                $("#txtItemID").val("");
+                $("#hfItemID").val("");
+                $("#hfItemName").val("");
+                $("#hfItemProduct").val("");
+            });
+
+            $("#txtItemID").autocomplete({
+                source: function (request, response) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/FA/StockOpname/CountingGetItemID",
+                        dataType: "json",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iIgnore: $("#cbIgnoreProduct").is(":checked"),
+                            iProduct: $("#selProduct").val(),
+                            iItemID: $("#txtItemID").val()
+                        },
+                        success: function (data) {
+                            response(data);
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                },
+                minLength: 2,
+                select: function (event, ui) {
+                    if (ui.item.itemID.substring(0, 5) == "QIDTL") {
+                        $("#selWarehouse").val("TL").change();
+                    } else if (ui.item.itemID.substring(0, 5) == "QIDMP") {
+                        $("#selWarehouse").val("MP").change();
+                    }
+                    $("#txtDimension").val(ui.item.unit);
+                    $("#hfDimension").val(ui.item.unit);
+                    $("#selProduct").val(ui.item.product);
+                    $("#hfItemID").val(ui.item.itemID);
+                    $("#hfItemName").val(ui.item.itemName);
+                    $("#hfItemProduct").val(ui.item.product);
+                }
+            });
+            $("#txtItemID").autocomplete("option", "appendTo", "#formSOCounting");
+
+            if ($("#tblSampleList").length) {
+                $("#tblSampleList").tablesorter({
+                    theme: 'metro-dark',
+                    widthFixed: true,
+                    widgets: ['zebra', 'columns', 'filter', 'stickyHeaders', 'reflow', 'output'],
+                    widgetOptions: {
+                        output_delivery: 'download',
+                        output_saveFileName: 'MasterList.csv',
+                        filter_saveFilters: true
+                    }
+                }).tablesorterPager({
+                    container: $(".pager"),
+                    output: '{startRow} to {endRow} ({totalRows})'
+                });
+            }
+
+            $(".linkForm").click(function (e) {
+                e.preventDefault();
+                $("#modalCountingList").modal();
+                var currCTR = $(this);
+                var currTR = currCTR.closest("tr");
+                var warehouse = currTR.find("td:eq(2)").text() == "TOOLING" ? "TL" : "MP";
+                var group = currTR.find("td:eq(2)").text() == "TOOLING" ? "TOOLING" : "MACHINERY PART";
+                $("#selWarehouse").val(warehouse);
+                $("#selWarehouse").change();
+                $("#hfItemProduct").val(group);
+                $("#hfItemID").val(currTR.find("td:eq(3)").text());
+                $("#hfItemName").val(currTR.find("td:eq(4)").text());
+                $("#txtItemID").val(currTR.find("td:eq(3)").text() + " || " + currTR.find("td:eq(4)").text() + " || " + currTR.find("td:eq(2)").text());
+                $("#txtDimension").val("PC");
+                $("#hfDimension").val("PC");
+                $("#txtDescription").val(currTR.find("td:eq(0)").text() + " || " + currTR.find("td:eq(1)").text());
+            });
+        });
+    </script>
+}
+<div class="container-fluid" style="overflow:auto;">
+    <button type="button" class="btn btn-success form-control" onclick="location.reload();">Refresh</button>
+    <div class="row">
+        <div class="col-12">
+            <table id="tblSampleList">
+                <thead>
+                    <tr>
+                        <th class="filter-select" data-placeholder="-Lemari-">Location 1</th>
+                        <th class="filter-select" data-placeholder="-Rak-">Location 2</th>
+                        <th class="filter-select" data-placeholder="-Group-">ItemGroup</th>
+                        <th>ItemID</th>
+                        <th>ItemName</th>
+                        <th class="filter-select" data-placeholder="-Status-">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in ViewBag.SampleList)
+                    {
+                        <tr>
+                            <td>@( item.Location1 )</td>
+                            <td>@( item.Location2 )</td>
+                            <td>@( item.Item_Group )</td>
+                            <td><a class="linkForm" href="#"> @( item.AX_ItemID )</a></td>
+                            <td>@( item.AX_ProductName )</td>
+                            <td>
+                                @if (item.Status == "Counted")
+                                {
+                                    <i class="fas fa-check" style="color:green"></i>
+                                } else {
+                                    <i class="fas fa-times" style="color:red"></i>
+                                }
+                                @( item.Status )
+
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="dark-row">
+                        <th colspan="6">
+                            <div class="pager">
+                                <button type="button" class="first"><<</button>
+                                <button type="button" class="prev"><</button>
+                                <span class="pagedisplay"></span>
+                                <button type="button" class="next">></button>
+                                <button type="button" class="last">>></button>
+                                <select class="pagesize" title="Select page size" style="color:black;">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                </select>
+                                <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                            </div>
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCountingList" tabindex="-1" role="dialog" aria-labelledby="modalCountingListLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCountingListLabel">Stock Counting</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formSOCounting" method="post" action="@Url.Action("SampleListAdd","StockOpname",new { area = "FA" })">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="Warehouse">Warehouse:</label>
+                        <select id="selWarehouse" name="iWarehouse" class="form-control" required>
+                            <option value="">-Warehouse-</option>
+                            @foreach (var item in ViewBag.Warehouse)
+                            {
+                                <option value="@(item)">@(item)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="Product">Product:</label>
+                        <select id="selProduct" name="iProduct" class="form-control" required>
+                            <option value="">-Product-</option>
+                        </select>
+                        <div class="checkbox">
+                            <label><input id="cbIgnoreProduct" type="checkbox"> Ignore Product</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="Product">ItemID:</label>
+                        <input type="text" id="txtItemID" value="" placeholder="Item ID" class="form-control" required />
+                        <input type="hidden" id="hfID" name="iID" value="" placeholder="ID" class="form-control" required />
+                        <input type="hidden" id="hfItemID" name="iItemID" value="" placeholder="Item ID" class="form-control" required />
+                        <input type="hidden" id="hfItemName" name="iItemName" value="" placeholder="Item Name" class="form-control" required />
+                        <input type="hidden" id="hfItemProduct" name="iItemProduct" value="" placeholder="Item Product" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Dimension">Dimension (Unit):</label>
+                        <input id="txtDimension" type="text" name="iDimension" placeholder="Dimension (Unit)" class="form-control" disabled required />
+                        <input id="hfDimension" type="hidden" name="iUnit" placeholder="Dimension (Unit)" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Stock Take Quantity:</label>
+                        <input id="txtQty" type="number" name="iQty" value="" placeholder="Stock Take Quantity" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Description:</label>
+                        <textarea id="txtDescription" name="iDescription" class="form-control" rows="5" placeholder="Description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success form-control">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

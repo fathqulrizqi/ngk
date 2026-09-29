@@ -1,0 +1,590 @@
+@using NGKBusi.Areas.HC.Models
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var activeBcp = (HC_BCP_Incident)ViewBag.ActiveBCP;
+    var tasks = (List<NGKBusi.Areas.HC.Controllers.BCPController.BCPTask>)ViewBag.AwaitingAction;
+}
+
+<!-- Use Tailwind via CDN for enhanced styling of the Dashboard -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<style>
+    .pulse-ring-rose { animation: pulseRingRose 2s ease-in-out infinite; }
+    @@keyframes pulseRingRose {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.5); }
+        50%      { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+    }
+</style>
+
+@if (activeBcp != null)
+{
+    <!-- Soft Animated Banner for Activated BCP -->
+    <div class="mb-6 mx-4 md:mx-10 mt-6 bg-gradient-to-r from-red-600 via-rose-500 to-red-600 rounded-xl shadow-xl overflow-hidden relative">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4yKSIvPjwvc3ZnPg==')] opacity-30"></div>
+        <div class="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between relative z-10">
+            <div class="flex items-center gap-4 mb-4 sm:mb-0">
+                <div class="h-12 w-12 rounded-full bg-white/20 flex items-center justify-center animate-pulse shrink-0">
+                    <i class="fas fa-shield-alt text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg md:text-xl font-bold text-white tracking-wide leading-tight">BCP PROTOCOL ACTIVATED</h2>
+                    <p class="text-red-100 text-xs md:text-sm font-medium mt-1">Status Critical: @activeBcp.IncidentNo (@activeBcp.Title)</p>
+                </div>
+            </div>
+            <a href="@Url.Action("IncidentDetail", "BCP", new { id = activeBcp.IncidentNo })" class="px-5 py-2.5 bg-white text-red-600 text-sm font-bold rounded-full shadow-lg hover:bg-gray-50 hover:scale-105 transition-all whitespace-nowrap">
+                View Live Command Center &rarr;
+            </a>
+        </div>
+    </div>
+}
+
+<div class="container-fluid py-4 px-md-5">
+    @* ── MY ASSIGNED RECOVERY TASKS ── *@
+    @{
+        var myAssignedTodos = (List<NGKBusi.Areas.HC.Models.HC_BCP_Recovery_Todo>)ViewBag.MyAssignedTodos;
+    }
+
+    
+
+    <!-- Top Header Layout (Side-by-Side on Desktop, Stacked on Mobile) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-stretch">
+        <!-- Left: Header Card (Breadcrumb & Title & Manage BCP) -->
+        <div class="lg:col-span-2 bg-gradient-to-r from-white to-ngk-primaryLight border border-slate-200/60 rounded-2xl p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+            <div>
+                <!-- Breadcrumb -->
+                <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                    <a href="#" class="hover:text-ngk-primary transition-colors">Home</a>
+                    <span>/</span>
+                    <a href="#" class="hover:text-ngk-primary transition-colors">HC</a>
+                    <span>/</span>
+                    <span class="text-ngk-primary font-semibold">BCP Dashboard</span>
+                </div>
+                <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Business Continuity Center</h1>
+                <p class="text-slate-500 mt-1 text-sm md:text-base">Real-time overview of enterprise risk and continuity readiness.</p>
+            </div>
+            @if (ViewBag.IsAllowedManageBCP == true)
+            {
+                <div class="mt-6 flex flex-wrap items-center gap-3">
+                    <div class="dropdown inline-block">
+                        <button class="dropdown-toggle inline-flex items-center gap-2 px-4 py-3 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl shadow-sm transition-all font-semibold cursor-pointer" type="button" id="bcpSettingsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="outline: none;">
+                            <i class="fas fa-cogs text-ngk-primary"></i> Manage BCP
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-right rounded-xl shadow-lg border border-slate-150 mt-2 p-2" aria-labelledby="bcpSettingsDropdown" style="border-radius: 0.75rem;">
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("Organization", "BCP")"><i class="fas fa-sitemap mr-2 text-slate-400 w-4"></i> Committee Structure</a>
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("Department", "BCP")"><i class="fas fa-building mr-2 text-slate-400 w-4"></i> Master Department</a>
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("Area", "BCP")"><i class="fas fa-map-marked-alt mr-2 text-slate-400 w-4"></i> Master Area</a>
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("UserArea", "BCP")"><i class="fas fa-link mr-2 text-slate-400 w-4"></i> User Area Mapping</a>
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("AssessmentQuestion", "BCP")"><i class="fas fa-question-circle mr-2 text-slate-400 w-4"></i> Assessment Questions</a>
+                            <a class="dropdown-item px-4 py-2 text-xs font-bold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center" href="@Url.Action("RolePermission", "BCP")"><i class="fas fa-key mr-2 text-slate-400 w-4"></i> Role Permissions</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right: Report Incident Card (Matches BCP Activate Card Theme) -->
+        <div class="group relative cursor-pointer" onclick="window.location.href='@Url.Action("IncidentCreate", "BCP")'">
+            <div class="absolute inset-0 bg-rose-500 rounded-2xl blur-lg opacity-15 group-hover:opacity-35 transition-opacity duration-500"></div>
+            <div class="h-full bg-gradient-to-b from-white to-rose-50 border border-rose-200 group-hover:border-rose-400 rounded-2xl p-6 flex flex-col justify-between items-center text-center shadow-sm relative z-10 transition-all duration-300 group-hover:-translate-y-1">
+                <div class="flex flex-col items-center">
+                    <div class="w-14 h-14 rounded-full bg-gradient-to-bl from-rose-100 to-rose-300 border-2 border-white shadow flex items-center justify-center mb-3 pulse-ring-rose group-hover:scale-105 transition-transform duration-300 shrink-0">
+                        <i class="fas fa-exclamation-triangle text-xl text-rose-600 animate-pulse"></i>
+                    </div>
+                    <h3 class="font-black text-rose-700 text-lg mb-1 tracking-tight">REPORT INCIDENT</h3>
+                    <p class="text-[0.7rem] text-rose-900/60 font-semibold leading-relaxed mb-4 px-2">
+                        Declare a critical disrupt or enterprise emergency status immediately to initiate the BCP mobilization protocol.
+                    </p>
+                </div>
+                <button class="w-full py-2.5 rounded-xl bg-rose-600 text-white font-extrabold tracking-widest text-xs shadow-md shadow-rose-500/30 group-hover:bg-rose-700 transition-all uppercase flex justify-center items-center gap-2 border-0 cursor-pointer">
+                    <i class="fas fa-plus-circle"></i> Create Incident Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Grid with Tailwind Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        <!-- Card 1: Total Incidents -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-ngk-primaryLight transition-all">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Incidents (YTD)</p>
+                    <h3 class="text-3xl font-extrabold text-slate-800">@ViewBag.TotalIncidents</h3>
+                    <p class="text-xs text-slate-400 font-medium mt-2">Cumulative reports</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-primaryLight flex items-center justify-center text-ngk-primary">
+                    <i class="fas fa-chart-line text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Pending Assessments -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-ngk-primaryLight transition-all">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Pending Assessments</p>
+                    <h3 class="text-3xl font-extrabold text-slate-800">@ViewBag.PendingAssessments</h3>
+                    <p class="text-xs text-ngk-accent font-medium mt-2"><i class="fas fa-clock mr-1"></i> Committee action needed</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-accentLight flex items-center justify-center text-ngk-accent">
+                    <i class="fas fa-tasks text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Departments Impacted -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-ngk-primaryLight transition-all">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Impacted Today</p>
+                    <h3 class="text-3xl font-extrabold text-slate-800">@ViewBag.ImpactedToday</h3>
+                    <p class="text-xs text-rose-500 font-medium mt-2"><i class="fas fa-exclamation-circle mr-1"></i> New reports today</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
+                    <i class="fas fa-sitemap text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Recovered -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:border-ngk-primaryLight transition-all">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Recovered Incidents</p>
+                    <h3 class="text-3xl font-extrabold text-slate-800">@ViewBag.RecoveredCount</h3>
+                    <p class="text-xs text-ngk-primary font-medium mt-2"><i class="fas fa-check-circle mr-1"></i> Fully resolved workflow</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-primaryLight flex items-center justify-center text-ngk-primary">
+                    <i class="fas fa-shield-check text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <!-- Left Column: Recent Incidents Table -->
+        <div class="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-list-ul text-ngk-primary mr-2"></i>Recent Incidents</h2>
+                <a href="@Url.Action("IncidentList", "BCP")" class="text-xs font-bold uppercase tracking-wider text-ngk-primary hover:text-ngk-primaryDark transition-colors">View All &rarr;</a>
+            </div>
+            <div class="overflow-x-auto flex-grow">
+                <table id="recentIncidentsTable" class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-400 text-[0.65rem] uppercase tracking-widest font-bold border-b border-slate-100">
+                            <th class="py-4 px-6 font-semibold">Incident ID</th>
+                            <th class="py-4 px-6 font-semibold">Description</th>
+                            <th class="py-4 px-6 font-semibold">Category</th>
+                            <th class="py-4 px-6 font-semibold">Current Phase</th>
+                            <th class="py-4 px-6 text-right font-semibold">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-slate-100">
+                        @foreach (var inc in (List<HC_BCP_Incident>)ViewBag.RecentIncidents)
+                        {
+                            var phaseLabel = "Draft";
+                            var phaseClass = "bg-slate-50 text-slate-600 border-slate-200";
+                            if (inc.Status == 2) { phaseLabel = "Assessment"; phaseClass = "bg-amber-50 text-amber-700 border-amber-200"; }
+                            else if (inc.Status == 3) { phaseLabel = "Review"; phaseClass = "bg-blue-50 text-blue-700 border-blue-200"; }
+                            else if (inc.Status == 5) { phaseLabel = "Approved"; phaseClass = "bg-indigo-50 text-indigo-700 border-indigo-200"; }
+                            else if (inc.Status == 6) { phaseLabel = "Activated BCP"; phaseClass = "bg-rose-50 text-rose-700 border-rose-200 font-bold relative overflow-hidden"; }
+                            else if (inc.Status == 7) { phaseLabel = "Resolved"; phaseClass = "bg-emerald-50 text-emerald-700 border-emerald-200"; }
+
+                            <tr class="hover:bg-slate-50/80 transition-colors cursor-pointer group incident-row" onclick="window.location.href='@Url.Action("IncidentDetail", "BCP", new { id = inc.IncidentNo })'">
+                                <td class="py-4 px-6 font-bold text-slate-800 group-hover:text-ngk-primary transition-colors">@inc.IncidentNo</td>
+                                <td class="py-4 px-6 font-medium text-slate-600">@inc.Title</td>
+                                <td class="py-4 px-6">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-slate-50 text-slate-700 border-slate-200 text-[0.7rem] font-bold">
+                                        <i class="fas fa-tag text-[9px] text-teal-600"></i> @(inc.Category ?? "General")
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[0.7rem] font-bold uppercase tracking-wider @phaseClass">
+                                        @if (inc.Status == 6)
+                                        {
+                                            <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                                        }
+                                        @phaseLabel
+                                    </span>
+                                </td>
+                                <td class="py-4 px-6 text-slate-400 text-right text-xs font-medium whitespace-nowrap">@inc.Created_At.Value.ToString("dd MMM yyyy")</td>
+                            </tr>
+                        }
+                        @if (!((List<HC_BCP_Incident>)ViewBag.RecentIncidents).Any())
+                        {
+                            <tr>
+                                <td colspan="5" class="py-10 text-center text-slate-400 font-medium italic">No recent incidents found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination Controls -->
+            <div id="paginationControls" class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white" style="display: none;">
+                <div class="text-xs text-slate-500 font-medium">
+                    Showing <span id="pageStart">0</span> to <span id="pageEnd">0</span> of <span id="totalRows">0</span> entries
+                </div>
+                <div class="flex gap-1">
+                    <button id="prevPage" class="px-3 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Prev</button>
+                    <div id="pageNumbers" class="flex gap-1"></div>
+                    <button id="nextPage" class="px-3 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Notifications & Tasks -->
+        <div class="flex flex-col gap-6">
+            @if (myAssignedTodos != null && myAssignedTodos.Any())
+            {
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h2 class="text-base font-bold text-slate-800 m-0"><i class="fas fa-clipboard-list text-ngk-primary mr-2"></i>My Tasks</h2>
+                        <span class="px-2.5 py-0.5 bg-ngk-primaryLight text-ngk-primaryDark rounded-full text-[10px] font-bold">
+                            @myAssignedTodos.Count Task(s)
+                        </span>
+                    </div>
+                    <div class="p-0 flex-grow divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+                        @foreach (var todo in myAssignedTodos)
+                        {
+                            bool isOverdue = todo.DueDate < DateTime.Today;
+                            <div class="p-5 hover:bg-slate-50 transition-colors flex flex-col gap-2">
+                                <div>
+                                    <div class="flex justify-between items-start gap-2 mb-1">
+                                        <a href="@Url.Action("IncidentDetail", "BCP", new { id = todo.RecoveryPlan.Incident.IncidentNo })" class="text-xs font-bold text-ngk-primary hover:text-ngk-primaryDark hover:underline truncate max-w-[150px]" title="@todo.RecoveryPlan.Incident.IncidentNo - @todo.RecoveryPlan.Incident.Title">
+                                            @todo.RecoveryPlan.Incident.IncidentNo
+                                        </a>
+                                        
+                                        @if (ViewBag.IsAllowedSubmitReview == true)
+                                        {
+                                            <select onchange="updateDashboardTodoStatus(@todo.ID, this)" data-current-duedate="@todo.DueDate.ToString("yyyy-MM-dd")" data-previous-status="@todo.Status" 
+                                                    class="rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-wider border cursor-pointer transition-all shadow-sm outline-none bg-white border-slate-300 text-slate-700 hover:border-ngk-primary">
+                                                <option value="On Progress" @(todo.Status == "On Progress" ? "selected" : "")>On Progress</option>
+                                                <option value="Pending" @(todo.Status == "Pending" ? "selected" : "")>Pending</option>
+                                                <option value="Complete" @(todo.Status == "Complete" ? "selected" : "")>Complete</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shrink-0 border
+                                                @(todo.Status == "Complete" ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                                  : todo.Status == "Pending" ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                  : "bg-blue-50 text-blue-700 border-blue-200")">
+                                                @todo.Status
+                                            </span>
+                                        }
+                                    </div>
+                                    <h4 class="text-xs font-bold text-slate-700 m-0">@todo.RecoveryPlan.Criteria.Name</h4>
+                                    <p class="text-xs font-medium text-slate-500 leading-normal mt-1 mb-0">@todo.TodoText</p>
+                                    
+                                    @if (todo.Status == "Pending" && !string.IsNullOrEmpty(todo.PendingNote))
+                                    {
+                                        <div class="mt-2 p-2 bg-amber-50/50 rounded-lg border border-amber-100">
+                                            <span class="text-[9px] font-bold text-amber-700 block uppercase"><i class="fas fa-exclamation-circle mr-1"></i>Pending Note:</span>
+                                            <p class="text-[10px] text-amber-800 m-0 italic">"@todo.PendingNote"</p>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="flex items-center justify-between text-[10px] font-bold">
+                                    <div class="flex items-center gap-1.5 @(isOverdue ? "text-rose-600" : "text-slate-400")">
+                                        <i class="far fa-calendar-alt text-xs @(isOverdue ? "text-rose-500 animate-pulse" : "")"></i>
+                                        <span>Due: @todo.DueDate.ToString("dd MMM yyyy")</span>
+                                    </div>
+                                    @if (isOverdue)
+                                    {
+                                        <span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[8px] font-black uppercase">OVERDUE</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- System Notifications & Alerts (Very Familiar Component) -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h2 class="text-lg font-bold text-slate-800"><i class="fas fa-bell text-ngk-accent mr-2"></i>Notifications</h2>
+                    <a href="#" class="text-xs font-medium text-slate-400 hover:text-ngk-primary transition-colors">Mark all as read</a>
+                </div>
+                <div class="p-0 flex-grow">
+                    <div class="divide-y divide-slate-100">
+                        @foreach (var task in tasks)
+                        {
+                            var iconClass = task.Type == "Assessment" ? "bg-amber-100 text-amber-600" : "bg-ngk-primaryLight text-ngk-primary";
+                            var icon = task.Type == "Assessment" ? "fa-clipboard-check" : "fa-user-check";
+
+                            <div class="p-5 hover:bg-slate-50 transition-colors cursor-pointer" onclick="window.location.href='@Url.Action("IncidentDetail", "BCP", new { id = task.IncidentNo })'">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-full @iconClass flex items-center justify-center shrink-0 mt-1">
+                                        <i class="fas @icon"></i>
+                                    </div>
+                                    <div class="flex-grow">
+                                        <h4 class="text-sm font-bold text-slate-800">@task.Type Required: @task.IncidentNo</h4>
+                                        <p class="text-xs text-slate-600 mt-1 leading-snug">@task.Message</p>
+                                        <div class="text-[0.65rem] text-slate-400 font-medium mt-2 flex items-center gap-1">
+                                            <i class="far fa-clock"></i> Action Required
+                                        </div>
+                                    </div>
+                                    <div class="w-2 h-2 rounded-full bg-ngk-accent mt-2 shrink-0"></div>
+                                </div>
+                            </div>
+                        }
+                        @if (!tasks.Any())
+                        {
+                            <div class="p-10 text-center">
+                                <i class="fas fa-check-circle text-emerald-400 text-3xl mb-3"></i>
+                                <p class="text-sm font-bold text-slate-800">All caught up!</p>
+                                <p class="text-xs text-slate-500 mt-1">No pending BCP actions for your role.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="p-4 bg-slate-50 border-t border-slate-100 text-center">
+                    <a href="#" class="text-sm font-semibold text-ngk-primary hover:text-ngk-primaryDark transition-colors">View All Notifications</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Demo Navigation (Tailwind Styled) -->
+@*<div class="fixed bottom-8 right-8 z-[1050]">
+    <div class="w-[280px] bg-white rounded-xl shadow-[0_10px_40px_-5px_rgba(30,64,175,0.25)] border border-ngk-primary overflow-hidden">
+        <div class="bg-gradient-to-r from-ngk-primary to-ngk-primaryDark text-white p-3 text-center border-b border-ngk-primaryDark cursor-move">
+            <span class="text-[0.65rem] font-bold uppercase tracking-widest text-[#e0f3f5]">Demo Control Panel</span>
+        </div>
+        <div class="p-3 space-y-1 bg-slate-50">
+            <a href="@Url.Action("Dashboard", "BCP")" class="flex items-center gap-3 px-4 py-2.5 text-xs font-bold rounded-lg bg-ngk-primaryLight text-ngk-primaryDark w-full text-left">
+                <i class="fas fa-home w-4 text-center"></i> Home: Dashboard
+            </a>
+            <a href="@Url.Action("IncidentCreate", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-plus w-4 text-center text-slate-400"></i> Step 1: Report Incident
+            </a>
+            <a href="@Url.Action("IncidentDetail", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-eye w-4 text-center text-slate-400"></i> Step 2: Live Tracking
+            </a>
+            <a href="@Url.Action("AssessmentFill", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-clipboard-check w-4 text-center text-slate-400"></i> Step 3: Assessment Fill
+            </a>
+            <a href="@Url.Action("AssessmentScore", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-chart-line w-4 text-center text-slate-400"></i> Step 4: Scoring Matrix
+            </a>
+            <a href="@Url.Action("AssessmentReview", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-user-check w-4 text-center text-slate-400"></i> Step 5: Sr Manager
+            </a>
+            <a href="@Url.Action("DGMReview", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-user-tie w-4 text-center text-slate-400"></i> Step 6: DGM Approval
+            </a>
+            <a href="@Url.Action("Activate", "BCP")" class="flex items-center gap-3 px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 hover:bg-white hover:text-ngk-primary hover:shadow-sm transition-all w-full text-left">
+                <i class="fas fa-power-off w-4 text-center text-rose-500"></i> Step 7: BCP Activation
+            </a>
+        </div>
+    </div>
+</div>*@
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="~/Scripts/BCP/bcp.js"></script>
+    <script>
+        $(document).ready(function() {
+            var errorMsg = '@TempData["ErrorMessage"]';
+            if (errorMsg) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Akses Ditolak',
+                    text: errorMsg,
+                    confirmButtonColor: '#007581'
+                });
+            }
+
+            // Pagination for Recent Incidents
+            const rowsPerPage = 5;
+            let currentPage = 1;
+            const $tableBody = $('#recentIncidentsTable tbody');
+            const $rows = $tableBody.find('tr.incident-row');
+            const totalRows = $rows.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+            function showPage(page) {
+                if (totalRows === 0) return;
+                
+                currentPage = page;
+                const start = (currentPage - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                $rows.hide();
+                $rows.slice(start, end).show();
+
+                $('#pageStart').text(start + 1);
+                $('#pageEnd').text(Math.min(end, totalRows));
+                $('#totalRows').text(totalRows);
+
+                $('#prevPage').prop('disabled', currentPage === 1);
+                $('#nextPage').prop('disabled', currentPage === totalPages);
+                
+                renderPageNumbers();
+            }
+
+            function renderPageNumbers() {
+                let html = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === currentPage) {
+                        html += `<button class="px-3 py-1 text-xs font-bold text-white bg-ngk-primary rounded">${i}</button>`;
+                    } else {
+                        html += `<button type="button" class="page-btn px-3 py-1 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded transition-colors" data-page="${i}">${i}</button>`;
+                    }
+                }
+                $('#pageNumbers').html(html);
+            }
+
+            if (totalRows > rowsPerPage) {
+                $('#paginationControls').show();
+                showPage(1);
+
+                $('#prevPage').click(function() {
+                    if (currentPage > 1) showPage(currentPage - 1);
+                });
+
+                $('#nextPage').click(function() {
+                    if (currentPage < totalPages) showPage(currentPage + 1);
+                });
+
+                $(document).on('click', '.page-btn', function() {
+                    showPage($(this).data('page'));
+                });
+            } else if (totalRows > 0) {
+                $('#paginationControls').show();
+                $('#paginationControls .flex.gap-1').hide(); // Hide buttons if only 1 page
+                showPage(1);
+            } else {
+                $('#paginationControls').hide();
+            }
+        });
+
+        function updateDashboardTodoStatus(todoId, selectElement) {
+            var newStatus = selectElement.value;
+            var currentDueDate = $(selectElement).data('current-duedate');
+            var previousStatus = $(selectElement).data('previous-status') || 'On Progress';
+
+            if (newStatus === 'Pending') {
+                Swal.fire({
+                    title: '<span class="font-black text-slate-800 text-base">Mark Task as Pending</span>',
+                    html: `
+                        <div class="text-left mb-4">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Pending Reason / Note <span class="text-rose-500">*</span></label>
+                            <textarea id="swal-pending-note" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-ngk-primary/20 focus:border-ngk-primary focus:bg-white transition-all outline-none resize-none" placeholder="Provide a reason or note for this pending status..."></textarea>
+                        </div>
+                        <div class="text-left">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">New Due Date <span class="text-rose-500">*</span></label>
+                            <input type="date" id="swal-pending-duedate" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-ngk-primary/20 focus:border-ngk-primary focus:bg-white transition-all outline-none" value="${currentDueDate}">
+                        </div>
+                    `,
+                    showCancelButton: true,
+                    confirmButtonColor: '#007581',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Submit Status',
+                    cancelButtonText: 'Cancel',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const note = Swal.getPopup().querySelector('#swal-pending-note').value.trim();
+                        const dueDate = Swal.getPopup().querySelector('#swal-pending-duedate').value;
+                        if (!note) {
+                            Swal.showValidationMessage('Pending note is required');
+                            return false;
+                        }
+                        if (!dueDate) {
+                            Swal.showValidationMessage('Due date is required');
+                            return false;
+                        }
+                        return { note: note, dueDate: dueDate };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.showLoading();
+                        $.post('@Url.Action("UpdateTodoStatus", "BCP")', {
+                            TodoID: todoId,
+                            Status: 'Pending',
+                            PendingNote: result.value.note,
+                            DueDate: result.value.dueDate
+                        }, function (res) {
+                            if (res.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Status Updated',
+                                    text: 'Task status updated to Pending.',
+                                    confirmButtonColor: '#007581'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error', res.message, 'error');
+                                $(selectElement).val(previousStatus);
+                            }
+                        }).fail(function() {
+                            Swal.fire('Error', 'Network connection error', 'error');
+                            $(selectElement).val(previousStatus);
+                        });
+                    } else {
+                        $(selectElement).val(previousStatus);
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Update Task Status?',
+                    text: `Are you sure you want to update this task status to "${newStatus}"?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#007581',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Yes, update'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.showLoading();
+                        $.post('@Url.Action("UpdateTodoStatus", "BCP")', {
+                            TodoID: todoId,
+                            Status: newStatus
+                        }, function (res) {
+                            if (res.status === 'success') {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Status Updated',
+                                    text: `Task status updated to ${newStatus}.`,
+                                    confirmButtonColor: '#007581'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Error', res.message, 'error');
+                                $(selectElement).val(previousStatus);
+                            }
+                        }).fail(function() {
+                            Swal.fire('Error', 'Network connection error', 'error');
+                            $(selectElement).val(previousStatus);
+                        });
+                    } else {
+                        $(selectElement).val(previousStatus);
+                    }
+                });
+            }
+        }
+    </script>
+}

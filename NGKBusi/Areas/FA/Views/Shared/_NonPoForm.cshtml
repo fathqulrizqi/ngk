@@ -1,0 +1,491 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $(".txtPRDate").datepicker({ dateFormat: 'mm/dd/yy' });
+        $("#txtTaxInvoiceDate,.txtAllocTaxInvoiceDate").datepicker({ dateFormat: 'mm/dd/yy' });
+
+        $(".rbPaymentType").change(function () {
+            $(".divDirectPayment").show("blind");
+            $(".divSettlementFor").hide();
+            $("#selSettlementFor").prop("required", false);
+            $(".divNonPayment").hide();
+            $("#selNonPayment").prop("required", false);
+            if ($(this).val() == "Pre-Payment") {
+                $(".divDirectPayment").hide("blind");
+                $("#tblDirectPayment tbody").find("input").prop("required", false);
+                $("#tblDirectPayment tbody").find("textarea").prop("required", false);
+                $("#tblDirectPayment tbody").find(".select2").prop("required", false);
+            } else {
+                $("#tblDirectPayment tbody").find("textarea").prop("required", true);
+                $("#tblDirectPayment tbody").find("input:not(.txtAllocTaxInvoiceDate):not(.txtAllocTaxInvoiceNumber):not(.txtAllocTaxInvoiceNumber17Digit)").prop("required", true);
+                $("#tblDirectPayment tbody").find(".select2").prop("required", true);
+                if ($(this).val() == "Settlement") {
+                    $(".divSettlementFor").show();
+                    $("#selSettlementFor").prop("required", true);
+                } else if ($(this).val() == "Realization") {
+                    $(".divNonPayment").show();
+                    $("#selNonPayment").prop("required", true);
+                }
+            }
+        });
+
+        $("#selSettlementFor").change(function () {
+            var currency = $(this).find(':selected').data("currency");
+            var thirdparty = $(this).find(':selected').data("thirdparty");
+            var amount = $(this).find(':selected').data("amount");
+            $("#selVendor").val(thirdparty).change();
+            $("#selCurrency").val(currency);
+            $("#txtInvoiceAmount").val(accounting.formatNumber(amount, 2));
+        });
+
+        $("#selVATRate").change(function () {
+            if ($(this).val() == "0") {
+                $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").hide("blind");
+                $("#txtTaxInvoiceNumber,#txtTaxInvoiceNumber17Digit,#txtTaxInvoiceDate").val("");
+                $("#txtTaxInvoiceNumber,#txtTaxInvoiceNumber17Digit,#txtTaxInvoiceDate").prop("required", false);
+            } else {
+                $("#txtTaxInvoiceNumber,#txtTaxInvoiceNumber17Digit,#txtTaxInvoiceDate").prop("required", true);
+                $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").show("blind");
+            }
+        });
+        var newRowIndex = 0;
+        $("#btnDPAdd").click(function () {
+            newRowIndex++;
+            var newRow = $("#tblDirectPayment tbody tr:first()").clone();
+            newRow.find("input").val("");
+            newRow.find("textarea").val("");
+            newRow.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+            newRow.find(".select2-container").remove();
+            newRow.find(".select2").select2();
+            newRow.find(".selAllocVATRate").hide();
+            newRow.find(".selAllocVATRate").prop("required", false);
+            newRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceDate").hide();
+            newRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceDate").removeClass('hasDatepicker').datepicker({ dateFormat: 'mm/dd/yy' });
+            newRow.find(".txtAllocTaxInvoiceNumber").hide();
+            newRow.find(".txtAllocTaxInvoiceNumber").inputmask("999.999-99.99999999");
+            newRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + newRowIndex);
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").inputmask("99999999999999999");
+            newRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + newRowIndex);
+            $("#tblDirectPayment tbody").append(newRow);
+        });
+
+        $(document).on("change", ".selCOA", function () {
+            currTD = $(this).closest("td");
+            if ($(this).val() == "1851104|Prepaid Tax - VAT IN") {
+                currTD.find(".selAllocVATRate").show();
+                currTD.find(".txtAllocTaxInvoiceDate").show();
+                currTD.find(".txtAllocTaxInvoiceNumber").show();
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").show();
+                currTD.find(".selAllocVATRate").prop("required", true);
+            } else {
+                currTD.find(".selAllocVATRate").hide();
+                currTD.find(".selAllocVATRate").val("");
+                currTD.find(".txtAllocTaxInvoiceDate").hide();
+                currTD.find(".txtAllocTaxInvoiceDate").val("");
+                currTD.find(".txtAllocTaxInvoiceNumber").hide();
+                currTD.find(".txtAllocTaxInvoiceNumber").val("");
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+                currTD.find(".txtAllocTaxInvoiceNumber17Digit").val("");
+                currTD.find(".selAllocVATRate").prop("required", false);
+            }
+        });
+
+        $(document).on("click", ".dpDelete", function () {
+            if (confirm("Are you sure want to delete this data ?")) {
+                $(this).closest("tr").remove();
+                totalAlloc();
+            }
+        });
+
+        $(document).on("keyup", ".txtAllocationAmount", function () {
+            var selection = window.getSelection().toString();
+            if (selection !== '') {
+                return;
+            }
+            // When the arrow keys are pressed, abort.
+            if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                return;
+            }
+            var $this = $(this);
+            // Get the value.
+            var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            $this.val(input);
+            $(this).parent().find(".txtAllocationAmountHolder").val(accounting.unformat(input));
+            totalAlloc();
+        });
+
+
+        function totalAlloc() {
+            var totalAllocation = 0;
+            $(".txtAllocationAmount").each(function () {
+                totalAllocation += accounting.unformat($(this).val()) || 0;
+            });
+            $("#tdTotalAllocation").text(accounting.formatNumber(totalAllocation, 2));
+        }
+
+        $(".btnNPOSubmit").click(function (e) {
+            if ($(".rbPaymentType:checked").val() == "Direct-Payment") {
+                var InvoiceAmount = accounting.unformat($("#txtInvoiceAmount").val()) || 0;
+                var TotalAllocation = accounting.unformat($("#tdTotalAllocation").text()) || 0;
+                var VAT = $("#selVATRate").val() != "" ? accounting.unformat($("#selVATRate").val()) : 0;
+                var VATAmount = VAT > 0 ? Math.round(accounting.unformat((TotalAllocation / 100) * VAT, 10)) : 0;
+                if (InvoiceAmount != parseFloat(TotalAllocation.toFixed(2), 10) + parseFloat(VATAmount.toFixed(2), 10)) {
+                    e.preventDefault();
+                    $(".spanInvoiceAmount").text("Rp. " + parseFloat(InvoiceAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanAllocation").text("Rp. " + parseFloat(TotalAllocation, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanVAT").text(VAT);
+                    $(".spanVATAmount").text("Rp. " + parseFloat(VATAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanGrandTotal").text("Rp. " + parseFloat(parseFloat(TotalAllocation.toFixed(2), 10) + parseFloat(VATAmount.toFixed(2), 10), 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $("#calculateModal").modal();
+                }
+            }
+        });
+
+        $(".btnNonPOAdd").click(function () {
+            $("#formNonPO").attr("action", $("#formNonPO").data("add"));
+            $(".divReceiveNumber").hide();
+            $("#formNonPO")[0].reset();
+            $("#formNonPO").find(".select2").select2();
+            $("#tblDirectPayment tbody tr:not(:first)").remove();
+            var firstRow = $("#tblDirectPayment tbody tr:first()");
+            firstRow.find("input").val("");
+            firstRow.find("textarea").val("");
+            firstRow.find(".select2-container").remove();
+            firstRow.find(".select2").select2();
+            firstRow.find(".selAllocVATRate").hide();
+            firstRow.find(".selAllocVATRate").prop("required", false);
+            firstRow.find(".txtAllocTaxInvoiceDate").hide();
+            firstRow.find(".txtAllocTaxInvoiceNumber").hide();
+            firstRow.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+            firstRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + (firstRow.index()));
+            firstRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + (firstRow.index()));
+            firstRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + (firstRow.index()));
+            firstRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + (firstRow.index()));
+            totalAlloc();
+            $(".divDirectPayment").hide();
+            $("#selVATRate").change();
+            $("#divNonPOForm").show("blind");
+            $(".divSettlementFor").hide();
+            $("#selSettlementFor").prop("required", false);
+        });
+
+        $(".btnNPOCancel").click(function () {
+            $("#divNonPOForm").hide("blind");
+        });
+
+    });
+</script>
+
+
+@if (ViewBag.PayUserLevel <= 1)
+{
+    <div id="divNonPOForm" style="display:none;">
+        <form id="formNonPO" action="@Url.Action("NonPOAdd", "PaymentRequest", new { area = "FA" })" data-add="@Url.Action("NonPOAdd", "PaymentRequest", new { area = "FA" })" data-edit="@Url.Action("NonPOEdit", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+            <div class="form-group row" style="display:none;">
+                <label for="entryDate" class="control-label col-3 text-right font-weight-bold">Entry Date:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Entry Date" name="iEntryDate" id="txtEntryDate" value="@(DateTime.Now.ToString("MM/dd/yyyy"))" required>
+                </div>
+            </div>
+            <div class="form-group row divReceiveNumber" style="display:none;">
+                <label for="receiveNumber" class="control-label col-3 text-right font-weight-bold">Receive Number:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control txtRecNumber" placeholder="Receive Number" name="iReceiveNumber" id="txtRecNumber" disabled>
+                    <input type="hidden" id="hfNonPOID" name="iNonPOID" value="" />
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Section From:</label>
+                <div class="col-9">
+                    <select id="selSection" name="iSection" class="form-control" required disabled>
+                        <option value="">-Section-</option>
+                        @foreach (var item in ViewBag.Section)
+                        {
+                            <option value="@(item.Section_Code + "|" + item.Section_Name)" @(item.Section_Code == ViewBag.PayUser.Section_ID ? "selected" : "")>@(item.Section_Code + " | " + item.Section_Name)</option>
+                        }
+                    </select>
+                    <select id="selSectionFrom" name="iSectionFrom" class="form-control" style="display:none;">
+                        <option value="">-Section-</option>
+                        @foreach (var item in ViewBag.Section)
+                        {
+                            <option value="@(item.Section_Code + "|" + item.Section_Name)" @(item.Section_Code == ViewBag.PayUser.Section_ID ? "selected" : "")>@(item.Section_Code + " | " + item.Section_Name)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="invoiceNumber" class="control-label col-3 text-right font-weight-bold">Invoice Number:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Invoice Number" name="iInvoiceNumber" id="txtInvoiceNumber" required>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Third Party:</label>
+                <div class="col-9">
+                    <select id="selVendor" name="iVendor" class="form-control select2" style="width:100%;" required>
+                        <option value="">-Third Party-</option>
+                        @foreach (var item in ViewBag.ThirdParty)
+                        {
+                            <option value="@(item.ACCOUNTNUM + "|" + item.Name)">@(item.ACCOUNTNUM + " | " + item.Name)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Currency:</label>
+                <div class="col-9">
+                    <select id="selCurrency" name="iCurrency" class="form-control" required>
+                        <option value="">-Currency-</option>
+                        @foreach (var item in ViewBag.Currency)
+                        {
+                            <option value="@(item.CURRENCY_CODE)">@(item.CURRENCY_CODE + " | " + item.TXT)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Amount of Invoice:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Amount of Invoice" name="iInvoiceAmount" id="txtInvoiceAmount" required>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Description:</label>
+                <div class="col-9">
+                    <textarea class="form-control" placeholder="Description" name="iDescription" id="txtDescription" maxlength="60" rows="2" required></textarea>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="DueDate" class="control-label col-3 text-right font-weight-bold">Due Date:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Due Date" name="iEntryDueDate" id="txtDueDate" required>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Payment Type:</label>
+                <div class="col-9">
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Pre-Payment" required>Pre Payment
+                        </label>
+                    </div>
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Direct-Payment" required>Direct Payment
+                        </label>
+                    </div>
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Settlement" required>Settlement
+                        </label>
+                    </div>
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentType" name="iPaymentType" value="Realization" required>Realization
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row divSettlementFor" style="display:none;">
+                <label for="receiveNumber" class="control-label col-3 text-right font-weight-bold">Settlement For:</label>
+                <div class="col-9">
+                    <select id="selSettlementFor" name="iSettlementFor" class="form-control select2" style="width:100%;">
+                        <option value="">-Settlement-</option>
+                        @foreach (var item in ViewBag.SettlementList)
+                        {
+                            <option value="@(item.Receive_Number)" data-thirdparty="@(item.Third_Party_Id + " |" + item.Third_Party_Name)" data-currency="@(item.Currency_Code)" data-amount="@(item.Amount_of_Invoice)">@(item.Receive_Number + "|" + item.Description)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row divNonPayment" style="display:none;">
+                <label for="receiveNumber" class="control-label col-3 text-right font-weight-bold">Realization For:</label>
+                <div class="col-9">
+                    <select id="selNonPayment" name="iNonPaymentID" class="form-control select2" style="width:100%;">
+                        <option value="">-Non Payment Journal-</option>
+                        @foreach (var item in ViewBag.NonPaymentList)
+                        {
+                            <option value="@(item.Receive_Number)" data-thirdparty="@(item.Third_Party_Id + "|" + item.Third_Party_Name)" data-currency="@(item.Currency_Code)" data-amount="@(item.Amount_of_Invoice)">@(item.Receive_Number + "|" + item.Description)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row divDirectPayment" style="display:none;overflow:auto;">
+                <div class="col-12">
+                    <table id="tblDirectPayment" class="table">
+                        <thead>
+                            <tr>
+                                <th>Section To</th>
+                                <th>Allocation Amount</th>
+                                <th>Chart of Account</th>
+                                <th>Procate</th>
+                                <th>Budget Number</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <select name="iSectionTo[]" class="form-control select2 selSectionTo" style="width:100%" required>
+                                        <option value="">-Section-</option>
+                                        @foreach (var item in ViewBag.Section)
+                                        {
+                                            <option data-dept-code="@(item.Section_Code)" value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td style="width:200px;">
+                                    <input type="text" class="form-control txtAllocationAmount" placeholder="Allocation Amount" required>
+                                    <input type="text" class="form-control d-none txtAllocationAmountHolder" placeholder="Allocation Amount" name="iAllocationAmount[]">
+                                </td>
+                                <td>
+                                    <select name="iCOA[]" class="form-control select2 selCOA" style="width:100%" required>
+                                        <option value="">-COA-</option>
+                                        @foreach (var item in ViewBag.COA)
+                                        {
+                                            <option value="@(item.MAINACCOUNTID + "|" + item.NAME)">@(item.MAINACCOUNTID + " | " + item.NAME)</option>
+                                        }
+                                    </select>
+                                    <select name="iAllocVATRate[]" class="form-control selAllocVATRate" style="display:none;">
+                                        <option value="">NON VAT</option>
+                                        <option value="1">VAT 1%</option>
+                                        <option value="10">VAT 10%</option>
+                                    </select>
+                                    <input type="text" class="form-control txtAllocTaxInvoiceDate" placeholder="Tax Invoice Date" name="iAllocTaxInvoiceDate[]" style="display:none;" autocomplete="off">
+                                    <input type="text" class="form-control txtAllocTaxInvoiceNumber" placeholder="Tax Invoice Number" name="iAllocTaxInvoiceNumber[]" style="display:none;">
+                                    <input type="text" class="form-control txtAllocTaxInvoiceNumber17Digit" placeholder="Tax Invoice Number 17 Digit" name="iAllocTaxInvoiceNumber17Digit[]" style="display:none;">
+                                </td>
+                                <td>
+                                    <select name="iProcate[]" class="form-control select2 selProcate" style="width:100%" required>
+                                        <option value="">-Procate-</option>
+                                        @foreach (var item in ViewBag.Procate)
+                                        {
+                                            <option value="@(item.Procate_Code + "|" + item.Procate_Name)">@(item.Procate_Code + " | " + item.Procate_Name)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <select name="iBudgetNumber[]" class="form-control select2 selBudgetNumber" style="width:100%" required>
+                                        <option value="">-Bgt. Number-</option>
+                                        @foreach (var item in ViewBag.Budget)
+                                        {
+                                            <option data-dept-to="@( item.Dept_Code )" disabled value="@(item.Number + "|" + item.Description)">@(item.Number + " | " + item.Description)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td style="min-width:350px;">
+                                    <textarea class="form-control txtAllocationDesc" maxlength="60" rows="1" placeholder="Description" name="iAllocationDesc[]" required></textarea>
+                                </td>
+                                <td>
+                                    <a class="dpDelete" title="Delete" data-toggle="tooltip"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total Allocation</td>
+                                <td id="tdTotalAllocation"></td>
+                                <td colspan="4"></td>
+                            </tr>
+                            <tr>
+                                <td colspan="6">
+                                    <button id="btnDPAdd" type="button" class="btn btn-sm btn-success form-control"><i class="fas fa-plus"></i></button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">VAT Rate:</label>
+                <div class="col-9">
+                    <select id="selVATRate" name="iVATRate" class="form-control" required>
+                        <option value="0">NON VAT</option>
+                        <option value="1">VAT 1%</option>
+                        <option value="10">VAT 10%</option>
+                    </select>
+                    <div class="form-group row divTaxInvoiceDate mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Date:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Date" name="iTaxInvoiceDate" id="txtTaxInvoiceDate" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row divTaxInvoiceNumber mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Number" name="iTaxInvoiceNumber" id="txtTaxInvoiceNumber">
+                        </div>
+                    </div>
+                    <div class="form-group row divTaxInvoiceNumber17Digit mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number 17 Digit:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Number 17 Digit" name="iTaxInvoiceNumber17Digit" id="txtTaxInvoiceNumber17Digit">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Payment Method:</label>
+                <div class="col-9">
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentMethod" name="iPaymentMethod" value="Cash" required>Cash
+                        </label>
+                    </div>
+                    <div class="form-check-inline">
+                        <label class="form-check-label">
+                            <input type="radio" class="form-check-input rbPaymentMethod" name="iPaymentMethod" value="Transfer" required>Transfer
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <div class="offset-3 col-3">
+                    <button type="button" class="btn btn-secondary form-control btnNPOCancel">Cancel</button>
+                </div>
+                <div class="col-6">
+                    <button type="submit" class="btn btn-primary form-control btnNPOSubmit">Submit</button>
+                </div>
+            </div>
+        </form>
+        <hr />
+    </div>
+    <div class="modal fade" id="calculateModal" tabindex="-1" role="dialog" aria-labelledby="calculateModal" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Calculate Total</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <h5>We're sorry, your <span style="color:red;">Total Amount</span> and <span style="color:red;">Amount of Invoice</span> is <span style="color:red;">not match!!</span></h5>
+                    <br /><br />
+                    <label class="font-weight-bold">Allocation Amount: </label> <span class="spanAllocation">0</span><br />
+                    <label class="font-weight-bold">VAT (<span class="spanVAT">0</span>%) : </label> <span class="spanVATAmount">0</span><br />
+                    <hr />
+                    <label class="font-weight-bold">Total Amount : </label> <span class="spanGrandTotal">0</span>
+                    <hr />
+                    <label class="font-weight-bold">Amount of Invoice : </label> <span class="spanInvoiceAmount">0</span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

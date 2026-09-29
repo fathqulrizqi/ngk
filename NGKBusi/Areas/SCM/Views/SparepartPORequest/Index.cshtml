@@ -1,0 +1,1088 @@
+@model IEnumerable<NGKBusi.Areas.SCM.Models.SCM_Sparepart_PO_Request_Header>
+@{
+    ViewBag.Title = "Daftar Permintaan PO Sparepart";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var deptMap = ViewBag.DeptMap as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var requesterMap = ViewBag.RequesterMap as Dictionary<string, string> ?? new Dictionary<string, string>();
+    var pendingApproversMap = ViewBag.PendingApproversMap as Dictionary<string, List<string>> ?? new Dictionary<string, List<string>>();
+    int totalCount = ViewBag.TotalCount ?? 0;
+    int pendingCount = ViewBag.PendingCount ?? 0;
+    int completedCount = ViewBag.CompletedCount ?? 0;
+    int rejectedCount = ViewBag.RejectedCount ?? 0;
+    int draftCount = ViewBag.DraftCount ?? 0;
+    int regularCount = ViewBag.RegularCount ?? 0;
+    int projectCount = ViewBag.ProjectCount ?? 0;
+    string currentNik = ViewBag.CurrentNIK as string ?? "";
+    bool canCreate = ViewBag.CanCreate ?? false;
+}
+
+<!-- Google Fonts: Outfit, DataTables & Tailwind Play CDN -->
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- DataTables CSS (v1.13.7) & Styling -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" />
+
+<style>
+    body, .font-outfit {
+        font-family: 'Outfit', sans-serif;
+    }
+    /* DataTables Tailwind Integration */
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter {
+        display: none; /* We use custom modern toolbar controls */
+    }
+    .dataTables_wrapper .dataTables_info {
+        font-size: 0.8125rem;
+        color: #64748b;
+        font-weight: 500;
+        padding-top: 1rem;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        padding-top: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.8125rem;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.375rem 0.75rem !important;
+        border-radius: 0.5rem !important;
+        border: 1px solid #e2e8f0 !important;
+        background: #ffffff !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 0.75rem !important;
+        transition: all 0.15s ease-in-out;
+        cursor: pointer;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #f1f5f9 !important;
+        color: #1e293b !important;
+        border-color: #cbd5e1 !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+        background: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+        box-shadow: 0 2px 4px rgba(37,99,235,0.25);
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled,
+    .dataTables_wrapper .dataTables_paginate .paginate_button.disabled:hover {
+        background: #f8fafc !important;
+        color: #cbd5e1 !important;
+        border-color: #f1f5f9 !important;
+        cursor: not-allowed;
+    }
+    table.dataTable.no-footer {
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    .child-row-container {
+        background: #f8fafc;
+        border-left: 4px solid #3b82f6;
+    }
+
+    /* Disable DataTables sorting background icons and cursor on the filter row */
+    #columnFilterRow th {
+        background-image: none !important;
+        cursor: default !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+    }
+    #columnFilterRow th:before,
+    #columnFilterRow th:after {
+        display: none !important;
+        content: none !important;
+    }
+</style>
+
+<div class="w-full p-4 sm:p-6 font-outfit text-slate-800 space-y-6">
+    
+    <!-- Top Header Area -->
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-blue-50 text-blue-600 rounded border border-blue-100">
+                    SCM Procurement System
+                </span>
+                <span class="text-xs font-semibold text-slate-400">Portal Pengadaan Sparepart Impor</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight mt-1">Daftar Permintaan PO Sparepart</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Kelola, telusuri Drawing No, dan pantau status persetujuan pengadaan sparepart.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+            <a href="@Url.Action("DownloadTemplate", "SparepartPORequest", new { area = "SCM" })" 
+               class="inline-flex items-center px-3.5 py-2 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition shadow-sm"
+               title="Download file template Excel untuk pengisian item pengadaan sparepart">
+                <svg class="w-3.5 h-3.5 mr-1.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download Template Excel
+            </a>
+            @*<a href="@Url.Action("SeedConfig", "SparepartPORequest", new { area = "SCM" })" 
+               class="inline-flex items-center px-3.5 py-2 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-sm"
+               title="Daftarkan NIK Anda sebagai Level 1 & 2 Approver untuk simulasi testing">
+                <svg class="w-3.5 h-3.5 mr-1.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Seed Approvers
+            </a>*@
+            @if (canCreate)
+            {
+                <a href="@Url.Action("Create", "SparepartPORequest", new { area = "SCM" })" 
+                   class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg active:scale-[0.98] transition">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    Buat Pengajuan Baru
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- Alerts Notification -->
+    @if (TempData["Success"] != null)
+    {
+        <div class="p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded-r-xl text-emerald-800 text-xs sm:text-sm font-semibold flex items-center shadow-sm">
+            <svg class="w-5 h-5 mr-2 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>@TempData["Success"]</span>
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="p-4 bg-rose-50 border-l-4 border-rose-500 rounded-r-xl text-rose-800 text-xs sm:text-sm font-semibold flex items-center shadow-sm">
+            <svg class="w-5 h-5 mr-2 text-rose-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>@TempData["Error"]</span>
+        </div>
+    }
+
+    <!-- KPI Metric Cards (Interactive Click-to-Filter) -->
+    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Total Requests -->
+        <div onclick="applyQuickStatusFilter('')" 
+             class="kpi-card group cursor-pointer bg-white hover:bg-blue-50/40 p-4 sm:p-5 rounded-2xl border border-slate-100 hover:border-blue-300 shadow-sm hover:shadow-md transition duration-200">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-600 transition">Total Permintaan</span>
+                <div class="p-2 bg-blue-50 group-hover:bg-blue-600 text-blue-600 group-hover:text-white rounded-xl transition duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl sm:text-3xl font-black text-slate-800">@totalCount</span>
+                <span class="text-[11px] font-bold text-blue-600 group-hover:underline">Lihat Semua &rarr;</span>
+            </div>
+        </div>
+
+        <!-- Pending Approval -->
+        <div onclick="applyQuickStatusFilter('Pending Approval')" 
+             class="kpi-card group cursor-pointer bg-white hover:bg-amber-50/40 p-4 sm:p-5 rounded-2xl border border-slate-100 hover:border-amber-300 shadow-sm hover:shadow-md transition duration-200">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-amber-600 transition">Pending Approval</span>
+                <div class="p-2 bg-amber-50 group-hover:bg-amber-600 text-amber-600 group-hover:text-white rounded-xl transition duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl sm:text-3xl font-black text-amber-600">@pendingCount</span>
+                <span class="text-[11px] font-bold text-amber-600 group-hover:underline">Menunggu Respon &rarr;</span>
+            </div>
+        </div>
+
+        <!-- Completed -->
+        <div onclick="applyQuickStatusFilter('Completed')" 
+             class="kpi-card group cursor-pointer bg-white hover:bg-emerald-50/40 p-4 sm:p-5 rounded-2xl border border-slate-100 hover:border-emerald-300 shadow-sm hover:shadow-md transition duration-200">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-emerald-600 transition">Completed / PO</span>
+                <div class="p-2 bg-emerald-50 group-hover:bg-emerald-600 text-emerald-600 group-hover:text-white rounded-xl transition duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <span class="text-2xl sm:text-3xl font-black text-emerald-600">@completedCount</span>
+                <span class="text-[11px] font-bold text-emerald-600 group-hover:underline">Selesai &rarr;</span>
+            </div>
+        </div>
+
+        <!-- Rejected / Draft -->
+        <div onclick="applyQuickStatusFilter('Rejected')" 
+             class="kpi-card group cursor-pointer bg-white hover:bg-rose-50/40 p-4 sm:p-5 rounded-2xl border border-slate-100 hover:border-rose-300 shadow-sm hover:shadow-md transition duration-200">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-rose-600 transition">Rejected / Draft</span>
+                <div class="p-2 bg-rose-50 group-hover:bg-rose-600 text-rose-600 group-hover:text-white rounded-xl transition duration-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline justify-between">
+                <div>
+                    <span class="text-2xl sm:text-3xl font-black text-rose-600">@rejectedCount</span>
+                    <span class="text-xs font-semibold text-slate-400 ml-1">(@draftCount draft)</span>
+                </div>
+                <span class="text-[11px] font-bold text-rose-600 group-hover:underline">Filter Ditolak &rarr;</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar & Search Panel -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+        
+        <!-- Search & Utility Controls Row -->
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3.5">
+            
+            <!-- Dedicated Drawing No Search (Highlight Feature) & Export Excel Button -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                    </div>
+                    <input type="text" id="drawingNoSearchInput" 
+                           placeholder="Cari Drawing No / Drawing Kanrikogu / Part Name..." 
+                           class="w-full pl-10 pr-28 py-2.5 text-xs sm:text-sm rounded-xl border border-indigo-200 bg-indigo-50/30 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition font-medium placeholder-slate-400 text-indigo-950 shadow-inner" />
+                    <div class="absolute inset-y-0 right-0 pr-2 flex items-center gap-1.5">
+                        <span class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-700 rounded-md">Drawing Filter</span>
+                        <button type="button" id="btnClearDrawingSearch" class="hidden text-slate-400 hover:text-rose-500 p-1 transition" title="Hapus pencarian drawing">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export Filtered Items Excel Button -->
+                <button type="button" onclick="exportFilteredItems()" 
+                        class="inline-flex items-center justify-center px-3.5 py-2.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 hover:border-emerald-400 rounded-xl transition shadow-sm active:scale-95 whitespace-nowrap"
+                        title="Download file Excel untuk seluruh rincian item & drawing sesuai filter saat ini">
+                    <svg class="w-4 h-4 mr-1.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span>Export Item Excel</span>
+                </button>
+            </div>
+
+            <!-- Page Size & Reset Filter Controls -->
+            <div class="flex items-center justify-end gap-2.5 flex-shrink-0">
+                <div class="flex items-center gap-2 text-xs text-slate-500 font-semibold whitespace-nowrap bg-slate-50/80 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                    <span>Tampilkan:</span>
+                    <select id="customPageLengthSelect" class="py-1 px-2 text-xs font-bold rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-blue-500 outline-none cursor-pointer">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>baris</span>
+                </div>
+
+                <button type="button" onclick="resetAllFilters()" 
+                        class="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition flex items-center shadow-sm active:scale-95"
+                        title="Bersihkan semua filter pencarian">
+                    <svg class="w-3.5 h-3.5 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Reset Filter
+                </button>
+            </div>
+        </div>
+
+        <!-- Date Range Filter Row -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Filter Tanggal:
+                </span>
+                
+                <button type="button" onclick="applyDatePreset('')" data-date-preset=""
+                        class="date-preset-chip active px-2.5 py-1 rounded-lg font-bold border transition bg-indigo-600 text-white border-indigo-600 shadow-xs">
+                    Semua
+                </button>
+                <button type="button" onclick="applyDatePreset('today')" data-date-preset="today"
+                        class="date-preset-chip px-2.5 py-1 rounded-lg font-medium border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Hari Ini
+                </button>
+                <button type="button" onclick="applyDatePreset('last7')" data-date-preset="last7"
+                        class="date-preset-chip px-2.5 py-1 rounded-lg font-medium border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    7 Hari Terakhir
+                </button>
+                <button type="button" onclick="applyDatePreset('thisMonth')" data-date-preset="thisMonth"
+                        class="date-preset-chip px-2.5 py-1 rounded-lg font-medium border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Bulan Ini
+                </button>
+                <button type="button" onclick="applyDatePreset('lastMonth')" data-date-preset="lastMonth"
+                        class="date-preset-chip px-2.5 py-1 rounded-lg font-medium border transition bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Bulan Lalu
+                </button>
+            </div>
+
+            <!-- Custom Date Inputs (Between / Greater / Less) -->
+            <div class="flex items-center gap-2 bg-slate-50/80 px-3 py-1 rounded-xl border border-slate-200">
+                <span class="text-[11px] font-semibold text-slate-500">Dari:</span>
+                <input type="date" id="minDateFilter" onchange="onDateInputChange()"
+                       class="py-1 px-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 outline-none cursor-pointer" 
+                       title="Filter tanggal pengajuan mulai dari tanggal ini (>=)" />
+                
+                <span class="text-[11px] font-semibold text-slate-500">s/d:</span>
+                <input type="date" id="maxDateFilter" onchange="onDateInputChange()"
+                       class="py-1 px-2 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-100 outline-none cursor-pointer" 
+                       title="Filter tanggal pengajuan sampai tanggal ini (<=)" />
+
+                <button type="button" id="btnClearDateFilter" onclick="applyDatePreset('')"
+                        class="hidden text-slate-400 hover:text-rose-500 p-1 transition" title="Hapus filter tanggal">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Chips Bar: Status & Category -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+            <!-- Status Chips -->
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    Status:
+                </span>
+                
+                <button type="button" onclick="applyQuickStatusFilter('')" data-status-filter=""
+                        class="status-chip active px-3 py-1.5 rounded-xl font-bold border transition duration-150 bg-blue-600 text-white border-blue-600 shadow-sm">
+                    Semua (@totalCount)
+                </button>
+                <button type="button" onclick="applyQuickStatusFilter('Pending Approval')" data-status-filter="Pending Approval"
+                        class="status-chip px-3 py-1.5 rounded-xl font-semibold border transition duration-150 bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Pending Approval (@pendingCount)
+                </button>
+                <button type="button" onclick="applyQuickStatusFilter('Completed')" data-status-filter="Completed"
+                        class="status-chip px-3 py-1.5 rounded-xl font-semibold border transition duration-150 bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Completed (@completedCount)
+                </button>
+                <button type="button" onclick="applyQuickStatusFilter('Draft')" data-status-filter="Draft"
+                        class="status-chip px-3 py-1.5 rounded-xl font-semibold border transition duration-150 bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Draft (@draftCount)
+                </button>
+                <button type="button" onclick="applyQuickStatusFilter('Rejected')" data-status-filter="Rejected"
+                        class="status-chip px-3 py-1.5 rounded-xl font-semibold border transition duration-150 bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                    Rejected (@rejectedCount)
+                </button>
+                @if (!string.IsNullOrEmpty(currentNik))
+                {
+                    <div class="h-4 w-px bg-slate-200 mx-1"></div>
+                    <button type="button" onclick="applyMyRequestsFilter('@currentNik')" id="btnMyRequests"
+                            class="px-3 py-1.5 rounded-xl font-semibold border transition duration-150 bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50 flex items-center">
+                        <svg class="w-3.5 h-3.5 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        Pengajuan Saya
+                    </button>
+                }
+            </div>
+
+            <!-- Category Filter Chips -->
+            <div class="flex items-center gap-1.5 bg-slate-50/90 px-3 py-1 rounded-xl border border-slate-200 flex-shrink-0">
+                <input type="hidden" id="selectedCategoryFilter" value="" />
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1 mr-1">
+                    <svg class="w-3.5 h-3.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+                    Kategori:
+                </span>
+                <button type="button" onclick="applyCategoryFilter('')" data-category-filter=""
+                        class="category-chip active px-2.5 py-1 rounded-lg text-xs font-bold border transition bg-slate-800 text-white border-slate-800 shadow-xs">
+                    Semua
+                </button>
+                <button type="button" onclick="applyCategoryFilter('Regular')" data-category-filter="Regular"
+                        class="category-chip px-2.5 py-1 rounded-lg text-xs font-semibold border transition bg-white text-blue-700 border-blue-200 hover:bg-blue-50 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                    Regular (@regularCount)
+                </button>
+                <button type="button" onclick="applyCategoryFilter('Project')" data-category-filter="Project"
+                        class="category-chip px-2.5 py-1 rounded-lg text-xs font-semibold border transition bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    Project (@projectCount)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Data Table Container -->
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto p-2 sm:p-4">
+            <table id="sparepartPOTable" class="w-full text-left text-xs sm:text-sm border-collapse">
+                <thead>
+                    <!-- Main Header Row -->
+                    <tr class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                        <th class="p-3.5 text-center w-10">Item</th>
+                        <th class="p-3.5">No. Request</th>
+                        <th class="p-3.5">PO Number</th>
+                        <th class="p-3.5">Judul Permintaan & Item</th>
+                        <th class="p-3.5">Target Dept</th>
+                        <th class="p-3.5">Pemohon</th>
+                        <th class="p-3.5">Tanggal Pengajuan</th>
+                        <th class="p-3.5">Status</th>
+                        <th class="p-3.5 text-center">Aksi</th>
+                        <!-- Hidden Search Column for Drawings & Item Details -->
+                        <th class="hidden">Drawings_Search</th>
+                    </tr>
+
+                    <!-- Per-Column Filter Input Row -->
+                    <tr class="bg-slate-50/80 border-b border-slate-200" id="columnFilterRow">
+                        <th class="p-2 text-center">
+                            <span class="text-[10px] text-slate-400 font-mono">#</span>
+                        </th>
+                        <!-- Filter No Request -->
+                        <th class="p-2">
+                            <input type="text" placeholder="Filter No..." 
+                                   class="col-filter-input w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" data-col-idx="1" />
+                        </th>
+                        <!-- Filter PO Number -->
+                        <th class="p-2">
+                            <input type="text" placeholder="Filter PO..." 
+                                   class="col-filter-input w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" data-col-idx="2" />
+                        </th>
+                        <!-- Filter Judul & Kategori -->
+                        <th class="p-2">
+                            <div class="flex items-center gap-1">
+                                <input type="text" placeholder="Filter Judul / Drawing..." 
+                                       class="col-filter-input w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" data-col-idx="3" />
+                                <select id="colCategoryFilterSelect" onchange="applyCategoryFilter(this.value)"
+                                        class="p-1.5 text-[11px] font-semibold rounded-lg border border-slate-200 bg-white text-slate-700 focus:border-blue-500 outline-none cursor-pointer" title="Filter Kategori">
+                                    <option value="">Semua</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Project">Project</option>
+                                </select>
+                            </div>
+                        </th>
+                        <!-- Filter Target Dept -->
+                        <th class="p-2">
+                            <select class="col-filter-select w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal cursor-pointer" data-col-idx="4">
+                                <option value="">Semua Dept</option>
+                                @foreach (var dept in deptMap)
+                                {
+                                    <option value="@dept.Value">@dept.Value</option>
+                                }
+                            </select>
+                        </th>
+                        <!-- Filter Pemohon -->
+                        <th class="p-2">
+                            <input type="text" placeholder="Filter Pemohon / NIK..." 
+                                   class="col-filter-input w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" data-col-idx="5" />
+                        </th>
+                        <!-- Filter Tanggal Pengajuan (Date Range Sync) -->
+                        <th class="p-2">
+                            <div class="flex items-center gap-1">
+                                <input type="date" id="colMinDateFilter" onchange="syncDateFilterFromColumn('min', this.value)"
+                                       class="w-1/2 p-1 text-[10px] rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" title="Filter Dari Tanggal (>=)" />
+                                <span class="text-slate-400 text-[10px]">-</span>
+                                <input type="date" id="colMaxDateFilter" onchange="syncDateFilterFromColumn('max', this.value)"
+                                       class="w-1/2 p-1 text-[10px] rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" title="Filter Sampai Tanggal (<=)" />
+                            </div>
+                        </th>
+                        <!-- Filter Status / Approver -->
+                        <th class="p-2">
+                            <input type="text" id="colFilterStatusInput" placeholder="Filter Status / Approver..." 
+                                   class="col-filter-input w-full p-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:border-blue-500 outline-none font-normal" data-col-idx="7" />
+                        </th>
+                        <!-- Action reset filter -->
+                        <th class="p-2 text-center">
+                            <button type="button" onclick="resetAllFilters()" title="Reset semua filter kolom"
+                                     class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition">
+                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                             </button>
+                        </th>
+                        <th class="hidden"></th>
+                    </tr>
+                </thead>
+
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    @foreach (var item in Model)
+                    {
+                        var itemCount = item.Details != null ? item.Details.Count : 0;
+                        var drawingNumbers = item.Details != null 
+                            ? item.Details.Select(d => d.DrawingNo).Where(d => !string.IsNullOrEmpty(d)).Distinct().ToList() 
+                            : new List<string>();
+                        var drawingKanriNumbers = item.Details != null 
+                            ? item.Details.Select(d => d.DrawingNoKanrikogu).Where(d => !string.IsNullOrEmpty(d)).Distinct().ToList() 
+                            : new List<string>();
+                        var partNames = item.Details != null 
+                            ? item.Details.Select(d => d.PartName).Where(p => !string.IsNullOrEmpty(p)).Distinct().ToList() 
+                            : new List<string>();
+                        
+                        string allDrawingsSearchable = string.Join(" ", drawingNumbers.Concat(drawingKanriNumbers).Concat(partNames));
+
+                        <tr class="hover:bg-slate-50/60 transition group-row" data-header-id="@item.ID" data-requester-nik="@item.RequesterNIK">
+                            
+                            <!-- 0. Accordion Expand/Collapse Toggle Button -->
+                            <td class="p-3 text-center">
+                                <button type="button" class="btn-toggle-child p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-slate-500 transition shadow-sm"
+                                        data-header-id="@item.ID" title="Lihat detail item barang">
+                                    <svg class="w-4 h-4 transform transition-transform duration-200 icon-expand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                </button>
+                            </td>
+
+                            <!-- 1. Request No -->
+                            <td class="p-3 font-mono font-bold text-blue-600 text-xs whitespace-nowrap">
+                                <a href="@Url.Action("Detail", "SparepartPORequest", new { area = "SCM", id = item.ID })" 
+                                   class="hover:underline flex items-center">
+                                    @item.RequestNo
+                                </a>
+                            </td>
+
+                            <!-- 2. PO Number -->
+                            <td class="p-3 whitespace-nowrap">
+                                @if (!string.IsNullOrEmpty(item.PONumber))
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                        <svg class="w-3 h-3 mr-1 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        @item.PONumber
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400 text-xs font-mono">-</span>
+                                }
+                            </td>
+
+                            <!-- 3. Title & Drawing Summary Badge -->
+                            <td class="p-3" data-category="@(item.Category == "Project" ? "Project" : "Regular")">
+                                <div class="font-bold text-slate-800 text-sm">@item.Title</div>
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                    @if (item.Category == "Project")
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-xs">
+                                            <svg class="w-3 h-3 mr-1 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                            Project
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                            Regular
+                                        </span>
+                                    }
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                        @itemCount Item Barang
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- 4. Target Department -->
+                            <td class="p-3 text-xs font-medium text-slate-600">
+                                @if (!string.IsNullOrEmpty(item.TargetDepartment))
+                                {
+                                    var deptIds = item.TargetDepartment.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                                    var deptNames = deptIds.Select(id => deptMap.ContainsKey(id.Trim()) ? deptMap[id.Trim()] : id.Trim()).ToList();
+                                    <div class="flex flex-wrap gap-1 max-w-[200px]">
+                                        @foreach (var dName in deptNames)
+                                        {
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100/60">
+                                                @dName
+                                            </span>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-slate-400">-</span>
+                                }
+                            </td>
+
+                            <!-- 5. Requester -->
+                            <td class="p-3 text-xs">
+                                <span class="font-bold block text-slate-800">@(requesterMap.ContainsKey(item.RequesterNIK ?? "") ? requesterMap[item.RequesterNIK] : item.RequesterNIK)</span>
+                                <span class="text-[10px] text-slate-400 font-mono">@item.RequesterNIK</span>
+                            </td>
+
+                            <!-- 6. Created Date -->
+                            <td class="p-3 text-xs text-slate-500 whitespace-nowrap" data-order="@item.CreatedDate.ToString("yyyyMMddHHmmss")" data-date="@item.CreatedDate.ToString("yyyy-MM-dd")">
+                                <div class="font-medium text-slate-700">@item.CreatedDate.ToString("dd MMM yyyy")</div>
+                                <div class="text-[10px] text-slate-400">@item.CreatedDate.ToString("HH:mm") WIB</div>
+                            </td>
+
+                            <!-- 7. Status & Pending Approvers -->
+                            <td class="p-3">
+                                @if (item.Status == "Draft")
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                        <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-slate-400"></span>
+                                        Draft
+                                    </span>
+                                }
+                                else if (item.Status == "Pending Approval")
+                                {
+                                    <div>
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 shadow-sm">
+                                            <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                            Pending Approval
+                                        </span>
+                                        @if (pendingApproversMap.ContainsKey(item.RequestNo ?? "") && pendingApproversMap[item.RequestNo].Any())
+                                        {
+                                            <div class="mt-1.5 space-y-0.5">
+                                                @foreach (var approver in pendingApproversMap[item.RequestNo])
+                                                {
+                                                    <div class="flex items-center text-[11px] text-slate-600 font-medium">
+                                                        <svg class="w-3.5 h-3.5 mr-1 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                        </svg>
+                                                        <span class="truncate max-w-[200px]" title="@approver">@approver</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                else if (item.Status == "Completed" || item.Status == "Approved")
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm">
+                                        <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-emerald-500"></span>
+                                        Completed
+                                    </span>
+                                }
+                                else if (item.Status == "Rejected")
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 shadow-sm">
+                                        <span class="w-1.5 h-1.5 mr-1.5 rounded-full bg-rose-500"></span>
+                                        Rejected
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                        @item.Status
+                                    </span>
+                                }
+                            </td>
+
+                            <!-- 8. Actions -->
+                            <td class="p-3 text-center whitespace-nowrap">
+                                <div class="flex items-center justify-center space-x-1.5">
+                                    <a href="@Url.Action("Detail", "SparepartPORequest", new { area = "SCM", id = item.ID })" 
+                                       class="inline-flex items-center px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 font-bold text-xs rounded-lg transition duration-150 shadow-sm">
+                                        Detail
+                                    </a>
+                                    @if (item.Status == "Draft" && (canCreate || item.RequesterNIK == currentNik))
+                                    {
+                                        <a href="@Url.Action("Create", "SparepartPORequest", new { area = "SCM", id = item.ID })" 
+                                           class="inline-flex items-center px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 hover:border-amber-300 font-bold text-xs rounded-lg transition duration-150 shadow-sm">
+                                            Edit Draft
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+
+                            <!-- 9. Hidden Searchable Drawings & Details Content -->
+                            <td class="hidden">
+                                @allDrawingsSearchable
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Hidden Child Row Templates Container (Outside Table so DataTables column count is exact) -->
+    <div id="childTemplates" class="hidden">
+        @foreach (var item in Model)
+        {
+            var itemCount = item.Details != null ? item.Details.Count : 0;
+            <div id="child-data-@item.ID">
+                <div class="child-row-container p-4 rounded-xl my-2 space-y-3 bg-slate-50 border border-slate-200 shadow-inner">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">Rincian Item Barang PO</span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-indigo-100 text-indigo-800 rounded-md"># @item.RequestNo</span>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-500">@itemCount Item Terdaftar</span>
+                    </div>
+                    
+                    @if (item.Details == null || !item.Details.Any())
+                    {
+                        <div class="p-4 text-center text-xs text-slate-400 font-medium">Tidak ada rincian item barang.</div>
+                    }
+                    else
+                    {
+                        <div class="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                            <table class="w-full text-left text-[11px] border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                                        <th class="p-2 pl-3">No</th>
+                                        <th class="p-2">Part Name</th>
+                                        <th class="p-2">Drawing No</th>
+                                        <th class="p-2">Drawing No Kanrikogu</th>
+                                        <th class="p-2">Ax Item ID</th>
+                                        <th class="p-2">Machine Number</th>
+                                        <th class="p-2">Maker</th>
+                                        <th class="p-2">Qty</th>
+                                        <th class="p-2">Lead Time</th>
+                                        <th class="p-2 pr-3">ETA</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @foreach (var d in item.Details)
+                                    {
+                                        <tr class="hover:bg-indigo-50/20 transition">
+                                            <td class="p-2 pl-3 text-slate-500 font-medium">@d.No</td>
+                                            <td class="p-2 font-bold text-slate-800">@d.PartName</td>
+                                            <td class="p-2 font-mono font-bold text-indigo-600">
+                                                @if (!string.IsNullOrEmpty(d.DrawingNo))
+                                                {
+                                                    <span class="px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded text-indigo-700">@d.DrawingNo</span>
+                                                }
+                                                else { <span class="text-slate-400">-</span> }
+                                            </td>
+                                            <td class="p-2 font-mono font-bold text-indigo-600">
+                                                @if (!string.IsNullOrEmpty(d.DrawingNoKanrikogu))
+                                                {
+                                                    <span class="px-2 py-0.5 bg-indigo-50 border border-indigo-100 rounded text-indigo-700">@d.DrawingNoKanrikogu</span>
+                                                }
+                                                else { <span class="text-slate-400">-</span> }
+                                            </td>
+                                            <td class="p-2 font-mono text-slate-600">@(string.IsNullOrEmpty(d.AxItemID) ? "-" : d.AxItemID)</td>
+                                            <td class="p-2 text-slate-600">@(string.IsNullOrEmpty(d.MachineNumber) ? "-" : d.MachineNumber)</td>
+                                            <td class="p-2 text-slate-600">@(string.IsNullOrEmpty(d.Maker) ? "-" : d.Maker)</td>
+                                            <td class="p-2 font-black text-slate-800">@d.Quantity</td>
+                                            <td class="p-2 text-slate-600">@(string.IsNullOrEmpty(d.LeadTime) ? "-" : d.LeadTime)</td>
+                                            <td class="p-2 pr-3 text-slate-500 font-medium">@(d.ETA.HasValue ? d.ETA.Value.ToString("dd/MM/yyyy") : "-")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- jQuery & DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<script>
+    var poTable = null;
+
+    $(document).ready(function () {
+        // Custom DataTables filter for Tanggal Pengajuan (Date Range) and Kategori (Regular / Project)
+        $.fn.dataTable.ext.search.push(
+            function (settings, data, dataIndex) {
+                if (settings.nTable.id !== 'sparepartPOTable') return true;
+                if (!poTable || typeof poTable.row !== 'function') return true;
+
+                var rowNode = poTable.row(dataIndex).node();
+                if (!rowNode) return true;
+
+                // 1. Kategori Filter Check
+                var selectedCat = $('#selectedCategoryFilter').val();
+                if (selectedCat) {
+                    var rowCat = $(rowNode).find('td[data-category]').attr('data-category') || 'Regular';
+                    if (rowCat !== selectedCat) {
+                        return false;
+                    }
+                }
+
+                // 2. Date Range Filter Check
+                var minDate = $('#minDateFilter').val(); // YYYY-MM-DD
+                var maxDate = $('#maxDateFilter').val(); // YYYY-MM-DD
+
+                if (!minDate && !maxDate) return true;
+
+                var rowDate = $(rowNode).find('td[data-date]').attr('data-date'); // YYYY-MM-DD
+                if (!rowDate) return true;
+
+                // If minDate is set -> must be >= minDate (lebih dari / sesudah tanggal tertentu)
+                if (minDate && rowDate < minDate) {
+                    return false;
+                }
+
+                // If maxDate is set -> must be <= maxDate (kurang dari / sebelum tanggal tertentu)
+                if (maxDate && rowDate > maxDate) {
+                    return false;
+                }
+
+                return true;
+            }
+        );
+
+        // Initialize DataTables with orderCellsTop so sorting only applies to the top header row
+        if (!$.fn.DataTable.isDataTable('#sparepartPOTable')) {
+            poTable = $('#sparepartPOTable').DataTable({
+                orderCellsTop: true,
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                order: [[6, 'desc']], // Sort by Created Date desc
+                columnDefs: [
+                    { orderable: false, targets: [0, 8, 9] }, // Disable sort on expand button, action, hidden
+                    { searchable: false, targets: [0, 8] }
+                ],
+                language: {
+                    zeroRecords: `
+                        <div class="p-8 text-center text-slate-400">
+                            <svg class="w-10 h-10 mx-auto mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p class="font-bold text-slate-600 text-sm">Tidak ada data yang sesuai dengan kriteria pencarian</p>
+                            <p class="text-xs text-slate-400 mt-1">Coba gunakan kata kunci lain atau reset filter.</p>
+                        </div>
+                    `,
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ permintaan",
+                    infoEmpty: "Tidak ada data yang ditampilkan",
+                    infoFiltered: "(difilter dari _MAX_ total data)",
+                    paginate: {
+                        first: "&laquo;",
+                        last: "&raquo;",
+                        next: "Berikutnya &rarr;",
+                        previous: "&larr; Sebelumnya"
+                    }
+                }
+            });
+        }
+
+        // Prevent column sorting when clicking inside filter inputs/selects in header
+        $('#columnFilterRow').on('click', 'input, select, button', function (e) {
+            e.stopPropagation();
+        });
+
+        // 1. Dedicated Drawing No Filter (Searches in column 9: Hidden Drawings & Part Names)
+        $('#drawingNoSearchInput').on('keyup input', function () {
+            var val = $(this).val().trim();
+            poTable.column(9).search(val).draw();
+            if (val.length > 0) {
+                $('#btnClearDrawingSearch').removeClass('hidden');
+            } else {
+                $('#btnClearDrawingSearch').addClass('hidden');
+            }
+        });
+
+        $('#btnClearDrawingSearch').on('click', function () {
+            $('#drawingNoSearchInput').val('');
+            $(this).addClass('hidden');
+            poTable.column(9).search('').draw();
+        });
+
+        // 2. Dynamic Custom Page Length
+        $('#customPageLengthSelect').on('change', function () {
+            var len = parseInt($(this).val(), 10);
+            poTable.page.len(len).draw();
+        });
+
+        // 3. Per-Column Filters (excluding date & category which use custom search plugin)
+        $('.col-filter-input').on('keyup change', function () {
+            var colIdx = $(this).data('col-idx');
+            if (colIdx !== undefined) {
+                var val = $(this).val();
+                poTable.column(colIdx).search(val).draw();
+            }
+        });
+
+        $('.col-filter-select').on('change', function () {
+            var colIdx = $(this).data('col-idx');
+            var val = $(this).val();
+            if (val === "") {
+                poTable.column(colIdx).search('').draw();
+            } else {
+                // Exact matching for select dropdowns
+                poTable.column(colIdx).search(val ? val : '', true, false).draw();
+            }
+        });
+
+        // 4. Expand / Collapse Child Rows (Item Previews)
+        $('#sparepartPOTable tbody').on('click', '.btn-toggle-child', function () {
+            if (!poTable || typeof poTable.row !== 'function') {
+                return;
+            }
+
+            var tr = $(this).closest('tr');
+            var row = poTable.row(tr);
+            var headerId = $(this).data('header-id');
+            var icon = $(this).find('.icon-expand');
+
+            if (row.child.isShown()) {
+                // Close child row
+                row.child.hide();
+                tr.removeClass('shown bg-blue-50/30');
+                icon.removeClass('rotate-45 text-rose-500');
+                $(this).removeClass('border-rose-300 bg-rose-50 text-rose-600').addClass('border-slate-200 bg-white text-slate-500');
+            } else {
+                // Open child row from template
+                var childContentHtml = $('#child-data-' + headerId).html();
+                if (!childContentHtml) {
+                    return;
+                }
+                row.child(childContentHtml).show();
+                tr.addClass('shown bg-blue-50/30');
+                icon.addClass('rotate-45 text-rose-500');
+                $(this).removeClass('border-slate-200 bg-white text-slate-500').addClass('border-rose-300 bg-rose-50 text-rose-600');
+            }
+        });
+    });
+
+    // Helper: Format Date to YYYY-MM-DD
+    function formatDateToYMD(d) {
+        var year = d.getFullYear();
+        var month = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    // Category Filter Handler
+    function applyCategoryFilter(cat) {
+        $('.category-chip').removeClass('active bg-slate-800 text-white border-slate-800 shadow-xs')
+                           .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        $(`button[data-category-filter="${cat}"]`).addClass('active bg-slate-800 text-white border-slate-800 shadow-xs')
+                                                  .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        $('#selectedCategoryFilter').val(cat);
+        $('#colCategoryFilterSelect').val(cat);
+        poTable.draw();
+    }
+
+    // Date Presets Handler
+    function applyDatePreset(preset) {
+        $('.date-preset-chip').removeClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                              .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        $(`button[data-date-preset="${preset}"]`).addClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                                                 .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        var now = new Date();
+        var minVal = '';
+        var maxVal = '';
+
+        if (preset === 'today') {
+            minVal = formatDateToYMD(now);
+            maxVal = formatDateToYMD(now);
+        } else if (preset === 'last7') {
+            var d7 = new Date();
+            d7.setDate(now.getDate() - 6);
+            minVal = formatDateToYMD(d7);
+            maxVal = formatDateToYMD(now);
+        } else if (preset === 'thisMonth') {
+            var firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            minVal = formatDateToYMD(firstDay);
+            maxVal = formatDateToYMD(lastDay);
+        } else if (preset === 'lastMonth') {
+            var firstPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            var lastPrev = new Date(now.getFullYear(), now.getMonth(), 0);
+            minVal = formatDateToYMD(firstPrev);
+            maxVal = formatDateToYMD(lastPrev);
+        }
+
+        $('#minDateFilter, #colMinDateFilter').val(minVal);
+        $('#maxDateFilter, #colMaxDateFilter').val(maxVal);
+
+        if (minVal || maxVal) {
+            $('#btnClearDateFilter').removeClass('hidden');
+        } else {
+            $('#btnClearDateFilter').addClass('hidden');
+        }
+
+        poTable.draw();
+    }
+
+    // Date Input Change Handler (Direct Input)
+    function onDateInputChange() {
+        var minVal = $('#minDateFilter').val();
+        var maxVal = $('#maxDateFilter').val();
+
+        $('#colMinDateFilter').val(minVal);
+        $('#colMaxDateFilter').val(maxVal);
+
+        $('.date-preset-chip').removeClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                              .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        if (minVal || maxVal) {
+            $('#btnClearDateFilter').removeClass('hidden');
+        } else {
+            $('#btnClearDateFilter').addClass('hidden');
+            $('button[data-date-preset=""]').addClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                                           .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        }
+
+        poTable.draw();
+    }
+
+    // Sync from Table Column Date Inputs
+    function syncDateFilterFromColumn(type, val) {
+        if (type === 'min') {
+            $('#minDateFilter').val(val);
+        } else {
+            $('#maxDateFilter').val(val);
+        }
+        onDateInputChange();
+    }
+
+    // Quick Status Filter Chips & KPI Cards
+    function applyQuickStatusFilter(status) {
+        $('.status-chip').removeClass('active bg-blue-600 text-white border-blue-600 shadow-sm')
+                          .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        
+        $(`button[data-status-filter="${status}"]`).addClass('active bg-blue-600 text-white border-blue-600 shadow-sm')
+                                                   .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        $('#colFilterStatusInput').val(status);
+
+        if (status === "") {
+            poTable.column(7).search('').draw();
+        } else {
+            poTable.column(7).search(status).draw();
+        }
+    }
+
+    // Filter "Pengajuan Saya"
+    function applyMyRequestsFilter(nik) {
+        if (!nik) return;
+        var currentFilter = poTable.column(5).search();
+        if (currentFilter === nik) {
+            // Toggle off
+            poTable.column(5).search('').draw();
+            $('#btnMyRequests').removeClass('bg-indigo-600 text-white shadow-sm').addClass('bg-white text-indigo-600');
+        } else {
+            // Toggle on
+            poTable.column(5).search(nik).draw();
+            $('#btnMyRequests').addClass('bg-indigo-600 text-white shadow-sm').removeClass('bg-white text-indigo-600');
+        }
+    }
+
+    // Reset All Filters
+    function resetAllFilters() {
+        $('#drawingNoSearchInput').val('');
+        $('#btnClearDrawingSearch').addClass('hidden');
+
+        $('.col-filter-input').val('');
+        $('.col-filter-select').val('');
+        $('#colFilterStatusInput').val('');
+
+        // Reset Category Filters
+        $('#selectedCategoryFilter').val('');
+        $('#colCategoryFilterSelect').val('');
+        $('.category-chip').removeClass('active bg-slate-800 text-white border-slate-800 shadow-xs')
+                           .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        $('button[data-category-filter=""]').addClass('active bg-slate-800 text-white border-slate-800 shadow-xs')
+                                            .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        // Reset Date Range Filters
+        $('#minDateFilter, #colMinDateFilter').val('');
+        $('#maxDateFilter, #colMaxDateFilter').val('');
+        $('#btnClearDateFilter').addClass('hidden');
+
+        $('.date-preset-chip').removeClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                              .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        $('button[data-date-preset=""]').addClass('active bg-indigo-600 text-white border-indigo-600 shadow-xs')
+                                       .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        $('.status-chip').removeClass('active bg-blue-600 text-white border-blue-600 shadow-sm')
+                          .addClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+        $('button[data-status-filter=""]').addClass('active bg-blue-600 text-white border-blue-600 shadow-sm')
+                                          .removeClass('bg-white text-slate-600 border-slate-200 hover:bg-slate-50');
+
+        $('#btnMyRequests').removeClass('bg-indigo-600 text-white shadow-sm').addClass('bg-white text-indigo-600');
+
+        // Clear all column and global searches
+        poTable.search('').columns().search('').draw();
+    }
+
+    // Export Filtered Items to Excel
+    function exportFilteredItems() {
+        var keyword = $('#drawingNoSearchInput').val().trim();
+        var status = $('#colFilterStatusInput').val().trim();
+        var targetDept = $('select[data-col-idx="4"]').val();
+        var reqNo = $('input[data-col-idx="1"]').val().trim();
+        var poNo = $('input[data-col-idx="2"]').val().trim();
+        var category = $('#selectedCategoryFilter').val();
+        var startDate = $('#minDateFilter').val();
+        var endDate = $('#maxDateFilter').val();
+
+        var url = '@Url.Action("ExportFilteredItems", "SparepartPORequest", new { area = "SCM" })' +
+            '?keyword=' + encodeURIComponent(keyword) +
+            '&status=' + encodeURIComponent(status) +
+            '&targetDept=' + encodeURIComponent(targetDept || '') +
+            '&requestNo=' + encodeURIComponent(reqNo || '') +
+            '&poNumber=' + encodeURIComponent(poNo || '') +
+            '&category=' + encodeURIComponent(category || '') +
+            '&startDate=' + encodeURIComponent(startDate || '') +
+            '&endDate=' + encodeURIComponent(endDate || '');
+
+        window.location.href = url;
+    }
+</script>

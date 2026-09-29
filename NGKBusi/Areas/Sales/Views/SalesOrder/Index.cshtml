@@ -1,0 +1,883 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    div.loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(16, 16, 16, 0.5);
+        z-index: 1000;
+    }
+</style>
+
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+
+@section scriptHead{
+
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            var _currData;
+            var _len;
+            var _start;
+            $(".rbThirdParty").change(function () {
+                if ($(this).val() == "Yamaha") {
+                    $("#formEDIUploadHonda,#formEDIUploadSuzuki,#formEDIUploadHPM,#formEDIUploadKawasaki").fadeOut().promise().done(function () {
+                        $("#formEDIUploadYamaha").fadeIn();
+                    });
+                } else if ($(this).val() == "Honda") {
+                    $("#formEDIUploadYamaha,#formEDIUploadSuzuki,#formEDIUploadHPM,#formEDIUploadKawasaki").fadeOut().promise().done(function () {
+                        $("#formEDIUploadHonda").fadeIn();
+                    });
+                } else if ($(this).val() == "Suzuki") {
+                    $("#formEDIUploadYamaha,#formEDIUploadHonda,#formEDIUploadHPM,#formEDIUploadKawasaki").fadeOut().promise().done(function () {
+                        $("#formEDIUploadSuzuki").fadeIn();
+                    });
+                } else if ($(this).val() == "HPM") {
+                    $("#formEDIUploadYamaha,#formEDIUploadHonda,#formEDIUploadHonda,#formEDIUploadKawasaki").fadeOut().promise().done(function () {
+                        $("#formEDIUploadHPM").fadeIn();
+                    });
+                } else if ($(this).val() == "Kawasaki") {
+                    $("#formEDIUploadYamaha,#formEDIUploadHonda,#formEDIUploadHonda,#formEDIUploadHPM").fadeOut().promise().done(function () {
+                        $("#formEDIUploadKawasaki").fadeIn();
+                    });
+                }
+            });
+            $(".rbHondaType").change(function () {
+                $("#txtOEMSOHonda,#txtOESSOHonda,#fUploadOEMHonda,#fUploadOESHonda").val('');
+                if ($(this).val() == "OEM") {
+                    $(".divHondaOES").fadeOut(function () {
+                        $(".divHondaOEM").fadeIn();
+                    });
+                } else {
+                    $(".divHondaOEM").fadeOut(function () {
+                        $(".divHondaOES").fadeIn();
+                    });
+                }
+            });
+
+            $(".rbSuzukiType").change(function () {
+                $("#txtOEMSOSuzuki,#txtOESSOSuzuki,#fUploadOEMSuzuki,#fUploadOESSuzuki").val('');
+                if ($(this).val() == "OEM") {
+                    $(".divSuzukiOES").fadeOut(function () {
+                        $(".divSuzukiOEM").fadeIn();
+                    });
+                } else {
+                    $(".divSuzukiOEM").fadeOut(function () {
+                        $(".divSuzukiOES").fadeIn();
+                    });
+                }
+            });
+
+            $(".rbHPMType").change(function () {
+                $("#txtOEMSOHPM,#txtOESSOHPM,#fUploadOEMHPM,#fUploadOESHPM").val('');
+                if ($(this).val() == "OEM") {
+                    $(".divHPMOES").fadeOut(function () {
+                        $(".divHPMOEM").fadeIn();
+                    });
+                } else {
+                    $(".divHPMOEM").fadeOut(function () {
+                        $(".divHPMOES").fadeIn();
+                    });
+                }
+            });
+
+            $("#formEDIUploadYamaha").submit(function () {
+                var currCTR = $("#btnBudgetUpload");
+                var file_data = $("#fUploadYamaha").prop('files')[0];
+                var form_data = new FormData();
+                form_data.append('file', file_data);
+                form_data.append('iOEMSO', $("#txtOEMSOYamaha").val());
+                form_data.append('iOESSO', $("#txtOESSOYamaha").val());
+                form_data.append('iThirdParty', "Yamaha");
+                //currCTR.LoadingOverlay("hide");
+                $.ajax({
+                    url: "/NGKBusi/Sales/SalesOrder/_GetData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    data: form_data, success: function (data) {
+                        console.log(data);
+                        _currData = data;
+                        _len = data.length;
+                        _start = 0;
+                        uploadData(data[_start]);
+                        $(".upload-wrap").fadeIn();
+                        $("#fUpload").val("");
+                        $(".uploadProgress").attr("aria-valuemax", _len);
+                        //currCTR.LoadingOverlay("hide");
+                        $(".uploadProgress").removeClass("bg-success");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#fUpload").val("");
+                        //currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+                return false;
+            });
+
+            function uploadData(_data) {
+                if (_start < _len) {
+                    $.ajax({
+                        url: "/NGKBusi/Sales/SalesOrder/UploadData",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            level: $("#hfSignLevel").val(),
+                            period: $("#selPeriod").val(),
+                            uploadData: _data.join("|"),
+                            iOEMSO: $("#txtOEMSOYamaha").val(),
+                            iOESSO: $("#txtOESSOYamaha").val()
+                        }, success: function (data) {
+                            console.log(data);
+                            _start++;
+                            var completed = ""
+                            //-1 because excel setting => HDR=No
+                            if ((_start) == (_len)) {
+                                completed = " Completed!"
+                                $(".uploadProgress").addClass("bg-success");
+                            }
+                            //-1 because excel setting => HDR=No
+                            $(".uploadProgress").text((_start) + " of " + (_len) + completed);
+                            $(".uploadProgress").attr("aria-valuenow", (_start));
+                            $(".uploadProgress").css("width", Math.round(((_start) / (_len)) * 100) + "%");
+                            uploadData(_currData[_start]);
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            $("#fUpload").val("");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                } else {
+                    window.location.replace("/NGKBusi/Sales/SalesOrder/DownloadData");
+                }
+                $("#fUpload").val("");
+            }
+
+
+            function uploadDataHonda(_data) {
+                if (_start < _len) {
+                    $.ajax({
+                        url: "/NGKBusi/Sales/SalesOrder/UploadDataHonda",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            level: $("#hfSignLevel").val(),
+                            period: $("#selPeriod").val(),
+                            uploadData: _data.join("|"),
+                            iOEMSO: $("#txtOEMSOHonda").val(),
+                            iOESSO: $("#txtOESSOHonda").val(),
+                            iType: $(".rbHondaType:checked").val()
+                        }, success: function (data) {
+                            console.log(data);
+                            _start++;
+                            var completed = ""
+                            //-1 because excel setting => HDR=No
+                            if ((_start) == (_len)) {
+                                completed = " Completed!"
+                                $(".uploadProgress").addClass("bg-success");
+                            }
+                            //-1 because excel setting => HDR=No
+                            $(".uploadProgress").text((_start) + " of " + (_len) + completed);
+                            $(".uploadProgress").attr("aria-valuenow", (_start));
+                            $(".uploadProgress").css("width", Math.round(((_start) / (_len)) * 100) + "%");
+                            uploadDataHonda(_currData[_start]);
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            $("#fUploadOEMHonda").val("");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                } else {
+                    window.location.replace("/NGKBusi/Sales/SalesOrder/DownloadDataHonda");
+                }
+                $("#fUploadOEMHonda").val("");
+            }
+
+            $('#fUploadYamaha,#fUploadOEMHonda,#fUploadOESHonda').on('change', function () {
+                files = $(this)[0].files;
+
+                if (files.length == 0) {
+                    return false;
+                }
+                name = '';
+                cntFile = 0;
+                for (var i = 0; i < files.length; i++) {
+                    name += '\"' + files[i].name + '\"' + (i != files.length - 1 ? ", " : "");
+                    cntFile++;
+                }
+
+                if (cntFile > 1) {
+                    name = cntFile + " Files";
+                }
+                $(this).siblings(".custom-file-label").html(name);
+            });
+
+            $("#formEDIUploadHonda").submit(function () {
+                var currCTR = $("#btnBudgetUpload");
+                var form_data = new FormData();
+                if ($(".rbHondaType:checked").val() == "OEM") {
+                    $.each($("#fUploadOEMHonda")[0].files, function (i, file) {
+                        form_data.append('file', file);
+                    });
+                } else {
+                    $.each($("#fUploadOESHonda")[0].files, function (i, file) {
+                        form_data.append('file', file);
+                    });
+                }
+                form_data.append('iOEMSOHonda', $("#txtOEMSOHonda").val());
+                form_data.append('iOESSOHonda', $("#txtOESSOHonda").val());
+                form_data.append('iThirdParty', "Honda");
+                form_data.append('iType', $(".rbHondaType:checked").val());
+                //currCTR.LoadingOverlay("hide");
+                $.ajax({
+                    url: "/NGKBusi/Sales/SalesOrder/_GetData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    data: form_data, success: function (data) {
+                        console.log(data);
+                        _currData = data;
+                        _len = data.length;
+                        _start = 0;
+                        uploadDataHonda(data[_start]);
+                        $(".upload-wrap").fadeIn();
+                        $("#fUploadOEMHonda").val("");
+                        $(".uploadProgress").attr("aria-valuemax", _len);
+                        //currCTR.LoadingOverlay("hide");
+                        $(".uploadProgress").removeClass("bg-success");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#fUpload").val("");
+                        //currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+                return false;
+            });
+            /* ------------------------------------------------- SUZUKI -------------------------------------------------------- */
+            var totalData;
+            var data;
+            var totalRow;
+            var startRowSuzuki = 0;
+            var startRowSales;
+            var successInsert;
+            var arrayInsert = 0;
+            var insertDataRow;
+
+            $('#formEDIUploadSuzuki').on('submit', (function (e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                var salesType;
+                var urlAction;
+                if ($('#rbSuzukiType1').is(':checked')) {
+                    salesType = "OEM";
+                     urlAction = "@Url.Action("GetTotalSalesSuzukiOEM", "SalesOrder", new { area = "Sales" })";
+                } else {
+                    salesType = "OES";
+                     urlAction = "@Url.Action("upload", "SalesOrder", new { area = "Sales" })";
+                }
+                console.log(urlAction);
+                console.log(salesType);
+                startRowSuzuki = 2;
+                successInsert = 0;
+                insertDataRow = 0;
+
+                formData.append('startRow', startRowSales);
+                $.ajax({
+                    type: 'POST',
+                    url: urlAction,
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    beforeSend: function () {
+                        $('.loading').css("display", "");
+                        $('.btn').prop('disabled', true);
+                    },
+                    success: function (json) {
+                        $('.loading').css("display", "");
+                        if (json.status == 1) {
+                            $('.loading').css("display", "none");
+                            $('.btn').prop('disabled', false);
+                            $('.upload-wrap').show();
+
+                            totalRow = json.totalRow;
+
+                            data = json.data;
+                            totalData = json.data.length;
+                            arrayInsert = 0;
+
+                            var dataimport = start_import_suzuki_oem(data[arrayInsert]);
+                            if (dataimport == 1) {
+                                alert("success");
+                            }
+                        }
+                    },
+                    error: function (data) {
+                        console.log("error");
+                        $('.loading').css("display", "none");
+                        new swal("Failed!", json.msg, "error");
+                    },
+                    complete: function (data) {
+
+                    }
+                });
+            }));
+
+            function start_import_suzuki_oem(insertData) {
+                $('#processOrderLine').css('display', 'block');
+                $.ajax({
+                    url: "@Url.Action("ImportRowSales", "SalesOrder", new { area = "Sales" })",
+                    type: 'POST',
+                    data: insertData,
+                    dataType: 'json',
+                    success: function (result) {
+                        if (result.status == 1) {
+
+                            arrayInsert++;
+                            successInsert++;
+                            startRowSales++;
+
+                            var textProgress = successInsert + ' of ' + totalRow + ' row inserted';
+                            var width = Math.round((successInsert / totalRow) * 100);
+                            $('.uploadProgress').text(textProgress);
+                            $('.progress-bar').css('width', width + '%');
+
+                            if (successInsert == totalData) {
+
+                                new swal("Success!", "Finish Import Row", "success");
+                                $('.btn').prop('disabled', false);
+                                $('.tableSalesOEM').show();
+                                $('#fresh-table').bootstrapTable('refresh', function () {
+                                    console.log('tes');
+                                });
+                                $('.uploadingInfo').text("Complete");
+                                return true;
+
+                            } else {
+
+                                start_import_suzuki_oem(data[arrayInsert]);
+                            }
+                        } else {
+                            return true;
+                        }
+                    }
+                })
+            }
+
+            /* ------------------------------------------------------- SUZUKI -------------------------------------------------- */
+
+            /* -------------------------------------------------------- HPM ---------------------------------------------------- */
+
+            $('#formEDIUploadHPM').on('submit', (function (e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                var salesType;
+                var urlAction;
+                var TableViewAction;
+                if ($('#rbHPMType1').is(':checked')) {
+                    salesType = "OEM";
+                    urlAction = "@Url.Action("GetTotalSalesHPMOEM", "SalesOrder", new { area = "Sales" })";
+                    TableViewAction = "v_sales_edi_hpm";
+                } else {
+                    salesType = "OES";
+                    urlAction = "@Url.Action("GetTotalSalesHPMOES", "SalesOrder", new { area = "Sales" })";
+                    TableViewAction = "v_sales_edi_hpm";
+                }
+                $('#ViewAction').val(TableViewAction);
+                startRowHPM = 2;
+                successInsert = 0;
+                insertDataRow = 0;
+
+                formData.append('startRow', startRowHPM);
+                $.ajax({
+                    type: 'POST',
+                    url: urlAction,
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    beforeSend: function () {
+                        //$('.loading').css("display", "");
+                        $('.btn').prop('disabled', true);
+                    },
+                    success: function (json) {
+                        //$('.loading').css("display", "");
+                        if (json.status == 1) {
+                            //$('.loading').css("display", "none");
+                            $('.btn').prop('disabled', false);
+                            $('.upload-wrap').show();
+
+                            totalRow = json.totalRow;
+
+                            data = json.data;
+                            totalData = json.data.length;
+                            arrayInsert = 0;
+
+                            var dataimport = start_import(data[arrayInsert]);
+                            if (dataimport == 1) {
+                                alert("success");
+                            }
+                        }
+                    },
+                    error: function (data) {
+                        console.log("error");
+                        $('.loading').css("display", "none");
+                        new swal("Failed!", json.msg, "error");
+                    },
+                    complete: function (data) {
+
+                    }
+                });
+            }));
+
+            function start_import(insertData) {
+                $('#processOrderLine').css('display', 'block');
+                $.ajax({
+                    url: "@Url.Action("ImportRowSales", "SalesOrder", new { area = "Sales" })",
+                    type: 'POST',
+                    data: insertData,
+                    dataType: 'json',
+                    success: function (result) {
+                        if (result.status == 1) {
+
+                            arrayInsert++;
+                            successInsert++;
+                            startRowSales++;
+
+                            var textProgress = successInsert + ' of ' + totalRow + ' row inserted';
+                            var width = Math.round((successInsert / totalRow) * 100);
+                            $('.uploadProgress').text(textProgress);
+                            $('.progress-bar').css('width', width + '%');
+
+                            if (successInsert == totalData) {
+
+                                new swal("Success!", "Finish Import Row", "success");
+                                $('.btn').prop('disabled', false);
+                                $('.tableSalesOEM').show();
+                                $('#fresh-table').bootstrapTable('refresh', function () {
+                                    console.log('tes');
+                                });
+                                $('.uploadingInfo').text("Complete");
+                                return true;
+
+                            } else {
+
+                                start_import(data[arrayInsert]);
+                            }
+                        } else {
+                            return true;
+                        }
+                    }
+                })
+            }
+            /* +++++++++++++++++++++++++++++++++++++++++++++++++++ HPM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++ */
+
+            /* ------------------------------------------------- KAWASAKI ----------------------------------------------------- */
+            var totalData;
+            var data;
+            var totalRow;
+            var startRowSuzuki = 0;
+            var startRowSales;
+            var successInsert;
+            var arrayInsert = 0;
+            var insertDataRow;
+
+            $('#formEDIUploadKawasaki').on('submit', (function (e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                var salesType;
+                var urlAction;
+
+                urlAction = "@Url.Action("uploadKawasaki", "SalesOrder", new { area = "Sales" })";
+                console.log(urlAction);
+                startRowKawasaki = 2;
+                successInsert = 0;
+                insertDataRow = 0;
+
+                formData.append('startRow', startRowSales);
+                $.ajax({
+                    type: 'POST',
+                    url: urlAction,
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    beforeSend: function () {
+                        $('.loading').css("display", "");
+                        $('.btn').prop('disabled', true);
+                    },
+                    success: function (json) {
+                        $('.loading').css("display", "");
+                        if (json.status == 1) {
+                            $('.loading').css("display", "none");
+                            $('.btn').prop('disabled', false);
+                            $('.upload-wrap').show();
+
+                            totalRow = json.totalRow;
+
+                            data = json.data;
+                            totalData = json.data.length;
+                            arrayInsert = 0;
+
+                            var dataimport = start_import_Kawasaki_oem(data[arrayInsert]);
+                            if (dataimport == 1) {
+                                alert("success");
+                            }
+                        }
+                    },
+                    error: function (data) {
+                        console.log("error");
+                        $('.loading').css("display", "none");
+                        new swal("Failed!", json.msg, "error");
+                    },
+                    complete: function (data) {
+
+                    }
+                });
+            }));
+
+            function start_import_Kawasaki_oem(insertData) {
+                $('#processOrderLine').css('display', 'block');
+                $.ajax({
+                    url: "@Url.Action("ImportRowSales", "SalesOrder", new { area = "Sales" })",
+                    type: 'POST',
+                    data: insertData,
+                    dataType: 'json',
+                    success: function (result) {
+                        if (result.status == 1) {
+
+                            arrayInsert++;
+                            successInsert++;
+                            startRowSales++;
+
+                            var textProgress = successInsert + ' of ' + totalRow + ' row inserted';
+                            var width = Math.round((successInsert / totalRow) * 100);
+                            $('.uploadProgress').text(textProgress);
+                            $('.progress-bar').css('width', width + '%');
+
+                            if (successInsert == totalData) {
+
+                                new swal("Success!", "Finish Import Row", "success");
+                                $('.btn').prop('disabled', false);
+
+                                $('.tableSalesOEM').show();
+                                $('#fresh-table').bootstrapTable('refresh', function () {
+                                    console.log('tes');
+                                });
+                                $('.uploadingInfo').text("Complete");
+                                return true;
+
+                            } else {
+
+                                start_import_Kawasaki_oem(data[arrayInsert]);
+                            }
+                        } else {
+                            return true;
+                        }
+                    }
+                })
+            }
+
+            /* ------------------------------------------------------- KAWASAKI -------------------------------------------------- */
+
+        });
+    </script>
+}
+
+<div class="loading" style="display:none">
+    <div class='uil-ring-css' style='transform:scale(0.79);'>
+        <div></div>
+    </div>
+</div>
+
+<h2>Sales Order</h2>
+<hr />
+<div class="custom-control custom-radio custom-control-inline">
+    <input type="radio" id="rbThirdParty1" name="iThirdParty" class="custom-control-input rbThirdParty" value="Yamaha" checked>
+    <label class="custom-control-label" for="rbThirdParty1">Yamaha</label>
+</div>
+<div class="custom-control custom-radio custom-control-inline">
+    <input type="radio" id="rbThirdParty2" name="iThirdParty" class="custom-control-input rbThirdParty" value="Honda">
+    <label class="custom-control-label" for="rbThirdParty2">Honda</label>
+</div>
+<div class="custom-control custom-radio custom-control-inline">
+    <input type="radio" id="rbThirdParty3" name="iThirdParty" class="custom-control-input rbThirdParty" value="Suzuki">
+    <label class="custom-control-label" for="rbThirdParty3">Suzuki</label>
+</div>
+<div class="custom-control custom-radio custom-control-inline">
+    <input type="radio" id="rbThirdParty4" name="iThirdParty" class="custom-control-input rbThirdParty" value="HPM">
+    <label class="custom-control-label" for="rbThirdParty4">HPM</label>
+</div>
+<div class="custom-control custom-radio custom-control-inline">
+    <input type="radio" id="rbThirdParty5" name="iThirdParty" class="custom-control-input rbThirdParty" value="Kawasaki">
+    <label class="custom-control-label" for="rbThirdParty5">Kawasaki</label>
+</div>
+<hr />
+
+<form id="formEDIUploadYamaha">
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label for="txtOEMSOYamaha" class="font-weight-bold">OEM SO</label>
+            <input type="text" name="iOEMSO" class="form-control" id="txtOEMSOYamaha" placeholder="Enter OEM SO">
+        </div>
+        <div class="form-group col-md-6">
+            <label for="txtOESSOYamaha" class="font-weight-bold">OES SO</label>
+            <input type="text" name="iOESSO" class="form-control" id="txtOESSOYamaha" placeholder="Enter OES SO">
+        </div>
+    </div>
+    <div class="custom-file">
+        <input type="file" class="custom-file-input" id="fUploadYamaha" required>
+        <label class="custom-file-label" for="fUploadYamaha">Choose file...</label>
+    </div>
+    <button type="submit" class="btnUpload btn btn-primary mt-3">Submit</button>
+</form>
+
+<form id="formEDIUploadHonda" style="display:none;">
+    <div class="form-row">
+        <div class="col-12">
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbHondaType1" name="iHondaType" class="custom-control-input rbHondaType" value="OEM" checked>
+                <label class="custom-control-label" for="rbHondaType1">OEM</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbHondaType2" name="iHondaType" class="custom-control-input rbHondaType" value="OES">
+                <label class="custom-control-label" for="rbHondaType2">OES</label>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="form-row divHondaOEM">
+        <div class="form-group col-md-6">
+            <label for="txtOEMSOHonda" class="font-weight-bold">OEM SO</label>
+            <input type="text" name="iOEMSOHonda" class="form-control" id="txtOEMSOHonda" placeholder="Enter OEM SO">
+        </div>
+        <div class="form-group col-md-6">
+            <label for="fUpload" class="font-weight-bold">OEM Files</label>
+            <div class="custom-file">
+                <input type="file" class="custom-file-input" name="iUploadOEMHonda[]" id="fUploadOEMHonda" multiple>
+                <label class="custom-file-label" for="fUploadOEMHonda">Choose file...</label>
+            </div>
+        </div>
+    </div>
+    <div class="form-row divHondaOES" style="display:none;">
+        <div class="form-group col-md-6">
+            <label for="txtOESSOHonda" class="font-weight-bold">OES SO</label>
+            <input type="text" name="iOESSOHonda" class="form-control" id="txtOESSOHonda" placeholder="Enter OES SO">
+        </div>
+        <div class="form-group col-md-6">
+            <label for="fUpload" class="font-weight-bold">OES Files</label>
+            <div class="custom-file">
+                <input type="file" class="custom-file-input" name="iUploadOEMHonda[]" id="fUploadOESHonda" multiple>
+                <label class="custom-file-label" for="fUploadOESHonda">Choose file...</label>
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btnUpload btn btn-primary mt-3">Submit</button>
+</form>
+
+<form id="formEDIUploadSuzuki" style="display:none;">
+    <div class="form-row">
+        <div class="col-12">
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbSuzukiType1" name="iSuzukiType" class="custom-control-input rbSuzukiType" value="OEM" checked>
+                <label class="custom-control-label" for="rbSuzukiType1">OEM</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbSuzukiType2" name="iSuzukiType" class="custom-control-input rbSuzukiType" value="OES">
+                <label class="custom-control-label" for="rbSuzukiType2">OES</label>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="form-row divSuzukiOEM">
+        <div class="form-group col-md-12">
+            <label for="fUpload" class="font-weight-bold">OEM Files</label>
+            <input type="file" name="fileOEMSuzuki" id="fOEMSuzuki" class="form-control" />
+        </div>
+    </div>
+    <div class="form-row divSuzukiOES" style="display:none;">
+
+        <div class="form-group col-md-12">
+            <label for="fUpload" class="font-weight-bold">OES Files</label>
+            <div class="">
+                <input type="file" name="fileOESSuzuki" id="fOESSuzuki" class="form-control">
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btnUpload btn btn-primary mt-3">Submit</button>
+</form>
+
+<form id="formEDIUploadHPM" style="display:none;">
+    <div class="form-row">
+        <div class="col-12">
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbHPMType1" name="iHPMType" class="custom-control-input rbHPMType" value="OEM" checked>
+                <label class="custom-control-label" for="rbHPMType1">OEM</label>
+            </div>
+            <div class="custom-control custom-radio custom-control-inline">
+                <input type="radio" id="rbHPMType2" name="iHPMType" class="custom-control-input rbHPMType" value="OES">
+                <label class="custom-control-label" for="rbHPMType2">OES</label>
+            </div>
+        </div>
+    </div>
+    <hr />
+    <div class="form-row divHPMOEM">
+        <div class="form-group col-md-12">
+            <label for="fUpload" class="font-weight-bold">OEM Files</label>
+            <input type="file" name="fileOEMHPM" id="fOEMHPM" class="form-control" />
+        </div>
+    </div>
+    <div class="form-row divHPMOES" style="display:none;">
+
+        <div class="form-group col-md-12">
+            <label for="fUpload" class="font-weight-bold">OES Files</label>
+            <div class="">
+                <input type="file" name="fileOESHPM" id="fOESHPM" class="form-control">
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btnUpload btn btn-primary mt-3">Submit</button>
+</form>
+
+<form id="formEDIUploadKawasaki" style="display:none;">
+    
+    <div class="form-row divKawasakiOEM">
+        <div class="form-group col-md-12">
+            <label for="fUpload" class="font-weight-bold">Kawasaki OEM Files</label>
+            <input type="file" name="fileOEMKawasaki" id="fOEMKawasaki" class="form-control" />
+        </div>
+    </div>
+    
+
+    <button type="submit" class="btnUpload btn btn-primary mt-3">Submit</button>
+</form>
+
+<div class="upload-wrap" style="display:none;">
+    <h3 class="uploadingInfo">Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+    </div>
+    <hr />
+</div>
+
+<div class="tableSalesOEM row" style="display:none">
+    <hr />
+    <div class="col-12">
+        <input type="hidden" value="default" id="V_sales_edi_hpm" />
+        <div id="toolbar">
+
+        </div>
+        <table id="fresh-table"
+               data-show-export="true"
+               data-id-table="advancedTable"
+               data-pagination="true"
+               data-ajax="ajaxRequest"
+               data-show-columns="true"
+               data-show-toggle="true"
+               data-toolbar="#toolbar"
+               data-show-columns-toggle-all="true"
+               data-page-list="[10, 25, 50, 100, all]"
+               class="table table-sm table-hover table-striped">
+            <thead>
+                <tr>
+                    <th data-field="PONo" data-sortable="true" data-filter-control="input">PO Number</th>
+                    <th data-field="DeliveryDate" data-sortable="true">Delivery Date</th>
+                    <th data-field="ITEMID" data-width="25" data-sortable="true" style="width: 1%">Product Number</th>
+                    <th data-field="ItemName" data-sortable="true" data-filter-control="select">Product Name</th>
+                    <th data-field="QTY" data-sortable="true" style="width: 21%">QTY</th>
+
+                </tr>
+            </thead>
+            <tbody>
+        </table>
+    </div>
+</div>
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+
+<script>
+
+    var $table = $('#fresh-table');
+    $(function () {
+        $('#fresh-table').bootstrapTable({
+            exportDataType: "all",
+            exportTypes: ['excel', 'pdf'],
+            buttonsClass: 'primary',
+        })
+    });
+
+    function queryParams(params) {
+        params.switch = "";//   <<<----------catch like this
+        return params;
+    }
+
+    function ajaxRequest(params) {
+        var viewAction = $('#ViewAction').val();
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("GetDataSalesSuzukiOEM", "SalesOrder", new { area = "Sales" })",
+            dataType: 'json',
+            data: {
+                viewAction: viewAction
+            },
+            success: function (items) {
+                //console.log(items.rows);
+                params.success({
+                    rows: items
+                }, null);
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+</script>

@@ -1,0 +1,744 @@
+﻿@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using System.Linq;
+@using NGKBusi.Areas.MTN.Models;
+@using NGKBusi.Areas.MTN.Controllers;
+
+@{
+    /**/
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currData = ViewBag.CurrentData;
+    int? currDataID = currData?.ID;
+    var currUser = ViewBag.CurrentUser;
+    var currApproval = ViewBag.CurrentApproval;
+    var isMTN = currApproval != null ? ((currApproval?.Levels == currData?.Approval && currApproval?.Levels_Sub == currData?.Approval_Sub) ? true : false) : false;
+    MaintenanceReportConnection dbMR = new MaintenanceReportConnection();
+    var MTN = ViewContext.Controller as MaintenanceReportController;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        #tblMScheduleSparepart td {
+            position: relative;
+        }
+
+            #tblMScheduleSparepart td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+        form label {
+            font-weight: bold;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+
+        .btnBSparepartDelete:hover {
+            cursor: pointer;
+            opacity: .75;
+        }
+
+        .reportImage:hover {
+            cursor: pointer;
+            opacity: .75;
+        }
+
+        .btnDeleteI {
+            font-size: larger;
+            color: red;
+            cursor: pointer;
+        }
+
+            .btnDeleteI:hover {
+                color: orange;
+            }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $(document).on("change", ".selBSparepartCategory", function () {
+                var ctr = $(this);
+                var currTR = $(this).closest("tr");
+                currTR.find(".selBSparepartSpecific").val("");
+                currTR.find(".selBSparepartSpecific option[value !='']").prop("disabled", true);
+                currTR.find(".selBSparepartSpecific option[data-category ='" + ctr.find(":selected").val() + "']").prop("disabled", false);
+                currTR.find(".selBSparepartSpecific").select2();
+            });
+
+            $("#selEmployeeList").change(function () {
+                var nik = $(this).val().split("||")[0];
+                var name = $(this).val().split("||")[1];
+                var section = $(this).val().split("||")[2];
+                $("#txtNIK").val(nik);
+                $("#txtName").val(name);
+                $("#txtSection").val(section);
+            });
+
+            $('[readonly]').prop("disabled", true);
+            $("#formMTNReport").submit(function () {
+                $('[readonly]').prop("disabled", false);
+            });
+
+
+            var newRowIndex = 0;
+            $(".btnAddSparepart").click(function () {
+                newRowIndex++;
+                var newRow = $("#tblMScheduleSparepart tbody tr:first()").clone();
+                newRow.find("input").val("");
+                newRow.find(".selBSparepartFactor").val("");
+                newRow.find(".selBSparepartCategory").val("");
+                newRow.find(".selBSparepartSpecific option[value !='']").prop("disabled", true);
+                newRow.find(".select2").val("");
+                newRow.find(".select2-container").remove();
+                newRow.find(".select2").select2();
+                $("#tblMScheduleSparepart tbody").append(newRow);
+            });
+
+            $(document).on("click", ".btnBSparepartDelete", function () {
+                var currTR = $(this).closest("tr");
+                var currTRIndex = currTR.index();
+                if (confirm("Are you sure want to delete this data?")) {
+                    if (currTRIndex == 0) {
+                        currTR.find("input").val("");
+                        currTR.find(".selBSparepartFactor").val("");
+                        currTR.find(".selBSparepartCategory").val("");
+                        currTR.find(".selBSparepartSpecific option[value !='']").prop("disabled", true);
+                        currTR.find(".select2").val("");
+                        currTR.find(".select2-container").remove();
+                        currTR.find(".select2").select2();
+                    } else {
+                        currTR.remove();
+                    }
+                }
+            });
+
+            $(".btnMTNReportSign").click(function () {
+                $("#formMTNReportSign").submit();
+            });
+
+            $(".tblMaintenanceReportList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                widgets: ["filter", "columns", "stickyHeaders"],
+                widgetOptions: {
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ], filter_defaultFilter: {
+                        // "{query} - a single or double quote signals an exact filter search
+                        3: '"{q}',
+                        4: '"{q}',
+                        5: '"{q}',
+                        6: '"{q}'
+                    }
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 'all'
+            });
+
+
+            $(".reportImage").click(function () {
+                var cloneImage = $(this).clone();
+                $("#divZoomImage").empty();
+                $("#divZoomImage").append(cloneImage);
+                $("#reportImageZoomModal").modal();
+            });
+            $(".btnDeleteI").click(function () {
+                if (confirm("Are you sure want to delete this image ?")) {
+                    $(this).closest("form").find(".btnDelete").click();
+                }
+            });
+            $(".btnReportClick").click(function () {
+                $(".btnReportSubmit").click();
+            });
+        });
+    </script>
+}
+
+<form action="@Url.Action("MTNReportDownload", "MaintenanceReport", new { area = "MTN" })" method="post" style="display:inline-block;">
+    <button type="submit" id="btnMTNDownload" class="btn btn-primary">Download Data</button>
+</form>
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <a href="@Url.Action("index", "MaintenanceReport", new { area = "MTN", addNew = "addNew" })" class="btn btn-success">Add New</a>
+}
+else
+{
+    <a href="@Url.Action("index", "MaintenanceReport", new { area = "MTN" })" class="btn btn-success">Back to List</a>
+}
+<hr />
+
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <table class="table table-bordered tblMaintenanceReportList">
+        <thead>
+            <tr>
+                <th>Request No</th>
+                <th>Tanggal</th>
+                <th class="filter-select" data-placeholder="-Select-">Section</th>
+                <th class="filter-select" data-placeholder="-Select-">Machine</th>
+                <th class="filter-select" data-placeholder="-Select-">Type</th>
+                <th class="text-center filter-select" data-placeholder="-Select-">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in ViewBag.BList)
+            {
+                <tr>
+                    <td><a href="@Url.Action("index", "MaintenanceReport", new { area = "MTN", ReqNumber = data.Issued_Number })">@(data.Issued_Number)</a></td>
+                    <td>@(data.Issued_Date.ToString("dd/MM/yyyy"))</td>
+                    <td>@(data.Section)</td>
+                    <td>@(data.Machine)</td>
+                    <td>@(data.Type)</td>
+                    <td class="text-center"><span class="badge badge-@(data.Approval <= 1 ? "warning": data.Approval == 4 ? "success" : "info" )">@MTN.ApprovalStatus(data.Approval, data.Approval_Sub)</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="6" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <form id="formMTNReportSign" action="@Url.Action("MTNReportSign", "MaintenanceReport", new { area = "MTN" })" method="post" style="display:inline-block;">
+        <input type="hidden" name="iMTNReportSignID" value="@(currData?.ID ?? 0)" />
+    </form>
+    <table id="tblMScheduleHeader" border="1" style="width:100%">
+        <thead>
+            <tr>
+                <td rowspan="4" style="width:175px;" class="p-2">
+                    <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+                </td>
+                <td rowspan="2" class="text-center">FORMULIR INTEGRASI</td>
+                <td>No. Dok</td>
+                <td class="text-center">PMLK3-MTN-03/L1</td>
+            </tr>
+            <tr>
+                <td style="width:75px;">Revisi</td>
+                <td style="width:125px;" class="text-center">00</td>
+            </tr>
+            <tr>
+                <td rowspan="2" class="text-center">MAINTENANCE REPORT</td>
+                <td>Tanggal</td>
+                <td class="text-center">05-Apr-2023</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td class="text-center">1</td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="4">
+                    <form id="formMTNReport" action="@Url.Action((currData != null ? "MTNReportEdit" : "MTNReportAdd"), "MaintenanceReport", new { area = "MTN" })" method="post" enctype="multipart/form-data">
+                        <div id="divMTNReportForm" class="@(!isMTN && Request["addNew"] != null ? "container":"container-fluid")">
+                            <input type="hidden" name="iFormID" value="@(currDataID)" />
+                            <div class="row mt-2">
+                                <div class="col-8 text-left">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="iType" id="rbType1" value="Breakdown" required @(currData?.Type == "Breakdown" ? "Checked" : "")>
+                                        <label class="form-check-label" for="rbType1">Breakdown</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="iType" id="rbType2" value="Machine Off" required @(currData?.Type == "Machine Off" ? "Checked" : "")>
+                                        <label class="form-check-label" for="rbType2">Machine Off</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="iType" id="rbType3" value="Scheduled" required @(currData?.Type == "Scheduled" ? "Checked" : "")>
+                                        <label class="form-check-label" for="rbType3">Scheduled</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="iType" id="rbType4" value="PM" required @(currData?.Type == "PM" ? "Checked" : "")>
+                                        <label class="form-check-label" for="rbType4">PM</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="iType" id="rbType4" value="Red Tag" required @(currData?.Type == "Red Tag" ? "Checked" : "")>
+                                        <label class="form-check-label" for="rbType4">Red Tag</label>
+                                    </div>
+                                </div>
+                                <div class="col-4 text-right">
+                                    @if (currDataID != null)
+                                    {
+                                        if ((currApproval?.Levels == currData?.Approval && currApproval?.Levels_Sub == currData?.Approval_Sub) || (currApproval == null && (currData.Approval == 1 || currData.Approval == 3)))
+                                        {
+                                            <button type="button" class="btnMTNReportSign btn btn-warning" onclick="return confirm('Are you sure want to sign this data?')">Sign</button>
+                                        }
+                                    }
+                                    <label>No Registrasi :</label>
+                                    <Span>@(currData?.Issued_Number ?? "-")</Span>
+                                </div>
+                            </div>
+                            <hr />
+                            <div class="row">
+                                <div class="col-lg-@(!isMTN && Request["addNew"] != null ? "12":"6")">
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label>Deskripsi Masalah (Diisi Pengguna)</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="row mt-2">
+                                                <div class="col-12">
+                                                    <div class="row">
+                                                        <label class="col-lg-3" for="txtName">Dibuat Oleh:</label>
+                                                        <div class="col-lg-8">
+                                                            @if (currUser.DeptName == "MAINTENANCE")
+                                                            {
+                                                                <select id="selEmployeeList" class="form-control select2">
+                                                                    <option value="">-Select Employee-</option>
+                                                                    @foreach (var item in ViewBag.Employee)
+                                                                    {
+                                                                        <option value="@(item.NIK + "||" + item.Name + "||" + item.DeptName)" @((currData?.Issuer_NIK.Trim() == item?.NIK.Trim() ? "Selected" : ""))>@(item.NIK + " || " + item.Name)</option>
+                                                                    }
+                                                                </select>
+                                                            }
+                                                            else
+                                                            {<span>@(currData?.Issuer_Name ?? currUser.Name)</span>}
+                                                            <input type="hidden" class="form-control" id="txtCurrID" name="iCurrID" value="@(currData?.ID)">
+                                                            <input type="hidden" class="form-control" id="txtNIK" name="iNik" value="@(currData?.Issuer_NIK ?? currUser.NIK)">
+                                                            <input type="hidden" class="form-control" id="txtName" name="iName" value="@(currData?.Issuer_Name ?? currUser.Name)">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-lg-6">
+                                                    <div class="row">
+                                                        <label class="col-lg-3" for="txtDate">Tanggal:</label>
+                                                        <div class="col-lg-8">
+                                                            <input type="text" class="form-control jqDate" placeholder="Tanggal" id="txtDate" name="iDate" autocomplete="off" required value="@(currData?.Issued_Date.ToString("dd-MM-yyyy") ?? DateTime.Now.ToString("dd-MM-yyyy"))">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-6">
+                                                    <div class="row">
+                                                        <label class="col-lg-3" for="txtTime">Waktu:</label>
+                                                        <div class="col-lg-8">
+                                                            <input type="text" class="form-control jqTime" placeholder="Waktu" id="txtTime" name="iTime" autocomplete="off" required value="@(currData?.Issued_Date.ToString("HH:mm") ?? DateTime.Now.ToString("HH:mm"))">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-lg-12">
+                                                    <div class="row">
+                                                        <label class="col-lg-3" for="txtSection">Seksi:</label>
+                                                        <div class="col-lg-8">
+                                                            <input type="text" class="form-control" placeholder="Seksi" id="txtSection" name="iSection" value="@(currData?.Section ?? currUser.DeptName)" readonly>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-lg-12">
+                                                    <div class="row mt-2">
+                                                        <label class="col-lg-3" for="selMachine">Mesin:</label>
+                                                        <div class="col-lg-8">
+                                                            <select class="select2 form-control selMachine" name="iMachine" required>
+                                                                <option value="">-Mesin-</option>
+                                                                @foreach (var item in ViewBag.machineList)
+                                                                {
+                                                                    <option value="@(item.Machine_Number + "|" + item.Name)" @(currData?.Machine == item.Machine_Number + "|" + item.Name ? "Selected" : "")>@(item.Name)</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-lg-12">
+                                            <textarea id="txtBProblem" name="iBProblem" class="form-control" rows="3" placeholder="Deskripsi Masalah" required>@(currData?.Breakdown_Problem)</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3 @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                        <div class="col-12">
+                                            <label>Kondisi Aktual Mesin : ( Diisi Maintenance )</label>
+                                        </div>
+                                    </div>
+                                    <div class="row @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                        <div class="col-lg-12">
+                                            <textarea id="txtBCondition" name="iBCondition" class="form-control" rows="3" placeholder="Kondisi Aktual Mesin" @(!isMTN ? "readonly" : "")>@(currData?.Breakdown_Condition)</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3 mb-2 @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                        <div class="col-6">
+                                            <label>Penyebab kerusakan / Item yang diperiksa :</label>
+                                        </div>
+                                        <div class="col-6 row">
+                                            <label class="col-lg-3" for="txtBCauseTime">Waktu:</label>
+                                            <div class="col-lg-7">
+                                                <input type="number" class="form-control" placeholder="Waktu" id="txtBCauseTime" name="iBCauseTime" @(!isMTN ? "readonly" : "") value="@(currData?.Breakdown_Cause_Time)">
+                                            </div>
+                                            <label class="col-lg-2" for="txtBCauseTime">(Menit)</label>
+                                        </div>
+                                    </div>
+                                    <div class="row @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                        <div class="col-lg-12">
+                                            <textarea id="txtBCause" name="iBCause" class="form-control" rows="3" placeholder="Penyebab" @(!isMTN ? "readonly" : "")>@(currData?.Breakdown_Cause)</textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <label>Tindakan Perbaikan / Perawatan</label>
+                                        </div>
+                                        <div class="col-6 row mb-2">
+                                            <label class="col-lg-3" for="txtBActionTime">Waktu:</label>
+                                            <div class="col-lg-7">
+                                                <input type="number" class="form-control" placeholder="Waktu" id="txtBActionTime" name="iBActionTime" @(!isMTN ? "readonly" : "") value="@(currData?.Breakdown_Action_Time)">
+                                            </div>
+                                            <label class="col-lg-2" for="txtBActionTime">(Menit)</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <textarea id="txtBAction" name="iBAction" class="form-control" rows="3" placeholder="Tindakan" @(!isMTN ? "readonly" : "")>@(currData?.Breakdown_Action)</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3 mb-2">
+                                        <div class="col-4">
+                                            <label>Mulai Perbaikan</label>
+                                        </div>
+                                        <div class="col-4 row">
+                                            <label class="col-lg-4" for="txtStartDate">Tgl:</label>
+                                            <div class="col-lg-8">
+                                                <input type="text" class="form-control jqDate" placeholder="Tanggal" id="txtStartDate" name="iStartDate" autocomplete="off" @(!isMTN ? "readonly" : "") value="@(currData?.Start_Date?.ToString("dd-MM-yyyy"))">
+                                            </div>
+                                        </div>
+                                        <div class="col-4 row">
+                                            <label class="col-lg-4" for="txtStartTime">Jam:</label>
+                                            <div class="col-lg-8">
+                                                <input type="text" class="form-control jqTime" placeholder="Jam" id="txtStartTime" name="iStartTime" autocomplete="off" @(!isMTN ? "readonly" : "") value="@(currData?.Start_Date?.ToString("HH:mm"))">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3 mb-2">
+                                        <div class="col-4">
+                                            <label>Selesai Perbaikan</label>
+                                        </div>
+                                        <div class="col-4 row">
+                                            <label class="col-lg-4" for="txtEndDate">Tgl:</label>
+                                            <div class="col-lg-8">
+                                                <input type="text" class="form-control jqDate" placeholder="Tanggal" id="txtEndDate" name="iEndDate" autocomplete="off" @(!isMTN ? "readonly" : "") value="@(currData?.End_Date?.ToString("dd-MM-yyyy"))">
+                                            </div>
+                                        </div>
+                                        <div class="col-4 row">
+                                            <label class="col-lg-4" for="txtEndTime">Jam:</label>
+                                            <div class="col-lg-8">
+                                                <input type="text" class="form-control jqTime" placeholder="Jam" id="txtEndTime" name="iEndTime" autocomplete="off" @(!isMTN ? "readonly" : "") value="@(currData?.End_Date?.ToString("HH:mm"))">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label>Hasil Setelah Perbaikan</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <textarea id="txtFixResult" name="iFixResult" class="form-control" rows="3" placeholder="Hasil Setelah Perbaikan" @(!isMTN ? "readonly" : "")>@(currData?.Breakdown_Fix_Result)</textarea>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label>PIC Perbaikan:</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            @{
+                                                string[] picArray = currData?.Breakdown_Fix_PIC?.Split(',');
+                                            }
+                                            <select class="select2 form-control" multiple placeholder="-PIC-" id="selFixPIC" name="iFixPIC[]" @(!isMTN ? "readonly" : "")>
+                                                @foreach (var item in ViewBag.PICList)
+                                                {
+                                                    string itemNIK = item.NIK + "|" + item.Name;
+                                                    <option value="@(item.NIK + "|" + item.Name)" @(picArray != null && picArray.Where(w => w == itemNIK).Any() ? "Selected" : "")>@(item.NIK + " | " + item.Name)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <label>Status</label>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="iStatus" id="rbStatus1" value="OK" @(!isMTN ? "readonly" : "") @(currData?.Status == "OK" ? "Checked" : "")>
+                                                <label class="form-check-label" for="rbStatus1">OK</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="iStatus" id="rbStatus2" value="Belum OK" @(!isMTN ? "readonly" : "") @(currData?.Status == "Belum OK" ? "Checked" : "")>
+                                                <label class="form-check-label" for="rbStatus2">Belum OK</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                <div class="col-8">
+                                    <label>Sparepart</label>
+                                </div>
+                                <div class="col-4 row mb-2">
+                                    <label class="col-lg-3" for="txtBSparepartTime">Waktu:</label>
+                                    <div class="col-lg-7">
+                                        <input type="number" class="form-control" placeholder="Waktu" id="txtBSparepartTime" name="iBSparepartTime" @(!isMTN ? "readonly" : "") value="@(currData?.Breakdown_Sparepart_Time)">
+                                    </div>
+                                    <label class="col-lg-2" for="txtBSparepartTime">(Menit)</label>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <table id="tblMScheduleSparepart" class="table table-bordered @(!isMTN && Request["addNew"] != null ? "d-none":"")">
+                                        <thead>
+                                            <tr>
+                                                <th>Faktor Kerusakan</th>
+                                                <th>Bagian yg Rusak</th>
+                                                <th>Spesifik Bagian</th>
+                                                <th>Sparepart</th>
+                                                <th>Jumlah</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @{
+                                                var formSparepart = dbMR.MTN_MaintenanceReport_Breakdown_Form_Sparepart.Where(w => w.Form_ID == currDataID).ToList();
+                                            }
+                                            @if (formSparepart.Count() > 0)
+                                            {
+                                                foreach (var dataSP in formSparepart)
+                                                {
+                                                    <tr>
+                                                        <td style="width:275px;">
+                                                            <select class="form-control selBSparepartFactor" name="iBSparepartFactor[]" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Faktor Kerusakan-</option>
+                                                                <option value="Poor Basic Condition" @(dataSP.Breakdown_Factor == "Poor Basic Condition" ? "Selected" : "")>Poor Basic Condition</option>
+                                                                <option value="Poor Operation Condition" @(dataSP.Breakdown_Factor == "Poor Operation Condition" ? "Selected" : "")>Poor Operation Condition</option>
+                                                                <option value="Deteriorated Parts" @(dataSP.Breakdown_Factor == "Deteriorated Parts" ? "Selected" : "")>Deteriorated Parts</option>
+                                                                <option value="Poor Design" @(dataSP.Breakdown_Factor == "Poor Design" ? "Selected" : "")>Poor Design</option>
+                                                                <option value="Poor Skill" @(dataSP.Breakdown_Factor == "Poor Skill" ? "Selected" : "")>Poor Skill</option>
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:200px;">
+                                                            <select class="form-control selBSparepartCategory" name="iBSparepartCategory[]" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Bagian yg Rusak-</option>
+                                                                @foreach (var item in ViewBag.BCategory)
+                                                                {
+                                                                    <option value="@(item)" @(dataSP.Breakdown_Part == item ? "Selected" : "")>@(item)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:275px;">
+                                                            <select class="form-control selBSparepartSpecific select2" name="iBSparepartSpecific[]" style="width:100%;" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Spesifik Bagian-</option>
+                                                                @foreach (var item in ViewBag.BSpecific)
+                                                                {
+                                                                    <option value="@(item.Item)" data-category="@(item.Category)" @(dataSP.Breakdown_Part == item.Category ? "" : "disabled") @(dataSP.Breakdown_Specific == item.Item ? "Selected" : "")>@(item.Item)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select class="select2 form-control selBSparepart" name="iBSparepart[]" @(!isMTN ? "readonly" : "") style="width:100%;">
+                                                                <option value="">-SparePart-</option>
+                                                                @foreach (var item in ViewBag.SparepartList)
+                                                                {
+                                                                    <option value="@(item.ITEMID + "|" + item.ProductName)" @(dataSP.Sparepart_Code == item.ITEMID ? "Selected" : "")>@(item.ITEMID + " | " + item.ProductName)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:75px;"><input type="number" class="txtBSparepartQty" name="iBSparepartQty[]" placeholder="Qty" value="@(dataSP.Qty)" @(!isMTN ? "readonly" : "") /></td>
+                                                        <td class="text-center align-middle" style="width:50px;">
+                                                            <i class="btnBSparepartDelete fas fa-trash @(!isMTN ? "d-none" : "")" style="color:red;"></i>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                for (var i = 0; i <= 2; i++)
+                                                {
+                                                    <tr>
+                                                        <td style="width:275px;">
+                                                            <select class="form-control selBSparepartFactor" name="iBSparepartFactor[]" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Faktor Kerusakan-</option>
+                                                                <option value="Poor Basic Condition">Poor Basic Condition</option>
+                                                                <option value="Poor Operation Condition">Poor Operation Condition</option>
+                                                                <option value="Deteriorated Parts">Deteriorated Parts</option>
+                                                                <option value="Poor Design">Poor Design</option>
+                                                                <option value="Poor Skill">Poor Skill</option>
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:200px;">
+                                                            <select class="form-control selBSparepartCategory" name="iBSparepartCategory[]" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Bagian yg Rusak-</option>
+                                                                @foreach (var item in ViewBag.BCategory)
+                                                                {
+                                                                    <option value="@(item)">@(item)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:275px;">
+                                                            <select class="form-control selBSparepartSpecific select2" name="iBSparepartSpecific[]" style="width:100%;" @(!isMTN ? "readonly" : "")>
+                                                                <option value="">-Spesifik Bagian-</option>
+                                                                @foreach (var item in ViewBag.BSpecific)
+                                                                {
+                                                                    <option value="@(item.Item)" data-category="@(item.Category)" disabled>@(item.Item)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td>
+                                                            <select class="select2 form-control selBSparepart" name="iBSparepart[]" @(!isMTN ? "readonly" : "") style="width:100%;">
+                                                                <option value="">-SparePart-</option>
+                                                                @foreach (var item in ViewBag.SparepartList)
+                                                                {
+                                                                    <option value="@(item.ITEMID + "|" + item.ProductName)">@(item.ITEMID + " | " + item.ProductName)</option>
+                                                                }
+                                                            </select>
+                                                        </td>
+                                                        <td style="width:75px;"><input type="number" class="txtBSparepartQty" name="iBSparepartQty[]" placeholder="Qty" @(!isMTN ? "readonly" : "") /></td>
+                                                        <td class="text-center align-middle" style="width:50px;">
+                                                            <i class="btnBSparepartDelete fas fa-trash @(!isMTN ? "d-none" : "")" style="color:red;"></i>
+                                                        </td>
+                                                    </tr>
+                                                }
+                                            }
+                                        </tbody>
+                                        @if (isMTN)
+                                        {
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="5">
+                                                        <button type="button" class="btnAddSparepart btn btn-success form-control">+</button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        }
+                                    </table>
+                                </div>
+                            </div>
+
+                            @if (isMTN)
+                            {
+                                <div class="row">
+                                    <label class="col-lg-2" for="txtSection">Picture:</label>
+                                    <div class="col-lg-10">
+                                        <input type="file" name="iFiles" multiple="multiple" accept="image/*" />
+                                    </div>
+                                </div>
+                            }
+                            @if (isMTN || Request["addNew"] != null)
+                            {
+                                <div class="row d-none">
+                                    <div class="col-12">
+                                        <button type="submit" class="btnReportSubmit btn btn-primary form-control mt-2 mb-2" onclick="return confirm('Are you sure want to @(currData != null ? "save" : "submit") this data?')">@(currData != null ? "Save" : "Submit")</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </form>
+                    @if (Enumerable.Count(ViewBag.DataAttachment) > 0)
+                    {
+                        <hr />
+                        <div class="row">
+                            @foreach (var itemImage in ViewBag.DataAttachment)
+                            {
+                                <div class="col-2 text-center position-relative mt-1 mb-1">
+                                    <img src="@(Url.Content("~/Files/MTN/MaintenanceReport/Pictures/" + itemImage.Form_ID + "/" + itemImage.Filename))" alt="Alternate Text" class="img-fluid reportImage" />
+                                    @if (isMTN)
+                                    {
+                                        <form class="position-absolute" style="top:0;right:0;" action="@Url.Action("deleteReportAttachment", "MaintenanceReport", new { area = "MTN" })" method="post">
+                                            <input type="hidden" name="iImageID" value="@(itemImage.ID)" />
+                                            <input type="hidden" name="iImageURL" value="@(Server.MapPath("~/Files/MTN/MaintenanceReport/Pictures/" + itemImage.Form_ID + "/" + itemImage.Filename))" />
+                                            <i class="fas fa-backspace btnDeleteI" title="Delete"></i>
+                                            <button type="submit" class="btnDelete d-none">Delete</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (isMTN || Request["addNew"] != null)
+                    {
+                        <div class="container-fluid">
+                            <div class="row">
+                                <div class="col-12">
+                                    <button type="submit" class="btnReportClick btn btn-primary form-control mt-2 mb-2">@(currData != null ? "Save" : "Submit")</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="modal fade" id="reportImageZoomModal" tabindex="-1" role="dialog" aria-labelledby="reportImageZoomModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="divZoomImage" class="text-center">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

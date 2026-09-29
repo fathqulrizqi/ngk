@@ -1,0 +1,83 @@
+﻿@{
+    var data = ViewBag.Data as NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History;
+    var details = ViewBag.Details as List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail>();
+
+    bool isDetailEmpty = details.Count == 0;
+    string displayFrontQr = ViewBag.DisplayFrontQr as string;
+    // Ubah pembagi menjadi 16.0
+    int totalChunks = isDetailEmpty ? 1 : (int)Math.Ceiling(details.Count / 16.0);
+}
+
+@for (int c = 0; c < totalChunks; c++)
+{
+    // Ubah pembagian chunk menjadi 16
+    var chunkDetails = isDetailEmpty ? null : details.Skip(c * 16).Take(16).ToList();
+
+    <!-- PAGE DEPAN YAMAHA (GANJIL) -->
+    <div class="page bg-white border shadow-lg flex flex-col m-0 @(c > 0 ? "page-break" : "")" style="width: 29.7cm; height: 21cm; padding: 0.4cm 0.4cm; box-sizing: border-box;">
+        <div class="flex flex-wrap h-[100%] border" style="border-color: black !important;">
+            <!-- Loop diubah menjadi 16 -->
+            @for (int i = 0; i < 16; i++)
+            {
+                bool shouldRenderBox = isDetailEmpty || (chunkDetails != null && i < chunkDetails.Count);
+                <!-- Ubah col-4 menjadi col-3 dan tinggi menjadi 25% (4 baris x 4 kolom) -->
+                <div class="col-3 h-[25%] border p-1" style="border-color: black !important; box-sizing: border-box;">
+                    @if (shouldRenderBox)
+                    {
+                        <!-- Ubah fixed height 242px menjadi 100% agar responsif menyesuaikan grid 25% -->
+                        <div class="py-0 pr-0 relative" style=" height: 100%;">
+                            <table class="w-100 h-100 border border-black" style="border-color: black !important; height: 100%; border-collapse: collapse;">
+                                <colgroup><col class="w-[30%]"><col class="w-[17%]"><col class="w-[17%]"><col class="w-[17%]"><col class="w-[19%]"></colgroup>
+                                <tbody class="font-bold" style="font-size: 9.5px; font-family: Arial, sans-serif;">
+                                    <tr style="height: 8.7%"><td class="pl-1">Type</td><td colspan="4" style="border-bottom: 1px black solid; font-size: 10.7px; font-weight:bolder">: @data.Customer_Type</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1 pb-0">Part No.</td><td colspan="4" style="border-bottom: 1px black solid; font-size: 10.7px; font-weight: bolder">: @data.Part_No (@data.Tipe)</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">Part Name</td><td colspan="4" style="border-bottom: 1px black solid">: @data.Part_Name</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">Quantity</td><td colspan="4" style="border-bottom: 1px black solid">: @data.Qty Pcs</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">No.Lot Prod</td><td colspan="4" style="border-bottom: 1px black solid">: @data.Lot_No</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">Tgl Inspection</td><td colspan="4" style="border-bottom: 1px black solid">: @(data.Tgl_Inspection.HasValue ? data.Tgl_Inspection.Value.ToString("dd-MM-yyyy") : "")</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">Tgl Kirim</td><td colspan="4" style="border-bottom: 1px black solid">:</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">S/C</td><td colspan="4" style="border-bottom: 1px black solid">: PT. NITERRA MOBILITY INDONESIA</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1">No. IRD</td><td colspan="4" style="border-bottom: 1px black solid">: @data.IRD_No</td></tr>
+                                    <tr style="height: 8.7%"><td class="pl-1"> Inspector</td><td colspan="4" style="border-bottom: 1px black solid">: @data.Inspector</td></tr>
+                                    <tr style="height: 13%;"><td colspan="4"></td><td class="text-center font-bold" style="font-size: 15px; border: 1px black solid;">OK</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="w-[27%] h-[37.5%] top-[44%] right-[3%] absolute rounded-full border !border-dashed bg-white flex items-center justify-center" style="border-color: black !important;"></div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- PAGE BELAKANG YAMAHA (GENAP) -->
+    if (!isDetailEmpty)
+    {
+        <div class="page bg-white border shadow-lg m-0 page-break" style="width: 29.7cm; height: 21cm; padding: 0.4cm 0.4cm; box-sizing: border-box; page-break-before: always;">
+            <div class="flex flex-wrap h-[100%] border" style="border-color: black !important;">
+                <!-- Loop diubah menjadi 16 -->
+                @for (int i = 0; i < 16; i++)
+                {
+                    // Penyesuaian rumus mirroring untuk 4 kolom
+                    int row = i / 4;
+                    int col = i % 4;
+                    int mirroredCol = 3 - col;
+                    int mappedIndex = (row * 4) + mirroredCol;
+
+                    var mirroredItem = mappedIndex < chunkDetails.Count ? chunkDetails[mappedIndex] : null;
+
+                    <!-- Ubah col-4 menjadi col-3 dan tinggi menjadi 25% -->
+                    <div class="col-3 h-[25%] border p-1" style="border-color: black !important; box-sizing: border-box;">
+                        <div class="border border-black h-100 p-2 flex justify-center items-center relative" style="border-color: black !important; height: 100%;">
+                            @if (mirroredItem != null)
+                            {
+                                <div class="qrcode-page2-container text-center flex justify-center items-center w-full h-full" data-qr-text="@mirroredItem.QR_String"></div>
+                                <div class="absolute bottom-1 right-2 text-gray-400" style="font-size: 7px;">@data.Customer Seq: @mirroredItem.Sequence_No</div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

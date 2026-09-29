@@ -1,0 +1,639 @@
+﻿@using NGKBusi.Models;
+
+@{
+    ViewBag.Title = "DataList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    var yearStart = 2021;
+    var yearEnd = DateTime.Now.Month < 9 ? DateTime.Now.Year - 1 : DateTime.Now.Year;
+    var levels = ViewBag.Level.Split('-');
+    var level = int.Parse(levels[0]);
+    var level_sub = int.Parse(levels[1]);
+    var _Period = ViewBag.Period.Split('|');
+    string _Period_FY = _Period[0].ToString();
+    int _Period_Year = int.Parse(_Period[1]);
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#btnBudgetUpload").click(function () {
+                $("#fUpload").click();
+            });
+
+            var _currData;
+            var _len;
+            var _start;
+            $("#fUpload").change(function () {
+                var currCTR = $("#btnBudgetUpload");
+                var file_data = $(this).prop('files')[0];
+                var form_data = new FormData();
+                form_data.append('file', file_data);
+                form_data.append('period', $("#selPeriod").val());
+                form_data.append('level', $("#hfSignLevel").val());
+                // currCTR.LoadingOverlay("hide");
+                $.ajax({
+                    url: "/NGKBusi/FA/BudgetSystem/_GetDataBIP",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    contentType: false,
+                    processData: false,
+                    cache: false,
+                    data: form_data, success: function (data) {
+                        _currData = data;
+                        if (_currData == "Error Version") {
+                            alert("Template version is different please use latest template!");
+                            return false;
+                        } else {
+                            _len = data.length;
+                            _start = 0;
+                            uploadData(data[_start]);
+                            $(".upload-wrap").fadeIn();
+                            $("#fUpload").val("");
+                            $(".uploadProgress").attr("aria-valuemax", _len);
+                            $(".uploadProgress").removeClass("bg-success");
+                        }
+                        currCTR.LoadingOverlay("hide");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $("#fUpload").val("");
+                        currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            function uploadData(_data) {
+                if (_start < _len) {
+                    $.ajax({
+                        url: "/NGKBusi/FA/BudgetSystem/UploadBIP",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            level: $("#hfSignLevel").val(),
+                            period: $("#selPeriod").val(),
+                            uploadData: _data.join("|")
+                        }, success: function (data) {
+                            console.log(data);
+                            _start++;
+                            var completed = ""
+                            if (_start == _len) {
+                                completed = " Completed!"
+                                $(".uploadProgress").addClass("bg-success");
+                            }
+                            $(".uploadProgress").text((_start) + " of " + _len + completed);
+                            $(".uploadProgress").attr("aria-valuenow", _start);
+                            $(".uploadProgress").css("width", Math.round((_start / _len) * 100) + "%");
+                            uploadData(_currData[_start]);
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            $("#fUpload").val("");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                } else {
+                    location.reload();
+                }
+                $("#fUpload").val("");
+            }
+
+            $(".tblBIP").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control',
+                        'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control',
+                        'form-control', 'form-control', 'form-control', 'form-control', 'form-control'
+                    ],
+                    filter_excludeFilter: {
+                        // zero-based column index
+                        3: 'range', 5: 'range', 7: 'range', 8: 'range'
+                    }
+
+                }
+            }).tablesorterPager({
+                cssNext: '.tblBIP-next', // next page arrow
+                cssPrev: '.tblBIP-prev', // previous page arrow
+                cssFirst: '.tblBIP-first', // go to first page arrow
+                cssLast: '.tblBIP-last', // go to last page arrow
+                cssPageDisplay: '.tblBIP-pagedisplay', // location of where the "output" is displayed
+                cssPageSize: '.tblBIP-pagesize', // page size selector - select dropdown that sets the "size" option
+                cssGoto: '.tblBIP-pagenum',
+                container: $(".tblBIP-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+            var selectedData = new Array();
+            var allSignData = new Array();
+            $(document).on("change", "#cbBEXSignAll", function () {
+                if (this.checked) {
+                    $(".cbBEXSign").each(function () {
+                        this.checked = true;
+                        $(this).closest("tr").css("background-color", "orange");
+                        selectedData.push($(this).val());
+                    });
+                } else {
+                    $(".cbBEXSign").each(function () {
+                        this.checked = false;
+                        if ($(this).closest("tr").index() % 2 == 0) {
+                            $(this).closest("tr").css("background-color", "rgba(0,0,0,.05)");
+                        } else {
+                            $(this).closest("tr").css("background-color", "");
+                        }
+                        var removeItem = $(this).val();
+                        selectedData = selectedData.filter(value => value !== removeItem);
+                    });
+                }
+                $("#hfSignID").val(selectedData).change();
+            });
+
+            $(".cbBEXSign").click(function () {
+                if ($(this).is(":checked")) {
+                    var isAllChecked = 0;
+
+                    $(".cbBEXSign").each(function () {
+                        if (!this.checked)
+                            isAllChecked = 1;
+                    });
+
+                    if (isAllChecked == 0) {
+                        $("#cbBEXSignAll").prop("checked", true);
+                    }
+                    selectedData.push($(this).val());
+                    $(this).closest("tr").css("background-color", "orange");
+                    $("#hfSignID").val(selectedData).change();
+                }
+                else {
+                    $("#cbBEXSignAll").prop("checked", false);
+                    if ($(this).closest("tr").index() % 2 == 0) {
+                        $(this).closest("tr").css("background-color", "rgba(0,0,0,.05)");
+                    } else {
+                        $(this).closest("tr").css("background-color", "");
+                    }
+                    var removeItem = $(this).val();
+                    selectedData = selectedData.filter(value => value !== removeItem);
+                    $("#hfSignID").val(selectedData).change();
+                }
+            });
+
+            if ($(".cbBEXSign").length) {
+                $(".cbBEXSign").each(function () {
+                    allSignData.push($(this).val());
+                }).promise().done(function () {
+                    $("#hfAllSignID").val(allSignData);
+                });
+            } else {
+                $("#cbBEXSignAll,#btnBudgetUpload,#btnBudgetSign,#btnBudgetReturn").hide();
+            }
+            $("#hfSignID").change(function () {
+                if ($(this).val() != "") {
+                    $("#btnBudgetSign").prop("disabled", false);
+                } else {
+                    $("#btnBudgetSign").prop("disabled", true);
+                }
+            });
+
+            $(".selSubmit").change(function () {
+                $(".btnBudgetSubmit").click();
+            });
+            if ($("#selSection").val() == "All") {
+                $("#selVersion").hide();
+            }
+
+            if ($("#tblBudgetStatus").length) {
+                $("#tblBudgetStatus").tablesorter({
+                    theme: "bootstrap",
+                    widthFixed: true,
+                    widgets: ['zebra', 'columns', 'filter', 'stickyHeaders', 'reflow'],
+                    widgetOptions: {
+                        filter_saveFilters: true,
+                        stickyHeaders_xScroll: "#DivStatusWrapper",
+                        filter_cssFilter: [
+                            'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control', 'form-control'
+                        ],
+                        filter_excludeFilter: {
+                            // zero-based column index
+                            1: 'range'
+                        }
+
+                    }
+                }).tablesorterPager({
+                    cssNext: '.tblBudgetStatus-next', // next page arrow
+                    cssPrev: '.tblBudgetStatus-prev', // previous page arrow
+                    cssFirst: '.tblBudgetStatus-first', // go to first page arrow
+                    cssLast: '.tblBudgetStatus-last', // go to last page arrow
+                    cssPageDisplay: '.tblBudgetStatus-pagedisplay', // location of where the "output" is displayed
+                    cssPageSize: '.tblBudgetStatus-pagesize', // page size selector - select dropdown that sets the "size" option
+                    cssGoto: '.tblBudgetStatus-pagenum',
+                    container: $(".tblBudgetStatus-pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: 10
+                });
+            }
+        });
+    </script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialBudgetSystem")
+}
+
+<h2>
+    (BIP) Investment
+    @if (ViewBag.Level == "1-0")
+    {
+        <button type="button" id="btnBudgetUpload" class="btn btn-success">Upload</button>
+    }
+
+    <form action="@Url.Action("InvestmentSign", "BudgetSystem", new { area = "FA" })" method="post" style="display:inline-block;">
+        <button type="submit" id="btnBudgetSign" class="btn btn-success" onclick="return confirm('Are you sure want to sign this data ? \nAll unchecked data will be marked as [Rejected].'); this.LoadingOverlay('show');" disabled>Sign</button>
+        <input type="hidden" id="hfSignID" name="iSignID" />
+        <input type="hidden" id="hfAllSignID" name="iAllSignID" />
+        <input type="hidden" id="hfSignLevel" name="iSignLevel" value="@(ViewBag.Level)" />
+        <input type="hidden" id="hfSignSection" name="iSignSection" value="@(ViewBag.SectionChoose)" />
+    </form>
+
+    <button type="button" id="btnBudgetReturn" class="btn btn-warning @((level == 1 && level_sub == 0) || level > 1 ? "d-none" : "")" data-toggle="modal" data-target="#returnModal">
+        Return
+    </button>
+
+    <button type="submit" id="btnBudgetDownload" data-toggle="modal" data-target="#DivModalDownloadData" class="btn btn-primary">Download Data</button>
+    <form action="@Url.Action("BIPCIPCFADownloadTemplate", "BudgetSystem", new { area = "FA" })" method="post" style="display:inline-block;">
+        <button type="submit" id="btnBudgetDownloadTemplate" class="btn btn-primary">Download Template</button>
+        <input type="hidden" id="hfDownloadType" name="iDownloadType" value="BIP" />
+    </form>
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#DivStatusWrapper">Approval Status</button>
+</h2>
+<input type="file" name="iUpload" id="fUpload" class="d-none" />
+<div class="upload-wrap" style="display:none;">
+    <h3>Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">25%</div>
+    </div>
+    <hr />
+</div>
+<form action="@Url.Action("Investment", "BudgetSystem", new { area = "FA" })" method="post">
+    <select id="selPeriod" name="iPeriod" class="form-control selSubmit">
+        @for (var i = yearStart; i <= yearEnd; i++)
+        {
+            var fy = "FY1" + (i + 2).ToString().Substring(2, 2);
+            <option value="@(fy + "|" + i)" @(ViewBag.Period == fy + "|" + i ? "selected" : "")>@(fy)</option>
+        }
+    </select>
+    <select id="selLevel" name="iLevel" class="form-control selSubmit">
+        @foreach (var data in ViewBag.ApprovalLevel)
+        {
+            <option value="@(data)" @(ViewBag.Level.ToString() == data.ToString() ? "selected" : "")>@("Approval Level " + data)</option>
+        }
+    </select>
+    <hr />
+    <select id="selSection" name="iSection" class="form-control selSubmit">
+        <option value="All">All</option>
+        @foreach (var data in ViewBag.SectionList)
+        {
+            string _Dept_Code = data.Dept_Code;
+            var getLastVer = db.FA_BudgetSystem_BIP.Where(w => w.Period_FY == _Period_FY && w.Section_From_Code == _Dept_Code).OrderByDescending(o => o.Version).FirstOrDefault()?.Version ?? 0;
+            var getLastVerFinal = db.FA_BudgetSystem_BIP.Where(w => w.Period_FY == _Period_FY && w.Section_From_Code == _Dept_Code).OrderByDescending(o => o.Version).FirstOrDefault()?.Final_Version ?? 0;
+            var _lastVer = " (V." + ("00" + getLastVer).Substring(("00" + getLastVer).Length - 2, 2) + ")";
+            var _lastVerFinal = " (Final " + ("00" + getLastVerFinal).Substring(("00" + getLastVerFinal).Length - 2, 2) + ")";
+            <option value="@(data.Dept_Code)" @(ViewBag.SectionChoose == data.Dept_Code ? "selected" : "")>@(data.Dept_Code + " - " + data.Dept_Name + _lastVer + (getLastVerFinal > 0 ? _lastVerFinal : ""))</option>
+        }
+    </select>
+    <hr />
+    <select id="selVersion" name="iVersion" class="form-control selSubmit">
+        @if (ViewBag.VersionList != null)
+        {
+            foreach (var data in ViewBag.VersionList)
+            {
+                var version = data.Version;
+                var versionFinal = data.Final_Version;
+
+                <option value="@(version)" @(ViewBag.Version.ToString() == version.ToString() ? "selected" : "")>@("Budget Data V." + ("00" + version.ToString()).Substring(("00" + version.ToString()).Length - 2, 2) + (versionFinal > 0 ? " (Final " + ("00" + versionFinal.ToString()).Substring(("00" + versionFinal.ToString()).Length - 2, 2) + ")" : ""))</option>
+            }
+        }
+    </select>
+    <button type="submit" class="btnBudgetSubmit" style="display:none;"></button>
+</form>
+
+<div id="divBEXWrapper" style="overflow:auto;position: relative;">
+    <table class="tblBIP table table-striped">
+        <thead>
+            <tr>
+                <th class="sorter-false filter-false">
+                    <input type="checkbox" id="cbBEXSignAll" class="cbBEXSignAll" style="z-index:9999;" />
+                    @if (Enumerable.Count(ViewBag.DataList) == 0)
+                    {
+                        <input type="checkbox" class="cbBEXSign d-none" name="iBEXSign[]" id="cbBEXSign" />
+                    }
+                </th>
+                <th class="filter-select" data-placeholder="-Choose-">Status (BIP / CIP / CFA)</th>
+                <th class="filter-select" data-placeholder="-Choose-">Section From (Code)</th>
+                <th class="filter-select" data-placeholder="-Choose-">Section From (Name)</th>
+                <th class="filter-select" data-placeholder="-Choose-">Section To (Code)</th>
+                <th class="filter-select" data-placeholder="-Choose-">Section To (Name)</th>
+                <th class="filter-select" data-placeholder="-Choose-">Coa Code</th>
+                <th class="filter-select" data-placeholder="-Choose-">Coa Name</th>
+                <th>Asset Name</th>
+                <th>Acquisition Value</th>
+                <th>Useful Life</th>
+                <th>Allocation %</th>
+                <th>Depre Start</th>
+                <th class="filter-select" data-placeholder="-Choose-">Priority Code</th>
+                <th>Budget Period</th>
+                <th>Budget Allocation</th>
+                <th>Budget Number</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.DataList)
+            {
+                <tr>
+                    <td>
+                        @if (!item.Is_Reject && ((item.Approval <= level && item.Approval_Sub <= level_sub)))
+                        {
+                            <input type="checkbox" class="cbBEXSign" name="iBEXSign[]" id="@("cbBEXSign" + item.rel_id)" value="@( item.rel_id )" />
+                        }
+                        else
+                        {
+                            if (item.Is_Reject)
+                            {
+                                <i class="fas fa-times" style="color:red;" title="Rejected"></i>
+                            }
+                            else
+                            {
+                                <i class="fas fa-check" style="color:green;" title="Approved"></i>
+                            }
+                        }
+                    </td>
+                    <td>@( item.Budget_Type )</td>
+                    <td>@( item.Section_From_Code )</td>
+                    <td>@( item.Section_From_Name )</td>
+                    <td>@( item.Section_To_Code )</td>
+                    <td>@( item.Section_To_Name )</td>
+                    <td>@( item.COA_Code )</td>
+                    <td>@( item.COA_Name )</td>
+                    <td>@( item.Asset_Name )</td>
+                    <td class="text-right">@( item.Acquisition_Value.ToString("N0") )</td>
+                    <td class="text-right">@( item.Useful_Life )</td>
+                    <td>@( (item.Allocation * 100) + "%" )</td>
+                    <td>@( item.Depre_Start.ToString("dd-MMM-yyyy") )</td>
+                    <td>@( item.Priority_Code )</td>
+                    <td>@( item.Budget_Period )</td>
+                    <td class="text-right">@( item.Budget_Allocation.ToString("N0") )</td>
+                    <td style="white-space:nowrap;">@( item.Budget_No )</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="17" class="tblBIP-pager pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary tblBIP-first first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary tblBIP-prev prev" title="previous">←</button>
+                        </div>
+                        <span class="tblBIP-pagedisplay pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary tblBIP-next next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary tblBIP-last last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-4 tblBIP-pagesize pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                            <option value="50">50</option>
+                            <option value="all">All</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 tblBIP-pagenum pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="returnModalLabel">Return Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form method="post" action="@Url.Action("InvestmentReturn", "BudgetSystem", new { area = "FA" })">
+                <div class="modal-body">
+                    <select id="selSectionReturn" name="iReturnSection" class="form-control">
+                        @foreach (var data in ViewBag.SectionList)
+                        {
+                            <option value="@(data.Dept_Code)" @(ViewBag.SectionChoose == data.Dept_Code ? "selected" : "")>@(data.Dept_Code + " - " + data.Dept_Name)</option>
+                        }
+                    </select>
+                    <input type="hidden" name="iReturnPeriod" value="@(ViewBag.Period)" />
+                    <input type="hidden" name="iReturnVersion" value="@(ViewBag.Version)" />
+                    <input type="hidden" name="iReturnLevel" value="@(ViewBag.Level)" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure want to return this data ?')">Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@{
+    ICollection<FA_Section> currFASection = ViewBag.StatusSection;
+    var app1 = currFASection.Where(w => w.labor_cost_approval != null).Count();
+    var app2 = currFASection.Where(w => w.labor_cost_approval2 != null).Count();
+    var app3 = currFASection.Where(w => w.labor_cost_approval3 != null).Count();
+}
+<div id="DivStatusWrapper" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table id="tblBudgetStatus" class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="filter-select" data-placeholder="-Type-">Budget Type</th>
+                            <th class="filter-select" data-placeholder="-Section-">Section</th>
+                            <th class="filter-select" data-placeholder="-Level 1-">Level 1</th>
+                            @if (app1 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 2-">Level 2</th>
+                            }
+                            @if (app2 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 3-">Level 3</th>
+                            }
+                            @if (app3 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 4-">Level 4</th>
+                            }
+                            <th class="filter-select" data-placeholder="@(app3 > 0 ? "-Level 5-": (app2  > 0 ? "-Level 4-":(app1 > 0 ? "Level 3" : "Level 2")))">@(app3 > 0 ? "Level 5" : (app2 > 0 ? "Level 4" : (app1 > 0 ? "Level 3" : "Level 2")))</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.StatusData)
+                        {
+                            string currSect = item.Section_Name;
+                            var sect = db.FA_Section.Where(w => w.Section_Name == currSect && w.Period == _Period_Year).FirstOrDefault();
+
+                            var sign = sect.sign?.Name;
+                            var approval = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval?.Name;
+                            var approval2 = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval2?.Name;
+                            var approval3 = item.Budget_Type == "BEL" || item.Budget_Type == "CFA" ? null : sect?.approval3?.Name;
+                            <tr>
+                                <td class="text-nowrap">@(item.Budget_Type)</td>
+                                <td class="text-nowrap">@(currSect)</td>
+                                <td class="text-center">
+                                    <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(sign)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 0) ? "Done" : "On Progress")</span>
+                                </td>
+                                @if (app1 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 1) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                @if (app2 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval2 != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval2)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 2) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                @if (app3 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval3 != null)
+                                        {
+                                            <button class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? " btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(approval3)"><i class="@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? " fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Approval > 1 || (item.Approval == 1 && item.Approval_Sub > 3) ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                <td class="text-center">
+                                    <button class="@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? " btn btn-sm btn-success":"btn btn-sm btn-danger")" title="FINANCE ACCOUNTING"><i class="@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? " fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Approval > 2 || (item.Approval == 2 && item.Approval_Sub > 0) ? "Done" : "On Progress")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th colspan="7" class="tblBudgetStatus-pager pager">
+                                <div class="form-inline">
+                                    <div class="btn-group btn-group-sm mx-1" role="group">
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-first first" title="first">⇤</button>
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-prev prev" title="previous">←</button>
+                                    </div>
+                                    <span class="tblBudgetStatus-pagedisplay pagedisplay"></span>
+                                    <div class="btn-group btn-group-sm mx-1" role="group">
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-next next" title="next">→</button>
+                                        <button type="button" class="btn btn-secondary tblBudgetStatus-last last" title="last">⇥</button>
+                                    </div>
+                                    <select class="form-control-sm custom-select px-4 tblBudgetStatus-pagesize pagesize" title="Select page size">
+                                        <option selected="selected" value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <select class="form-control-sm custom-select px-4 mx-1 tblBudgetStatus-pagenum pagenum" title="Select page number"></select>
+                                </div>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="DivModalDownloadData" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("BIPCIPCFADownloadData", "BudgetSystem", new { area = "FA" })" method="post" style="display:inline-block;">
+                <div class="modal-body">
+                    <label><b>Select Data to be included</b></label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="iDownloadDataChecked[]" value="Section-From" id="cbDownloadDataFrom" checked>
+                        <label class="form-check-label" for="cbDownloadDataFrom">
+                            Section From
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="iDownloadDataChecked[]" value="Section-To" id="cbDownloadDataTo" checked>
+                        <label class="form-check-label" for="cbDownloadDataTo">
+                            Section To
+                        </label>
+                    </div>
+
+                    <input type="hidden" id="hfDownloadType" name="iDownloadType" value="BIP" />
+                    <input type="hidden" id="hfDownloadPeriod" name="iDownloadPeriod" value="@(ViewBag.Period)" />
+                    <input type="hidden" id="hfDownloadLevel" name="iDownloadLevel" value="@(ViewBag.Level)" />
+                    <input type="hidden" id="hfDownloadSection" name="iDownloadSection" value="@(ViewBag.SectionChoose)" />
+                    <input type="hidden" id="hfDownloadVersion" name="iDownloadVersion" value="@(ViewBag.Version)" />
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" id="btnBudgetDownload" class="btn btn-primary">Download</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

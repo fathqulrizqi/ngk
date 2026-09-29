@@ -1,0 +1,596 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .dpDelete, .dpDelete i {
+            color: red;
+            cursor: pointer
+        }
+
+            .dpDelete:hover, .dpDelete i:hover {
+                opacity: .95;
+            }
+
+        #tblDirectPayment tbody tr:first-child .dpDelete {
+            display: none;
+        }
+
+        #tblDirectPayment tbody tr:nth-child(0) {
+            vertical-align: middle;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(0) {
+            min-width: 215px;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(2) {
+            min-width: 230px;
+        }
+
+        #tblDirectPayment tbody tr td:nth-child(3) {
+            min-width: 190px;
+        }
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+            $(".txtPRDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $("#txtPaymentDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $('.tablesorter-childRow td').hide();
+            $(".tblPRNPO").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns"],
+
+                widgetOptions: {
+                    filter_excludeFilter: {
+                        // zero-based column index
+                        6: 'range',
+                        7: 'range',
+                        9: 'range'
+                    },
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                    ]
+
+                }
+            });
+            $('.tablesorter').delegate('.toggle', 'click', function () {
+
+                $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+
+                return false;
+            });
+            var checkID = [];
+            var checkVendor = "";
+            var checkCurrency = "";
+            $(".cbCheckID").change(function () {
+                checkID = [];
+                var currVendor = $(this).data("vendorcode");
+                var currCurrency = $(this).data("currency");
+                if ($(this).is(":checked")) {
+                    if (!(checkVendor == "" || checkVendor == currVendor)) {
+                        alert("Selected journal third party is not same!");
+                        $(this).prop("checked", false);
+                        return false;
+                    } else if (!(checkCurrency == "" || checkCurrency == currCurrency)) {
+                        alert("Selected journal currency is not same!");
+                        $(this).prop("checked", false);
+                        return false;
+                    }
+                }
+                if ($('.cbCheckID:checked').length > 0) {
+                    checkVendor = currVendor;
+                    checkCurrency = currCurrency;
+                } else {
+                    checkVendor = "";
+                    checkCurrency = "";
+                }
+                $(".cbCheckID:checked").each(function (i, e) {
+                    checkID.push($(this).val());
+                });
+                $("#hfPaymentID").val(checkID);
+                $("#hfAddtoPaymentID").val(checkID);
+                if (checkID.length > 0) {
+                    $(".btnCreatePayment,.btnAddToPayment").prop("disabled", false);
+                } else {
+                    $(".btnCreatePayment,.btnAddToPayment").prop("disabled", true);
+                }
+            });
+            $("#selWHTCode").change(function () {
+                if ($(this).val() == "") {
+                    $(".divWHTAmount").hide("blind");
+                    $("#txtWHTAmount").val("");
+                    $("#txtWHTAmount").prop("required", false);
+                } else {
+                    $("#txtWHTAmount").prop("required", true);
+                    $(".divWHTAmount").show("blind");
+                }
+            });
+            $(".btnNonPOSign").click(function () {
+                if (confirm("Sign This Data ?")) {
+                    var currTD = $(this).closest("td");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/TreasuryNonPOSign",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iNonPOID: $(this).data("id"),
+                            iApproval: $(this).data("approval"),
+                            iApprovalSub: $(this).data("approval_sub")
+                        }, success: function () {
+                            location.reload();
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+            $(".btnTNonPOReceived").click(function () {
+                if (confirm("Receive This Document ?")) {
+                    var currTD = $(this).closest("td");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/TNonPOReceive",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iNonPOID: $(this).data("id"),
+                            iApproval: $(this).data("approval"),
+                            iApprovalSub: $(this).data("approval_sub")
+                        }, success: function () {
+                            location.reload();
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+
+            var latestDueDate = 0;
+            $("#txtDueDate").change(function () {
+                if ($(this).val() == "" || $(this).val() == latestDueDate) {
+                    $("#txtDueDateReason").val('');
+                    $("#txtDueDateReason").prop("required", false);
+                    $("#txtDueDateReason").hide();
+                } else {
+                    $("#txtDueDateReason").show();
+                    $("#txtDueDateReason").prop("required", true);
+                }
+            });
+            $(".btnNonPOEdit").click(function () {
+                var currID = $(this).data("id");
+                latestDueDate = $(this).data("duedate").replace(/-/gi, "/");
+                var currPaymentMethod = $(this).data("paymentmethod");
+                var currWHT = $(this).data("wht");
+                var currWHTAmount = $(this).data("whtamount");
+                $("#hfPaymentID").val(currID);
+                $("#txtDueDate").val(latestDueDate);
+                $(".rbPaymentMethod[value='" + currPaymentMethod + "']").prop("checked", true);
+                if (currWHTAmount > 0) {
+                    $("#selWHTCode").val(currWHT);
+                    $("#txtWHTAmount").val(currWHTAmount);
+                    $("#txtWHTAmount").prop("required", true);
+                    $(".divWHTAmount").show("blind");
+                }
+                $("#nonPOFAEditModal").modal("show");
+            });
+
+            $(".thDebitTotal").each(function () {
+                var currTable = $(this).closest("table");
+                var currTotal = 0;
+                $(".tdDebit", currTable).each(function () {
+                    var value = accounting.unformat($(this).text());
+                    // add only if the value is number
+                    if (!isNaN(value) && value.length != 0) {
+                        currTotal += parseFloat(value);
+                    }
+                });
+                $(this).text(accounting.formatNumber(currTotal, 2));
+            });
+            $(".thCreditTotal").each(function () {
+                var currTable = $(this).closest("table");
+                var currTotal = 0;
+                $(".tdCredit", currTable).each(function () {
+                    var value = accounting.unformat($(this).text());
+                    // add only if the value is number
+                    if (!isNaN(value) && value.length != 0) {
+                        currTotal += parseFloat(value);
+                    }
+                });
+                $(this).text(accounting.formatNumber(currTotal, 2));
+            });
+            $(".btnCreatePayment").click(function () {
+                $("#hfPaymentID").val(checkID);
+                $("#createPaymentModal").modal("show");
+            });
+            $(".btnAddToPayment").click(function () {
+                $("hfAddtoPaymentID").val(checkID);
+                $("#addToPaymentModal").modal("show");
+                $("#selPaymentList option[value!='']").hide();
+                $("#selPaymentList option[value*='" + checkVendor + "']").show();
+            });
+        });
+    </script>
+
+}
+<h2>
+    Treasury - Payment Request Non PO
+</h2>
+<hr />
+
+<table class="tblPRNPO table table-striped">
+    <thead>
+        <tr>
+            <th>Receive Number</th>
+            <th>Entry Date</th>
+            <th>Section From</th>
+            <th>Third Party</th>
+            <th class="filter-select" data-placeholder="Select">Currency</th>
+            <th>Amount of Invoice</th>
+            <th>Due Date</th>
+            <th class="filter-select" data-placeholder="Select">Payment Method</th>
+            <th class="filter-select" data-placeholder="Select">Payment Type</th>
+            <th>Created By</th>
+            <th class="filter-select" data-placeholder="Select">Status</th>
+            <th class="filter-false sorter-false text-center text-nowrap">
+                @*<form action="@Url.Action("NonPOPrintAP", "PaymentRequest", new { area = "FA" })" class="d-inline-block" method="post">*@
+                @*<input type="hidden" name="iPrintID" id="hfCheckPrintID" />*@
+                <button type="button" class="btn btn-sm btn-warning btnCreatePayment" data-toggle="tooltip" title="Print" disabled><i class="fas fa-file-invoice-dollar"></i></button>
+                <button type="button" class="btn btn-sm btn-success btnAddToPayment" data-toggle="tooltip" title="Print" disabled><i class="fas fa-plus"></i></button>
+                @*</form>*@
+
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.NonPOList)
+        {
+            var currID = (int)item.id;
+            var nonPOSub = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList().Sum(s => s.Allocation_Amount);
+            <tr>
+                <td class="text-nowrap">
+                    @if (item.Approval == 5 && item.Approval_Sub == 1)
+                    {
+                        <input type="checkbox" name="iCheckID" class="cbCheckID" value="@(item.id)"
+                               data-vendorcode="@(item.Third_Party_Id)" data-vendorname="@(item.Third_Party_Name)" data-currency="@(item.Currency_Code)" />
+                    }
+                    <a href="#" class="toggle"> @(item.Receive_Number)</a>
+                </td>
+                <td class="text-nowrap">@( item.Entry_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@( "(" + item.Section_From_Code + ") " + item.Section_From_Name)</td>
+                <td>@( "(" + item.Third_Party_Id + ") " + item.Third_Party_Name)</td>
+                <td class="text-center">@(item.Currency_Code)</td>
+                @if (item.Payment_Type == "Pre-Payment")
+                {
+                    <td class="text-right">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                }
+                else
+                {
+                    <td class="text-right">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                }
+                <td class="text-nowrap">@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Payment_Method)</td>
+                <td>@(item.Payment_Type)</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @(PaymentRequestController.ApprovalStatus(item.Approval, item.Approval_Sub, item.Is_Reject, item.Amount_of_Invoice))
+                </td>
+                <td class="text-nowrap text-center">
+                    @if (item.Approval == 5 && item.Approval_Sub == 0)
+                    {
+                        <button class="btn btn-sm btn-success btnTNonPOReceived" data-toggle="tooltip" title="Receive" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-alt"></i></button>
+                    }
+                </td>
+            </tr>
+
+            <tr class="tablesorter-childRow">
+                <td colspan="12">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Invoice</th>
+                                <th>Bgt. Number</th>
+                                <th>Description</th>
+                                <th>Debit</th>
+                                <th>Credit</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var subItem in nonPOSub)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + subItem.COA_Name + "'>" + subItem.COA_Code.Trim() + "</span>" + "--" + "<span title='" + subItem.Procate_Name + "'>" + subItem.Procate_Code + "</span>" + "-" + "<span title='" + subItem.Section_To_Name + "'>" + subItem.Section_To_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("(" + subItem.Budget_Number + ")" + subItem.Budget_Desc)</td>
+                                    <td>@(subItem.Description)</td>
+                                    <td class="tdDebit">@(subItem.Allocation_Amount.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.Payment_Type == "Pre-Payment")
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("Prepaid Expense")</td>
+                                    <td class="tdDebit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            else if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice != TotalAllocation)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("AP Other")</td>
+                                    @if (item.Amount_of_Invoice > TotalAllocation)
+                                    {
+                                        <td class="tdDebit">@((item.Amount_of_Invoice - TotalAllocation).ToString("N2"))</td>
+                                        <td class="tdCredit">0</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdDebit">0</td>
+                                        <td class="tdCredit">@((TotalAllocation - item.Amount_of_Invoice).ToString("N2"))</td>
+                                    }
+                                </tr>
+                            }
+
+                            @if (item.VAT > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='Prepaid Tax - VAT IN'>1851104</span>--<span title='Common'>S76010</span>-" + item.Section_From_Code)</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@("Prepaid Tax - VAT IN")</td>
+                                    @if (item.Payment_Type == "Pre-Payment")
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdDebit">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                    <td class="tdCredit">0</td>
+                                </tr>
+                            }
+                            @if (item.WHT_Amount > 0)
+                            {
+                                <tr>
+                                    <td>@Html.Raw("<span title='" + item.WHT_COA_Name + "'>" + item.WHT_COA_Code + "</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                    <td>@(item.Invoice_Number)</td>
+                                    <td>@("-")</td>
+                                    <td>@(item.WHT_COA_Name)</td>
+                                    <td class="tdDebit">@(0)</td>
+                                    <td class="tdCredit">@(item.WHT_Amount.ToString("N2"))</td>
+                                </tr>
+                            }
+
+                            <tr>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>@Html.Raw("<span title='Prepaid Expense'>1849101</span>" + "--<span title='Common'>S76010</span>-" + "<span title='" + item.Section_From_Name + "'>" + item.Section_From_Code + "</span>")</td>
+                                }
+                                else
+                                {
+                                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                                }
+                                <td>@(item.Invoice_Number)</td>
+                                <td>@("-")</td>
+                                @if (item.Payment_Type == "Settlement")
+                                {
+                                    <td>Prepaid Expense</td>
+                                }
+                                else
+                                {
+                                    <td>@(item.Description)</td>
+                                }
+                                <td class="tdDebit">@(0)</td>
+                                @if (item.Payment_Type == "Pre-Payment")
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        <td class="tdCredit">@(((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)) - item.WHT_Amount).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                                    }
+                                }
+                                else
+                                {
+                                    if (item.WHT_Amount > 0)
+                                    {
+                                        <td class="tdCredit">@((item.Amount_of_Invoice - item.WHT_Amount).ToString("N2"))</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                                    }
+                                }
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th>Total</th>
+                                <th class="thDebitTotal">Debit</th>
+                                <th class="thCreditTotal">Credit</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="12" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="modal fade" id="createPaymentModal" tabindex="-1" role="dialog" aria-labelledby="createPaymentModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Create Payment</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("TreasuryNonPOCreatePayment", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <input type="hidden" class="form-control" name="iPaymentID" id="hfPaymentID">
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Payment Date:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Payment Date" name="iPaymentDate" id="txtPaymentDate" autocomplete="off" required>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Bank:</label>
+                        <div class="col-9">
+                            <select id="selBank" name="iBank" class="form-control " style="width:100%;" required>
+                                <option value="">-Bank-</option>
+                                @foreach (var item in ViewBag.Bank)
+                                {
+                                    <option value="@(item.Bank_Account + "|" + item.Bank_Name)">@(item.Bank_Account + " | " + item.Bank_Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addToPaymentModal" tabindex="-1" role="dialog" aria-labelledby="createPaymentModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Add To Payment</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("TreasuryNonPOAddToPayment", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <input type="hidden" class="form-control" name="iPaymentID" id="hfAddtoPaymentID">
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Payment Journal:</label>
+                        <div class="col-9">
+                            <select id="selPaymentList" name="iPaymentList" class="form-control " style="width:100%;" required>
+                                <option value="">-Payment Journal-</option>
+                                @foreach (var item in ViewBag.PaymentList)
+                                {
+                                    <option value="@(item.Receive_Number + "|" + item.Third_Party_Id)">@(item.Receive_Number + "|(" + item.Third_Party_Id + ")"+item.Third_Party_Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

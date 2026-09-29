@@ -1,0 +1,222 @@
+
+
+CREATE procedure [dbo].[sp_SCM_Sparepart_Request_Create]  
+
+(  
+
+   @userRequest nvarchar (50),  
+
+   @Remark nvarchar (50),
+
+   @CostName nvarchar(100),
+
+   @MaintenanceType nvarchar(100),
+
+   @reqNo nvarchar(20) OUTPUT
+
+)  
+
+as  
+
+begin  
+
+	-- SET NOCOUNT ON;
+
+
+
+	DECLARE @revtal char(14),
+
+        @NumberOfRowsToday int
+
+
+
+	-- get the number of rows inserted in the same day before the current row
+
+	SELECT @NumberOfRowsToday = COUNT(*) + 1
+
+	FROM dbo.SCM_Sparepart_Request_Header 
+
+	WHERE CONVERT(VARCHAR(10), Create_Time, 112) = CONVERT(VARCHAR(10), getdate(), 112);
+
+	select @NumberOfRowsToday;
+
+	-- calculate the string to return
+
+	SELECT @revtal = CONVERT(char(8), CONVERT(VARCHAR(10), getdate(), 112), 12) + 
+
+					 RIGHT('0000' + CAST(@NumberOfRowsToday as varchar), 4);
+
+
+
+	--select @revtal;		
+
+	
+
+
+
+	--select @CostName;
+
+
+
+	Insert into SCM_Sparepart_Request_Detail(ITEMID, Quantity, RequestNo, Qty_Realization) 
+
+	SELECT ITEMID, quantity, @revtal, 0 FROM SCM_Sparepart_Request_Temp WHERE userRequest = @userRequest;
+
+
+
+	if @CostName = 'default' 
+
+	begin
+
+		INSERT INTO SCM_Sparepart_Request_Header 
+
+			(RequestNo, 
+
+			Remark, 
+
+			MaintenanceType,
+
+			DivisionName, 
+
+			DeptName, 
+
+			SectionName, 
+
+			SubSectionName, 
+
+			CostName, 
+
+			Status, 
+
+			IsReturn,
+
+			IsCancel,
+
+			UserRequest, 
+
+			Create_Time,
+
+			PrepareTime,
+
+			ReadyTime,
+
+			CloseTime) 
+
+		SELECT @revtal, 
+
+		@Remark, 
+
+		@MaintenanceType,
+
+		DivisionName , 
+
+		DeptName, 
+
+		SectionName, 
+
+		SubSectionName, 
+
+		CostName, 
+
+		1, 
+
+		0,
+
+		0,
+
+		@userRequest, 
+
+		GETDATE(),
+
+		NULL,
+
+		NULL,
+
+		NULL
+
+		FROM Users WHERE NIK = @userRequest
+
+	end
+
+	if @CostName != 'default'
+
+	begin
+
+		INSERT INTO SCM_Sparepart_Request_Header 
+
+			(RequestNo, 
+
+			Remark, 
+
+			MaintenanceType,
+
+			DivisionName, 
+
+			DeptName, 
+
+			SectionName, 
+
+			SubSectionName, 
+
+			CostName, 
+
+			Status, 
+
+			IsReturn,
+
+			IsCancel,
+
+			UserRequest, 
+
+			Create_Time,
+
+			PrepareTime,
+
+			ReadyTime,
+
+			CloseTime) 
+
+		SELECT top 1 @revtal, 
+
+		@Remark, 
+
+		@MaintenanceType,
+
+		DivisionName , 
+
+		DeptName, 
+
+		SectionName, 
+
+		SubSectionName, 
+
+		@CostName, 
+
+		1, 
+
+		0,
+
+		0,
+
+		@userRequest, 
+
+		GETDATE(),
+
+		NULL,
+
+		NULL,
+
+		NULL
+
+		FROM Users WHERE CostName = @CostName
+
+	end
+
+	DELETE FROM SCM_Sparepart_Request_Temp WHERE userRequest = @userRequest;
+
+
+
+	SET @reqNo = @revtal;
+
+End
+

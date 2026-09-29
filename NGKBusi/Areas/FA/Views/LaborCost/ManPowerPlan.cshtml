@@ -1,0 +1,737 @@
+﻿@using NGKBusi.Models;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+
+@{
+    ViewBag.Title = "Man Power Plan";
+    ViewBag.SideMenuHeader = "Labor Cost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    int i = 0;
+    var vacantNIK = "";
+    var currSection = "";
+    var beforeGroup = "";
+    var beforeSection = "";
+    var beforeStatus = "";
+    var beforeSign = "";
+    var beforeApproved = "";
+    var beforeApproved2 = "";
+    var beforeApproved3 = "";
+    var beforeHCSign = "";
+    var beforeHCApproved = "";
+    var a = 0;
+    var cntSummary = ViewBag.SectionSummary?.Count;
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(Int32.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Month >=4 ? DateTime.Now.Year : DateTime.Now.AddYears(-1).Year;
+    int dateDiff = Math.Abs(12 * (currDate.Year - lastDate.Year) + currDate.Month - lastDate.Month);
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .tdEditRemark:hover {
+            cursor: pointer;
+            background-color: orange !important;
+        }
+
+        .tdEditRemark:active {
+            background-color: palegoldenrod !important;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-math.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-filter.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/ManPowerPlan.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    Man Power Plan
+    @*@if (ViewBag.Employee.Count > 0 && (ViewBag.LastLevel != "5" || ViewBag.LastLevel != "6"))*@
+    @if (ViewBag.Employee.Count > 0)
+    {
+        <button id="btnLCManPowerPlanAdd" class="btnImplemented btn btn-success" title="Add" data-toggle="modal" data-target="#LCManPowerPlanModal">Add New</button>
+    }
+    <button id="btnDownloadMPPSummary" type="button" class="btn btn-success">Download MPP Summary</button>
+    <button id="btnDownloadMPP" type="button" class="btn btn-success">Download MPP List</button>
+    <button type="button" class="btn btn-success" data-toggle="modal" data-target="#tblLCMPPStatusWrapper">MPP Approval Status</button>
+</h2>
+<form action="@Url.Action("ManPowerPlan", "LaborCost", new { area = "FA" })" method="post">
+    <select id="selLCManPowerPlanPeriod" name="iLCManPowerPlanPeriod" class="form-control" style="width:125px; display:inline-block;">
+        @for (var z = beginYear; z <= endYear; z++)
+        {
+            <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+        }
+    </select>
+    <select id="selLCManPowerPlanLevel" name="iLCManPowerPlanLevel" class="form-control" style="width:125px; display:inline-block;">
+        @if (ViewBag.CheckLevel0 > 0)
+        {
+            <option value="0" @(ViewBag.LastLevel == "0" ? "selected" : "")>Level 0</option>
+        }
+        @if (ViewBag.CheckLevel1 > 0)
+        {
+            <option value="1" @(ViewBag.LastLevel == "1" ? "selected" : "")>Level 1</option>
+        }
+        @if (ViewBag.CheckLevel2 > 0)
+        {
+            <option value="2" @(ViewBag.LastLevel == "2" ? "selected" : "")>Level 2</option>
+        }
+        @if (ViewBag.CheckLevel3 > 0)
+        {
+            <option value="3" @(ViewBag.LastLevel == "3" ? "selected" : "")>Level 3</option>
+        }
+        @if (ViewBag.CheckLevel4 > 0)
+        {
+            <option value="4" @(ViewBag.LastLevel == "4" ? "selected" : "")>Level 4</option>
+        }
+        @if (ViewBag.CheckLevel5 > 0)
+        {
+            <option value="5" @(ViewBag.LastLevel == "5" ? "selected" : "")>Level 5</option>
+        }
+        @if (ViewBag.CheckLevel6 > 0)
+        {
+            <option value="6" @(ViewBag.LastLevel == "6" ? "selected" : "")>Level 6</option>
+        }
+    </select>
+    <button type="submit" id="btnLCManPowerPlanLevel" style="display:none;">Submit</button>
+</form>
+
+<form action="@Url.Action("ManPowerPlanSign", "LaborCost", new { area = "FA" })" method="post">
+    <div id="divLCMPPSectionSummary" style="overflow:auto;position: relative;">
+        <input type="hidden" name="iMPPSignLevel" id="hfMPPSignLevel" value="@(ViewBag.LastLevel)" />
+        <input type="hidden" name="iMPPSignPeriod" id="hfMPPSignPeriod" value="@(ViewBag.Period)" />
+        <table id="tblLCMPPSectionSummary" class="tablesorter">
+            <thead>
+                <tr>
+                    <th class="filter-false sorter-false text-nowrap c0">
+                        @if (ViewBag.LastLevel != "6")
+                        {
+                            <button type="submit" name="submit" id="btnLCMPPSign" class="btn btn-sm btn-primary d-inline-block" onclick="return confirm('Are you sure want to sign this MPP and OTP data ?')" value="Sign" disabled>Sign</button>
+                        }
+                        @if (ViewBag.LastLevel == "2" || ViewBag.LastLevel == "3" || ViewBag.LastLevel == "4" || ViewBag.LastLevel == "5" || ViewBag.LastLevel == "6")
+                        {
+                            <button type="submit" name="submit" id="btnLCMPPReturn" class="btn btn-sm btn-primary d-inline-block" onclick="return confirm('Are you sure want to return this MPP and OTP data ?')" value="Return" disabled>Return</button>
+                        }
+                    </th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Group-">Group</th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Section-">Section</th>
+                    <th class="filter-false text-nowrap" data-placeholder="-Position-">Position</th>
+                    <th class="filter-select text-nowrap" data-placeholder="-Status-">Status</th>
+                    @for (var q = 0; q <= dateDiff; q++)
+                    {
+                        <th class="text-nowrap sorter-false filter-false">@(currDate.ToString("yyyy-MM"))</th>
+                        currDate = currDate.AddMonths(1);
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.SectionSummary != null)
+                {
+                    foreach (var item in ViewBag.SectionSummary)
+                    {
+                        currSection = item.DeptName;
+                        a++;
+                        if (beforeStatus != "" && beforeSection == item.DeptName && beforeStatus != item.Status)
+                        {
+                            <tr id="@("row"+ beforeStatus + beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+beforeStatus)" data-section="@(beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                    @if (beforeStatus == "Permanent" && ((String.IsNullOrEmpty(beforeSign) && ViewBag.LastLevel == "1") || (String.IsNullOrEmpty(beforeApproved) && ViewBag.LastLevel == "2") || (String.IsNullOrEmpty(beforeApproved2) && ViewBag.LastLevel == "3") || (String.IsNullOrEmpty(beforeApproved3) && ViewBag.LastLevel == "4") || (String.IsNullOrEmpty(beforeHCSign) && ViewBag.LastLevel == "5") || (String.IsNullOrEmpty(beforeHCApproved) && ViewBag.LastLevel == "6")))
+                                    {
+                                        <input type="checkbox" name="iLCMPPSign[]" class="cbLCMPPSign" id="@("cbLCMPPSign" + item.ID)" value="@(beforeSection.Replace(",","#"))" />
+                                    }
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(beforeGroup)</th>
+                                <th class="bold c0 text-nowrap" style="@(beforeStatus == "Permanent" ? "" : "color:#333;")">@(beforeStatus == "Permanent" ? beforeSection : beforeSection)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + beforeStatus)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+                        if (beforeSection != "" && beforeSection != item.DeptName)
+                        {
+                            <tr id="@("row"+ beforeStatus + beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+beforeStatus)" data-section="@(beforeSection.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                    @if (beforeStatus == "Permanent" && ((String.IsNullOrEmpty(beforeSign) && ViewBag.LastLevel == "1") || (String.IsNullOrEmpty(beforeApproved) && ViewBag.LastLevel == "2") || (String.IsNullOrEmpty(beforeApproved2) && ViewBag.LastLevel == "3") || (String.IsNullOrEmpty(beforeApproved3) && ViewBag.LastLevel == "4") || (String.IsNullOrEmpty(beforeHCSign) && ViewBag.LastLevel == "5") || (String.IsNullOrEmpty(beforeHCApproved) && ViewBag.LastLevel == "6")))
+                                    {
+                                        <input type="checkbox" name="iLCMPPSign[]" class="cbLCMPPSign" id="@("cbLCMPPSign" + item.ID)" value="@(beforeSection.Replace(",","#"))" />
+                                    }
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(beforeGroup)</th>
+                                <th class="bold c0 text-nowrap" style="@(beforeStatus == "Permanent" ? "" : "color:#333;")">@(beforeStatus == "Permanent" ? beforeSection : beforeSection)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + beforeStatus)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+                        <tr>
+                            <td class="c0"></td>
+                            <td class="text-nowrap">@(item.Group)</td>
+                            <td class="text-nowrap">@(item.DeptName)</td>
+                            <td class="text-nowrap">@(item.Position)</td>
+                            <td>@(item.Status)</td>
+                            <td class="text-right">@(item.M011)</td>
+                            <td class="text-right">@(item.M012)</td>
+                            <td class="text-right">@(item.M101)</td>
+                            <td class="text-right">@(item.M102)</td>
+                            <td class="text-right">@(item.M103)</td>
+                            <td class="text-right">@(item.M104)</td>
+                            <td class="text-right">@(item.M105)</td>
+                            <td class="text-right">@(item.M106)</td>
+                            <td class="text-right">@(item.M107)</td>
+                            <td class="text-right">@(item.M108)</td>
+                            <td class="text-right">@(item.M109)</td>
+                            <td class="text-right">@(item.M110)</td>
+                            <td class="text-right">@(item.M111)</td>
+                            <td class="text-right">@(item.M112)</td>
+                            <td class="text-right">@(item.M201)</td>
+                            <td class="text-right">@(item.M202)</td>
+                            <td class="text-right">@(item.M203)</td>
+                            <td class="text-right">@(item.M204)</td>
+                            <td class="text-right">@(item.M205)</td>
+                            <td class="text-right">@(item.M206)</td>
+                            <td class="text-right">@(item.M207)</td>
+                            <td class="text-right">@(item.M208)</td>
+                            <td class="text-right">@(item.M209)</td>
+                            <td class="text-right">@(item.M210)</td>
+                            <td class="text-right">@(item.M211)</td>
+                            <td class="text-right">@(item.M212)</td>
+                            <td class="text-right">@(item.M301)</td>
+                            <td class="text-right">@(item.M302)</td>
+                            <td class="text-right">@(item.M303)</td>
+                            <td class="text-right">@(item.M304)</td>
+                            <td class="text-right">@(item.M305)</td>
+                            <td class="text-right">@(item.M306)</td>
+                            <td class="text-right">@(item.M307)</td>
+                            <td class="text-right">@(item.M308)</td>
+                            <td class="text-right">@(item.M309)</td>
+                            <td class="text-right">@(item.M310)</td>
+                            <td class="text-right">@(item.M311)</td>
+                            <td class="text-right">@(item.M312)</td>
+                            <td class="text-right">@(item.M401)</td>
+                            <td class="text-right">@(item.M402)</td>
+                            <td class="text-right">@(item.M403)</td>
+                        </tr>
+                        if (a == cntSummary)
+                        {
+                            <tr id="@("row"+ item.Status + item.DeptName.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))" class="@("row"+item.Status)" data-section="@(item.DeptName.Replace(" ","").Replace("&","").Replace("-","").Replace("/","").Replace(".","").Replace(",","").Replace("(","").Replace(")",""))">
+                                <th class="text-center c0">
+                                    @if (item.Status == "Permanent" && ((String.IsNullOrEmpty(beforeSign) && ViewBag.LastLevel == "1") || (String.IsNullOrEmpty(beforeApproved) && ViewBag.LastLevel == "2") || (String.IsNullOrEmpty(beforeApproved2) && ViewBag.LastLevel == "3") || (String.IsNullOrEmpty(beforeApproved3) && ViewBag.LastLevel == "4") || (String.IsNullOrEmpty(beforeHCSign) && ViewBag.LastLevel == "5") || (String.IsNullOrEmpty(beforeHCApproved) && ViewBag.LastLevel == "6")))
+                                    {
+                                        <input type="checkbox" name="iLCMPPSign[]" class="cbLCMPPSign" id="@("cbLCMPPSign" + item.ID)" value="@(item.DeptName.Replace(",","#"))" />
+                                    }
+                                </th>
+                                <th class="text-nowrap" style="color:#333">@(item.Group)</th>
+                                <th class="bold c0 text-nowrap" style="@(item.Status == "Permanent" ? "" : "color:#333;")">@(item.Status == "Permanent" ? item.DeptName : item.DeptName)</th>
+                                <th></th>
+                                <th class="text-right text-nowrap bold">@("Total " + item.Status)</th>
+                                @for (var q = 0; q <= dateDiff; q++)
+                                {
+                                    <th class="bold text-right" data-math="above-sum">above-sum</th>
+                                }
+                            </tr>
+                        }
+
+                        beforeGroup = item.Group;
+                        beforeSection = item.DeptName;
+                        beforeStatus = item.Status;
+                        beforeSign = item.Sign_By;
+                        beforeApproved = item.Approved_By;
+                        beforeApproved2 = item.Approved_By2;
+                        beforeApproved3 = item.Approved_By3;
+                        beforeHCSign = item.HCSign_By;
+                        beforeHCApproved = item.HCApproved_By;
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th class="c0"></th>
+                    <th></th>
+                    <th colspan="3" class="text-right">Grand Total</th>
+                    @for (var q = 0; q <= dateDiff; q++)
+                    {
+                        <th class="bold text-right" data-math="col-sum">above-sum</th>
+                    }
+                </tr>
+                <tr class="dark-row">
+                    <th class="c0"></th>
+                    <th colspan="45">
+                        <div class="pager">
+                            <button type="button" class="first"><<</button>
+                            <button type="button" class="prev"><</button>
+                            <span class="pagedisplay"></span>
+                            <button type="button" class="next">></button>
+                            <button type="button" class="last">>></button>
+                            <select class="pagesize" title="Select page size" style="color:black;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="40">40</option>
+                                <option value="80">80</option>
+                                <option value="160">160</option>
+                                <option value="320">320</option>
+                                <option value="640">640</option>
+                            </select>
+                            <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</form>
+
+<div id="divLCManPowerPlan" style="overflow:auto;">
+    <form action="@Url.Action("ManPowerPlanDelete", "LaborCost", new { area = "FA" })" method="post">
+        <input type="hidden" name="iMPPDeleteLevel" id="hfMPPDeleteLevel" value="@(ViewBag.LastLevel)" />
+        <input type="hidden" name="iMPPDeletePeriod" id="hfMPPDeletePeriod" value="@(ViewBag.Period)" />
+
+        <table id="tblLCManPowerPlan" class="tablesorter">
+            <thead>
+                <tr>
+                    <th class="filter-false sorter-false text-center"><button type="submit" id="btnLCMPPDelete" class="btn btn-sm btn-primary pull-right" onclick="return confirm('Are you sure want to delete this data ?')" disabled>Delete</button></th>
+                    <th class="filter-select" data-placeholder="-Category-">Category</th>
+                    <th>NIK</th>
+                    <th>Name</th>
+                    <th class="filter-select" data-placeholder="-Section-">Section</th>
+                    <th class="filter-select" data-placeholder="-Position-">Position</th>
+                    <th class="filter-select" data-placeholder="-Status-">Status</th>
+                    <th>Start_Date</th>
+                    <th>End_Date</th>
+                    <th>Remark</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.ManPowerPlan != null)
+                {
+                    foreach (var item in ViewBag.ManPowerPlan)
+                    {
+                        currSection = item.DeptName;
+                        if (String.IsNullOrEmpty(item.NIK))
+                        {
+                            i++;
+                            vacantNIK = "00" + i;
+                            vacantNIK = vacantNIK.Substring(vacantNIK.Length - 2, 2);
+                        }
+                        <tr data-id="@(item.ID)" data-period="@(item.Period)" data-position="@(item.Position)">
+                            <td class="text-center text-nowrap">
+                                @if (item.Source == "MPP" && ((item.OTP.Sign_By == null && ViewBag.LastLevel == "1") || (item.OTP.Approved_By == null && ViewBag.LastLevel == "2") || (item.OTP.Approved_By2 == null && ViewBag.LastLevel == "3") || (item.OTP.Approved_By3 == null && ViewBag.LastLevel == "4") || (item.OTP.HCSign_By == null && ViewBag.LastLevel == "5") || (item.OTP.HCApproved_By == null && ViewBag.LastLevel == "6")))
+                                {
+                                    <input type="checkbox" name="iLCMPPDelete[]" class="cbLCMPPDelete" id="@("cbLCMPPDelete" + item.ID)" value="@(item.ID)" />
+                                }
+                            </td>
+                            <td class="text-nowrap">@(item.Category)</td>
+                            <td>@(!String.IsNullOrEmpty(item.NIK) ? item.NIK : "V." + vacantNIK)</td>
+                            <td class="text-nowrap">@(!String.IsNullOrEmpty(item.NIK) ? item.Name : "Vacant " + vacantNIK)</td>
+                            <td class="text-nowrap">@(item.DeptName)</td>
+                            <td class="text-nowrap">@(item.Position)</td>
+                            <td>@(item.Status)</td>
+                            <td>@(item.Date_From.ToString("MM-yyyy"))</td>
+                            <td>@(item.Date_To.ToString("MM-yyyy"))</td>
+                            @if (ViewBag.Employee.Count > 0 && (ViewBag.LastLevel != "5" || ViewBag.LastLevel != "6"))
+                            {
+                                <td class="tdEditRemark" data-id="@(item.MPP_ID)" data-category="@(item.Category)">@(item.Remark)</td>
+                            }
+                            else
+                            {
+                                <td>@(item.Remark)</td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <tr class="dark-row">
+                    <th colspan="10">
+                        <div class="pager">
+                            <button type="button" class="first"><<</button>
+                            <button type="button" class="prev"><</button>
+                            <span class="pagedisplay"></span>
+                            <button type="button" class="next">></button>
+                            <button type="button" class="last">>></button>
+                            <select class="pagesize" title="Select page size" style="color:black;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="40">40</option>
+                                <option value="80">80</option>
+                                <option value="160">160</option>
+                                <option value="320">320</option>
+                                <option value="640">640</option>
+                            </select>
+                            <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                        </div>
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </form>
+</div>
+<div id="LCManPowerPlanModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Labor Cost - Man Power Plan</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formLCManPowerPlan" action="@Url.Action("ManPowerPlanAdd", "LaborCost", new { area = "FA" })" class="form-horizontal" method="post">
+                <input type="hidden" name="iLCDataID" id="hfLCDataID" value="" />
+                <div class="modal-body">
+
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Period</label>
+                        <div class="col-sm-8">
+                            <label id="lblLCPeriod">@( "FY1" + (Int32.Parse((new DateTime(ViewBag.Period, 1, 1)).ToString("yy")) + 2))</label>
+                            <input type="hidden" id="hfLCPeriod" name="iLCPeriod" value="@(ViewBag.Period)" />
+                            <input type="hidden" id="hfLCFiscal" name="iLCFiscal" value="@( "FY1"+(Int32.Parse((new DateTime(ViewBag.Period, 1, 1)).ToString("yy")) + 2))" />
+                            <input type="hidden" name="iMPPAddLevel" id="hfMPPAddLevel" value="@(ViewBag.LastLevel)" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Type</label>
+                        <div class="col-sm-8">
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="radio" class="form-check-input rbLCType" name="iLCType" value="Vacant">Vacant
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="radio" class="form-check-input rbLCType" name="iLCType" value="Promosi">Promosi
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="radio" class="form-check-input rbLCType" name="iLCType" value="Demosi">Demosi
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="radio" class="form-check-input rbLCType" name="iLCType" value="Mutasi">Mutasi
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <label class="form-check-label">
+                                    <input type="radio" class="form-check-input rbLCType" name="iLCType" value="Pensiun/Resign">Pensiun/Resign
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row rowRelated rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Related Employee<br /><span style="font-size:small;">(Jika Promosi/Demosi/Mutasi)</span></label>
+                        <div class="col-sm-8">
+                            <select id="selLCRelated" name="iLCRelated" class="form-control select2">
+                                <option value="">-Select Employee-</option>
+                                @foreach (var item in ViewBag.employee)
+                                {
+                                    <option value="@(item.NIK)" data-position="@(item.Position)" data-section="@(item.DeptName)">@(item.NIK + " || " + item.Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row rowSection rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Section</label>
+                        <div class="col-sm-8">
+                            <select id="selLCSection" name="iLCSection" class="form-control select2" required>
+                                <option value="">-Select Section-</option>
+                                @foreach (var item in ViewBag.SectionAll)
+                                {
+                                    <option value="@(item.Section_Name)">@(item.Section_Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row rowSectionAll rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Section</label>
+                        <div class="col-sm-8">
+                            <select id="selLCSectionAll" name="iLCSectionAll" class="form-control select2" required>
+                                <option value="">-Select Section-</option>
+                                @foreach (var item in ViewBag.SectionAll)
+                                {
+                                    <option value="@(item.Section_Name)">@(item.Section_Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row rowPosition rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Position</label>
+                        <div class="col-sm-8">
+                            <select id="selLCPosition" name="iLCPosition" class="form-control select2" required>
+                                <option value="">-Select Position-</option>
+                                <option value="CASUAL">CASUAL</option>
+                                <option value="ADMIN">ADMIN</option>
+                                <option value="OPERATOR">OPERATOR</option>
+                                <option value="JUNIOR STAFF">JUNIOR STAFF</option>
+                                <option value="FOREMAN">FOREMAN</option>
+                                <option value="SPECIALIST">SPECIALIST</option>
+                                <option value="JUNIOR ENGINEER">JUNIOR ENGINEER</option>
+                                <option value="ENGINEER">ENGINEER</option>
+                                <option value="GROUP LEADER">GROUP LEADER</option>
+                                <option value="SUPERVISOR">SUPERVISOR</option>
+                                <option value="SENIOR STAFF">SENIOR STAFF</option>
+                                <option value="ASSISTANT MANAGER">ASSISTANT MANAGER</option>
+                                <option value="MANAGER">MANAGER</option>
+                                <option value="SENIOR MANAGER">SENIOR MANAGER</option>
+                                <option value="ASSISTANT GENERAL MANAGER">ASSISTANT GENERAL MANAGER</option>
+                                <option value="DEPUTY GENERAL MANAGER">DEPUTY GENERAL MANAGER</option>
+                                <option value="GENERAL MANAGER">GENERAL MANAGER</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row rowQuantity rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Employee Quantity</label>
+                        <div class="col-sm-8">
+                            <input id="txtLCQty" type="number" name="iLCQty" class="form-control" placeholder="Quantity" value="1" required />
+                        </div>
+                    </div>
+                    <div class="form-group row rowStatus rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Status</label>
+                        <div class="col-sm-8">
+                            <select id="selLCStatus" name="iLCStatus" class="select2" required>
+                                <option value="">-Select Status-</option>
+                                <option value="Contract">Contract</option>
+                                <option value="Permanent">Permanent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row rowStartDate rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Start Date</label>
+                        <div class="col-sm-8 row pr-0">
+                            <div class="col-sm-6  pr-0">
+                                <select id="selLCFromYear" name="iLCFromYear" class="form-control select2" required style="width:125px;">
+                                    <option value="">-Year-</option>
+                                    @for (int z = ViewBag.Period; z <= int.Parse(ViewBag.Period.ToString()) + 4; z++)
+                                    {
+                                        <option value="@(z)">@(z)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-sm-6 p-0">
+                                <select id="selLCFromMonth" name="iLCFromMonth" class="form-control select2" required style="width:125px;" disabled>
+                                    <option value="">-Month-</option>
+                                    <option value="1">Januari</option>
+                                    <option value="2">Februari</option>
+                                    <option value="3">Maret</option>
+                                    <option value="4">April</option>
+                                    <option value="5">Mei</option>
+                                    <option value="6">Juni</option>
+                                    <option value="7">Juli</option>
+                                    <option value="8">Agustus</option>
+                                    <option value="9">September</option>
+                                    <option value="10">Oktober</option>
+                                    <option value="11">November</option>
+                                    <option value="12">Desember</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row rowTimePeriod rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Time Period</label>
+                        <div class="col-sm-8">
+                            <input id="txtLCTimePeriod" type="number" name="iLCTimePeriod" class="form-control" style="width:125px;display:inline-block;" placeholder="Time Period" required /> Month
+                        </div>
+                    </div>
+                    <div class="form-group row rowEndDate rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">End Date</label>
+                        <div class="col-sm-8 row pr-0">
+                            <div class="col-sm-6 pr-0">
+                                <select id="selLCToYear" name="iLCToYear" class="form-control select2" required style="width:125px;">
+                                    <option value="">-Year-</option>
+                                    @for (int z = DateTime.Now.Year; z <= DateTime.Now.Year + 4; z++)
+                                    {
+                                        <option value="@(z)">@(z)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-sm-6 p-0">
+                                <select id="selLCToMonth" name="iLCToMonth" class="form-control select2" required style="width:125px;">
+                                    <option value="">-Month-</option>
+                                    <option value="1">Januari</option>
+                                    <option value="2">Februari</option>
+                                    <option value="3">Maret</option>
+                                    <option value="4">April</option>
+                                    <option value="5">Mei</option>
+                                    <option value="6">Juni</option>
+                                    <option value="7">Juli</option>
+                                    <option value="8">Agustus</option>
+                                    <option value="9">September</option>
+                                    <option value="10">Oktober</option>
+                                    <option value="11">November</option>
+                                    <option value="12">Desember</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row rowRemark rowInput" style="display:none;">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Remark</label>
+                        <div class="col-sm-8">
+                            <textarea id="txtLCRemark" class="form-control" name="iLCRemark"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnDataLCSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button type="reset" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@{
+    ICollection<FA_Section> currFASection = ViewBag.MPPStatusSection;
+    var app1 = currFASection.Where(w => w.labor_cost_approval != null).Count();
+    var app2 = currFASection.Where(w => w.labor_cost_approval2 != null).Count();
+    var app3 = currFASection.Where(w => w.labor_cost_approval3 != null).Count();
+}
+<div id="tblLCMPPStatusWrapper" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">MPP Approval Status</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table id="tblLCMPPStatus" class="tablesorter">
+                    <thead>
+                        <tr>
+                            <th class="filter-select" data-placeholder="-Section-">Section</th>
+                            <th class="filter-select" data-placeholder="-Level 1-">Level 1</th>
+                            @if (app1 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 2-">Level 2</th>
+                            }
+                            @if (app2 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 3-">Level 3</th>
+                            }
+                            @if (app3 > 0)
+                            {
+                                <th class="filter-select" data-placeholder="-Level 4-">Level 4</th>
+                            }
+                            <th class="filter-select" data-placeholder="@(app3 > 0 ? "-Level 5-": (app2  > 0 ? "-Level 4-":"-Level 3-"))">@(app3 > 0 ? "Level 5" : (app2 > 0 ? "Level 4" : "Level 3"))</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.MPPStatus)
+                        {
+                            string currSect = item.Section;
+                            int currPeriod = item.Period;
+                            var sect = db.FA_Section.Where(w => w.Section_Name == currSect && w.Period == currPeriod).FirstOrDefault();
+                            var sign = sect?.sign?.Name;
+                            var approval = sect?.approval?.Name;
+                            var approval2 = sect?.approval2?.Name;
+                            var approval3 = sect?.approval3?.Name;
+                            <tr>
+                                <td class="text-nowrap">@(currSect)</td>
+                                <td class="text-center">
+                                    <button class="@(item.Level_1 > 0 ? "btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(item.Level_1_User != null ? item.Level_1_User.Name:(sign != null? sign :"") )"><i class="@(item.Level_1 > 0 ? "fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Level_1 > 0 ? "Done" : "On Progress")</span>
+                                </td>
+                                @if (app1 > 0)
+                                {
+                                    <td class="text-center">
+                                        <button class="@(item.Level_2 > 0 ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_2_User != null ? item.Level_2_User.Name : (approval != null ? approval : ""))"><i class="@(item.Level_2 > 0 ? "fas fa-check" : "fas fa-times")"></i></button>
+                                        <span style="display:none;">@(item.Level_2 > 0 ? "Done" : "On Progress")</span>
+                                    </td>
+                                }
+                                @if (app2 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval2 != null)
+                                        {
+                                            <button class="@(item.Level_3 > 0 ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_3_User != null ? item.Level_3_User.Name : (approval2 != null ? approval2 : ""))"><i class="@(item.Level_3 > 0 ? "fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Level_3 > 0 ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                @if (app3 > 0)
+                                {
+                                    <td class="text-center">
+                                        @if (approval3 != null)
+                                        {
+                                            <button class="@(item.Level_4 > 0 ? " btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_4_User != null ? item.Level_4_User.Name : (approval3 != null ? approval3 : ""))"><i class="@(item.Level_4 > 0 ? " fas fa-check" : "fas fa-times")"></i></button>
+                                            <span style="display:none;">@(item.Level_4 > 0 ? "Done" : "On Progress")</span>
+                                        }
+                                    </td>
+                                }
+                                <td class="text-center">
+                                    <button class="@(item.Level_5 > 0 ? " btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(item.Level_5_User != null ? item.Level_5_User.Name:"HC Dept")"><i class="@(item.Level_5 > 0 ? " fas fa-check":"fas fa-times")"></i></button>
+                                    <span style="display:none;">@(item.Level_5 > 0 ? "Done" : "On Progress")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="dark-row">
+                            <th colspan="6">
+                                <div class="pager">
+                                    <button type="button" class="first"><<</button>
+                                    <button type="button" class="prev"><</button>
+                                    <span class="pagedisplay"></span>
+                                    <button type="button" class="next">></button>
+                                    <button type="button" class="last">>></button>
+                                    <select class="pagesize" title="Select page size" style="color:black;">
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                    </select>
+                                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                                </div>
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalMPPEditRemark" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Remark</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <textarea id="txtMPPEditRemark" class="form-control" placeholder="Remark">
+                </textarea>
+                <input type="hidden" id="hfMPPEditRemarkID" name="iMPPEditRemarkID" value="" />
+                <input type="hidden" id="hfMPPEditRemarkCat" name="iMPPEditRemarkCat" value="" />
+            </div>
+            <div class="modal-footer">
+                <button id="btnMPPEditRemark" type="button" class="btn btn-primary">Save changes</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="" style="overflow-x:auto;">
+</div>

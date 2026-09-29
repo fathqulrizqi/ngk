@@ -1,0 +1,1645 @@
+﻿@{
+    ViewBag.Title = "Audit Execution";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    bool isAdmin = ViewBag.Role == "Administrator";
+    string userNik = ViewBag.UserNik ?? "";
+    bool isAssignedAuditor = ViewBag.isAssignedAuditor;
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+</style>
+
+<div class="min-h-screen pt-2 pb-10 p-2 sm:p-4 md:p-6 lg:px-0 relative">
+    <div class="max-w-7xl mx-auto">
+
+        <div class="mb-4">
+            <a href="javascript:history.back()" class="inline-flex items-center text-sm font-medium text-white hover:text-blue-700 transition-colors">
+                <i class="bi bi-arrow-left mr-1.5"></i> Back to Sections
+            </a>
+        </div>
+
+        <div id="loadingIndicator" class="text-center py-20">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+            <p class="text-slate-500 text-sm font-medium">Menarik data dari server...</p>
+        </div>
+
+        <div id="mainContent" class="hidden">
+
+            <div class="flex flex-col mb-6 bg-white p-4 sm:p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex flex-col md:flex-row md:justify-between md:items-start">
+                    <div>
+                        <div class="flex items-center gap-3 mb-1">
+                            <h3 id="lblSectionName" class="text-xl sm:text-2xl font-bold text-slate-800 m-0">Loading...</h3>
+                            <span id="lblAuditType" class="bg-blue-100 text-blue-800 text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">...</span>
+                        </div>
+                        <p id="lblAuditName" class="text-xs sm:text-sm text-slate-500 m-0">Loading...</p>
+                        <p class="text-xs sm:text-sm text-slate-500 m-0">No. Dok: PMLK3-MR-09/L3</p>
+                    </div>
+
+                    <div class="md:mt-0 flex flex-col md:items-end w-full md:w-auto mt-4 md:mt-0">
+                        @if (isAdmin)
+                        {
+                            <label class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Audit Period</label>
+                            <form id="formAuditPeriod" class="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                                <input type="hidden" id="inputStakeholderId" name="stakeholderId" />
+                                <input type="date" id="inputStartDate" name="startDate" class="flex-1 sm:flex-none border border-slate-200 bg-slate-50 text-slate-700 rounded-lg shadow-sm py-1.5 px-2 text-xs sm:text-sm focus:ring-blue-500 focus:border-blue-500" />
+                                <span class="text-slate-400 text-sm hidden sm:inline">-</span>
+                                <input type="date" id="inputEndDate" name="endDate" class="flex-1 sm:flex-none border border-slate-200 bg-slate-50 text-slate-700 rounded-lg shadow-sm py-1.5 px-2 text-xs sm:text-sm focus:ring-blue-500 focus:border-blue-500" />
+                                <button type="button" onclick="saveAuditPeriod()" class="w-full sm:w-auto mt-2 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-1.5 rounded-lg shadow-sm text-xs sm:text-sm transition-colors">
+                                    Save
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="text-xs sm:text-sm text-slate-600 flex items-center font-semibold bg-slate-100 px-3 py-1.5 rounded-lg w-full sm:w-auto justify-center md:justify-start">
+                                <i class="bi bi-calendar4 mr-2 text-blue-600"></i>
+                                <span id="lblPeriodDate">Loading...</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <hr class="my-4 border-slate-100">
+                <div class="w-full">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider"><i class="bi bi-ui-radios mr-1"></i> Audit Guide <span class="text-red-500 normal-case font-normal text-[10px]">*Minimal pilih 1</span></label>
+                        <span id="guideSaveStatus" class="text-[10px] sm:text-xs font-bold transition-all hidden"></span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 text-xs sm:text-sm text-slate-700 font-medium">
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="Customer Claim" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> Customer Claim</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="Rejection" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> Rejection</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="PQCC" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> PQCC</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="CSR" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> CSR</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="Temuan audit" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> Temuan audit</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="FMEA" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> FMEA</label>
+                        <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600"><input type="checkbox" value="Klausul ISO" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> Klausul ISO</label>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 col-span-2 md:col-span-1">
+                            <label class="flex items-center gap-2 cursor-pointer hover:text-blue-600 whitespace-nowrap">
+                                <input type="checkbox" id="chkLainLain" value="Lain-lain" class="guide-checkbox w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"> Lain-lain
+                            </label>
+                            <input type="text" id="txtLainLain" class="hidden text-xs border border-slate-300 rounded px-2 py-1 w-full focus:ring-blue-500 focus:border-blue-500" placeholder="Sebutkan..." />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col lg:flex-row lg:items-start gap-6">
+
+                <div class="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-4 sm:gap-5 lg:sticky lg:top-6">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
+                        <div class="flex justify-between items-center mb-3 sm:mb-4">
+                            <h6 class="font-bold text-slate-800 flex items-center text-sm m-0">
+                                <div class="w-5 h-5 sm:w-6 sm:h-6 rounded bg-blue-100 flex items-center justify-center mr-2">
+                                    <i class="bi bi-person-check-fill text-blue-600 text-[10px] sm:text-xs"></i>
+                                </div>
+                                Auditors
+                            </h6>
+                            @if (isAdmin)
+                            {
+                                <button type="button" onclick="openPersonModal('Auditor')" class="text-[10px] sm:text-xs bg-slate-50 hover:bg-blue-50 text-blue-600 font-semibold py-1 px-2.5 rounded border border-slate-200 hover:border-blue-200 transition-colors">
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            }
+                        </div>
+                        <div id="auditorsListContainer" class="space-y-3"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5">
+                        <div class="flex justify-between items-center mb-3 sm:mb-4">
+                            <h6 class="font-bold text-slate-800 flex items-center text-sm m-0">
+                                <div class="w-5 h-5 sm:w-6 sm:h-6 rounded bg-emerald-100 flex items-center justify-center mr-2">
+                                    <i class="bi bi-people-fill text-emerald-600 text-[10px] sm:text-xs"></i>
+                                </div>
+                                Auditees
+                            </h6>
+                            @if (isAdmin)
+                            {
+                                <button type="button" onclick="openPersonModal('Auditee')" class="text-[10px] sm:text-xs bg-slate-50 hover:bg-emerald-50 text-emerald-600 font-semibold py-1 px-2.5 rounded border border-slate-200 hover:border-emerald-200 transition-colors">
+                                    <i class="bi bi-plus-lg"></i> Add
+                                </button>
+                            }
+                        </div>
+                        <div id="auditeesListContainer" class="space-y-3"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm pt-3 p-4 sm:p-5">
+                        <h6 class="font-bold text-slate-800 mb-3 sm:mb-4 text-sm sm:text-base">Section Progress</h6>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[10px] sm:text-xs font-medium text-slate-500">Answered</span>
+                            <span id="lblProgressCount" class="text-[10px] sm:text-xs font-bold text-slate-800">0 / 0</span>
+                        </div>
+                        <div class="w-full bg-slate-200/70 rounded-full h-2 mb-4 overflow-hidden">
+                            <div id="progressBar" class="bg-blue-500 h-2 rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
+                        </div>
+                        <hr class="border-slate-100 mb-3">
+                        <div class="text-[10px] sm:text-xs font-medium text-slate-500 mb-2 sm:mb-3">Status Summary</div>
+                        <div class="flex flex-wrap gap-2">
+                            <span id="countOK" class="bg-green-100 text-green-700 text-[10px] sm:text-xs font-medium px-2.5 py-1 rounded shadow-sm">0 OK</span>
+                            <span id="countOFI" class="bg-blue-100 text-blue-700 text-[10px] sm:text-xs font-medium px-2.5 py-1 rounded shadow-sm">0 OFI</span>
+                            <span id="countMINOR" class="bg-orange-100 text-orange-700 text-[10px] sm:text-xs font-medium px-2.5 py-1 rounded shadow-sm">0 MINOR</span>
+                            <span id="countMAJOR" class="bg-red-100 text-red-700 text-[10px] sm:text-xs font-medium px-2.5 py-1 rounded shadow-sm">0 MAJOR</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full lg:w-2/3 xl:w-3/4 flex flex-col gap-4 sm:gap-5">
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-3 sm:p-4 flex flex-wrap justify-between items-center gap-3">
+                        <h6 class="font-bold text-slate-800 flex items-center text-sm md:text-base m-0">
+                            <i class="bi bi-ui-checks text-blue-600 mr-2"></i> Audit Questions
+                            <span id="lblTotalQuestionsBadge" class="ml-3 bg-slate-100 text-slate-600 border border-slate-200 text-xs font-bold px-2.5 py-0.5 rounded-full">0</span>
+                        </h6>
+
+                        <div class="flex gap-2">
+                            @if (isAssignedAuditor || isAdmin)
+                            {
+                                <button type="button" onclick="openAddQuestionModal()" class="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1.5 px-3 rounded-lg shadow-sm text-sm transition-colors flex items-center">
+                                    <i class="bi bi-plus mr-1.5"></i> Add Question
+                                </button>
+                            }
+                            @if (isAdmin)
+                            {
+                                <button type="button" onclick="openImportQuestionModal()" class="w-full sm:w-auto justify-center bg-[#107c41] hover:bg-[#0c5e31] text-white font-semibold py-1.5 px-3 rounded-lg shadow-sm text-sm transition-colors flex items-center">
+                                    <i class="bi bi-file-earmark-excel mr-1.5"></i> Import Question
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <form id="auditForm" method="post" action="SubmitAuditSection" enctype="multipart/form-data">
+                        <input type="hidden" id="formStakeholderId" name="stakeholderId" />
+
+                        <div id="questionsContainer"></div>
+
+                        <div id="generalAuditNoteContainer" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 mt-4 sm:mt-5 transition-all">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="text-xs sm:text-sm font-bold text-slate-700 uppercase tracking-wider"><i class="bi bi-journal-text mr-1 text-blue-600"></i> General Audit Note</label>
+                                <span id="auditNoteSaveStatus" class="text-[10px] sm:text-xs font-bold transition-all hidden"></span>
+                            </div>
+                            <textarea id="txtGeneralAuditNote" class="block w-full border border-slate-200 text-slate-800 rounded-lg shadow-sm p-3 sm:p-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm resize-y transition-shadow" rows="4" placeholder="Tuliskan catatan umum, rangkuman, atau kesimpulan audit di sini..."></textarea>
+                        </div>
+                        <div id="saveActionContainer" class="hidden bg-white p-3 sm:p-4 rounded-xl border border-slate-200 shadow-sm flex-col sm:flex-row justify-between items-center mt-4 mb-8 gap-3 sm:gap-4">
+                            <span id="lblBottomProgress" class="text-xs sm:text-sm font-medium text-slate-500 text-center sm:text-left">Progress: 0 of 0 questions answered</span>
+
+                            <button type="button" id="btnSubmitAuditSection" onclick="submitAudit()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 sm:py-2.5 px-8 rounded-lg text-sm transition-colors shadow-sm flex items-center justify-center cursor-pointer">
+                                <i class="bi bi-send-check-fill mr-2"></i> Submit Audit
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="personModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-md overflow-hidden transition-all">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 opacity-90 flex items-center justify-between">
+            <h3 id="personModalTitle" class="text-xl font-bold text-white tracking-wide">Add Person</h3>
+            <button type="button" onclick="closePersonModal()" class="text-blue-100 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="personForm" class="space-y-4">
+                <input type="hidden" id="personRole" name="role" />
+                <input type="hidden" id="personNik" name="nik" />
+                <input type="hidden" id="personName" name="person_name" />
+                <input type="hidden" id="personEmail" name="email" />
+                <input type="hidden" id="personSection" name="section" />
+                <input type="hidden" id="personCategoryAudit" name="category_audit" />
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Select Person</label>
+                    <select id="personSelect" onchange="handlePersonSelection(this)" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all cursor-pointer">
+                        <option value="" disabled selected>-- Select Person --</option>
+                    </select>
+                </div>
+                <div id="personDetailPreview" class="hidden mt-3 p-3 bg-slate-50 border border-slate-100 rounded-lg text-xs text-slate-600">
+                    <p><strong>NIK:</strong> <span id="previewNik">-</span></p>
+                    <p><strong>Email:</strong> <span id="previewEmail">-</span></p>
+                    <p><strong>Section:</strong> <span id="previewSection">-</span></p>
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button type="button" onclick="closePersonModal()" class="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Cancel
+            </button>
+            <button type="button" onclick="savePerson()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 transition-colors text-white rounded-lg text-sm font-semibold shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-500/30">
+                Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="addQuestionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-lg overflow-hidden transition-all">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-500 opacity-90 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white tracking-wide">Add New Question</h3>
+            <button type="button" onclick="closeAddQuestionModal()" class="text-blue-100 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="addQuestionForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Evidence</label>
+                    <input type="text" id="add_process_name" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600" placeholder="Ya/Tidak" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Clausul</label>
+                    <input type="text" id="add_clausul" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600" placeholder="e.g. 7.1.2" required />
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Question</label>
+                    <textarea id="add_question" rows="3" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 resize-y" placeholder="Type the question here..." required></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button type="button" onclick="closeAddQuestionModal()" class="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50">Cancel</button>
+            <button type="button" onclick="submitAddQuestion()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-sm">Save Question</button>
+        </div>
+    </div>
+</div>
+
+<div id="importQuestionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-md overflow-hidden transition-all">
+        <div class="px-6 py-4 bg-gradient-to-r from-[#107c41] to-[#0c5e31] opacity-90 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-white tracking-wide">Import Questions</h3>
+            <button type="button" onclick="closeImportQuestionModal()" class="text-green-100 hover:text-white transition-colors">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <div class="p-6">
+            <form id="importQuestionForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Upload Excel File</label>
+                    <input type="file" id="import_excel_file" accept=".xlsx, .xls" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:outline-none file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" required />
+                </div>
+            </form>
+        </div>
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button type="button" onclick="closeImportQuestionModal()" class="px-5 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50">Cancel</button>
+            <button type="button" onclick="submitImportQuestion()" class="px-5 py-2 bg-[#107c41] hover:bg-[#0c5e31] text-white rounded-lg text-sm font-semibold shadow-sm">Import Now</button>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+       const masterAuditors = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            ViewBag.Auditor ?? new List<object>(),
+            new Newtonsoft.Json.JsonSerializerSettings { ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore }
+        ));
+
+        const masterAuditees = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            ViewBag.Auditie ?? new List<object>(),
+            new Newtonsoft.Json.JsonSerializerSettings { ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore }
+        ));
+
+        const listUser = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(
+            ViewBag.ListUser ?? new List<object>(),
+            new Newtonsoft.Json.JsonSerializerSettings { ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore }
+        ));
+
+        console.log(listUser);
+
+        const currentUserNik = '@userNik';
+        const jsIsAdmin = @(isAdmin.ToString().ToLower());
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramStakeholderId = urlParams.get('stakeholderId');
+        const paramAuditType = urlParams.get('type');
+        const judgementCriteriaList = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.CriteriaList ?? new List<object>()));
+
+        const apiInfoUrl = '@Url.Action("GetAuditInfo", "EAudit")';
+        const apiAuditorUrl = '@Url.Action("GetAuditAuditor", "EAudit")';
+        const apiAuditieUrl = '@Url.Action("GetAuditAuditie", "EAudit")';
+        const apiQuestionUrl = '@Url.Action("GetAuditQuestion", "EAudit")';
+        const apiGetGuideUrl = '@Url.Action("GetAuditGuides", "EAudit")';
+        const apiSaveGuideUrl = '@Url.Action("SaveAuditGuides", "EAudit")';
+
+        // --- API URL UNTUK AUDIT NOTE ---
+        const apiGetAuditNoteUrl = '@Url.Action("GetAuditNote", "EAudit")';
+        const apiSaveAuditNoteUrl = '@Url.Action("SaveAuditNote", "EAudit")';
+
+        window.isSystemAdmin = jsIsAdmin;
+        window.isAssignedAuditor = false;
+
+        $(document).ready(function() {
+            if (!paramStakeholderId || !paramAuditType) {
+                alert("Parameter tidak lengkap di URL!");
+                return;
+            }
+            fetchDataParalel();
+        });
+
+        function fetchDataParalel() {
+            $('#loadingIndicator').removeClass('hidden');
+            $('#mainContent').addClass('hidden');
+
+            var reqInfo = $.ajax({ url: apiInfoUrl, type: 'GET', data: { stakeholderId: paramStakeholderId } });
+            var reqAuditor = $.ajax({ url: apiAuditorUrl, type: 'GET', data: { stakeholderId: paramStakeholderId, type: paramAuditType } });
+            var reqAuditie = $.ajax({ url: apiAuditieUrl, type: 'GET', data: { stakeholderId: paramStakeholderId, type: paramAuditType } });
+            var reqQuestion = $.ajax({ url: apiQuestionUrl, type: 'GET', data: { stakeholderId: paramStakeholderId, type: paramAuditType } });
+
+            $.when(reqInfo, reqAuditor, reqAuditie, reqQuestion)
+                .done(function (resInfo, resAuditor, resAuditie, resQuestion) {
+                    var dataInfo = resInfo[0];
+                    var dataAuditor = resAuditor[0];
+                    var dataAuditie = resAuditie[0];
+                    var dataQuestion = resQuestion[0];
+
+                    if (dataInfo.success) renderHeader(dataInfo.data);
+
+                    window.info = dataInfo.data;
+
+                    window.isAssignedAuditor = false;
+                    if (dataAuditor.success && dataAuditor.data) {
+                        window.isAssignedAuditor = dataAuditor.data.some(a => String(a.nik).trim() === String(currentUserNik).trim());
+                    }
+
+                    if (!window.isAssignedAuditor) {
+                        $('#btnSubmitAuditSection').hide();
+                    } else {
+                        $('#btnSubmitAuditSection').show();
+                    }
+
+                    loadAuditGuides();
+                    loadAuditNote(); // Tarik catatan audit
+
+                    if (dataAuditor.success) renderPersons(dataAuditor.data, '#auditorsListContainer', 'No auditors assigned.');
+                    if (dataAuditie.success) renderPersons(dataAuditie.data, '#auditeesListContainer', 'No auditees assigned.');
+
+                    if (dataQuestion.success) {
+                        renderQuestions(dataQuestion.data);
+                        let total = dataQuestion.data.length;
+                        let answered = dataQuestion.data.filter(q => q.score && q.score.trim() !== '').length;
+                        applyProgressUI(answered, total, dataQuestion.summary);
+                    }
+
+                    $('#loadingIndicator').addClass('hidden');
+                    $('#mainContent').removeClass('hidden');
+                })
+                .fail(function (xhr, status, error) {
+                    console.error("Terjadi error saat fetch data:", error);
+                    alert("Gagal menghubungi server. Periksa koneksi atau console.");
+                });
+        }
+
+        // ====================================================
+        // FUNGSI LOAD & SAVE GENERAL AUDIT NOTE
+        // ====================================================
+
+        function loadAuditNote() {
+            // Pengaturan disabled state
+            if (!window.isAssignedAuditor) {
+                 $('#txtGeneralAuditNote')
+                    .prop('disabled', true)
+                    .addClass('bg-slate-100 cursor-not-allowed opacity-75 text-slate-500');
+            } else {
+                 $('#txtGeneralAuditNote')
+                    .prop('disabled', false)
+                    .removeClass('bg-slate-100 cursor-not-allowed opacity-75 text-slate-500')
+                    .addClass('bg-white');
+            }
+
+            $.ajax({
+                url: apiGetAuditNoteUrl,
+                type: 'GET',
+                data: { stakeholderId: paramStakeholderId, categoryAudit: paramAuditType },
+                success: function (res) {
+                    if (res.success) {
+                        $('#txtGeneralAuditNote').val(res.data);
+                    }
+                }
+            });
+        }
+
+        let typingTimerNote;
+        $(document).on('input', '#txtGeneralAuditNote', function () {
+            if (window.isAssignedAuditor) {
+                clearTimeout(typingTimerNote);
+                // Menunggu user selesai mengetik (1 detik) sebelum auto-save
+                typingTimerNote = setTimeout(function () {
+                    saveAuditNote();
+                }, 1000);
+            }
+        });
+
+        function saveAuditNote() {
+            let noteContent = $('#txtGeneralAuditNote').val();
+            let $status = $('#auditNoteSaveStatus');
+
+            $status.html('<i class="bi bi-arrow-repeat animate-spin inline-block"></i> Menyimpan...')
+                .removeClass('text-emerald-500 text-red-500 hidden')
+                .addClass('text-slate-400 inline-block');
+
+            const dto = {
+                audit_event_stakeholder_id: paramStakeholderId,
+                category_audit: paramAuditType,
+                note: noteContent
+            };
+
+            $.ajax({
+                url: apiSaveAuditNoteUrl,
+                type: 'POST',
+                data: dto,
+                success: function (res) {
+                    if (res.success) {
+                        $status.html('<i class="bi bi-check2-all"></i> Tersimpan')
+                            .removeClass('text-slate-400')
+                            .addClass('text-emerald-500');
+                        setTimeout(() => $status.fadeOut(300), 2500);
+                    } else {
+                        $status.html('<i class="bi bi-exclamation-triangle"></i> Gagal Menyimpan')
+                            .removeClass('text-slate-400')
+                            .addClass('text-red-500');
+                    }
+                },
+                error: function () {
+                    $status.html('<i class="bi bi-wifi-off"></i> Error Koneksi')
+                        .removeClass('text-slate-400')
+                        .addClass('text-red-500');
+                }
+            });
+        }
+
+
+        // ====================================================
+        // SISANYA ADALAH SCRIPT BAWAAN ANDA
+        // ====================================================
+
+        function renderHeader(info) {
+            if (!info) return;
+
+            $('#lblSectionName').text(info.section_name || 'N/A');
+            $('#lblAuditType').text(`${paramAuditType} Audit`);
+            $('#lblAuditName').text(info.audit_name || 'N/A');
+
+            $('#inputStakeholderId').val(info.stakeholder_id);
+            $('#formStakeholderId').val(info.stakeholder_id);
+
+            const formatDate = (dateStr, isInput) => {
+                if (!dateStr) return '';
+
+                let timestamp = dateStr;
+                if (typeof dateStr === 'string' && dateStr.indexOf('/Date(') > -1) {
+                    timestamp = parseInt(dateStr.replace(/[^0-9]/g, ''));
+                }
+
+                const d = new Date(timestamp);
+
+                if (isNaN(d.getTime())) return '';
+
+                if (isInput) {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+
+                return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+            };
+
+            if (jsIsAdmin && $('#inputStartDate').length) {
+                $('#inputStartDate').val(formatDate(info.start_event, true));
+                $('#inputEndDate').val(formatDate(info.end_event, true));
+            } else if ($('#lblPeriodDate').length) {
+                $('#lblPeriodDate').text(`${formatDate(info.start_event, false)} - ${formatDate(info.end_event, false)}`);
+            }
+        }
+
+        function renderPersons(dataList, containerSelector, emptyMsg) {
+            const $container = $(containerSelector);
+            $container.empty();
+
+            if (!dataList || dataList.length === 0) {
+                $container.html(`<div class="p-3 bg-slate-50 border border-slate-100 rounded-lg text-center text-[10px] sm:text-xs text-slate-400 italic">${emptyMsg}</div>`);
+                return;
+            }
+
+            let html = '';
+            $.each(dataList, function(index, p) {
+                let deleteBtn = jsIsAdmin ? `
+                    <button type="button" onclick="deletePerson('${p.audity_auditor_id}')" class="hidden sm:group-hover:flex sm:absolute right-2 top-1/2 sm:-translate-y-1/2 w-6 h-6 items-center justify-center bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded transition-colors mt-2 sm:mt-0" title="Remove">
+                        <i class="bi bi-trash text-xs"></i>
+                    </button>
+                ` : '';
+
+                html += `
+                    <div id="person_${p.audity_auditor_id}" class="relative group p-3 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-lg transition-colors flex flex-col sm:block">
+                        <h6 class="font-bold text-slate-800 text-xs sm:text-sm mb-0.5 line-clamp-1 pr-0 sm:pr-6">${p.person_name || '-'}</h6>
+                        <div class="text-[9px] sm:text-[10px] text-slate-500 font-medium uppercase tracking-wider mb-1">${p.role || '-'}</div>
+                        <div class="text-[10px] sm:text-xs text-blue-600 truncate pr-0 sm:pr-6"><i class="bi bi-envelope mr-1"></i>${p.email || '-'}</div>
+                        ${deleteBtn}
+                    </div>
+                `;
+            });
+            $container.html(html);
+        }
+
+        function openPersonModal(role) {
+            $('#personModalTitle').text('Add ' + role);
+            $('#personRole').val(role);
+
+            $('#personForm')[0].reset();
+            $('#personDetailPreview').addClass('hidden');
+            $('#personCategoryAudit').val(paramAuditType);
+
+            const $select = $('#personSelect');
+            $select.empty();
+            $select.append(`<option value="" disabled selected>-- Select ${role} --</option>`);
+
+            const dataSource = listUser;
+
+            if (dataSource && dataSource.length > 0) {
+                $.each(dataSource, function(i, p) {
+                    $select.append(`<option value="${p.NIK}"
+                                            data-name="${p.name || ''}"
+                                            data-email="${p.email || ''}"
+                                            data-section="${window.info.section_name}">${p.name} (${p.NIK})</option>`);
+                });
+            } else {
+                $select.append(`<option value="" disabled>Data Master ${role} Kosong</option>`);
+            }
+
+            if(role.includes('Audit')) {
+                if (role === 'Auditee' || role === 'Auditee') {
+                    $('#personModal .bg-gradient-to-r').removeClass('from-blue-600 to-blue-500').addClass('from-emerald-600 to-emerald-500');
+                    $('#personModal button.bg-blue-600').removeClass('bg-blue-600 hover:bg-blue-700').addClass('bg-emerald-600 hover:bg-emerald-700');
+                } else {
+                    $('#personModal .bg-gradient-to-r').removeClass('from-emerald-600 to-emerald-500').addClass('from-blue-600 to-blue-500');
+                    $('#personModal button.bg-emerald-600').removeClass('bg-emerald-600 hover:bg-emerald-700').addClass('bg-blue-600 hover:bg-blue-700');
+                }
+            }
+
+            $('#personModal').removeClass('hidden').addClass('flex');
+        }
+
+        function handlePersonSelection(selectElement) {
+            const $selectedOption = $(selectElement).find(':selected');
+
+            const nik = $selectedOption.val();
+            const name = $selectedOption.data('name');
+            const email = $selectedOption.data('email');
+            const section = $selectedOption.data('section');
+
+            $('#personNik').val(nik);
+            $('#personName').val(name);
+            $('#personEmail').val(email);
+            $('#personSection').val(section);
+
+            $('#previewNik').text(nik || '-');
+            $('#previewEmail').text(email || '-');
+            $('#previewSection').text(section || '-');
+            $('#personDetailPreview').removeClass('hidden');
+        }
+
+        function closePersonModal() {
+            $('#personModal').addClass('hidden').removeClass('flex');
+        }
+
+        function savePerson() {
+            const stakeholderId = $('#inputStakeholderId').val();
+            const addedRole = $('#personRole').val();
+
+            const dataPayload = {
+                audit_event_stakeholder_id: stakeholderId,
+                person_name: $('#personName').val(),
+                nik: $('#personNik').val(),
+                email: $('#personEmail').val(),
+                section: $('#personSection').val(),
+                role: $('#personRole').val(),
+                category_audit: $('#personCategoryAudit').val()
+            };
+
+            if(!dataPayload.person_name || !dataPayload.nik) {
+                Swal.fire('Peringatan', 'Silakan pilih person dari dropdown terlebih dahulu.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Menyimpan...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("AddPerson", "EAudit")',
+                type: 'POST',
+                data: dataPayload,
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire('Berhasil!', res.message, 'success');
+                        closePersonModal();
+                        refreshPersonList(addedRole, stakeholderId);
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire('Error', 'Terjadi kesalahan pada server.', 'error');
+                }
+            });
+
+            function refreshPersonList(role, stakeholderId) {
+                let apiUrl = '';
+                let container = '';
+                let emptyMsg = '';
+
+                if (role === 'Auditor') {
+                    apiUrl = apiAuditorUrl;
+                    container = '#auditorsListContainer';
+                    emptyMsg = 'No auditors assigned.';
+                } else if (role === 'Auditie' || role === 'Auditee') {
+                    apiUrl = apiAuditieUrl;
+                    container = '#auditeesListContainer';
+                    emptyMsg = 'No auditees assigned.';
+                }
+
+                $(container).html('<div class="animate-pulse flex space-x-4"><div class="flex-1 space-y-2 py-1"><div class="h-3 bg-slate-200 rounded w-3/4"></div><div class="h-3 bg-slate-200 rounded w-1/2"></div></div></div>');
+
+                $.ajax({
+                    url: apiUrl,
+                    type: 'GET',
+                    data: { stakeholderId: stakeholderId, type: paramAuditType },
+                    success: function (res) {
+                        if (res.success) {
+                            renderPersons(res.data, container, emptyMsg);
+                        } else {
+                            $(container).html(`<div class="text-xs text-red-500 p-2">Gagal memuat ulang data.</div>`);
+                        }
+                    },
+                    error: function () {
+                        $(container).html(`<div class="text-xs text-red-500 p-2">Error koneksi saat memuat data.</div>`);
+                    }
+                });
+            }
+        }
+
+        function deletePerson(personId) {
+            Swal.fire({
+                title: 'Hapus Peserta?',
+                text: "Anda yakin ingin menghapus peserta ini dari audit?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("DeletePerson", "EAudit")',
+                        type: 'POST',
+                        data: { id: personId },
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    toast: true, position: 'top-end', showConfirmButton: false,
+                                    timer: 2000, icon: 'success', title: response.message
+                                });
+
+                                $(`#person_${personId}`).fadeOut(300, function() {
+                                    $(this).remove();
+                                    refreshPersonList()
+                                });
+                            } else {
+                                Swal.fire('Gagal', response.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error', 'Gagal menghubungi server. Periksa koneksi Anda.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+
+        function renderQuestions(questions) {
+            const $container = $('#questionsContainer');
+            const $saveContainer = $('#saveActionContainer');
+            const $badgeCount = $('#lblTotalQuestionsBadge');
+            const $generalNoteContainer = $('#generalAuditNoteContainer');
+
+            $container.empty();
+
+            if (!questions || questions.length === 0) {
+                $badgeCount.text("0");
+                $container.html(`
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8 md:p-12 text-center">
+                        <div class="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                            <i class="bi bi-inbox text-slate-400 text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h4 class="text-base sm:text-lg font-bold text-slate-800 mb-1">No Questions Found</h4>
+                        <p class="text-slate-500 text-xs sm:text-sm">Belum ada soal yang dimuat untuk section ini.</p>
+                    </div>
+                `);
+                $saveContainer.addClass('hidden').removeClass('flex');
+                $generalNoteContainer.addClass('hidden');
+                return;
+            }
+
+            $badgeCount.text(questions.length);
+            $saveContainer.removeClass('hidden').addClass('flex');
+            $generalNoteContainer.removeClass('hidden');
+
+            let html = '';
+            $.each(questions, function (idx, q) {
+                const qIndex = idx + 1;
+
+                let editBtnHtml = jsIsAdmin ? `
+                <div class="absolute top-3 right-3 sm:top-4 sm:right-4 flex gap-2 z-10">
+                    <button type="button" id="btnCancelEdit_${idx}" onclick="cancelEdit(${idx})" class="hidden text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-200 border border-slate-200 p-1.5 sm:p-2 rounded-lg transition-colors shadow-sm" title="Cancel">
+                        <i class="bi bi-x-lg text-xs sm:text-base"></i>
+                    </button>
+                    <button type="button" id="btnSaveEdit_${idx}" onclick="saveQuestionInline('${q.question_id}', ${idx})" class="hidden text-emerald-600 hover:text-white bg-emerald-50 hover:bg-emerald-500 border border-emerald-200 hover:border-emerald-500 p-1.5 sm:p-2 rounded-lg transition-colors shadow-sm" title="Save Changes">
+                        <i class="bi bi-check-lg text-xs sm:text-base"></i>
+                    </button>
+                    <button type="button" id="btnToggleEdit_${idx}" onclick="toggleEdit(${idx})" class="text-slate-400 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 border border-slate-200 p-1.5 sm:p-2 rounded-lg transition-colors shadow-sm" title="Edit Question">
+                        <i class="bi bi-pencil-square text-xs sm:text-base"></i>
+                    </button>
+                    <button type="button" onclick="deleteQuestion('${q.question_id}')" class="text-slate-400 hover:text-red-600 bg-slate-50 hover:bg-red-50 border border-slate-200 p-1.5 sm:p-2 rounded-lg transition-colors shadow-sm" title="Delete Question">
+                        <i class="bi bi-trash text-xs sm:text-base"></i>
+                    </button>
+                </div>
+                ` : '';
+
+                let evidenceHtml = `<div id="evidenceList_${idx}" class="mt-2 sm:mt-3 flex flex-wrap gap-2">`;
+                if (q.Evidences && q.Evidences.length > 0) {
+                    $.each(q.Evidences, function (i, ev) {
+                        let btnRemove = window.isAssignedAuditor ?
+                            `<button type="button" onclick="removeEvidenceUI(this, ${idx}, '${q.question_id}')" class="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] shadow-sm z-10" title="Hapus file"><i class="bi bi-x"></i></button>` : '';
+
+                        evidenceHtml += `
+                        <div class="relative group inline-block existing-evidence" data-id="${ev.evidence_id}">
+                            <button type="button" onclick="downloadEvidence('${ev.file_url}', 'Bukti_${qIndex}_File_${i + 1}')" class="text-[10px] sm:text-xs bg-slate-50 text-slate-600 font-medium px-2 py-1 sm:px-3 sm:py-1.5 rounded-md border border-slate-200 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center shadow-sm cursor-pointer">
+                                <i class="bi bi-download mr-1 sm:mr-1.5 text-blue-500"></i> Unduh File ${i + 1}
+                            </button>
+                            ${btnRemove}
+                        </div>
+                        `;
+                    });
+                }
+                evidenceHtml += `</div>`;
+
+                let scoreOptionsHtml = `<option value="" disabled ${!q.score ? 'selected' : ''}>-- Select Score --</option>`;
+                if (typeof judgementCriteriaList !== 'undefined') {
+                    $.each(judgementCriteriaList, function (i, crit) {
+                        let isSelected = (q.score === crit.score) ? 'selected' : '';
+                        scoreOptionsHtml += `<option value="${crit.score}" data-default-judgement="${crit.judgement}" data-criteria="${crit.criteria}" ${isSelected}>${crit.score} (${crit.judgement})</option>`;
+                    });
+                }
+
+                const safeClausul = q.clausul ? q.clausul.replace(/"/g, '&quot;') : '';
+                const safeQuestion = q.question ? q.question.replace(/"/g, '&quot;') : '';
+
+                let f_prob = '', f_loc = '', f_obj = '', f_ref = '';
+                if (q.Finding && q.Finding.length > 0) {
+                    f_prob = q.Finding[0].problem || '';
+                    f_loc = q.Finding[0].location || '';
+                    f_obj = q.Finding[0].object_name || '';
+                    f_ref = q.Finding[0].reference || '';
+                }
+
+                let judgeVal = (q.judgement || '').toUpperCase().trim();
+                let isFindingHidden = (judgeVal === 'MINOR' || judgeVal === 'MAJOR') ? '' : 'hidden';
+
+                const disableAttr = !window.isAssignedAuditor ? 'disabled' : '';
+                const readOnlyBgClass = !window.isAssignedAuditor ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'bg-white';
+                const readOnlySelectBgClass = !window.isAssignedAuditor ? 'bg-slate-100 cursor-not-allowed opacity-75' : 'bg-slate-50 cursor-pointer';
+
+                html += `
+                <div class="relative bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-5 md:p-6 mb-4 sm:mb-5 transition-all hover:border-blue-100">
+                    ${editBtnHtml}
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 pr-16 sm:pr-24">
+                        <span class="bg-blue-600 text-white text-[10px] sm:text-xs font-bold w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-lg shadow-sm">Q${qIndex}</span>
+                        <span id="lblClausul_${idx}" class="bg-slate-100 text-slate-600 border border-slate-200 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 sm:py-1 rounded uppercase tracking-wider">
+                            Clausul: ${q.clausul || '-'}
+                        </span>
+                        <input type="text" id="inputClausul_${idx}" class="hidden text-xs border border-blue-400 bg-blue-50 text-blue-800 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-32 shadow-inner" value="${safeClausul}" placeholder="Ketik Clausul..." />
+                    </div>
+                    <h6 id="lblQuestion_${idx}" class="font-bold text-slate-800 mb-4 sm:mb-6 text-sm sm:text-base leading-relaxed pr-16 sm:pr-24">${q.question || '-'}</h6>
+                    <textarea id="inputQuestion_${idx}" class="hidden w-full font-semibold text-slate-800 mb-4 sm:mb-6 text-sm sm:text-base leading-relaxed border-2 border-blue-400 bg-blue-50 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-inner resize-y" rows="3" placeholder="Ketik Pertanyaan...">${safeQuestion}</textarea>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-2">
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Score / Judgment</label>
+                            <input type="hidden" name="responses[${idx}].question_id" value="${q.question_id}" />
+                            <select ${disableAttr} name="responses[${idx}].score" onchange="handleScoreChange(this, ${idx}); autoSaveAnswer('${q.question_id}', ${idx})" class="q-score-dropdown block w-full ${readOnlySelectBgClass} border border-slate-200 text-slate-800 font-medium rounded-lg shadow-sm py-2 px-2 sm:py-2.5 sm:px-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm transition-shadow">
+                                ${scoreOptionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Evidence Upload</label>
+                            <input ${disableAttr} type="file" name="responses[${idx}].evidenceFiles" onchange="autoSaveAnswer('${q.question_id}', ${idx})" multiple accept=".jpg,.jpeg,.png,.pdf" class="block w-full text-xs sm:text-sm text-slate-500 file:mr-2 file:sm:mr-3 file:py-1.5 file:sm:py-2 file:px-3 file:sm:px-4 file:rounded-md file:border-0 file:text-[10px] file:sm:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-200 rounded-lg shadow-sm transition-colors ${readOnlySelectBgClass}" />
+                            ${evidenceHtml}
+                        </div>
+                    </div>
+
+                    <div id="finding-container-${idx}" class="${isFindingHidden} mt-4 mb-4 p-3 sm:p-4 bg-red-50/50 border border-red-100 rounded-lg shadow-inner">
+                        <label class="block text-[10px] sm:text-xs font-bold text-red-600 uppercase tracking-wider mb-3"><i class="bi bi-exclamation-octagon-fill mr-1"></i> Finding Detail (Minor/Major)</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div><label class="block text-[10px] font-semibold text-slate-600 mb-1">Problem</label><input ${disableAttr} type="text" id="finding_prob_${idx}" onchange="autoSaveAnswer('${q.question_id}', ${idx})" class="w-full text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-red-500 focus:border-red-500 ${readOnlyBgClass}" value="${f_prob}" placeholder="Describe the problem..." /></div>
+                            <div><label class="block text-[10px] font-semibold text-slate-600 mb-1">Location</label><input ${disableAttr} type="text" id="finding_loc_${idx}" onchange="autoSaveAnswer('${q.question_id}', ${idx})" class="w-full text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-red-500 focus:border-red-500 ${readOnlyBgClass}" value="${f_loc}" placeholder="Where did it happen?" /></div>
+                            <div><label class="block text-[10px] font-semibold text-slate-600 mb-1">Object Name</label><input ${disableAttr} type="text" id="finding_obj_${idx}" onchange="autoSaveAnswer('${q.question_id}', ${idx})" class="w-full text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-red-500 focus:border-red-500 ${readOnlyBgClass}" value="${f_obj}" placeholder="Part / Machine name..." /></div>
+                            <div><label class="block text-[10px] font-semibold text-slate-600 mb-1">Reference</label><input ${disableAttr} type="text" id="finding_ref_${idx}" onchange="autoSaveAnswer('${q.question_id}', ${idx})" class="w-full text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-red-500 focus:border-red-500 ${readOnlyBgClass}" value="${f_ref}" placeholder="Standard / Doc Ref..." /></div>
+                        </div>
+                    </div>
+
+                    <div class="relative mt-4 sm:mt-5">
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">Remarks / Notes</label>
+                        <textarea ${disableAttr} id="note-text-${idx}" name="responses[${idx}].note" onchange="autoSaveAnswer('${q.question_id}', ${idx})" class="block w-full border border-slate-200 text-slate-800 rounded-lg shadow-sm py-2 px-3 sm:py-3 sm:px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs sm:text-sm resize-y transition-shadow ${readOnlySelectBgClass}" rows="2" placeholder="Write any observations or findings here...">${q.note || ''}</textarea>
+                        <div id="autoSaveStatus_${idx}" class="absolute -top-1 right-1 text-[10px] font-semibold transition-all"></div>
+                    </div>
+                </div>
+            `;
+            });
+
+            $container.html(html);
+        }
+
+        function toggleEdit(idx) {
+            $(`#lblClausul_${idx}`).addClass('hidden');
+            $(`#lblQuestion_${idx}`).addClass('hidden');
+
+            $(`#inputClausul_${idx}`).removeClass('hidden');
+            $(`#inputQuestion_${idx}`).removeClass('hidden');
+
+            $(`#btnToggleEdit_${idx}`).addClass('hidden');
+            $(`#btnSaveEdit_${idx}`).removeClass('hidden');
+            $(`#btnCancelEdit_${idx}`).removeClass('hidden');
+        }
+
+        function cancelEdit(idx) {
+            $(`#lblClausul_${idx}`).removeClass('hidden');
+            $(`#lblQuestion_${idx}`).removeClass('hidden');
+
+            $(`#inputClausul_${idx}`).addClass('hidden');
+            $(`#inputQuestion_${idx}`).addClass('hidden');
+
+            $(`#btnToggleEdit_${idx}`).removeClass('hidden');
+            $(`#btnSaveEdit_${idx}`).addClass('hidden');
+            $(`#btnCancelEdit_${idx}`).addClass('hidden');
+        }
+
+        function saveAuditPeriod() {
+            const stakeholderId = $('#inputStakeholderId').val();
+            const startDate = $('#inputStartDate').val();
+            const endDate = $('#inputEndDate').val();
+
+            if (!stakeholderId) {
+                Swal.fire('Error', 'Stakeholder ID tidak ditemukan.', 'error');
+                return;
+            }
+            if (!startDate || !endDate) {
+                Swal.fire('Peringatan', 'Periode Audit (Start Date & End Date) wajib diisi.', 'warning');
+                return;
+            }
+            if (new Date(startDate) > new Date(endDate)) {
+                Swal.fire('Peringatan', 'Start Date tidak boleh lebih besar dari End Date.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Menyimpan Periode...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            const dataPayload = {
+                id: stakeholderId,
+                dto: {
+                    start_event: startDate,
+                    end_event: endDate
+                }
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpdateStakeholder", "EAudit")',
+                type: 'POST',
+                data: dataPayload,
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            toast: true, position: 'top-end', showConfirmButton: false,
+                            timer: 2000, icon: 'success', title: 'Periode Audit diperbarui!'
+                        });
+                    } else {
+                        Swal.fire('Gagal menyimpan', response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire('Error Server', 'Gagal menyimpan periode audit. Periksa koneksi Anda.', 'error');
+                }
+            });
+        }
+
+        function saveQuestionInline(questionId, idx) {
+            const newClausul = $(`#inputClausul_${idx}`).val();
+            const newQuestion = $(`#inputQuestion_${idx}`).val();
+            let $scoreSelect = $(`[name="responses[${idx}].score"]`);
+
+            let formData = new FormData();
+            formData.append('id', questionId);
+            formData.append('dto.clausul', newClausul || '');
+            formData.append('dto.question', newQuestion || '');
+            formData.append('dto.score', $scoreSelect.val() || '');
+            formData.append('dto.note', $(`[name="responses[${idx}].note"]`).val() || '');
+            formData.append('dto.judgement', $scoreSelect.find(':selected').data('default-judgement') || '');
+            formData.append('dto.criteria', $scoreSelect.find(':selected').data('criteria') || '');
+
+            formData.append('dto.Finding.problem', $(`#finding_prob_${idx}`).val() || '');
+            formData.append('dto.Finding.location', $(`#finding_loc_${idx}`).val() || '');
+            formData.append('dto.Finding.object_name', $(`#finding_obj_${idx}`).val() || '');
+            formData.append('dto.Finding.reference', $(`#finding_ref_${idx}`).val() || '');
+
+            $(`#evidenceList_${idx} .existing-evidence`).each(function(i, el) {
+                formData.append(`dto.Evidences[${i}].evidence_id`, $(el).data('id'));
+            });
+
+            let fileInput = $(`[name="responses[${idx}].evidenceFiles"]`)[0];
+            let hasNewFiles = false;
+            if (fileInput && fileInput.files.length > 0) {
+                hasNewFiles = true;
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('dto.evidenceFiles', fileInput.files[i]);
+                }
+            }
+
+            let $btnSave = $(`#btnSaveEdit_${idx}`);
+            $btnSave.html('<div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>').prop('disabled', true);
+
+            $.ajax({
+                url: '@Url.Action("UpdateQuestionEvent", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    $btnSave.html('<i class="bi bi-check-lg text-xs sm:text-base"></i>').prop('disabled', false);
+                    if (response.success) {
+                        $(`#lblClausul_${idx}`).text('Clausul: ' + (newClausul || '-'));
+                        $(`#lblQuestion_${idx}`).text(newQuestion || '-');
+                        cancelEdit(idx);
+
+                        if (hasNewFiles) {
+                            refreshQuestionsList();
+                        } else {
+                            Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, icon: 'success', title: 'Data tersimpan!' });
+                        }
+                    } else {
+                        alert("Gagal menyimpan: " + response.message);
+                    }
+                },
+                error: function() {
+                    $btnSave.html('<i class="bi bi-check-lg text-xs sm:text-base"></i>').prop('disabled', false);
+                    alert("Terjadi kesalahan server saat menyimpan data.");
+                }
+            });
+        }
+
+        function deleteQuestion(questionId) {
+            Swal.fire({
+                title: 'Hapus Pertanyaan?',
+                text: "Anda yakin ingin menghapus pertanyaan ini? Data yang dihapus tidak dapat dikembalikan.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("DeleteQuestionEvent", "EAudit")',
+                        type: 'POST',
+                        data: { id: questionId },
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire({
+                                    toast: true, position: 'top-end', showConfirmButton: false,
+                                    timer: 2000, icon: 'success', title: 'Pertanyaan berhasil dihapus!'
+                                });
+
+                                refreshQuestionsList();
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error Server', 'Gagal menghubungi server. Periksa koneksi Anda.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function handleScoreChange(selectElement, idx) {
+            if (typeof recalculateProgress === "function") {
+                recalculateProgress();
+            }
+
+            const selectedOption = $(selectElement).find(':selected');
+            const defaultNote = selectedOption.data('criteria');
+
+            const $textArea = $(`#note-text-${idx}`);
+            if (!$textArea.val() && defaultNote && defaultNote !== "null") {
+                $textArea.val(defaultNote);
+            }
+
+            let judgementText = selectedOption.data('default-judgement') || '';
+            let upperVal = judgementText.toUpperCase().trim();
+
+            if (upperVal === 'MINOR' || upperVal === 'MAJOR') {
+                $(`#finding-container-${idx}`).slideDown(200).removeClass('hidden');
+            } else {
+                $(`#finding-container-${idx}`).slideUp(200);
+            }
+        }
+
+        function updateProgress(questions) {
+            recalculateProgress();
+        }
+
+        function recalculateProgress() {
+            let total = $('.q-score-dropdown').length;
+            let answered = 0;
+
+            let statusCounts = {
+                'OK': 0,
+                'OFI': 0,
+                'MINOR': 0,
+                'MAJOR': 0
+            };
+
+            $('.q-score-dropdown').each(function () {
+                let val = $(this).val();
+
+                if (val && String(val).trim() !== '') {
+                    answered++;
+
+                    let judgementText = '';
+                    if (this.selectedIndex >= 0) {
+                        let selectedOpt = this.options[this.selectedIndex];
+                        judgementText = selectedOpt.getAttribute('data-default-judgement') || '';
+
+                        if (!judgementText || judgementText === 'undefined' || judgementText === 'null') {
+                            let textOpt = selectedOpt.text;
+                            let match = textOpt.match(/\(([^)]+)\)/);
+                            if (match) {
+                                judgementText = match[1];
+                            }
+                        }
+                    }
+
+                    let upperVal = (judgementText || '').toUpperCase().trim();
+
+                    if (statusCounts[upperVal] !== undefined) {
+                        statusCounts[upperVal]++;
+                    }
+                }
+            });
+
+            applyProgressUI(answered, total, statusCounts);
+        }
+
+        function applyProgressUI(answered, total, counts) {
+            const percentage = total > 0 ? Math.round((answered / total) * 100) : 0;
+
+            $('#lblProgressCount').text(`${answered} / ${total}`);
+            $('#progressBar').css('width', `${percentage}%`);
+
+            if ($('#lblBottomProgress').length) {
+                $('#lblBottomProgress').text(`Progress: ${answered} of ${total} questions answered`);
+            }
+
+            if (counts) {
+                $('#countOK').text(`${counts['OK'] || 0} OK`);
+                $('#countOFI').text(`${counts['OFI'] || 0} OFI`);
+                $('#countMINOR').text(`${counts['MINOR'] || 0} MINOR`);
+                $('#countMAJOR').text(`${counts['MAJOR'] || 0} MAJOR`);
+            }
+        }
+
+        function openAddQuestionModal() {
+            $('#addQuestionForm')[0].reset();
+            $('#addQuestionModal').removeClass('hidden').addClass('flex');
+        }
+
+        function closeAddQuestionModal() {
+            $('#addQuestionModal').addClass('hidden').removeClass('flex');
+        }
+
+        function submitAddQuestion() {
+            const sectionName = $('#lblSectionName').text();
+
+            const dataPayload = {
+                audit_event_stakeholder_id: paramStakeholderId,
+                section_name: sectionName !== 'Loading...' ? sectionName : 'XX',
+                category_audit: paramAuditType,
+                process_name: $('#add_process_name').val(),
+                clausul: $('#add_clausul').val(),
+                question: $('#add_question').val()
+            };
+
+            if (!dataPayload.process_name || !dataPayload.question || !dataPayload.clausul) {
+                Swal.fire('Warning', 'Process Name, Clausul, dan Question wajib diisi.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Menyimpan Soal...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("CreateQuestionEvent", "EAudit")',
+                type: 'POST',
+                data: dataPayload,
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire('Success', res.message, 'success');
+                        closeAddQuestionModal();
+                        refreshQuestionsList();
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Terjadi kesalahan pada server.', 'error');
+                }
+            });
+        }
+
+        function openImportQuestionModal() {
+            $('#importQuestionForm')[0].reset();
+            $('#importQuestionModal').removeClass('hidden').addClass('flex');
+        }
+
+        function closeImportQuestionModal() {
+            $('#importQuestionModal').addClass('hidden').removeClass('flex');
+        }
+
+        function submitImportQuestion() {
+            const fileInput = $('#import_excel_file')[0];
+            if (fileInput.files.length === 0) {
+                Swal.fire('Warning', 'Silakan pilih file Excel terlebih dahulu.', 'warning');
+                return;
+            }
+
+            const sectionName = $('#lblSectionName').text();
+
+            let formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('audit_event_stakeholder_id', paramStakeholderId);
+            formData.append('section_name', sectionName !== 'Loading...' ? sectionName : 'XX');
+
+            Swal.fire({
+                title: 'Mengimpor Data...',
+                text: 'Mohon tunggu sebentar, proses ini mungkin memakan waktu.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("ImportQuestionEvent", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire('Success', res.message, 'success');
+                        closeImportQuestionModal();
+                        refreshQuestionsList();
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire('Error', 'Terjadi kesalahan sistem atau format file tidak valid.', 'error');
+                }
+            });
+        }
+
+        function refreshQuestionsList() {
+            $('#questionsContainer').html(`
+                <div class="py-12 text-center">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                    <p class="text-slate-500 text-sm font-medium">Memuat ulang soal...</p>
+                </div>
+            `);
+
+            $.ajax({
+                url: apiQuestionUrl,
+                type: 'GET',
+                data: { stakeholderId: paramStakeholderId, type: paramAuditType },
+                success: function (res) {
+                    if (res.success) {
+                        renderQuestions(res.data);
+                        let total = res.data.length;
+                        let answered = res.data.filter(q => q.score && q.score.trim() !== '').length;
+                        applyProgressUI(answered, total, res.summary);
+                    } else {
+                        $('#questionsContainer').html('<div class="text-red-500 p-4">Gagal memuat daftar soal.</div>');
+                    }
+                },
+                error: function () {
+                    $('#questionsContainer').html('<div class="text-red-500 p-4">Error koneksi saat memuat soal.</div>');
+                }
+            });
+        }
+
+        function autoSaveAnswer(questionId, idx) {
+            let $statusBadge = $(`#autoSaveStatus_${idx}`);
+            $statusBadge.html(`<i class="bi bi-arrow-repeat animate-spin inline-block"></i> Saving...`)
+                        .removeClass('text-emerald-500 text-red-500').addClass('text-slate-400').show();
+
+            let formData = new FormData();
+            formData.append('id', questionId);
+
+            let $scoreSelect = $(`[name="responses[${idx}].score"]`);
+            formData.append('dto.clausul', $(`#inputClausul_${idx}`).val() || '');
+            formData.append('dto.question', $(`#inputQuestion_${idx}`).val() || '');
+            formData.append('dto.score', $scoreSelect.val() || '');
+            formData.append('dto.note', $(`#note-text-${idx}`).val() || '');
+            formData.append('dto.judgement', $scoreSelect.find(':selected').data('default-judgement') || '');
+            formData.append('dto.criteria', $scoreSelect.find(':selected').data('criteria') || '');
+
+            formData.append('dto.Finding.problem', $(`#finding_prob_${idx}`).val() || '');
+            formData.append('dto.Finding.location', $(`#finding_loc_${idx}`).val() || '');
+            formData.append('dto.Finding.object_name', $(`#finding_obj_${idx}`).val() || '');
+            formData.append('dto.Finding.reference', $(`#finding_ref_${idx}`).val() || '');
+
+            $(`#evidenceList_${idx} .existing-evidence`).each(function(i, el) {
+                formData.append(`dto.Evidences[${i}].evidence_id`, $(el).data('id'));
+            });
+
+            let fileInput = $(`[name="responses[${idx}].evidenceFiles"]`)[0];
+            let hasNewFiles = false;
+            if (fileInput && fileInput.files.length > 0) {
+                hasNewFiles = true;
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    formData.append('dto.evidenceFiles', fileInput.files[i]);
+                }
+            }
+
+            $.ajax({
+                url: '@Url.Action("UpdateQuestionEvent", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    if (response.success) {
+                        $statusBadge.html(`<i class="bi bi-check2-all"></i> Saved`).removeClass('text-slate-400').addClass('text-emerald-500');
+                        setTimeout(() => $statusBadge.fadeOut(), 2500);
+
+                        if (hasNewFiles) {
+                            $(`[name="responses[${idx}].evidenceFiles"]`).val('');
+                            refreshQuestionsList();
+                        }
+                    } else {
+                        $statusBadge.html(`<i class="bi bi-exclamation-triangle"></i> Failed`).removeClass('text-slate-400').addClass('text-red-500');
+                    }
+                },
+                error: function() {
+                    $statusBadge.html(`<i class="bi bi-wifi-off"></i> Error`).removeClass('text-slate-400').addClass('text-red-500');
+                }
+            });
+        }
+
+        function submitAudit() {
+            let isValid = true;
+            let errorMessages = [];
+
+            $('.q-score-dropdown').each(function () {
+                let val = $(this).val();
+
+                if (val && String(val).trim() !== '') {
+                    let selectedOpt = this.options[this.selectedIndex];
+                    let judgementText = selectedOpt.getAttribute('data-default-judgement') || '';
+
+                    if (!judgementText || judgementText === 'undefined' || judgementText === 'null') {
+                        let match = selectedOpt.text.match(/\(([^)]+)\)/);
+                        if (match) {
+                            judgementText = match[1];
+                        }
+                    }
+
+                    let upperVal = (judgementText || '').toUpperCase().trim();
+
+                    if (upperVal === 'MINOR' || upperVal === 'MAJOR') {
+                        let $parent = $(this).closest('.relative.bg-white');
+                        let qNum = $parent.find('span.bg-blue-600').text() || 'Soal';
+
+                        let prob = $parent.find('input[id^="finding_prob_"]').val().trim();
+                        let loc = $parent.find('input[id^="finding_loc_"]').val().trim();
+                        let obj = $parent.find('input[id^="finding_obj_"]').val().trim();
+                        let ref = $parent.find('input[id^="finding_ref_"]').val().trim();
+
+                        if (!prob || !loc || !obj || !ref) {
+                            isValid = false;
+                            errorMessages.push(`<b>${qNum}</b>: Mohon lengkapi (Problem, Location, Object, Reference)`);
+                        }
+                    }
+                }
+            });
+
+            if (!isValid) {
+                Swal.fire({
+                    title: 'Finding Details Kosong!',
+                    html: '<div class="text-sm text-slate-600 mb-2">Terdapat temuan MINOR/MAJOR yang detailnya belum lengkap:</div>' +
+                          '<div class="text-left text-sm text-red-600 bg-red-50 p-3 rounded border border-red-100 leading-relaxed">' +
+                          errorMessages.join('<br>') +
+                          '</div>',
+                    icon: 'warning',
+                    confirmButtonColor: '#3b82f6',
+                    confirmButtonText: 'Mengerti'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Submit Audit?',
+                text: "Apakah Anda yakin ingin menyelesaikan dan mengirim audit ini? Pastikan semua soal telah terjawab.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#059669',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Submit!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Memproses...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("SubmitAuditSection", "EAudit")',
+                        type: 'POST',
+                        data: {
+                            audit_event_stakeholder_id: paramStakeholderId,
+                            category_audit: paramAuditType
+                        },
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire({
+                                    title: 'Berhasil!',
+                                    text: 'Status Audit: ' + res.message,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                }).then(() => {
+                                    if (res.eventId) {
+                                        window.location.href = '@Url.Action("DetailEvent", "EAudit")' + '?eventId=' + res.eventId;
+                                    } else {
+                                        window.location.reload();
+                                    }
+                                });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire('Error Server', 'Terjadi kesalahan sistem saat memproses audit.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function removeEvidenceUI(btnElement, idx, questionId) {
+            let evidenceId = $(btnElement).closest('.existing-evidence').data('id');
+
+            Swal.fire({
+                title: 'Hapus Bukti?',
+                text: "File bukti ini akan dihapus permanen.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    let formData = new FormData();
+                    formData.append("evidence_id", evidenceId);
+                    formData.append("question_id", questionId);
+                    formData.append("is_delete", "true");
+
+                    $.ajax({
+                        url: '@Url.Action("DeleteEvidenceEvent", "EAudit")',
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (res) {
+                            if (res.success) {
+                                $(btnElement).closest('.existing-evidence').fadeOut(300, function() {
+                                    $(this).remove();
+                                });
+
+                                Swal.fire({
+                                    toast: true, position: 'top-end', showConfirmButton: false,
+                                    timer: 2000, icon: 'success', title: 'File berhasil dihapus!'
+                                });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function downloadEvidence(url, suggestedFileName) {
+            if (!url) return;
+
+            if (url.startsWith('data:')) {
+                const a = document.createElement('a');
+                a.href = url;
+
+                let ext = ".bin";
+                if (url.includes('image/jpeg')) ext = ".jpg";
+                else if (url.includes('image/png')) ext = ".png";
+                else if (url.includes('application/pdf')) ext = ".pdf";
+
+                a.download = suggestedFileName + ext;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                return;
+            }
+
+            let rootPath = '@Url.Content("~/")';
+            let finalUrl = url;
+
+            if (url.startsWith('/')) {
+                finalUrl = rootPath + url.substring(1);
+            }
+
+            let actualFileName = finalUrl.substring(finalUrl.lastIndexOf('/') + 1);
+
+            const a = document.createElement('a');
+            a.href = finalUrl;
+            a.download = actualFileName;
+
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        $(document).on('change', '#chkLainLain', function() {
+            if ($(this).is(':checked')) {
+                $('#txtLainLain').removeClass('hidden').focus();
+            } else {
+                $('#txtLainLain').addClass('hidden').val('');
+            }
+        });
+
+
+        function loadAuditGuides() {
+            if (window.isAssignedAuditor) {
+                $('#btnSaveGuide').removeClass('hidden');
+                $('.guide-checkbox, #txtLainLain').prop('disabled', false);
+            } else {
+                $('#btnSaveGuide').addClass('hidden');
+                $('.guide-checkbox, #txtLainLain').prop('disabled', true);
+            }
+
+            $.ajax({
+                url: apiGetGuideUrl,
+                type: 'GET',
+                data: { stakeholderId: paramStakeholderId, categoryAudit: paramAuditType },
+                success: function (res) {
+                    if (res.success && res.data) {
+                        $('.guide-checkbox').prop('checked', false);
+                        $('#txtLainLain').addClass('hidden').val('');
+
+                        res.data.forEach(function (guideName) {
+                            let $chk = $(`.guide-checkbox[value="${guideName}"]`);
+
+                            if ($chk.length > 0) {
+                                $chk.prop('checked', true);
+                            } else if (guideName.startsWith("Lain-lain:")) {
+                                $('#chkLainLain').prop('checked', true);
+                                $('#txtLainLain').removeClass('hidden').val(guideName.replace("Lain-lain: ", "").trim());
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        $(document).on('change', '.guide-checkbox', function () {
+            if (window.isAssignedAuditor) {
+                saveAuditGuides();
+            }
+        });
+
+        let typingTimerGuide;
+        $(document).on('input', '#txtLainLain', function () {
+            if (window.isAssignedAuditor) {
+                clearTimeout(typingTimerGuide);
+                typingTimerGuide = setTimeout(function () {
+                    saveAuditGuides();
+                }, 1000);
+            }
+        });
+
+        function saveAuditGuides() {
+            let selectedGuides = [];
+
+            $('.guide-checkbox:checked').each(function () {
+                let val = $(this).val();
+                if (val === "Lain-lain") {
+                    let customText = $('#txtLainLain').val().trim();
+                    if (customText !== "") {
+                        selectedGuides.push("Lain-lain: " + customText);
+                    } else {
+                        selectedGuides.push("Lain-lain");
+                    }
+                } else {
+                    selectedGuides.push(val);
+                }
+            });
+
+            let $status = $('#guideSaveStatus');
+
+            $status.html('<i class="bi bi-arrow-repeat animate-spin inline-block"></i> Menyimpan...')
+                .removeClass('text-emerald-500 text-red-500 hidden')
+                .addClass('text-slate-400');
+
+            $.ajax({
+                url: apiSaveGuideUrl,
+                type: 'POST',
+                data: {
+                    audit_event_stakeholder_id: paramStakeholderId,
+                    category_audit: paramAuditType,
+                    selected_guides: selectedGuides
+                },
+                success: function (res) {
+                    if (res.success) {
+                        $status.html('<i class="bi bi-check2-all"></i> Tersimpan')
+                            .removeClass('text-slate-400')
+                            .addClass('text-emerald-500');
+
+                        setTimeout(() => $status.fadeOut(300), 2000);
+                    } else {
+                        $status.html('<i class="bi bi-exclamation-triangle"></i> Gagal Menyimpan')
+                            .removeClass('text-slate-400')
+                            .addClass('text-red-500');
+                    }
+                },
+                error: function () {
+                    $status.html('<i class="bi bi-wifi-off"></i> Error Koneksi')
+                        .removeClass('text-slate-400')
+                        .addClass('text-red-500');
+                }
+            });
+        }
+    </script>
+}

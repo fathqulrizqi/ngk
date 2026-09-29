@@ -1,0 +1,48 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using System.Text.RegularExpressions;
+@using NGKBusi.Models;
+@{
+    var currUser = ((ClaimsIdentity)User.Identity);
+    DefaultConnection db = new DefaultConnection();
+    String currParentDoc = (ViewData["parentDoc"] == null ? "zz":ViewData["parentDoc"].ToString());
+    var childRow = db.PE_NumberingSystem_NumberingList.Where(x => x.ParentDoc == currParentDoc).ToList();
+    var last = childRow.LastOrDefault();
+    var paddingLeft = Int32.Parse(ViewData["paddingLeft"].ToString()) + 10;
+}
+@foreach (var item in childRow)
+{
+    String currChildParentDoc = item.DocNumber;
+    var childsRow = db.PE_NumberingSystem_NumberingList.Where(x => x.ParentDoc == currChildParentDoc).ToList();
+    <tr class="@(item.ParentDoc != null ? item.ParentDoc : "")">
+        <td style="@("padding-left:"+ paddingLeft.ToString() + "px")">
+            @if (childsRow.Count > 0)
+            {
+                <a href="#" class="toggle">@(item.DocNumber)</a>
+            }
+            else
+            {@(item.DocNumber)}
+        </td>
+        <td>@(item.Remark)</td>
+        <td>@(item.IssuedBy == "SYSTEM" ? item.IssuedBy : item.UserIssuedBy.Name)</td>
+        <td>
+            @if (item.IssuedBy == currUser.GetUserId())
+            {
+                <span class="addNSChild pointerFade fa fa-plus" data-parentid="@item.id"></span>
+            }
+            @if (item.IssuedBy == currUser.GetUserId() && ((DateTime.Now - (DateTime)item.IssuedDate)).Days < 25 || currUser.GetUserId() == "659.04.13" || currUser.GetUserId() == "P141017" || currUser.GetUserId() == "727.11.15")
+            {
+                <span class="editNSItem pointerFade fa fa-edit" data-issuedid="@item.IssuedBy" data-parentid="@item.id"></span>
+                if (item.Equals(last))
+                {
+                    <span class="deleteNSItem deleteChild pointerFade fa fa-trash" data-issuedid="@item.IssuedBy" data-parentid="@item.id"></span>
+                }
+                else
+                {
+                    <span class="deleteNSItem deleteChild pointerFade fa fa-trash" data-issuedid="@item.IssuedBy" data-parentid="@item.id" style="display:none;"></span>
+                }
+            }
+        </td>
+    </tr>
+    @Html.Partial("_NumberingChildRow", new ViewDataDictionary() { { "parentDoc", item.DocNumber }, { "paddingLeft", paddingLeft } })
+}

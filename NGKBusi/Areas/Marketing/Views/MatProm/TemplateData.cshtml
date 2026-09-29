@@ -1,0 +1,262 @@
+﻿<!doctype html>
+@{
+    ViewBag.Title = "Data Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style>
+    .card {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        /*text-align: center;*/
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card .card-header {
+            /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+    .custom-list {
+        list-style: none;
+        padding: 0;
+    }
+
+    .custom-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #ffffff;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        padding: 10px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+        .custom-list-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .custom-list-item.active,
+        .custom-list-item:active {
+            background-color: #c0c0c0;
+        }
+
+        .custom-list-item .btn-group {
+            display: flex;
+        }
+
+        .custom-list-item .btn {
+            margin-left: 5px;
+            transition: background-color 0.3s;
+        }
+
+            .custom-list-item .btn:hover {
+                background-color: #c0c0c0;
+            }
+
+    .detail {
+        display: none;
+        margin-top: 10px;
+    }
+
+    .edit-input {
+        display: none;
+        width: 60%;
+    }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info">Data Template Material Promotion</div>
+            <div class="card-body">
+                <div class="row p-2">
+                    <div class="col-lg-4">
+                        
+                            <button class="btn btn-primary mb-2">Add Template</button>
+                            <ul class="custom-list">
+                                @{ foreach (var item in ViewBag.Template)
+                                   {
+                                        <li class="custom-list-item" onclick="showDetail(@item.ID, this)">
+                                            <span id="@item.ID-text">@item.TemplateName</span>
+                                            <input type="text" class="edit-input" id="@item.ID-input" oninput="updateItem(@item.ID)">
+                                            <div class="btn-group">
+                                                <button class="btn btn-warning" onclick="editItem(@item.ID)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-danger" onclick="deleteItem('@item.ID')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+
+                                            </div>
+                                        </li>
+                                    }
+                                }
+
+                            </ul>
+                        
+                    </div>
+                    <div class="col-lg-8">
+                        <input type="hidden" name="valTemplateID" id="templateID" value="0" />
+                        <div id="toolbar">
+                            <a href="" class="btn btn-primary" >Add Item</a>
+                        </div>
+                        <table id="fresh-table"
+                               data-toolbar="#toolbar"
+                               data-ajax="ajaxRequest"
+                               class="table table-hover">
+                            <thead>
+                            <th data-field="No">No.</th>
+                            <th data-field="ITEMID" data-sortable="true">Item ID</th>
+                            <th data-field="ItemName" data-sortable="true">Item Name</th>
+                            <th data-field="Tools">Actions</th>
+                            </thead>
+                            <tbody>
+
+
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function showDetail(itemId, element) {
+        var items = document.querySelectorAll('.custom-list-item');
+        items.forEach(function (item) {
+            item.classList.remove('active');
+        });
+
+        element.classList.add('active');
+        $('#templateID').val(itemId);
+
+        $('#fresh-table').bootstrapTable('refresh');
+    }
+
+    function deleteItem(itemId) {
+        // Logika penghapusan item, contoh: alert
+        alert('Item ' + itemId + ' dihapus!');
+    }
+
+    function editItem(itemId) {
+        console.log(itemId);
+        var textElement = document.getElementById(itemId + '-text');
+        var inputElement = document.getElementById(itemId + '-input');
+
+        textElement.style.display = 'none';
+        inputElement.style.display = 'inline-block';
+
+        inputElement.value = textElement.innerText;
+        inputElement.focus();
+
+        inputElement.addEventListener('blur', function () {
+            textElement.style.display = 'inline-block';
+            inputElement.style.display = 'none';
+
+            textElement.innerText = inputElement.value;
+        });
+    }
+
+    function updateItem(itemId) {
+        // Tambahkan logika atau panggilan fungsi lainnya untuk pembaruan item
+        console.log('Item ' + itemId + ' diperbarui: ' + document.getElementById(itemId + '-input').value);
+        var templateName = document.getElementById(itemId + '-input').value;
+        $.ajax({
+                type: "post",
+                url: "@Url.Action("UpdateTemplate", "MatProm", new { area = "Marketing" })",
+                dataType: 'json',
+            data: {
+                TemplateName: templateName, IsActive: 1, ID: itemId
+                },
+            success: function (items) {
+                    //console.log(items.notReady);
+                    
+                    //$('#toolbar').html(items.title);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+        })
+
+    }
+
+    //$(document).ready(function () {
+
+
+        $(function () {
+            $('#fresh-table').bootstrapTable({
+                exportDataType: "all",
+                exportTypes: ['excel', 'pdf'],
+                buttonsClass: 'primary',
+            })
+        });
+
+
+        function queryParams(params) {
+
+            return params;
+        }
+
+        function ajaxRequest(params) {
+            var templateID = $('#templateID').val();
+            $.ajax({
+                type: "post",
+                url: "@Url.Action("DetailTemplateData", "MatProm", new { area = "Marketing" })",
+                dataType: 'json',
+                data: {
+                    templateID: templateID
+                },
+                success: function (items) {
+                    //console.log(items.notReady);
+                    params.success({
+                        rows: items.rows
+                    }, null);
+                    //$('#toolbar').html(items.title);
+                },
+                error: function (er) {
+                    console.log(params.error(er))
+                    console.log("error", er);
+                }
+            });
+
+        }
+
+    //});
+
+
+
+</script>
+

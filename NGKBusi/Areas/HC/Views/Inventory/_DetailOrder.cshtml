@@ -1,0 +1,1112 @@
+﻿@{
+    ViewBag.Title = "Detail Item Order";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.NavHide = true;
+    bool isLogin = (System.Web.HttpContext.Current.User != null) && System.Web.HttpContext.Current.User.Identity.IsAuthenticated;
+
+}
+
+
+@section cssHead {
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <link href="~/Content/air-datepicker/air-datepicker.css" rel="stylesheet" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/Content/font-awesome/css/fontawesome.min.css" rel="stylesheet" />
+    <style>
+        .page-content {
+            padding-top: 0 !important;
+        }
+
+        .invalid-feedback {
+            display: block;
+            width: 100%;
+            margin-top: 0.25rem;
+            font-size: 0.875em;
+            color: #dc3545;
+        }
+
+        .is-invalid {
+            border-color: #dc3545 !important;
+            padding-right: calc(1.5em + 0.75rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+    </style>
+
+}
+
+@section scriptHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+    <script src="~/Content/air-datepicker/air-datepicker.js"></script>
+    <script src="~/Scripts/tinymce7.8.0/tinymce.min.js"></script>
+    <script src="~/Content/html2pdf/html2pdf.bundle.min.js"></script>
+    <script src="~/Scripts/moment2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="~/Scripts/printThis/printThis.js"></script>
+    <script>
+        window.jsPDF = window.jspdf.jsPDF;
+    </script>
+    <script>
+    $(document).ready(function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderNo = urlParams.get('orderNo');
+        console.log("PrepareBtn orderNo:", orderNo)
+
+        if (orderNo) {
+            $('#odrnumber').text(orderNo);
+
+            loadOrderDetail(orderNo, function () {
+                checkHeaderFields();
+            });
+
+            getStamp(orderNo);
+
+            $('#buttonprint').removeAttr('hidden');
+        } else {
+            Swal.fire("Error", "Order number not provided in URL.", "error");
+        }
+
+        const originalStyles = {
+            width: '',
+            minHeight: '',
+            padding: '',
+            margin: '',
+            boxShadow: '',
+            border: ''
+        };
+
+        function checkHeaderFields() {
+            const attn = $('#attnInput').is('input') ? $('#attnInput').val()?.trim() : $('#attnInput').text()?.replace(/^:\s*/, '').trim();
+            const subject = $('#subjectInput').is('input') ? $('#subjectInput').val()?.trim() : $('#subjectInput').text()?.replace(/^:\s*/, '').trim();
+
+            if (attn && subject) {
+                $('#buttonlock').removeAttr('hidden');
+                $('#savebutton').attr('hidden', true);
+            } else {
+                $('#buttonlock').attr('hidden', true);
+                $('#savebutton').removeAttr('hidden');
+            }
+        }
+
+        $('#buttonprint').on('click', function () {
+            $('#completedOverlay').hide();
+            $('#rejectedOverlay').hide();
+            $('#letterContent').printThis({
+                importCSS: true,
+                importStyle: true,
+                base: window.location.origin,
+                pageTitle: "",
+                header: null,
+                footer: null,
+                removeInline: false,
+                printDelay: 333,
+                beforePrintEvent: function () {
+                    $('#letterContent').css({
+                        'width': '210mm',
+                        'padding': '2cm',
+                        'margin': '0 auto',
+                        'box-shadow': 'none',
+                        'border': 'none'
+                    });
+                },
+                afterPrint: function () {
+                    $('#letterContent').css(originalStyles);
+                    location.reload();
+                }
+            });
+        });
+
+        $(document).on('click', '#savebutton', function () {
+            const attn = $('#attnInput').val();
+            const subject = $('#subjectInput').val();
+
+            const $btn = $(this);
+            const originalHtml = $btn.html();
+            showLoading($btn, 'Sending...');
+
+            if (!orderNo) {
+                Swal.fire('Error', 'Order number not found.', 'error');
+                hideLoading($btn, originalHtml);
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("SaveOrderHeader", "Inventory", new { area = "HC" })',
+                type: 'POST',
+                data: {
+                    orderNo: orderNo,
+                    attn: attn,
+                    subject: subject
+                },
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Success', res.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Failed', res.message, 'error');
+                        hideLoading($btn, originalHtml);
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Something went wrong.', 'error');
+                    hideLoading($btn, originalHtml);
+                }
+            });
+        });
+
+        let stampData = {
+            PreparedBy: '',
+            PreparedDate: '',
+            CheckedBy: '',
+            CheckedDate: '',
+            ApprovedBy: '',
+            ApprovedDate: ''
+        };
+
+        const spinnerTemplate = `
+            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        `;
+
+        function showLoadingStamp($btn) {
+            $btn.prop('disabled', true);
+            $btn.find('.bg-orange-300').html(spinnerTemplate);
+        }
+
+        function hideLoadingStamp($btn, originalContent) {
+            $btn.prop('disabled', false);
+            $btn.find('.bg-orange-300').html(originalContent);
+        }
+
+        $(document).on('click', '#preparebtn, #checkbtn, #approvebtn', function () {
+            const isLogin = '@isLogin'.toLowerCase() === 'true';
+            if (!isLogin) {
+                Swal.fire("Unauthorized", "You must be logged in to perform this action.", "warning");
+                return;
+            }
+
+            if (!stampDataReady) {
+                Swal.fire("Loading", "Please wait, still loading data...", "info");
+                return;
+            }
+
+            const $btn = $(this);
+            const btnId = this.id;
+            const userNik = '@ViewBag.UserNik';
+            const userName = '@ViewBag.UserName';
+            const date = moment().format("DD-MM-YYYY");
+            const attn = $('#attnInput').is('input') ? $('#attnInput').val()?.trim() : $('#attnInput').text()?.replace(/^:\s*/, '').trim();
+            const subject = $('#subjectInput').is('input') ? $('#subjectInput').val()?.trim() : $('#subjectInput').text()?.replace(/^:\s*/, '').trim();
+            const originalContent = '<span class="text-white text-xs">Pending</span>';
+
+            let action = '';
+            let roleText = '';
+            let successLabel = '';
+
+            if (btnId === 'preparebtn') {
+                if (!attn || !subject) {
+                    Swal.fire("Incomplete Data", "Please fill in both Attn and Subject before preparing.", "warning");
+                    return;
+                }
+
+                action = 'prepare';
+                roleText = 'Prepared';
+                successLabel = 'Prepared';
+
+                showConfirmAndSend();
+            }
+
+            else if (btnId === 'checkbtn') {
+                if (!stampData.PreparedBy) {
+                    Swal.fire("Step Invalid", "Please prepare this request first.", "warning");
+                    return;
+                }
+
+                Swal.fire({
+                    title: "Check Options",
+                    text: "Do you want to approve or reject this request?",
+                    icon: "question",
+                    showDenyButton: true,
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, Checked",
+                    denyButtonText: "Reject",
+                    cancelButtonText: "Cancel"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        action = 'check';
+                        roleText = 'Checked';
+                        successLabel = 'Checked';
+                        showLoadingStamp($btn);
+                        sendStamp("", "", () => hideLoadingStamp($btn, originalContent));
+                    } else if (result.isDenied) {
+                        Swal.fire({
+                            title: "Reason for Rejection",
+                            input: "textarea",
+                            inputLabel: "Message",
+                            inputPlaceholder: "Enter reason here...",
+                            inputAttributes: {
+                                "aria-label": "Type your reason here"
+                            },
+                            showCancelButton: true
+                        }).then((inputResult) => {
+                            if (inputResult.isConfirmed && inputResult.value.trim() !== "") {
+                                action = 'reject';
+                                roleText = 'Rejected';
+                                successLabel = 'Rejected';
+                                const rejectMessage = inputResult.value.trim();
+                                const rejectBy = 'check';
+                                showLoadingStamp($btn);
+                                sendStamp(rejectMessage, rejectBy, () => hideLoadingStamp($btn, originalContent));
+                            } else if (inputResult.isConfirmed) {
+                                Swal.fire("Required", "Rejection reason cannot be empty.", "warning");
+                            }
+                        });
+                    }
+                });
+            }
+
+            else if (btnId === 'approvebtn') {
+                if (!stampData.CheckedBy) {
+                    Swal.fire("Step Invalid", "Please check this request first.", "warning");
+                    return;
+                }
+
+                Swal.fire({
+                    title: "Approval Options",
+                    text: "Do you want to approve or reject this request?",
+                    icon: "question",
+                    showDenyButton: true,
+                    showCancelButton: true,
+                    confirmButtonText: "Yes, Approve",
+                    denyButtonText: "Reject",
+                    cancelButtonText: "Cancel"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        action = 'approve';
+                        roleText = 'Approved';
+                        successLabel = 'Approved';
+                        showLoadingStamp($btn);
+                        sendStamp("", "", () => hideLoadingStamp($btn, originalContent));
+                    } else if (result.isDenied) {
+                        Swal.fire({
+                            title: "Reason for Rejection",
+                            input: "textarea",
+                            inputLabel: "Message",
+                            inputPlaceholder: "Enter reason here...",
+                            inputAttributes: {
+                                "aria-label": "Type your reason here"
+                            },
+                            showCancelButton: true
+                        }).then((inputResult) => {
+                            if (inputResult.isConfirmed && inputResult.value.trim() !== "") {
+                                action = 'reject';
+                                roleText = 'Rejected';
+                                successLabel = 'Rejected';
+                                const rejectMessage = inputResult.value.trim();
+                                const rejectBy = 'approve';
+                                showLoadingStamp($btn);
+                                sendStamp(rejectMessage, rejectBy, () => hideLoadingStamp($btn, originalContent));
+                            } else if (inputResult.isConfirmed) {
+                                Swal.fire("Required", "Rejection reason cannot be empty.", "warning");
+                            }
+                        });
+                    }
+                });
+            }
+
+            function showConfirmAndSend() {
+                Swal.fire({
+                    title: `Confirm ${roleText}?`,
+                    text: `Are you sure you want to mark this request as ${roleText.toLowerCase()}?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: `Yes, ${roleText}`,
+                    cancelButtonText: 'Cancel',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    showLoadingStamp($btn);
+                    sendStamp("", "", () => hideLoadingStamp($btn, originalContent));
+                });
+            }
+
+            function sendStamp(rejectMessage = "", rejectBy = "", onComplete = () => {}) {
+                $.ajax({
+                    url: '@Url.Action("SaveStampStatusOrder", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: {
+                        Order_No: orderNo,
+                        Action: action,
+                        User_NIK: userNik,
+                        User_Name: userName,
+                        Attn: attn,
+                        Subject: subject,
+                        Reject_Message: rejectMessage,
+                        Reject_By: rejectBy,
+                    },
+                    success: function (res) {
+                        Swal.fire('Success', `${successLabel} and Email Sent Successfully.`, 'success').then(() => {
+                            location.reload();
+                        });
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'Something went wrong.', 'error');
+                        onComplete();
+                    }
+                });
+            }
+        });
+
+        $(document).on('click', '#dispatcherBtn', function () {
+            const $btn = $(this);
+            const originalContent = $btn.find('.bg-orange-300').html();
+
+            const isLogin = '@isLogin'.toLowerCase() === 'true';
+            if (!isLogin) {
+                Swal.fire("Unauthorized", "You must be logged in to perform this action.", "warning");
+                return;
+            }
+
+            if (!stampDataReady) {
+                Swal.fire("Loading", "Please wait, still loading data...", "info");
+                return;
+            }
+
+            const userNik = '@ViewBag.UserNik';
+            const userName = '@ViewBag.UserName';
+            const date = moment().format("DD-MM-YYYY");
+            const items = [];
+
+            $('#orderDetailTable tbody tr').each(function () {
+                const $row = $(this);
+                const qtyInput = $row.find('input[name="Qty_Kop"]');
+                if (qtyInput.length) {
+                    const qty = parseInt(qtyInput.val()) || 0;
+                    const itemId = $row.data('itemid');
+
+                    if (itemId) {
+                        items.push({
+                            Item_Order_Id: itemId,
+                            Qty_Kop: qty,
+                            Dispatcher_NIK: userNik,
+                            Dispatcher_Name: userName,
+                            Dispatcher_Date: date,
+                            Order_No: orderNo
+                        });
+                    }
+                }
+            });
+
+            if (items.length === 0) {
+                Swal.fire("No Data", "No Qty_Kop data to submit.", "info");
+                return;
+            }
+
+            Swal.fire({
+                title: 'Confirm Dispatch',
+                text: 'Are you sure you want to submit these quantities?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Submit',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                showLoadingStamp($btn);
+
+                $.ajax({
+                    url: '@Url.Action("SaveQtyKop", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: JSON.stringify({ orderNo: orderNo, items: items }),
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire("Success", res.message, "success").then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire("Failed", res.message, "error");
+                            hideLoadingStamp($btn, originalContent);
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Failed to send data to server.", "error");
+                        hideLoadingStamp($btn, originalContent);
+                    }
+                });
+            });
+        });
+
+        $(document).on('click', '#receiverBtn', function () {
+            const $btn = $(this);
+            const originalContent = $btn.find('.bg-orange-300').html();
+
+            const isLogin = '@isLogin'.toLowerCase() === 'true';
+            if (!isLogin) {
+                Swal.fire("Unauthorized", "You must be logged in to perform this action.", "warning");
+                return;
+            }
+
+            const userNik = '@ViewBag.UserNik';
+            const userName = '@ViewBag.UserName';
+            const date = moment().format("DD-MM-YYYY");
+            const items = [];
+
+            $('#orderDetailTable tbody tr').each(function () {
+                const $row = $(this);
+                const qtyInput = $row.find('input[name="Qty_GA"]');
+                if (qtyInput.length) {
+                    const qty = parseInt(qtyInput.val()) || 0;
+                    const itemId = $row.data('itemid');
+                    const requestNo = $row.data('requestno');
+
+                    if (itemId) {
+                        items.push({
+                            Item_Order_Id: itemId,
+                            Qty_GA: qty,
+                            Request_No: requestNo,
+                            Receiver_NIK: userNik,
+                            Receiver_Name: userName,
+                            Receiver_Date: date,
+                            Order_No: orderNo
+                        });
+                    }
+                }
+            });
+
+            if (items.length === 0) {
+                Swal.fire("No Data", "No Qty_GA data to submit.", "info");
+                return;
+            }
+
+            Swal.fire({
+                title: 'Confirm Receive',
+                text: 'Submit received quantities?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+
+                showLoadingStamp($btn);
+
+                $.ajax({
+                    url: '@Url.Action("SaveQtyGA", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: JSON.stringify({ orderNo: orderNo, items: items }),
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire("Success", res.message, "success").then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire("Failed", res.message, "error");
+                            hideLoadingStamp($btn, originalContent);
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Failed to send data to server.", "error");
+                        hideLoadingStamp($btn, originalContent);
+                    }
+                });
+            });
+        });
+
+        function showLoading($button, text) {
+            $button.prop('disabled', true);
+            $button.html(`<span class="flex items-center"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${text}</span>`);
+        }
+
+        function hideLoading($button, originalHtml) {
+            $button.prop('disabled', false);
+            $button.html(originalHtml);
+        }
+
+        function getStamp(orderNo) {
+            $.ajax({
+                url: '@Url.Action("GetStampStatusOrder", "Inventory", new { area = "HC" })',
+                type: 'GET',
+                data: { orderNo: orderNo },
+                success: function (response) {
+                    if (!response) return;
+
+                    const stampTemplate = (name, date) => `
+                        <div class="relative w-[70px] h-[70px] select-none pointer-events-none">
+                            <img src="@Url.Content("~/images/stamp.svg")"
+                                 class="absolute inset-0 w-full h-full object-contain"
+                                 style="z-index: 0;" />
+                            <div class="absolute inset-0 flex flex-col items-center gap-[8px] pt-3 z-10">
+                                <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${name.split(' ')[0]}</p>
+                                <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${date}</p>
+                            </div>
+                        </div>
+                    `;
+                    const pendingTemplate = `
+                        <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                            <span class="text-white text-xs">Pending</span>
+                        </div>
+                    `;
+
+                    const convertDate = (dateStr) =>
+                        dateStr ? moment(parseInt(dateStr.replace(/[^\d]/g, ''))).format('DD-MM-YYYY') : '-';
+
+                    const dataMap = [
+                        {
+                            btnId: '#preparebtn',
+                            longId: '#longnameprepared',
+                            name: response.PrepareBy,
+                            date: convertDate(response.PrepareDate)
+                        },
+                        {
+                            btnId: '#checkbtn',
+                            longId: '#longnamechecked',
+                            name: response.CheckBy,
+                            date: convertDate(response.CheckDate)
+                        },
+                        {
+                            btnId: '#approvebtn',
+                            longId: '#longnameapproved',
+                            name: response.ApproveBy,
+                            date: convertDate(response.ApproveDate)
+                        },
+                        {
+                            btnId: '#dispatcherBtn',
+                            longId: '#longnamedispatched',
+                            name: response.DispatchBy,
+                            date: convertDate(response.DispatchDate)
+                        },
+                        {
+                            btnId: '#receiverBtn',
+                            longId: '#longnamereceiver',
+                            name: response.ReceiveBy,
+                            date: convertDate(response.ReceiveDate)
+                        }
+                    ];
+
+                    dataMap.forEach(({ btnId, longId, name, date }) => {
+                        const $btn = $(btnId);
+                        const $longName = $(longId);
+
+                        if (name && date !== '-') {
+                            $btn.html(stampTemplate(name, date)).css({
+                                cursor: 'default',
+                                pointerEvents: 'none'
+                            }).off('click');
+                            $longName.text(`(${name})`).removeClass('hidden');
+                        } else {
+                            $btn.html(pendingTemplate).css({
+                                cursor: 'pointer',
+                                pointerEvents: 'auto'
+                            });
+                            $longName.addClass('hidden');
+                        }
+                    });
+
+                    $('#rejectedOverlay').addClass('hidden');
+                    $('#completedOverlay').addClass('hidden');
+                    $('#rejectMessage').text("");
+
+                    if (response.Reject_Message && response.Reject_Message.trim() !== '') {
+                        $('#rejectMessage').text("Message: " + response.Reject_Message);
+                        $('#rejectedOverlay').removeClass('hidden');
+                    }
+                    else if (response.ReceiveBy && response.ReceiveDate && response.ReceiveDate !== '-') {
+                        $('#completedOverlay').removeClass('hidden');
+                    }
+
+                    stampData = {
+                        PreparedBy: response.PrepareBy,
+                        PreparedDate: response.PrepareDate,
+                        CheckedBy: response.CheckBy,
+                        CheckedDate: response.CheckDate,
+                        ApprovedBy: response.ApproveBy,
+                        ApprovedDate: response.ApproveDate,
+                        DispatchBy: response.DispatchBy,
+                        DispatchDate: response.DispatchDate,
+                        ReceiveBy: response.ReceiveBy,
+                        ReceiveDate: response.ReceiveDate
+                    };
+                    stampDataReady = true;
+                },
+                error: function () {
+                    console.error('Gagal mengambil data stamp untuk', orderNo);
+                    stampDataReady = true;
+                }
+            });
+        }
+
+        function loadOrderDetail(orderNo, callback) {
+            $.ajax({
+                url: '@Url.Action("GetOrderDetailsByOrderNo", "Inventory", new { area = "HC" })',
+                method: 'GET',
+                data: { orderNo: orderNo },
+                success: function (res) {
+                    if (res.success && res.data && res.data.length > 0) {
+                        const first = res.data[0];
+                        renderOrderTable(res.data, first.Status);
+
+                        // Perhatian: Menghapus logika overlay dari sini
+                        // Semua logika overlay sekarang diatur di getStamp()
+
+                        if (first.Attn && first.Subject) {
+                            $('#attnInput').replaceWith(`<p id="attnInput" class="text-sm px-2 py-1">: ${first.Attn}</p>`);
+                            $('#subjectInput').replaceWith(`<p id="subjectInput" class="text-sm px-2 py-1">: ${first.Subject}</p>`);
+                        } else {
+                            $('#attnInput').val(first.Attn || '');
+                            $('#subjectInput').val(first.Subject || '');
+                        }
+
+                        if (typeof callback === 'function') {
+                            callback();
+                        }
+                    } else {
+                        Swal.fire("No Data", "No order data found.", "info");
+                    }
+                },
+                error: function (xhr) {
+                    console.error(xhr.responseText);
+                    Swal.fire("Error", "Failed to load order data!", "error");
+                }
+            });
+        }
+
+        function updateTotals() {
+            let sumQtyKop = 0;
+            let sumQtyGA = 0;
+
+            $('#orderDetailTable tbody tr').each(function () {
+                const $row = $(this);
+                const qtyKopElement = $row.find('.qty-prepare-cell input, .qty-prepare-cell p');
+                const qtyGAElement = $row.find('.qty-receive-cell input, .qty-receive-cell p');
+
+                if (qtyKopElement.length) {
+                    const val = parseFloat(qtyKopElement.is('input') ? qtyKopElement.val() : qtyKopElement.text());
+                    if (!isNaN(val)) sumQtyKop += val;
+                }
+
+                if (qtyGAElement.length) {
+                    const val = parseFloat(qtyGAElement.is('input') ? qtyGAElement.val() : qtyGAElement.text());
+                    if (!isNaN(val)) sumQtyGA += val;
+                }
+            });
+
+            $('#totalQtyKop').text(sumQtyKop);
+            $('#totalQtyGA').text(sumQtyGA);
+        }
+
+        function renderOrderTable(data, status) {
+            const $tbody = $('#orderDetailTable tbody');
+            const $theadRow = $('#orderDetailTable thead tr');
+
+            $tbody.empty();
+            $theadRow.empty();
+
+            if (!data || data.length === 0) {
+                $tbody.append(`
+                    <tr>
+                        <td colspan="7" class="border border-gray-300 px-1 py-1 text-center text-gray-400 text-sm">
+                            No data found
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
+
+            let totalQty = 0;
+            const isApproved = status?.toLowerCase() === 'order approved';
+            const isDispatched = status?.toLowerCase() === 'dispatcher confirmed';
+            const isCompleted = status?.toLowerCase() === 'order complete';
+
+            $theadRow.append(`
+                <th class="border border-gray-300 px-2 w-10 text-center">No.</th>
+                <th class="border border-gray-300 px-2">Item Name</th>
+                <th class="border border-gray-300 px-2 text-center">Qty Request</th>
+                <th class="border border-gray-300 px-2 text-center">Unit</th>
+                ${(isApproved || isDispatched || isCompleted) ? '<th class="border border-gray-300 px-2 text-center">Qty Prepare</th>' : ''}
+                ${(isDispatched || isCompleted) ? '<th class="border border-gray-300 px-2 text-center">Qty Receive</th>' : ''}
+            `);
+
+            data.forEach((item, index) => {
+                const qty = parseInt(item.Item_Order_Qty) || 0;
+                totalQty += qty;
+
+                let row = `
+                    <tr class="text-sm" data-itemid="${item.Item_Order_Id}" data-requestno="${item.Request_No}">
+                        <td class="border border-gray-300 px-2 text-center">${index + 1}</td>
+                        <td class="border border-gray-300 px-2">${item.Item_Order_Name}</td>
+                        <td class="border border-gray-300 px-2 text-center">${qty}</td>
+                        <td class="border border-gray-300 px-2 text-center">${item.Item_Order_Unit?.trim()}</td>`;
+
+                if (isApproved) {
+                    row += `
+                        <td class="border border-gray-300 px-1 py-1 text-center qty-prepare-cell">
+                            <input type="number" name="Qty_Kop" value="${item.Qty_Kop ?? qty}"
+                                class="w-20 border border-gray-300 rounded px-1 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </td>`;
+                } else if (isDispatched) {
+                    row += `
+                        <td class="border border-gray-300 px-2 text-center qty-prepare-cell">
+                            <p class="text-sm">${item.Qty_Kop ?? 0}</p>
+                        </td>
+                        <td class="border border-gray-300 px-1 py-1 text-center qty-receive-cell">
+                            <input type="number" name="Qty_GA" value="${item.Qty_GA ?? item.Qty_Kop ?? 0}"
+                                class="w-20 border border-gray-300 rounded px-1 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                        </td>`;
+                } else if (isCompleted) {
+                    row += `
+                        <td class="border border-gray-300 px-2 text-center qty-prepare-cell">
+                            <p class="text-sm">${item.Qty_Kop ?? 0}</p>
+                        </td>
+                        <td class="border border-gray-300 px-2 text-center qty-receive-cell">
+                            <p class="text-sm">${item.Qty_GA ?? 0}</p>
+                        </td>`;
+                }
+
+                row += '</tr>';
+                $tbody.append(row);
+            });
+
+            let footerRow = `
+                <tr class="font-semibold text-sm bg-gray-100" id="totalRow">
+                    <td class="border border-gray-300 px-2 text-right" colspan="2">TOTAL</td>
+                    <td class="border border-gray-300 px-2 text-center">${totalQty}</td>
+                    <td class="border border-gray-300 px-2 text-center">Items</td>`;
+
+            if (isApproved || isDispatched || isCompleted) {
+                footerRow += `<td class="border border-gray-300 px-2 text-center" id="totalQtyKop">0</td>`;
+            }
+            if (isDispatched || isCompleted) {
+                footerRow += `<td class="border border-gray-300 px-2 text-center" id="totalQtyGA">0</td>`;
+            }
+
+            footerRow += `</tr>`;
+            $tbody.append(footerRow);
+
+            if (isApproved) {
+                $('input[name="Qty_Kop"]').on('input', updateTotals);
+            }
+            if (isDispatched) {
+                $('input[name="Qty_GA"]').on('input', updateTotals);
+            }
+
+            updateTotals();
+
+            // Menghapus logika overlay dari sini
+        }
+
+        let stampDataReady = false;
+
+function getStamp(orderNo) {
+    $.ajax({
+        url: '@Url.Action("GetStampStatusOrder", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        data: { orderNo: orderNo },
+        success: function (response) {
+            if (!response) return;
+
+            const stampTemplate = (name, date) => `
+                <div class="relative w-[70px] h-[70px] select-none pointer-events-none">
+                    <img src="@Url.Content("~/images/stamp.svg")"
+                         class="absolute inset-0 w-full h-full object-contain"
+                         style="z-index: 0;" />
+                    <div class="absolute inset-0 flex flex-col items-center gap-[8px] pt-3 z-10">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${name.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${date}</p>
+                    </div>
+                </div>
+            `;
+            const pendingTemplate = `
+                <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                    <span class="text-white text-xs">Pending</span>
+                </div>
+            `;
+
+            const convertDate = (dateStr) =>
+                dateStr ? moment(parseInt(dateStr.replace(/[^\d]/g, ''))).format('DD-MM-YYYY') : '-';
+
+            const dataMap = [
+                {
+                    btnId: '#preparebtn',
+                    longId: '#longnameprepared',
+                    name: response.PrepareBy,
+                    date: convertDate(response.PrepareDate)
+                },
+                {
+                    btnId: '#checkbtn',
+                    longId: '#longnamechecked',
+                    name: response.CheckBy,
+                    date: convertDate(response.CheckDate)
+                },
+                {
+                    btnId: '#approvebtn',
+                    longId: '#longnameapproved',
+                    name: response.ApproveBy,
+                    date: convertDate(response.ApproveDate)
+                },
+                {
+                    btnId: '#dispatcherBtn',
+                    longId: '#longnamedispatched',
+                    name: response.DispatchBy,
+                    date: convertDate(response.DispatchDate)
+                },
+                {
+                    btnId: '#receiverBtn',
+                    longId: '#longnamereceiver',
+                    name: response.ReceiveBy,
+                    date: convertDate(response.ReceiveDate)
+                }
+            ];
+
+            dataMap.forEach(({ btnId, longId, name, date }) => {
+                const $btn = $(btnId);
+                const $longName = $(longId);
+
+                if (name && date !== '-') {
+                    $btn.html(stampTemplate(name, date)).css({
+                        cursor: 'default',
+                        pointerEvents: 'none'
+                    }).off('click');
+                    $longName.text(`(${name})`).removeClass('hidden');
+                } else {
+                    $btn.html(pendingTemplate).css({
+                        cursor: 'pointer',
+                        pointerEvents: 'auto'
+                    });
+                    $longName.addClass('hidden');
+                }
+            });
+
+            // --- Logika Overlay yang Diperbarui ---
+            $('#rejectedOverlay').addClass('hidden');
+            $('#completedOverlay').addClass('hidden');
+            $('#rejectMessage').text("");
+
+            const statusOrder = response.Status?.toLowerCase();
+
+            if (statusOrder.includes('rejected') && response.RejectMessage && response.RejectMessage.trim() !== '') {
+                $('#rejectMessage').text("Message: " + response.RejectMessage);
+                $('#rejectedOverlay').removeClass('hidden');
+            }
+            else if (statusOrder === 'order complete') {
+                $('#completedOverlay').removeClass('hidden');
+            }
+            // --- Akhir Logika Overlay ---
+
+            stampData = {
+                PreparedBy: response.PrepareBy,
+                PreparedDate: response.PrepareDate,
+                CheckedBy: response.CheckBy,
+                CheckedDate: response.CheckDate,
+                ApprovedBy: response.ApproveBy,
+                ApprovedDate: response.ApproveDate,
+                DispatchBy: response.DispatchBy,
+                DispatchDate: response.DispatchDate,
+                ReceiveBy: response.ReceiveBy,
+                ReceiveDate: response.ReceiveDate
+            };
+            stampDataReady = true;
+        },
+        error: function () {
+            console.error('Gagal mengambil data stamp untuk', orderNo);
+            stampDataReady = true;
+        }
+    });
+}
+    });
+    </script>
+    <script>
+    console.log("User NIK: ", "@(ViewBag.UserNik)");
+    console.log("User Name: ", "@(ViewBag.UserName)");
+    console.log("stampData:", stampData);
+
+    </script>
+
+}
+
+
+<body class="bg-gray-100 p-6">
+    <input type="hidden" class="form-control" id="userIdRequest" value="@ViewBag.currUsr" readonly>
+
+    <div class="flex items-center rounded text-[#2C3E50] mb-4">
+        <span class="text-[#F6AA04] font-bold text-xl mr-2">|</span>
+        <h2 class="font-bold text-xl">Detail Items Order</h2>
+    </div>
+
+    <div class="flex justify-center">
+        <button class="mb-4 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 mr-2"
+                id="buttonlock"
+                hidden>
+            <i class="fa-solid fa-lock"></i>
+        </button>
+        <button onclick="generateFullDoc()"
+                id="previewbtn"
+                class="mb-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-2"
+                hidden>
+            Preview Full Document
+        </button>
+        <button class="mb-4 px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 mr-2"
+                id="savebutton"
+                hidden>
+            Save Changes
+        </button>
+        <button class="mb-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                id="buttonprint">
+            Print
+        </button>
+
+    </div>
+
+    <div class="mb-4 bg-white border shadow mx-auto p-6" style="width: 21cm; min-height: 29.7cm; font-size: 10pt;">
+        <!-- Letter Head -->
+        <div id="letterContent" class="m-4 relative">
+            <div id="letterhead">
+                <div class="flex justify-between items-center">
+                    <div style="width: 150px; display: flex; justify-content: flex-start;">
+                        <img src="~/Content/Images/niterra-logo.jpg" alt="logo" width="135" />
+                    </div>
+                    <div class="text-center ">
+                        <p class="font-bold">PT Niterra Mobility Indonesia</p>
+                        <p class="text-[10px] uppercase">Jl. Raya Jakarta-Bogor Km. 26,6 Ciracas, Jakarta Timur, 13740</p>
+                        <p class="text-[10px] uppercase">Indonesia</p>
+                        <p class="text-[10px] uppercase">Tel: +62 21 8710974 Fax: +62 21 8710965</p>
+                    </div>
+                    <div style="width: 150px; display: flex; justify-content: flex-end;">
+                        <img src="~/Content/Images/tuv-image.png" width="120" height="50" alt="tuv" />
+                    </div>
+                </div>
+                <div id="line" class="w-full inline-flex flex-col justify-start items-start gap-[2px]">
+                    <div class="self-stretch h-0 outline outline-1 outline-offset-[-0.50px] outline-black"></div>
+                </div>
+                <p id="number" name="number" class="text-sm font-bold text-center underline"></p>
+                <input type="hidden" id="idLetter" />
+                <input type="hidden" id="idList" />
+                <input type="hidden" id="timestamps" value="@ViewBag.Now" />
+            </div>
+            <input type="hidden" id="hfIsLogin" value="@(isLogin.ToString())" />
+
+            <!-- Letter Body -->
+            <form id="letterbody" class="text-xs leading-tight" method="post">
+                <div class="text-center font-bold text-lg underline mt-4">
+                    ATK ORDER CONFIRMATION
+                </div>
+                <div class="text-center font-bold mb-4 text-sm">
+                    <span id="odrnumber"></span>
+                </div>
+
+                <table class="table-auto w-full mb-2">
+                    <tr>
+                        <td class="align-center text-sm w-[150px]">To</td>
+                        <td>
+                            <input type="text" id="attnInput" name="attn" placeholder="Recipient Name"
+                                   class="border text-sm rounded w-full px-2 py-1" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="align-center text-sm">Subject</td>
+                        <td>
+                            <input type="text" id="subjectInput" name="subject" placeholder="Subject"
+                                   class="border text-sm rounded w-full px-2 py-1" />
+                        </td>
+                    </tr>
+                </table>
+
+                <p class="text-sm justify mb-2">
+                    We hereby confirm the order of stationery items as detailed below:
+                </p>
+
+                <table id="orderDetailTable" class="table w-full border border-gray-300 text-sm text-left text-gray-800">
+                    <thead class="bg-gray-100 text-xs uppercase text-gray-600">
+                        <tr>
+                            <th class="border border-gray-300 px-2">No.</th>
+                            <th class="border border-gray-300 px-2">Item Name</th>
+                            <th class="border border-gray-300 px-2 text-center">Qty</th>
+                            <th class="border border-gray-300 px-2 text-center">Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderDetailBody">
+                        <!-- Baris data diinject dari JS -->
+                    </tbody>
+                </table>
+
+                <div class="flex justify-end text-sm mb-8">
+                    <div class="text-right">
+                        <p>Jakarta, @DateTime.Now.ToString("dd MMMM yyyy")</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-sm mb-6">
+                    <div class="text-center w-1/3">
+                        <div class="mb-2 text-sm">Prepared By:</div>
+                        <button id="preparebtn" type="button" class="relative">
+                            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">Pending</span>
+                            </div>
+                        </button>
+                        <div id="longnameprepared" class="text-xs mt-1 font-bold italic hidden">( _____________ )</div>
+                    </div>
+                    <div class="text-center w-1/3">
+                        <div class="mb-2 text-sm">Checked By:</div>
+                        <button id="checkbtn" type="button" class="relative">
+                            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">Pending</span>
+                            </div>
+                        </button>
+                        <div id="longnamechecked" class="text-xs mt-1 font-bold italic hidden">( _____________ )</div>
+                    </div>
+                    <div class="text-center w-1/3">
+                        <div class="mb-2 text-sm">Approved By:</div>
+                        <button id="approvebtn" type="button" class="relative">
+                            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">Pending</span>
+                            </div>
+                        </button>
+                        <div id="longnameapproved" class="text-xs mt-1 font-bold italic hidden">( _____________ )</div>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-sm mt-8">
+                    <div class="text-center w-1/2">
+                        <div class="mb-2 text-sm">Dispatcher</div>
+                        <button id="dispatcherBtn" type="button" class="relative">
+                            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">Pending</span>
+                            </div>
+                        </button>
+                        <div id="longnamedispatched" class="text-xs mt-1 font-bold italic hidden">( _____________ )</div>
+                    </div>
+
+                    <div class="text-center w-1/2">
+                        <div class="mb-2 text-sm">Receiver</div>
+                        <button id="receiverBtn" type="button" class="relative">
+                            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                                <span class="text-white text-xs">Pending</span>
+                            </div>
+                        </button>
+                        <div id="longnamereceiver" class="text-xs mt-1 font-bold italic hidden">( _____________ )</div>
+                    </div>
+                </div>
+
+
+            </form>
+            <div id="rejectedOverlay" class="hidden absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center text-center p-4">
+                <h1 class="text-red-500 text-5xl font-bold rotate-[-20deg] opacity-70 mb-2">REJECTED</h1>
+                <p id="rejectMessage" class="text-red-500 text-base italic rotate-[-20deg] max-w-xl opacity-90"></p>
+            </div>
+            <div id="completedOverlay" class="hidden absolute top-0 left-0 w-full h-full flex flex-col justify-center items-center text-center p-4">
+                <h1 class="text-green-500 text-5xl font-bold rotate-[-20deg] opacity-70 mb-2">ORDER COMPLETE</h1>
+            </div>
+        </div>
+    </div>
+
+</body>
+

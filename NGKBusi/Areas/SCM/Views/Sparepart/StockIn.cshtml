@@ -1,0 +1,274 @@
+﻿<!doctype html>
+@{
+    ViewBag.Title = "Sparepart Received";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+<!-- bootstrap-select -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+<!-- bootstrap-select -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="https://unpkg.com/bootstrap-table/dist/bootstrap-table.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style>
+    .card {
+        /*border-top-left-radius: 2em;
+        border-top-right-radius: 2em;*/
+        box-shadow: 0 5px 10px rgba(0,0,0,.2);
+    }
+
+        .card .card-header {
+            /*border-top-left-radius: inherit;
+        border-top-right-radius:inherit;*/
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inset;
+        }
+
+    .bootstrap-select.is-invalid .dropdown-toggle, .error .bootstrap-select .dropdown-toggle, .has-error .bootstrap-select .dropdown-toggle, .was-validated .bootstrap-select select:invalid + .dropdown-toggle {
+        border-color: #dc3545;
+    }
+
+    .table-detail {
+        display: none;
+        position: absolute;
+    }
+
+        .table-detail td {
+            border: 1px solid red;
+        }
+</style>
+<div class="row">
+    <div class="col-12">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab" aria-controls="home" aria-selected="true">Data Packing Slip</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="profile-tab" data-toggle="tab" href="#profile" role="tab" aria-controls="profile" aria-selected="false">Data Received</a>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-primary">Data Packing Slip</div>
+                            <div class="card-body">
+                                <div class="row p-2">
+                                    <div class="col-lg-12">
+
+
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <div id="toolbar">
+
+                                        </div>
+                                        <table id="temp-table"
+                                               data-filter-control="true"
+                                               data-filter="true"
+                                               data-id-table="advancedTable"
+                                               data-toggle="table"
+                                               data-toolbar="#toolbar"
+                                               data-ajax="ajaxRequest"
+                                               data-detail-view="false"
+                                               data-detail-view-icon="true"
+                                               data-detail-view-by-click="false"
+                                               data-detail-formatter="detailFormatter"
+                                               data-click-to-select="true"
+                                               class="table table-sm table-striped">
+                                            <thead>
+                                            <th data-field="No" align="center">No</th>
+                                            <th data-field="ProductReceipt" data-sortable="true">Packing Slip ID</th>
+                                            <th data-field="Site" data-sortable="true">Site</th>
+                                            <th data-field="TotalItem">Total Item</th>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td align="center"></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-info">Data Packing SLip Received</div>
+                            <div class="card-body">
+                                <div class="row p-2">
+                                    <div class="col-lg-12">
+
+                                        <table id="temp-table"
+                                               data-filter-control="true"
+                                               data-filter="true"
+                                               data-id-table="advancedTable"
+                                               data-toggle="table"
+                                               data-toolbar="#toolbar"
+                                               data-ajax="ajaxRequestReceived"
+                                               data-click-to-select="true"
+                                               class="table table-sm table-striped">
+                                            <thead>
+                                            <th data-field="No">No</th>
+                                            <th data-field="ProductReceipt">Packing Slip ID</th>
+                                            <th data-field="Site" data-sortable="true">Site</th>
+                                            <th data-field="ItemGroup">Item Group</th>
+                                            <th data-field="DateReceived">Received Date</th>
+                                            </thead>
+                                            <tbody>
+
+                                                <tr>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td></td>
+                                                </tr>
+
+                                        </table>
+                                    </div>
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+<script>
+        //$('.IDPacking').hover(function (ev) {
+        //    $('#myContentHover').stop(true, true).fadeIn();
+        //}, function (ev) {
+        //    $('#myContentHover').stop(true, true).fadeOut();
+        //}).mousemove(function (ev) {
+        //    $('#myContentHover').css({ left: ev.layerX + 10, top: ev.layerY + 10 });
+        //});
+
+        //$(function () {
+        //    $('.IDPacking').tooltip({ content: $('#myContentHover').html() });
+        //});
+
+    $(function () {
+        $('.selectpicker').selectpicker();
+
+        var $table = $('#table');
+
+    });
+
+
+    function ajaxRequest(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("PackingSlipList", "Sparepart", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+        }
+
+    function ajaxRequestReceived(params) {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("PackingSlipListReceived", "Sparepart", new { area = "SCM" })",
+            dataType: 'json',
+            cache: false,
+            success: function (items) {
+                params.success({
+                    "rows": items.rows,
+                    "total": items.total
+                })
+            },
+            error: function (er) {
+                params.error(er);
+            }
+        })
+    }
+
+
+    // Fungsi untuk mengambil data tabel melalui AJAX
+    function getTableData(rowId) {
+        // Gantikan URL_AJAX dengan URL endpoint untuk mendapatkan data tabel dari server Anda
+        var url = '@Url.Action("PackingSlipItemList", "Sparepart", new { area = "SCM" })';
+
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: { ProductReceipt : rowId},
+            dataType: 'json',
+            success: function (data) {
+                // Format data menjadi tabel HTML
+                var tableHTML = '<table class="table table-bordered"><thead><tr><th>Column Header 1</th><th>Column Header 2</th></tr></thead><tbody>';
+
+                for (var i = 0; i < data.length; i++) {
+                    tableHTML += '<tr><td>' + data[i].column1 + '</td><td>' + data[i].column2 + '</td></tr>';
+                }
+
+                tableHTML += '</tbody></table>';
+
+                // Saat data berhasil diambil, tampilkan tabel di dalam tooltip
+                $('[data-row-id="' + rowId + '"]').attr('data-html', 'true').attr('data-toggle', 'tooltip').attr('title', tableHTML).tooltip('show');
+            },
+            error: function () {
+                // Tangani jika terjadi kesalahan dalam mengambil data
+                $('[data-row-id="' + rowId + '"]').tooltip('hide');
+            }
+        });
+    }
+
+    // Event saat mouse diarahkan ke link
+    $(document).on('mouseenter', '.tooltip-link', function () {
+        //var rowId = $(this).data('row-id');
+        //getTableData(rowId);
+    });
+
+    // Inisialisasi tooltip Bootstrap
+    $('[data-toggle="tooltip"]').tooltip();
+
+</script>

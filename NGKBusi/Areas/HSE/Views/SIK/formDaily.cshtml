@@ -1,0 +1,967 @@
+﻿@using NGKBusi.Areas.HSE.Controllers;
+@using NGKBusi.Models;
+
+@{
+    ViewBag.Title = "formDaily";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tbIndex = 0;
+    var formDaily = ViewBag.FormDaily;
+    var SIK = ViewContext.Controller as SIKController;
+    DefaultConnection db = new DefaultConnection();
+}
+@section cssHead{
+    <style type="text/css">
+        .olJobField, .olJobType {
+            -moz-column-count: 2;
+            -moz-column-gap: 20px;
+            -webkit-column-count: 2;
+            -webkit-column-gap: 20px;
+            column-count: 2;
+            column-gap: 20px;
+            list-style: none;
+            list-style-position: inside;
+        }
+
+        .olJobListWrapper {
+            -moz-column-count: 3;
+            -moz-column-gap: 20px;
+            -webkit-column-count: 3;
+            -webkit-column-gap: 20px;
+            column-count: 3;
+            column-gap: 20px;
+            list-style-position: inside;
+        }
+
+        .olJobListContent {
+            list-style: none;
+        }
+
+        table td {
+            position: relative;
+        }
+
+            table td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+    </style>
+}
+@section scriptHead{
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $("#txtTimeFrom,#txtTimeTo").clockpicker({
+                placement: 'left',
+                autoclose: true,
+                beforeShow: function () {
+                    //alert($(".clockpicker-hours .clockpicker-tick", this).filter(function () {
+                    //    return $(this).text() === "16";
+                    //}).html());
+                }
+            });
+            $(".btnAddNew").click(function () {
+                $("#divSIKFormDaily").show("blind");
+            });
+
+            $(".btnApproval").click(function () {
+                $("#approvalModal").modal("show");
+            });
+        });
+    </script>
+}
+
+<h2>
+    SIK Daily Form
+    @*<button type="button" class="btn btn-success btnAddNew">Submit New Form</button>*@
+    @if (Request.QueryString["SIK"] != null || Request.QueryString["addNew"] != null)
+    {
+        <a class="btn btn-success" href="@("/NGKBusi/HSE/SIK/formDaily")">Cancel</a>
+    }
+    else
+    {
+        @*<a class="btn btn-success" href="@("/NGKBusi/HSE/SIK/formDaily?addNew=addNew")">Submit New Form</a>*@
+    }
+</h2>
+
+
+<div id="divSIKFormDaily" style="@(Request.QueryString["SIK"] != null || Request.QueryString["addNew"] != null ? "":"display:none;")">
+    <form id="formSIK" action="@Url.Action(formDaily != null? "formDailyEdit" : "formDailyAdd", "SIK", new { area = "HSE" })" class="form-horizontal" method="post" enctype='multipart/form-data'>
+        <input type="hidden" id="hfFormID" name="iFormID" value="@(formDaily != null ? formDaily.ID : "")" />
+        <input type="hidden" id="hfFormApproval" name="iFormApproval" value="@(formDaily != null ? formDaily.Approval : "")" />
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="divForm1">
+                    <div class="form-group row">
+                        <div class="col-lg-6">
+                            <div class="form-group row">
+                                <label class="control-label col-12 text-left font-weight-bold">A. INFORMASI UMUM</label>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Perusahaan:</label>
+                                <div class="col-9">
+                                    <select id="selVendor" name="iVendor" class="form-control select2" style="width:100%;" required>
+                                        <option value="">-Third Party-</option>
+                                        @foreach (var item in ViewBag.ThirdParty)
+                                        {
+                                            <option value="@(item.ACCOUNTNUM + "|" + item.Name)" @(item.ACCOUNTNUM == formDaily?.Third_Party_Code ? "Selected" : "")>@(item.ACCOUNTNUM + " | " + item.Name)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">PIC Pelaksana Kerja (PK):</label>
+                                <div class="col-9">
+                                    <input type="text" name="iPIC" class="form-control" placeholder="PIC" value="@(formDaily?.PIC)" required />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Pekerjaan Yang Dilakukan:</label>
+                                <div class="col-9">
+                                    <input type="text" name="iJob" class="form-control" placeholder="Job" value="@(formDaily?.Job)" required />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Lokasi Kerja:</label>
+                                <div class="col-9">
+                                    <input type="text" name="iLocation" class="form-control" placeholder="Location" value="@(formDaily?.Location)" required />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Dept User Pekerjaan:</label>
+                                <div class="col-9">
+                                    <select id="selDivision" name="iDept" class="form-control select2" required>
+                                        <option value="">-Dept-</option>
+                                        @foreach (var item in ViewBag.Division)
+                                        {
+                                            <option value="@(item)" @(formDaily?.Dept == item ? "selected" : "")>@(item)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Deskripsi Pekerjaan:</label>
+                                <div class="col-9">
+                                    <textarea class="form-control" name="iJobDescription" rows="4">@(formDaily?.Job_Description)</textarea>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group row">
+                                <label class="control-label col-12 text-left font-weight-bold">B. VALIDASI IZIN KERJA</label>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Lama Pekerjaan:</label>
+                                <div class="col-4">
+                                    <input type="text" name="iDateFrom" class="form-control dFrom" placeholder="From" value="@(formDaily?.Date_From)" required />
+                                </div>
+                                <div class="col-1">
+                                    s/d
+                                </div>
+                                <div class="col-4">
+                                    <input type="text" name="iDateTo" class="form-control dTo" placeholder="To" value="@(formDaily?.Date_To)" required />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Tanggal Izin Bekerja:</label>
+                                <div class="col-9">
+                                    @( formDaily != null ? formDaily.Created_At.ToString("yyyy-MM-dd") : DateTime.Now.ToString("yyyy-MM-dd"))
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold">Jam Bekerja:</label>
+                                <div class="col-4">
+                                    <input type="text" id="txtTimeFrom" name="iTimeFrom" class="form-control" placeholder="From" value="@(formDaily?.Time_From)" required />
+                                </div>
+                                <div class="col-1">
+                                    s/d
+                                </div>
+                                <div class="col-4">
+                                    <input type="text" id="txtTimeTo" name="iTimeTo" class="form-control" placeholder="To" value="@(formDaily?.Time_To)" required />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-12 text-left font-weight-bold">Izin Dibatalkan Oleh:</label>
+                                <div class="col-12 p-1">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Tanggal & Jam</th>
+                                                <th>Keterangan</th>
+                                                <th>NGK Authority</th>
+                                            </tr>
+                                        </thead>
+                                        <tBody>
+                                            <tr>
+                                                <td style="height: 150px;"></td>
+                                                <td></td>
+                                                <td></td>
+                                            </tr>
+                                        </tBody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <hr />
+                <div class="divForm2">
+                    @{
+                        String[] workerName = formDaily?.Worker_Name.ToString().Split(',');
+                        String[] workerPosition = formDaily?.Worker_Position.ToString().Split(',');
+                    }
+                    <div class="form-group row">
+                        <label class="control-label col-12 text-left font-weight-bold">C. INFORMASI UMUM</label>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>NAMA PEKERJA</th>
+                                    <th>BAGIAN/POSISI</th>
+                                </tr>
+                            </thead>
+                            <tBody>
+                                <tr>
+                                    <td style="width: 75px;">1</td>
+                                    <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[0] : "")" placeholder="Nama" /></td>
+                                    <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[0] : "")" placeholder="Posisi" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">2</td>
+                                    <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[1] : "")" placeholder="Nama" /></td>
+                                    <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[1] : "")" placeholder="Posisi" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">3</td>
+                                    <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[2] : "")" placeholder="Nama" /></td>
+                                    <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[2] : "")" placeholder="Posisi" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">4</td>
+                                    <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[3] : "")" placeholder="Nama" /></td>
+                                    <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[3] : "")" placeholder="Posisi" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">5</td>
+                                    <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[4] : "")" placeholder="Nama" /></td>
+                                    <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[4] : "")" placeholder="Posisi" /></td>
+                                </tr>
+                            </tBody>
+                        </table>
+                    </div>
+                </div>
+                <hr />
+                <div class="divForm3">
+                    @{String[] jobField = formDaily?.Job_Field?.ToString().Split(',');}
+                    <div class="form-group row">
+                        <div class="col-lg-6">
+                            <label class="control-label col-12 text-left font-weight-bold">D. BIDANG PEKERJAAN</label>
+                            <ol class="olJobField">
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input pull-right" type="checkbox" value="Konstruksi" name="iJobField[]" id="cbJobField1" @(jobField != null && jobField.Contains("Konstruksi") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField1">
+                                            Konstruksi
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Mechanical" name="iJobField[]" id="cbJobField2" @(jobField != null && jobField.Contains("Mechanical") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField2">
+                                            Mechanical
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Kimia" name="iJobField[]" id="cbJobField3" @(jobField != null && jobField.Contains("Kimia") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField3">
+                                            Kimia
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Angkutan" name="iJobField[]" id="cbJobField4" @(jobField != null && jobField.Contains("Angkutan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField4">
+                                            Angkutan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Electrical" name="iJobField[]" id="cbJobField5" @(jobField != null && jobField.Contains("Electrical") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField5">
+                                            Electrical
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Inspeksi" name="iJobField[]" id="cbJobField6" @(jobField != null && jobField.Contains("Inspeksi") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField6">
+                                            Pemeriksaan / Inspeksi
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pekerjaan Berbahaya" name="iJobField[]" id="cbJobField7" @(jobField != null && jobField.Contains("Pekerjaan Berbahaya") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField7">
+                                            Pekerjaan Berbahaya
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Lain - Lain" name="iJobField[]" id="cbJobField8" @(jobField != null && jobField.Contains("Lain - Lain") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobField8">
+                                            Lain - Lain
+                                        </label>
+                                    </div>
+                                    <textarea class="form-control" name="iJobFieldOther" rows="3"></textarea>
+                                </li>
+                            </ol>
+                        </div>
+                        <div class="col-lg-6">
+                            <label class="control-label col-12 text-left font-weight-bold">E. JENIS PEKERJAAN</label>
+                            @{String[] jobType = formDaily?.Job_Type?.ToString().Split(',');}
+                            <ol class="olJobType">
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pembongkaran" name="iJobType[]" id="cbJobType1" @(jobType != null && jobType.Contains("Pembongkaran") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType1">
+                                            Pembongkaran
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pemasangan" name="iJobType[]" id="cbJobType2" @(jobType != null && jobType.Contains("Pemasangan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType2">
+                                            Pemasangan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pengecatan" name="iJobType[]" id="cbJobType3" @(jobType != null && jobType.Contains("Pengecatan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType3">
+                                            Pengecatan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Fabrikasi" name="iJobType[]" id="cbJobType4" @(jobType != null && jobType.Contains("Fabrikasi") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType4">
+                                            Fabrikasi
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Reparasi" name="iJobType[]" id="cbJobType5" @(jobType != null && jobType.Contains("Reparasi") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType5">
+                                            Reparasi
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pipanisasi" name="iJobType[]" id="cbJobType6" @(jobType != null && jobType.Contains("Pipanisasi") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType6">
+                                            Pipanisasi
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pemeriksaan" name="iJobType[]" id="cbJobType7" @(jobType != null && jobType.Contains("Pemeriksaan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType7">
+                                            Pemeriksaan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pengetesan" name="iJobType[]" id="cbJobType8" @(jobType != null && jobType.Contains("Pengetesan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType8">
+                                            Pengetesan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Penyetelan" name="iJobType[]" id="cbJobType9" @(jobType != null && jobType.Contains("Penyetelan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType9">
+                                            Penyetelan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Pembersihan" name="iJobType[]" id="cbJobType10" @(jobType != null && jobType.Contains("Pembersihan") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType10">
+                                            Pembersihan
+                                        </label>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Lain - Lain" name="iJobType[]" id="cbJobType11" @(jobType != null && jobType.Contains("Lain - Lain") ? "checked" : "")>
+                                        <label class="form-check-label" for="cbJobType11">
+                                            Lain - Lain
+                                        </label>
+                                    </div>
+                                    <textarea class="form-control" name="iJobTypeOther" rows="3"></textarea>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+                <div class="divForm4">
+                    @{
+                        String[] toolsName = formDaily?.Job_Tools_Name.ToString().Split(',');
+                        String[] toolsQty = formDaily?.Job_Tools_Qty.ToString().Split(',');
+                    }
+                    <div class="form-group row">
+                        <label class="control-label col-12 text-left font-weight-bold">F. PERALATAN KERJA</label>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>NAMA ALAT</th>
+                                    <th>JUMLAH</th>
+                                </tr>
+                            </thead>
+                            <tBody>
+                                <tr>
+                                    <td style="width: 75px;">1</td>
+                                    <td><input type="text" name="iToolsName[]" value="@(toolsName != null ? toolsName[0] : "")" placeholder="Nama Alat" /></td>
+                                    <td style="width: 100px;"><input type="number" name="iToolsQty[]" value="@(toolsQty != null ? toolsQty[0] : "")" placeholder="Jumlah" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">2</td>
+                                    <td><input type="text" name="iToolsName[]" value="@(toolsName != null ? toolsName[1] : "")" placeholder="Nama Alat" /></td>
+                                    <td style="width: 100px;"><input type="number" name="iToolsQty[]" value="@(toolsQty != null ? toolsQty[1] : "")" placeholder="Jumlah" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">3</td>
+                                    <td><input type="text" name="iToolsName[]" value="@(toolsName != null ? toolsName[2] : "")" placeholder="Nama Alat" /></td>
+                                    <td style="width: 100px;"><input type="number" name="iToolsQty[]" value="@(toolsQty != null ? toolsQty[2] : "")" placeholder="Jumlah" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">4</td>
+                                    <td><input type="text" name="iToolsName[]" value="@(toolsName != null ? toolsName[3] : "")" placeholder="Nama Alat" /></td>
+                                    <td style="width: 100px;"><input type="number" name="iToolsQty[]" value="@(toolsQty != null ? toolsQty[3] : "")" placeholder="Jumlah" /></td>
+                                </tr>
+                                <tr>
+                                    <td style="width: 75px;">5</td>
+                                    <td><input type="text" name="iToolsName[]" value="@(toolsName != null ? toolsName[4] : "")" placeholder="Nama Alat" /></td>
+                                    <td style="width: 100px;"><input type="number" name="iToolsQty[]" value="@(toolsQty != null ? toolsQty[4] : "")" placeholder="Jumlah" /></td>
+                                </tr>
+                            </tBody>
+                        </table>
+                    </div>
+                </div>
+                <hr />
+                <div class="divForm5">
+                    <div class="form-group row">
+                        <div class="col-12">
+                            <label class="control-label col-12 text-left font-weight-bold">G. BIDANG PEKERJAAN</label>
+                            @{String[] hotJobs = formDaily?.Hot_Jobs?.ToString().Split(',');}
+                            <ol class="olJobListWrapper">
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN PANAS</label>
+                                    <ol class="olJobListContent olHotJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Pengelasan" name="iHotJobs[]" id="cbHotJobs1" @(hotJobs != null && hotJobs.Contains("Pengelasan") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHotJobs1">
+                                                    Pengelasan
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Penggerindaan" name="iHotJobs[]" id="cbHotJobs2" @(hotJobs != null && hotJobs.Contains("Penggerindaan") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHotJobs2">
+                                                    Penggerindaan
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Pengeboran" name="iHotJobs[]" id="cbHotJobs3" @(hotJobs != null && hotJobs.Contains("Pengeboran") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHotJobs3">
+                                                    Pengeboran
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Pemotongan" name="iHotJobs[]" id="cbHotJobs4" @(hotJobs != null && hotJobs.Contains("Pemotongan") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHotJobs4">
+                                                    Pemotongan
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iHotJobs[]" id="cbHotJobs5" @(hotJobs != null && hotJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHotJobs5">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN DINGIN</label>
+                                    @{String[] coldJobs = formDaily?.Cold_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olColdJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Hidrostatistik Test" name="iColdJobs[]" id="cbColdJobs1" @(hotJobs != null && coldJobs.Contains("Hidrostatistik Test") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbColdJobs1">
+                                                    Hidrostatistik Test
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Press Cutting" name="iColdJobs[]" id="cbColdJobs2" @(coldJobs != null && coldJobs.Contains("Press Cutting") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbColdJobs2">
+                                                    Press Cutting
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Rolling / Bending" name="iColdJobs[]" id="cbColdJobs3" @(coldJobs != null && coldJobs.Contains("Rolling / Bending") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbColdJobs3">
+                                                    Rolling / Bending
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Press Proses" name="iColdJobs[]" id="cbColdJobs4" @(coldJobs != null && coldJobs.Contains("Press Proses") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbColdJobs4">
+                                                    Press Proses
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iColdJobs[]" id="cbColdJobs5" @(coldJobs != null && coldJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbColdJobs5">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN KETINGGIAN</label>
+                                    @{String[] heightJobs = formDaily?.Height_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olHeightJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Bekerja Lebih Dari 2M" name="iHeightJobs[]" id="cbHeightJobs1" @(heightJobs != null && heightJobs.Contains("Bekerja Lebih Dari 2M") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHeightJobs1">
+                                                    Bekerja Lebih Dari 2M
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Pekerjaan Menggunakan Alas Kerja" name="iHeightJobs[]" id="cbHeightJobs2" @(heightJobs != null && heightJobs.Contains("Pekerjaan Menggunakan Alas Kerja") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHeightJobs2">
+                                                    Pekerjaan Menggunakan Alas Kerja
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Tanpa Menggunakan Alas Kerja" name="iHeightJobs[]" id="cbHeightJobs3" @(heightJobs != null && heightJobs.Contains("Tanpa Menggunakan Alas Kerja") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHeightJobs3">
+                                                    Tanpa Menggunakan Alas Kerja
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-Lain" name="iHeightJobs[]" id="cbHeightJobs4" @(heightJobs != null && heightJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbHeightJobs4">
+                                                    Lain-Lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN RUANG TERBATAS</label>
+                                    @{String[] limitedJobs = formDaily?.Limited_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olLimitedJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Bekerja Di Dalam Lubang Galian" name="iLimitedJobs[]" id="cbLimitedJobs1" @(limitedJobs != null && limitedJobs.Contains("Bekerja Di Dalam Lubang Galian") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLimitedJobs1">
+                                                    Bekerja Di Dalam Lubang Galian
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Bekerja Pada Tanki" name="iLimitedJobs[]" id="cbLimitedJobs2" @(limitedJobs != null && limitedJobs.Contains("Bekerja Pada Tanki") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLimitedJobs2">
+                                                    Bekerja Pada Tanki
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Bekerja Pada Ruang Pipa" name="iLimitedJobs[]" id="cbLimitedJobs3" @(limitedJobs != null && limitedJobs.Contains("Bekerja Pada Ruang Pipa") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLimitedJobs3">
+                                                    Bekerja Pada Ruang Pipa
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iLimitedJobs[]" id="cbLimitedJobs4" @(limitedJobs != null && limitedJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLimitedJobs4">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN LIFTING / ERECTION</label>
+                                    @{String[] liftingJobs = formDaily?.Lifting_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olLiftingJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Pengangkatan Lebih Dari 1M" name="iLiftingJobs[]" id="cbLiftingJobs1" @(liftingJobs != null && liftingJobs.Contains("Pengangkatan Lebih Dari 1M") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLiftingJobs1">
+                                                    Pengangkatan Lebih Dari 1M
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Menggunakan Crane Bergerak" name="iLiftingJobs[]" id="cbLiftingJobs2" @(liftingJobs != null && liftingJobs.Contains("Menggunakan Crane Bergerak") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLiftingJobs2">
+                                                    Menggunakan Crane Bergerak
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Menggunakan Crane Tetap" name="iLiftingJobs[]" id="cbLiftingJobs3" @(liftingJobs != null && liftingJobs.Contains("Menggunakan Crane Tetap") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLiftingJobs3">
+                                                    Menggunakan Crane Tetap
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iLiftingJobs[]" id="cbLiftingJobs4" @(liftingJobs != null && liftingJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbLiftingJobs4">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN PENGGALIAN</label>
+                                    @{String[] diggingJobs = formDaily?.Digging_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olDiggingJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Penggalian > 1-8M" name="iDiggingJobs[]" id="cbDiggingJobs1" @(diggingJobs != null && diggingJobs.Contains("Penggalian > 1-8M") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbDiggingJobs1">
+                                                    Penggalian > 1,8M
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Penggalian Menggunakan Alat Berat" name="iDiggingJobs[]" id="cbDiggingJobs2" @(diggingJobs != null && diggingJobs.Contains("Penggalian Menggunakan Alat Berat") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbDiggingJobs2">
+                                                    Penggalian Menggunakan Alat Berat
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Penggalian Secara Manual" name="iDiggingJobs[]" id="cbDiggingJobs3" @(diggingJobs != null && diggingJobs.Contains("Penggalian Secara Manual") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbDiggingJobs3">
+                                                    Penggalian Secara Manual
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Penggalian Area Berbahaya" name="iDiggingJobs[]" id="cbDiggingJobs4" @(diggingJobs != null && diggingJobs.Contains("Penggalian Area Berbahaya") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbDiggingJobs4">
+                                                    Penggalian Area Berbahaya
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iDiggingJobs[]" id="cbDiggingJobs5" @(diggingJobs != null && diggingJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbDiggingJobs5">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN KELISTRIKAN</label>
+                                    @{String[] electricalJobs = formDaily?.Electric_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olElectricalJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Pemasangan Instalasi Listrik" name="iElectricalJobs[]" id="cbElectricalJobs1" @(electricalJobs != null && electricalJobs.Contains("Pemasangan Instalasi Listrik") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbElectricalJobs1">
+                                                    Pemasangan Instalasi Listrik
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Pekerjaan Panel Listrik" name="iElectricalJobs[]" id="cbElectricalJobs2" @(electricalJobs != null && electricalJobs.Contains("Pekerjaan Panel Listrik") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbElectricalJobs2">
+                                                    Pekerjaan Panel Listrik
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Grounding" name="iElectricalJobs[]" id="cbElectricalJobs3" @(electricalJobs != null && electricalJobs.Contains("Grounding") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbElectricalJobs3">
+                                                    Grounding
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Testing & Commisioning" name="iElectricalJobs[]" id="cbElectricalJobs4" @(electricalJobs != null && electricalJobs.Contains("Testing & Commisioning") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbElectricalJobs4">
+                                                    Testing & Commisioning
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iElectricalJobs[]" id="cbElectricalJobs5" @(electricalJobs != null && electricalJobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbElectricalJobs5">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN B3</label>
+                                    @{String[] b3Jobs = formDaily?.B3_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olB3Jobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Pengolahan/Pencampuran B3" name="iB3Jobs[]" id="cbB3Jobs1" @(b3Jobs != null && b3Jobs.Contains("Pengolahan/Pencampuran B3") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbB3Jobs1">
+                                                    Pengolahan/Pencampuran B3
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Penanganan Tumpahan B3" name="iB3Jobs[]" id="cbB3Jobs2" @(b3Jobs != null && b3Jobs.Contains("Pengolahan/Pencampuran B3") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbB3Jobs2">
+                                                    Penanganan Tumpahan B3
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iB3Jobs[]" id="cbB3Jobs3" @(b3Jobs != null && b3Jobs.Contains("Lain-lain") ? "checked" : "")>
+                                                <label class="form-check-label" for="cbB3Jobs3">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    <label class="font-weight-bold">PEKERJAAN RADIASI</label>
+                                    @{String[] radiationJobs = formDaily?.Radiation_Jobs?.ToString().Split(',');}
+                                    <ol class="olJobListContent olRadiationJobs">
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input pull-right" type="checkbox" value="Pengetesan Hasil Las" name="iRadiationJobs[]" id="cbRadiationJobs1" @(radiationJobs != null && radiationJobs.Contains("Pengetesan Hasil Las", null) ? "checked" : "")>
+                                                <label class="form-check-label" for="cbRadiationJobs1">
+                                                    Pengetesan Hasil Las
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Pengetesan Produk/Material" name="iRadiationJobs[]" id="cbRadiationJobs2" @(radiationJobs != null && radiationJobs.Contains("Pengetesan Produk/Material", null) ? "checked" : "")>
+                                                <label class="form-check-label" for="cbRadiationJobs2">
+                                                    Pengetesan Produk/Material
+                                                </label>
+                                            </div>
+                                        </li>
+                                        <li>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="Lain-lain" name="iRadiationJobs[]" id="cbRadiationJobs3" @(radiationJobs != null && radiationJobs.Contains("Lain-lain", null) ? "checked" : "")>
+                                                <label class="form-check-label" for="cbRadiationJobs3">
+                                                    Lain-lain
+                                                </label>
+                                            </div>
+                                        </li>
+                                    </ol>
+                                </li>
+                                <li>
+                                    @{String[] lowRiskJobs = formDaily?.LowRisk_Job?.ToString().Split(',');}
+                                    <div class="form-check">
+                                        <input class="form-check-input pull-right" type="checkbox" value="Pekerjaan Low Risk" name="iLowRisk[]" id="cbLowRiskJob1" @(lowRiskJobs != null && lowRiskJobs.Contains("Pekerjaan Low Risk", null) ? "checked" : "")>
+                                        <label class="form-check-label" for="cbLowRiskJob1">
+                                            Pekerjaan Low Risk
+                                        </label>
+                                    </div>
+                                </li>
+                            </ol>
+                        </div>
+                    </div>
+                    <hr />
+
+                    @if (formDaily == null || (formDaily != null && formDaily.Approval <= 1))
+                    {
+                        <button type="submit" class="btn btn-primary form-control btnSIKSubmit">Submit</button>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-success form-control btnApproval">Approve</button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-danger form-control btnApproval">Reject</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+
+            </div>
+        </div>
+    </form>
+</div>
+<!-- Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Note</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <textarea class="form-control" rows="5" placeholder="Note"></textarea>
+            </div>
+            <div class="modal-footer text-center">
+                <button type="button" class="btn btn-primary form-control">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr />
+
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>No SIK</th>
+            <th>Klasifikasi Pekerjaan</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.ActiveList)
+        {
+            <tr>
+                <td>@(++tbIndex)</td>
+                <td><a href="@("/NGKBusi/HSE/SIK/formDaily?SIK=" + @data.ID)">@data.Number</a></td>
+                <td>@SIK.RiskClass(data.Risk_Class)</td>
+                <td><span class="badge badge-@(data.Approval <= 1 ? "info": data.Approval == 2 ? "warning" : "success" )">@SIK.ApprovalStatus(data.Approval)</span></td>
+                <td></td>
+            </tr>
+            int? dataID = int.Parse(data.ID.ToString());
+            var dataChild = db.HSE_SIK_Form_Daily.Where(w => w.SIK_ID == dataID).ToList();
+            var tbIndexSub = 0;
+            if (dataChild.Count() > 0)
+            {
+                <tr>
+                    <td colspan="5">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>No SID</th>
+                                    <th>Tanggal</th>
+                                    <th>User Dept</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var dataSub in dataChild)
+                                {
+                                    <tr>
+                                        <td>@(++tbIndexSub)</td>
+                                        <td><a href="@("/NGKBusi/HSE/SIK/formDaily/?SIK=" + dataSub.SIK_ID + "&SID=" + dataSub.SID)">@dataSub.SID</a></td>
+                                        <td>@dataSub.Created_At.ToString("dd-MM-yyyy")</td>
+                                        <td>@dataSub.Dept</td>
+                                        <td><span class="badge badge-@(dataSub.Approval <= 1 ? "info": dataSub.Approval == 2 ? "warning" : "success" )">@SIK.ApprovalStatus(dataSub.Approval)</span></td>
+                                        <td></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+
+                        @*<ul class="list-group" style="display:block;">
+                                @foreach (var dataSub in dataChild)
+                                {
+                                    <a href="@("/NGKBusi/HSE/SIK/formDaily/?SIK=" + @data.SIK_ID + "&SID=" + data.SID)"><li class="list-group-item" style="width:50px;float:left;">@dataSub.SID</li></a>
+                                }
+                            </ul>*@
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<hr />

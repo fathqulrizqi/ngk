@@ -1,0 +1,2976 @@
+﻿<style>
+    .checkbox-lock,
+    .radio-lock {
+        pointer-events: none; /* tidak bisa diklik */
+        cursor: not-allowed; /* tampil kursor dilarang */
+        opacity: 1; /* biar tidak pudar */
+    }
+
+    .form-container.rejected {
+        position: relative;
+        background-color: rgba(0, 0, 0, 0.6); /* gelapin */
+    }
+
+        .form-container.rejected::after {
+            content: "REJECTED";
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            font-size: 4rem;
+            font-weight: bold;
+            color: rgba(255, 0, 0, 0.5);
+            font-style: italic;
+            pointer-events: none;
+        }
+
+    .reject-reason {
+        margin-top: 1rem;
+        color: #fca5a5; /* merah lembut */
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 0.7s linear infinite;
+    }
+
+    @@keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+<script>
+$(document).ready(function () {
+
+            // MAPPING DATA //
+            const urlParams = new URLSearchParams(window.location.search);
+            const headId = urlParams.get("headId");
+    let globalFormData = null;
+    const dept = "@ViewBag.CostName";
+    let deptDataForSave = "";
+    document.querySelectorAll('input[name="PE_PCR_DTBR_3_Classification"]').forEach(r => {
+        r.addEventListener('change', function () {
+
+            const reqInputs = document.querySelectorAll('input[name="RequirementStatus"]');
+
+            if (this.value === "A" || this.value === "B" || this.value === "C") {
+                reqInputs.forEach(x => x.disabled = false);
+            } else {
+                reqInputs.forEach(x => {
+                    x.disabled = true;
+                    x.checked = false;
+                });
+            }
+        });
+    });
+            // --- Pemakaian ---
+            initTinyMCE(function () {
+    if (headId && headId !== "0") {
+
+        $("#loadingSpinner").show();
+
+        $.ajax({
+            url: "@Url.Action("GetPcrById", "PCR", new { area = "PE" })",
+            type: "GET",
+            data: { headId: headId },
+            success: function (res) {
+
+                if (res && res.success) {
+                    if (res.data.Approvals && res.data.Approvals.length > 0) {
+                        approvalData = res.data.Approvals[0];
+                    }
+
+                    window.deptDataForSave = res.data.Head.Dept;
+                    fillForm(res.data);
+                }
+
+            },
+            error: function (xhr, status, error) {
+                console.error("Error get data:", error);
+            },
+            complete: function () {
+                $("#loadingSpinner").hide();
+            }
+        });
+    }
+});
+
+
+        function fillForm(data) {
+            if (!data) return;
+
+            window.lastFormData = data;
+            const head = data.Head || {};
+            const detail = data.Detail || {};
+            const approvals = data.Approvals && data.Approvals.length > 0 ? data.Approvals[0] : null;
+            const managementapprovals = data.Approvals[0].ManagementHold;
+            if (approvals) {
+                console.log("DETAIL DATA", approvals)
+                const managementapprovals = approvals.ManagementHold;
+                const managementrejects = data?.ManagementReject;
+                // Tambahkan pengecekan managementapprovals dan managementapprovals.isHold
+                if (managementapprovals) {
+
+                    $("#holdMessage").addClass("hidden").html("");
+
+                    // --- function kecil biar rapi ---
+                    const getHoldLabel = (status) => {
+                        if (status === 4) return "RETURNED TO PE";
+                        if (status === 5) return "RETURNED TO ORIGINATOR";
+                        return ""; // default
+                    };
+
+                    // M1 HOLD
+                    if (managementapprovals.M1_Hold && managementapprovals.isHold == true) {
+                        const label = getHoldLabel(managementapprovals.M1_Status);
+                        $("#holdMessage").removeClass("hidden").append(`
+            <div>
+                ${managementapprovals.M1_Name || "MANAGER"} — ${label}:
+                ${managementapprovals.M1_Message || "-"}
+            </div>
+        `);
+                    }
+
+                    // M2 HOLD
+                    if (managementapprovals.M2_Hold && managementapprovals.isHold == true) {
+                        const label = getHoldLabel(managementapprovals.M2_Status);
+                        $("#holdMessage").removeClass("hidden").append(`
+            <div>
+                ${managementapprovals.M2_Name || "MANAGER"} — ${label}:
+                ${managementapprovals.M2_Message || "-"}
+            </div>
+        `);
+                    }
+
+                    // M3 HOLD
+                    if (managementapprovals.M3_Hold && managementapprovals.isHold == true) {
+                        const label = getHoldLabel(managementapprovals.M3_Status);
+                        $("#holdMessage").removeClass("hidden").append(`
+            <div>
+                ${managementapprovals.M3_Name || "MANAGER"} — ${label}:
+                ${managementapprovals.M3_Message || "-"}
+            </div>
+        `);
+                    }
+                }
+
+
+                if (managementrejects) {
+                    $("#rejectMessage").addClass("hidden").html(""); // reset
+
+                    if (managementrejects.M1_Reject) {
+                        $("#rejectMessage")
+                            .removeClass("hidden")
+                            .append(`<div>${managementrejects.M1_Name || "MANAGER"} REJECTED: ${managementrejects.M1_Message || "-"}</div>`);
+                    }
+
+                    if (managementrejects.M2_Reject) {
+                        $("#rejectMessage")
+                            .removeClass("hidden")
+                            .append(`<div>${managementrejects.M2_Name || "MANAGER"}  REJECTED: ${managementrejects.M2_Message || "-"}</div>`);
+                    }
+
+                    if (managementrejects.M3_Reject) {
+                        $("#rejectMessage")
+                            .removeClass("hidden")
+                            .append(`<div>${managementrejects.M3_Name || "MANAGER"}  REJECTED: ${managementrejects.M3_Message || "-"}</div>`);
+                    }
+                }
+            }
+            // ================= HEAD =================
+            if (head.Doc_No) {
+                const $docNo = $("#docNo");
+
+                // Set value ke dropdown
+                $docNo.val(head.Doc_No);
+
+                // Hapus placeholder "-- Pilih Doc No --"
+                $docNo.find("option[value='']").remove();
+
+                // Kalau option belum ada, tambahin manual
+                if ($docNo.find("option[value='" + head.Doc_No + "']").length === 0) {
+                    $docNo.append(
+                        $("<option>", {
+                            value: head.Doc_No,
+                            text: head.Doc_No,
+                            selected: true
+                        })
+                    );
+                }
+            }
+
+            $("#title").val(head.Title || "");
+            $("#product").val(head.Product || "");
+            $("#line").val(head.Line || "");
+            $("#purpose").val(head.Purpose || "");
+            $("#appliedPart").val(head.Applied_Part || "");
+            $("#model").val(head.Model || "");
+            $("#partNo").val(head.Part_No || "");
+            $("#remark").val(head.Remark || "");
+            $("#forecast").val(head.Forecast || "");
+            $("#dept").val(head.Dept || "");
+
+            // ================= CONDITION =================
+            const conditionString = head.Condition || "";
+            const temporaryDateLabel = $("#temporaryDateLabel");
+
+            if (conditionString.includes("Temporary")) {
+                temporaryDateLabel.show();
+                $("#conditionTemporary").prop("checked", true);
+
+                const parts = conditionString.split(', ');
+                if (parts.length > 1) {
+                    const dateString = parts[1].replace(/[()]/g, '').trim();
+                    const dateObject = moment(dateString, "YYYY-MM-DD");
+                    if (dateObject.isValid()) {
+                        $("#temporaryDate").val(dateObject.format("YYYY-MM-DD"));
+                    }
+                }
+            } else if (conditionString === "Permanent") {
+                $("#conditionPermanent").prop("checked", true);
+            }
+
+            // ================= BCP =================
+            if (head.BCP) {
+                const bcpList = head.BCP.split(",");
+                bcpList.forEach(b => {
+                    $(`input[name='BCP'][value='${b.trim()}']`).prop("checked", true);
+                });
+            }
+
+            // ================= DETAIL =================
+            $("#currentStatement").val(detail.Current_Statement || "");
+            $("#futureStatement").val(detail.Future_Statement || "");
+            $("#currentCost").val(detail.Current_Cost || "");
+            $("#futureCost").val(detail.Future_Cost || "");
+            $("#planDate").val(detail.Plan || "");
+
+            const currentSketchEditor = tinymce.get('currentSketch');
+            if (currentSketchEditor) currentSketchEditor.setContent(detail.Current_Sketch || "");
+
+            const futureSketchEditor = tinymce.get('futureSketch');
+            if (futureSketchEditor) futureSketchEditor.setContent(detail.Future_Sketch || "");
+
+            // === ACTUAL DATE (FROM MANAGEMENT APPROVAL) ===
+            if (data.ActualDate) {
+                const timestamp = parseInt(data.ActualDate.match(/\d+/)[0]); // ambil angka dari /Date(....)/
+                const dateObj = new Date(timestamp);
+                const formattedDate = dateObj.toISOString().split('T')[0]; // hasil: "2025-10-04"
+
+                const $actualInput = $("#actualDate");
+                const $p = $(`<p id="actualDate" class="text-sm font-bold">${formattedDate}</p>`);
+
+                $actualInput.replaceWith($p);
+            }
+
+            // ================= CLASSIFICATIONS =================
+            if (data.Classifications && data.Classifications.length > 0) {
+                data.Classifications.forEach(c => {
+                    $(`input[name='PE_PCR_Classification[${c.Master_ID - 1}].Status'][value='${c.Status}']`).prop("checked", true);
+                });
+            }
+
+            // ================= DTBRs =================
+            let dtbrClassification = '';
+            if (data.DTBRs && data.DTBRs.length > 0) {
+                dtbrClassification = data.DTBRs[0].Classification;
+                data.DTBRs.forEach(d => {
+                    $(`#dtbr_${d.DTBR_ID}`).prop('checked', true);
+                });
+            }
+            if (data.DBTR_Others) {
+                dtbrClassification = data.DBTR_Others.Classification;
+                $('#dtbrOthers').prop('checked', true);
+                $('#dtbrOthersText').val(data.DBTR_Others.Other_Description).prop('disabled', false);
+            }
+            if (dtbrClassification) {
+                $(`input[name='PE_PCR_DTBR_3_Classification'][value='${dtbrClassification}']`).prop('checked', true);
+            }
+
+            if (data.DTBRs && data.DTBRs.length > 0) {
+
+                const requireItem = data.DTBRs.find(x => x.isRequire !== null && x.isRequire !== undefined);
+
+                if (requireItem) {
+
+                    if (["A", "B", "C"].includes(dtbrClassification)) {
+                        $("input[name='RequirementStatus']").prop("disabled", false);
+
+                        if (requireItem.isRequire === true || requireItem.isRequire == 1) {
+                            $("#reqComplete").prop("checked", true);
+                        } else if (requireItem.isRequire === false || requireItem.isRequire == 2) {
+                            $("#reqNotComplete").prop("checked", true);
+                        }
+                    }
+                }
+            }
+
+            // ================= FIRST ISSUER =================
+            if (approvals) {
+                if (approvals.First_Issued_NIK && approvals.First_Issued_Name) {
+                    const firstIssuerSelect = $('#firstIssuer');
+                    const newFirstIssuerHtml = `
+                        <p id="firstIssuer" class="text-sm">${approvals.First_Issued_Name}</p>
+                        <input type="hidden" name="PE_PCR_Approval_Head.First_Issued_NIK" value="${approvals.First_Issued_NIK}" />
+                    `;
+                    firstIssuerSelect.parent().html(newFirstIssuerHtml);
+
+                    if (approvals.Date_Issued1) {
+                        $('#firstIssuerSignDate').text(moment(approvals.Date_Issued1).format('DD MMM YYYY'));
+                    }
+                }
+
+                const firstIssuerBtn = $('#IssuedBtn1');
+                if (approvals.First_Status_ID === 2) {
+                    firstIssuerBtn.prop("disabled", true)
+                        .text("Signed")
+                        .css({ "background-color": "#cfe2ff", "cursor": "default" });
+                }
+            }
+
+            // ================= LOCK / UNLOCK UI =================
+            if (approvals && approvals.First_Status_ID === 2) {
+                $('#cancelBtn').prop('hidden', false);
+
+                // --- Perubahan dimulai dari sini ---
+                // Lock the condition radio buttons and the date field
+                //$('input[name="Condition"]').prop('disabled', true);
+                $('input[name="Condition"]').addClass('radio-lock');
+
+                $('#temporaryDate').prop('disabled', true);
+                // --- Perubahan berakhir di sini ---
+
+                const fieldsToReplace = [
+                    '#title', '#product', '#line', '#purpose', '#appliedPart',
+                    '#model', '#partNo', '#remark', '#forecast', '#sequence', '#dept',
+                    '#currentStatement', '#futureStatement', '#currentCost', "#futureCost",
+                    '#planDate'
+                ];
+                fieldsToReplace.forEach(selector => {
+                    const value = $(selector).val();
+                    $(selector).replaceWith(`<p class="text-sm" data-field="${selector.replace('#', '')}"><b>${value}</b></p>`);
+                });
+
+
+                const lockedConditionString = head.Condition || "";
+                const conditionContainer = $('input[name="Condition"]').closest('.col-md-6');
+                if (lockedConditionString.includes("Temporary")) {
+                    const parts = lockedConditionString.split(', ');
+                    const dateValue = parts.length > 1 ? parts[1].replace(/[()]/g, '').trim() : '';
+                    conditionContainer.html(`<p class="text-sm"><b>Temporary (${moment(dateValue).format('DD MMM YYYY')})</b></p>`);
+                } else if (lockedConditionString === "Permanent") {
+                    conditionContainer.html(`<p class="text-sm"><b>Permanent</b></p>`);
+                }
+
+                //$('input[name="BCP"]').prop('disabled', true);
+                $('input[name="BCP"]').addClass('checkbox-lock');
+
+                //$('input[name="DTBRCheckbox"]').prop('disabled', true);
+                //$('input[name^="PE_PCR_Classification"]').prop('disabled', true);
+                $('input[name^="PE_PCR_Classification"]').addClass('checkbox-lock');
+
+                //$('input[name="PE_PCR_DTBR_3_Classification"]').prop('disabled', true);
+                $('#dtbrOthersText').prop('disabled', true);
+
+                $('#dropZoneLabel').prop('hidden', true);
+
+                ['currentSketch', 'futureSketch'].forEach(editorId => {
+                    const editorInstance = tinymce.get(editorId);
+                    if (editorInstance) {
+                        const contentHtml = editorInstance.getContent();
+                        const editorContainer = editorInstance.getContainer();
+                        $(editorContainer).replaceWith(`<div class="locked-editor" data-field="${editorId}">${contentHtml}</div>`);
+                    }
+                });
+            }
+
+            // ================= PE MANAGER =================
+if (approvals) {
+    const peManagerNiks = peManagerList.map(user => user.NIK);
+    const currentUserNik = "@ViewBag.Usernik";
+
+    let approvalStatusId = approvals.Approval_ID;
+
+    if (approvalStatusId > 10) {
+        approvalStatusId = 7;
+    }
+
+    function validMessage(msg) {
+        return msg && msg.trim() !== "" && msg !== "null" && msg !== "{}";
+    }
+
+
+    switch (approvalStatusId) {
+        case 2: case 3: case 4: case 5: case 6:
+            if (validMessage(approvals.Message)) {
+                $("#holdMessage").removeClass("hidden").text(`RETURN REASON FROM PE: ${approvals.Message}`);
+            }
+            break;
+
+        case 6:
+            if (approvals.Message) {
+                $("#holdMessage").removeClass("hidden").text(`RETURN REASON FROM PE: ${approvals.Message}`);
+            } else {
+                $("#holdMessage").removeClass("hidden").text("This request is on HOLD by PE Manager.");
+            }
+
+            break;
+        case 7:
+            $("#approvalBtn").prop("disabled", true)
+                .text("Signed")
+                .css({ "background-color": "#0d6efd", "color": "white", "cursor": "default" });
+
+            if (approvals.Date_PE_Manager_Approved) {
+                $("#approverSignDate").text(moment(approvals.Date_PE_Manager_Approved).format('DD MMM YYYY'));
+            }
+
+            // 🔒 Disable DTBRV dan classificationV
+            //$("#DTBRV input").prop("disabled", true);
+            $('#DTBRV input[type="checkbox"]').addClass('checkbox-lock');
+
+            //$("#classificationV input").prop("disabled", true);
+            $('#classificationV input').addClass('radio-lock');
+
+            $(".clearBtn").prop("disabled", true).css({
+                "color": "gray",
+                "cursor": "default"
+            });
+
+            break;
+
+        case 8:
+            $("#approvalBtn").prop("disabled", true)
+                .text("Rejected")
+                .css({ "background-color": "#dc3545", "color": "white", "cursor": "default" });
+
+            if (approvals.Message) {
+                $("#rejectMessage").removeClass("hidden").text(`REJECT REASON FROM PE MANAGER: ${approvals.Message}`);
+            } else {
+                $("#rejectMessage").removeClass("hidden").text("This request is on HOLD by PE Manager.");
+            }
+
+            $("#approverSignDate").text('');
+            break;
+
+        case 9:
+            $("#approvalBtn")
+                .text("HOLD")
+                .css({ "background-color": "orange", "color": "#fff" });
+
+            if (approvals.Message) {
+                $("#holdMessage").removeClass("hidden").text(`RETURN REASON FROM PE: ${approvals.Message}`);
+            } else {
+                $("#holdMessage").removeClass("hidden").text("This request is on HOLD by PE Manager.");
+            }
+
+            break;
+        case 10:
+            if (approvals.Message) {
+                $("#rejectMessage").removeClass("hidden").text(`REJECT REASON FROM PE MANAGER: ${approvals.Message}`);
+            } else {
+                $("#rejectMessage").removeClass("hidden").text("This request is on REJECT by Approver.");
+            }
+
+            break;
+
+        default: // Pending
+            $("#approvalBtn").prop("disabled", false)
+                .text("Mark as Signed")
+                .css({ "background-color": "#ffe69c", "color": "black", "cursor": "pointer" });
+
+            $("#proposalCheckBtn").prop('hidden', true);
+            $("#approverSignDate").text('');
+            //$("#holdMessage").addClass("hidden").text("");
+            // UnlockBtn default hidden juga
+            $("#unlockBtn").prop("hidden", true);
+            break;
+    }
+}
+
+            // ================= APPROVER & BUTTON =================
+            if (approvals) {
+                const approvedBtn = $('#approvedBtn');
+
+                if (approvals.Approver_Status_ID === 2) {
+                    // --- APPROVED ---
+                    $("#Approved_By_Container").html(`
+            <p style="padding: 4px;" class="text-gray-800">${approvals.Approver_Name || "-"}</p>
+            <input type="hidden" name="PE_PCR_Approval_Head.Approver_NIK" value="${approvals.Approver_NIK || ""}" />
+        `);
+
+                    approvedBtn.prop("disabled", true)
+                        .text("Signed")
+                        .css({ "background-color": "#cfe2ff", "cursor": "default" });
+
+                    if (approvals.Date_Approved) {
+                        $('#approverSignDate').text(moment(approvals.Date_Approved).format('DD MMM YYYY'));
+                    }
+                }
+                else if (approvals.Approver_Status_ID === 3) {
+                    // --- REJECTED ---
+                    $("#Approved_By_Container").html(`
+            <p style="padding: 4px;" class="text-gray-800">${approvals.Approver_Name || "-"}</p>
+            <input type="hidden" name="PE_PCR_Approval_Head.Approver_NIK" value="${approvals.Approver_NIK || ""}" />
+        `);
+
+                    approvedBtn.prop("disabled", true)
+                        .text("Rejected")
+                        .css({ "background-color": "#dc3545", "color": "#fff", "cursor": "default" });
+                }
+                else if ((approvals.Approval_ID >= 2 && approvals.Approval_ID !== 9) || approvals.Approver_Status_ID === 1) {
+                    // --- READONLY, TAPI JANGAN LOCK SAAT HOLD ---
+                    $("#Approved_By_Container").html(`
+            <p style="padding: 4px;" class="text-gray-800">${approvals.Approver_Name || "-"}</p>
+            <input type="hidden" name="PE_PCR_Approval_Head.Approver_NIK" value="${approvals.Approver_NIK || ""}" />
+        `);
+
+                    if (approvals.Date_Approved) {
+                        $('#approverSignDate').text(moment(approvals.Date_Approved).format('DD MMM YYYY'));
+                    }
+                }
+                else {
+                    // --- DEFAULT: SELECT AKTIF ---
+                    const approveSelect = $("#approvedBy");
+
+                    if (approvals.Approver_NIK) {
+                        approveSelect.val(approvals.Approver_NIK).trigger("change");
+                    } else {
+                        approveSelect.val("").trigger("change");
+                    }
+
+                    approvedBtn.prop("disabled", false)
+                        .text("Mark as Approved")
+                        .css({ "background-color": "#ffe69c", "cursor": "pointer" });
+                }
+            }
+
+            // ================= SECOND ISSUER & BUTTON =================
+            if (approvals) {
+                const secondIssuerBtn = $('#IssuedBtn2');
+
+                // --- Sudah signed OR skipped ---
+                if (approvals.Second_Status_ID === 2 || approvals.Second_Status_ID === 4) {
+                    if (approvals.Second_Status_ID === 4 && approvals.Second_Issued_Name === "No Second Issuer") {
+                        secondIssuerBtn.prop("disabled", true)
+                            .text("Skipped")
+                            .css({ "background-color": "#fff", "color": "#fff", "cursor": "default" });
+                    } else {
+                        secondIssuerBtn.prop("disabled", true)
+                            .text("Signed")
+                            .css({ "background-color": "#cfe2ff", "cursor": "default" });
+                    }
+
+                    // Ganti select jadi readonly
+                    $("#Second_Issued_Container").html(`
+            <p style="padding: 4px;" class="text-gray-800">${approvals.Second_Issued_Name || "-"}</p>
+            <input type="hidden" name="PE_PCR_Approval_Head.Second_Issued_NIK" value="${approvals.Second_Issued_NIK || ""}" />
+        `);
+
+                    // Tanggal sign
+                    if (approvals.Date_Issued2) {
+                        $("#secondIssuerSignDate").text(moment(approvals.Date_Issued2).format("DD MMM YYYY"));
+                    }
+                }
+                // --- Pending tapi jangan lock kalau Approval_ID == 9 (Hold) ---
+                else if ((approvals.Approval_ID >= 2 && approvals.Approval_ID !== 9) || approvals.Second_Status_ID === 1) {
+                    $("#Second_Issued_Container").html(`
+            <p style="padding: 4px;" class="text-gray-800">${approvals.Second_Issued_Name || "-"}</p>
+            <input type="hidden" name="PE_PCR_Approval_Head.Second_Issued_NIK" value="${approvals.Second_Issued_NIK || ""}" />
+        `);
+
+                    if (approvals.Date_Issued2) {
+                        $("#secondIssuerSignDate").text(moment(approvals.Date_Issued2).format("DD MMM YYYY"));
+                    }
+                }
+                // --- Default: belum dipilih sama sekali (atau saat Hold) ---
+                else {
+                    const secondSelect = $("#secondIssuer");
+
+                    // Tambahin opsi 'No Second Issuer' kalau belum ada
+                    if (secondSelect.find("option[value='empty']").length === 0) {
+                        secondSelect.append('<option value="empty">No Second Issuer</option>');
+                    }
+
+                    // Atur nilai
+                    if (approvals.Second_Issued_NIK) {
+                        secondSelect.val(approvals.Second_Issued_NIK).trigger("change");
+                    } else if (approvals.Second_Issued_Name === "No Second Issuer" || approvals.Second_Status_ID === 4) {
+                        secondSelect.val("empty").trigger("change");
+                    } else {
+                        secondSelect.val("").trigger("change");
+                    }
+
+                    // Aktifkan tombol
+                    secondIssuerBtn.prop("disabled", false)
+                        .text("Mark as Signed")
+                        .css({ "background-color": "#ffe69c", "cursor": "pointer" });
+                }
+            }
+
+// ================= PE MANAGER ROLE ACCESS =================
+const peManagerNiks = typeof peManagerList !== 'undefined' ? peManagerList.map(user => user.NIK) : [];
+const currentUserNik = "@ViewBag.Usernik";
+const isPE = peManagerNiks.includes(currentUserNik);
+
+if (isPE) {
+    $("#unlockBtn").prop("hidden", false).text("Unlock Form");
+
+    $("#returnToOriginatorBtn").prop("hidden", false);
+
+    $("#cancelBtn").prop("hidden", true);
+    $("#saveDraftBtn").prop("hidden", true);
+    $("#saveByPE").prop("hidden", true);
+
+    $("#unlockBtn").off("click").on("click", function () {
+        const isFormLocked = $(this).text().includes("Unlock");
+
+        if (isFormLocked) {
+            unlockForm(window.lastFormData);
+
+            $(this).text("Lock Form");
+
+            $("#saveDraftBtn").prop("hidden", true);
+            $("#saveByPE").prop("hidden", false);
+            $("#cancelBtn").prop("hidden", false);
+        } else {
+            fillForm(window.lastFormData);
+        }
+    });
+}
+else if (approvals && (approvals.Approval_ID === 1 || approvals.Approval_ID === 9)) {
+    $("#saveDraftBtn").prop("hidden", false);
+    $("#unlockBtn").prop("hidden", true);
+    $("#saveByPE").prop("hidden", true);
+    $("#returnToOriginatorBtn").prop("hidden", true);
+}
+else { // <--- TAMBAHKAN INI
+    $("#unlockBtn").prop("hidden", true);
+    $("#saveDraftBtn").prop("hidden", true);
+    $("#cancelBtn").prop("hidden", true);
+    $("#saveByPE").prop("hidden", true);
+
+    $("#returnToOriginatorBtn").prop("hidden", true);
+            }
+
+
+           // ================= FILES =================
+            const fileList = $("#fileList");
+            existingFiles = [];   // <-- TAMBAHAN BARU
+            uploadedFiles = [];
+            fileList.empty();
+
+            if (data.Files && data.Files.length > 0) {
+                data.Files.forEach(f => {
+                    const fileName = f.File_Name;
+                    const fileUrl = `@Url.Action("PreviewPdf", "PCR")?headId=${head.ID}&fileName=${encodeURIComponent(fileName)}`;
+                    const fileIcon = getFileIcon(fileName);
+                    const extension = fileName.split('.').pop().toLowerCase();
+                    const isPreviewable = ['pdf'].includes(extension);
+
+                    // Simpan ke array file lama
+                    existingFiles.push(fileName);
+
+                    // ========== CHECK APPROVAL_ID ==========
+                    let fileItemHTML = "";
+                    if (approvals && (approvals.Approval_ID === 1 || approvals.Approval_ID === 6 || approvals.Approval_ID === 9)) {
+                        // Editable mode → ada tombol X
+                        fileItemHTML = `
+                            <a href="${fileUrl}" target="_blank" rel="noopener noreferrer"
+                               class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm hover:bg-gray-50">
+                               <div class="flex items-center gap-3 min-w-0">
+                                   ${fileIcon}
+                                   <span class="text-sm text-gray-700 truncate">${fileName}</span>
+                               </div>
+                               <button type="button"
+                                       class="remove-file text-red-500 hover:text-red-700 font-bold pl-3"
+                                       data-filename="${fileName}"
+                                       data-existing="true">&times;</button>
+                            </a>`;
+                    } else {
+                        // Read-only mode → tidak ada tombol X
+                        if (isPreviewable) {
+                            fileItemHTML = `
+                                <a href="${fileUrl}" target="_blank" rel="noopener noreferrer"
+                                   class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm hover:bg-gray-50">
+                                   <div class="flex items-center gap-3 min-w-0">
+                                       ${fileIcon}<span class="text-sm text-gray-700 truncate">${fileName}</span>
+                                   </div>
+                                </a>`;
+                        } else {
+                            fileItemHTML = `
+                                <a href="${fileUrl}" download="${fileName}"
+                                   class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm hover:bg-gray-50">
+                                   <div class="flex items-center gap-3 min-w-0">
+                                       ${fileIcon}<span class="text-sm text-gray-700 truncate">${fileName}</span>
+                                   </div>
+                                </a>`;
+                        }
+                    }
+
+                    fileList.append(fileItemHTML);
+                });
+            }
+
+            // Reinitialize select2 after DOM updates
+            setTimeout(() => {
+                if ($('#approvedBy').length) {
+                    $('#approvedBy').select2({ width: '100%' });
+                }
+                if ($('#secondIssuer').length) {
+                    $('#secondIssuer').select2({ width: '100%' });
+                }
+            }, 0);
+
+
+    }
+
+
+    $("#returnToOriginatorBtn").off("click").on("click", function () {
+    const headId = new URLSearchParams(window.location.search).get("headId");
+    const currentNik = "@ViewBag.Usernik";
+    const currentName = "@ViewBag.Fullname";
+
+    Swal.fire({
+        title: "Return to Originator",
+        text: "Please provide a reason for returning this document:",
+        input: "textarea",
+        inputPlaceholder: "Reason for return...",
+        showCancelButton: true,
+        confirmButtonText: "Submit Return",
+        confirmButtonColor: "#f6ad55",
+        preConfirm: (message) => {
+            if (!message) {
+                Swal.showValidationMessage("Reason cannot be empty.");
+            }
+            return message;
+        }
+    }).then((res) => {
+        if (res.isConfirmed && res.value) {
+
+            showLoadingState("#returnToOriginatorBtn", true, "Returning...");
+
+            const formData = new FormData();
+
+            formData.append("headId", headId);
+            formData.append("nik", currentNik);
+            formData.append("name", currentName);
+            formData.append("status", 5); 
+            formData.append("rejectMessage", res.value);
+
+            $.ajax({
+                url: '@Url.Action("SignPE", "PCR", new { area = "PE" })',
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire("Success!", "Document returned to originator successfully.", "success")
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire("Error!", response.message, "error");
+                    }
+                },
+                error: function () {
+                    Swal.fire("Error!", "A server error occurred.", "error");
+                },
+                complete: function () {
+                    showLoadingState("#returnToOriginatorBtn", false, "Return to Originator");
+                }
+            });
+        }
+    });
+    });
+
+    function unlockForm(data) {
+        if (!data) return;
+        renderExistingFiles(existingFiles, data.Head.ID);
+
+        const head = data.Head || {};
+        const detail = data.Detail || {};
+        // Enable lagi semua Clear button
+        $(".clearBtn").prop("disabled", false)
+            .css({ "color": "red", "cursor": "pointer" });
+        const $docNo = $("#docNo");
+        if ($docNo.length > 0) {
+            $docNo.prop("disabled", false);
+            $docNo.val(head.Doc_No || "");
+        }
+
+        // ================= FIELD MAPPINGS =================
+        // format: fieldId: [dataSource, propertyName, elementType, wrapperId, inputType]
+        const fieldMappings = {
+            title: [head, 'Title', 'input', null, 'text'],
+            product: [head, 'Product', 'input', null, 'text'],
+            line: [head, 'Line', 'input', null, 'text'],
+            purpose: [head, 'Purpose', 'textarea', null, null],
+            appliedPart: [head, 'Applied_Part', 'input', null, 'text'],
+            model: [head, 'Model', 'input', null, 'text'],
+            partNo: [head, 'Part_No', 'input', null, 'text'],
+            remark: [head, 'Remark', 'input', 'remarkInputWrapper', 'text'],
+            forecast: [head, 'Forecast', 'input', 'forecastWrapper', 'text'],      // 👈 pakai text
+            dept: [head, 'Dept', 'input', null, 'text'],
+            currentStatement: [detail, 'Current_Statement', 'textarea', null, null],
+            futureStatement: [detail, 'Future_Statement', 'textarea', null, null],
+            currentCost: [detail, 'Current_Cost', 'input', 'currentCostWrapper', 'text'], // 👈 pakai text
+            futureCost: [detail, 'Future_Cost', 'input', 'futureCostWrapper', 'text'],   // 👈 pakai text
+            planDate: [detail, 'Plan', 'input', 'planDateWrapper', 'date'],
+        };
+        // ================= UNLOCK RADIO & CHECKBOX =================
+
+        // 1️⃣ Unlock radio button
+        $('input.radio-lock')
+            .removeClass('radio-lock')
+            .prop('disabled', false)
+            .css('cursor', 'pointer');
+
+        // 2️⃣ Unlock checkbox
+        $('input.checkbox-lock')
+            .removeClass('checkbox-lock')
+            .prop('disabled', false)
+            .css('cursor', 'pointer');
+        // ================= UNLOCK LOGIC =================
+        Object.keys(fieldMappings).forEach(fieldId => {
+            const [dataSource, propertyName, elementType, wrapperId, forcedType] = fieldMappings[fieldId];
+            let value = dataSource[propertyName] || '';
+
+            // Cari elemen <p> yang dikunci (menggunakan atribut data-field yang baru)
+            const $lockedP = $(`p.text-sm[data-field='${fieldId}']`);
+
+            // Cari container jika menggunakan wrapper (untuk field seperti cost/remark/planDate)
+            const $wrapper = wrapperId ? $(`#${wrapperId}`) : null;
+
+            // Tentukan elemen mana yang akan kita ganti/isi
+            let $targetElement = $lockedP.length > 0 ? $lockedP : $wrapper;
+
+            if (!$targetElement || $targetElement.length === 0) {
+                // Ini terjadi jika elemen belum di-lock (misalnya jika hanya berupa input normal dan tidak masuk loop fillForm)
+                // atau jika elemen wrapper tidak ada, tapi elemen input aslinya sudah ada.
+
+                // Kita hanya perlu memastikan value-nya terisi jika elemen input/textarea aslinya sudah ada.
+                let $originalElement = $(`#${fieldId}`);
+                if ($originalElement.length > 0) {
+                    $originalElement.val(value);
+                }
+                return;
+            }
+
+            // 1. Buat ulang elemen input/textarea dengan semua atribut yang diperlukan
+            let newElementHtml = '';
+            if (elementType === 'input') {
+                newElementHtml = `
+            <input type="${forcedType || 'text'}" id="${fieldId}"
+                   name="${getFieldName(fieldId)}"
+                   class="${getInputClass(fieldId)}"
+                   placeholder="${getPlaceholder(fieldId)}"
+                   value="${value}">
+            <div class="invalid-feedback">${getPlaceholder(fieldId)} is required.</div>
+        `;
+            } else if (elementType === 'textarea') {
+                const rows = getTextareaRows(fieldId);
+                newElementHtml = `
+            <textarea id="${fieldId}"
+                      name="${getFieldName(fieldId)}"
+                      rows="${rows}"
+                      class="${getTextareaClass(fieldId)}"
+                      placeholder="${getPlaceholder(fieldId)}">${value}</textarea>
+            <div class="invalid-feedback">${getPlaceholder(fieldId)} is required.</div>
+        `;
+            }
+
+            // 2. Lakukan penggantian elemen
+            if ($lockedP.length > 0) {
+                // Case: Elemen dikunci sebagai <p> -> Ganti <p> dengan input/textarea yang baru
+                $lockedP.replaceWith(newElementHtml);
+            } else if ($wrapper && $wrapper.length > 0) {
+                // Case: Wrapper (div) yang berisi elemen <p> yang lama sudah terhapus.
+                // Langsung isi wrapper dengan input/textarea baru.
+                // Catatan: Ini hanya berlaku untuk field yang memang punya wrapper (cost, remark, forecast, planDate)
+                $wrapper.html(newElementHtml);
+            }
+        });
+        // ================= CONDITION (special case) =================
+        const conditionP = $('p.text-sm b:contains("Temporary"), p.text-sm b:contains("Permanent")').parent();
+        if (conditionP.length > 0) {
+            const conditionString = head.Condition || "";
+            const temporaryDateMatch = conditionString.match(/\((.*?)\)/);
+            const temporaryDateValue = (temporaryDateMatch && moment(temporaryDateMatch[1], "YYYY-MM-DD").isValid())
+                ? moment(temporaryDateMatch[1], "YYYY-MM-DD").format("YYYY-MM-DD")
+                : '';
+
+            const conditionHtml = `
+            <div class="d-flex gap-3 mt-2">
+                <div class="form-check">
+                    <input id="conditionPermanent" class="form-check-input" type="radio" name="Condition" value="Permanent" ${conditionString === 'Permanent' ? 'checked' : ''}>
+                    <label class="form-check-label">Permanent</label>
+                </div>
+                <div class="form-check">
+                    <input id="conditionTemporary" class="form-check-input" type="radio" name="Condition" value="Temporary" ${conditionString.includes('Temporary') ? 'checked' : ''}>
+                    <label class="form-check-label">Temporary</label>
+                </div>
+            </div>
+        `;
+
+            const temporaryDateHtml = `
+            <div id="temporaryDateLabel" class="flex-fill border-start ps-3" ${!conditionString.includes('Temporary') ? 'style="display:none;"' : ''}>
+                <span class="d-block">If Temporary, Tell the time:</span>
+                <input type="date" id="temporaryDate" name="TemporaryDate" class="form-control form-control-sm mt-1 border-black" style="max-width:200px;" value="${temporaryDateValue}">
+                <div class="invalid-feedback">Please specify the date for temporary condition.</div>
+            </div>
+        `;
+
+            conditionP.closest('td').find('.d-flex.p-2').html(`
+            <div class="flex-fill border-end pe-3">
+                <p style="font-weight:bold; font-size:12px; margin:0;">CONDITION</p>
+                ${conditionHtml}
+            </div>
+            ${temporaryDateHtml}
+        `);
+        }
+
+        // ================= TINYMCE =================
+        ['currentSketch', 'futureSketch'].forEach(editorId => {
+            const content = detail[editorId === 'currentSketch' ? 'Current_Sketch' : 'Future_Sketch'] || '';
+            $(`#${editorId}`).replaceWith(
+                `<textarea id="${editorId}" name="${editorId === 'currentSketch' ? 'Current_Sketch' : 'Future_Sketch'}">${content}</textarea>`
+            );
+        });
+
+        initTinyMCE(() => {
+            $('.locked-editor').remove();
+            $('input[name="Condition"]').prop('disabled', false);
+            $('#temporaryDate').prop('disabled', false);
+            $('input[name="BCP"]').prop('disabled', false);
+            $('input[name="DTBRCheckbox"]').prop('disabled', false);
+            $('input[name^="PE_PCR_Classification"]').prop('disabled', false);
+            $('input[name="PE_PCR_DTBR_3_Classification"]').prop('disabled', false);
+            $('#dtbrOthersText').prop('disabled', false);
+            $('#dropZoneLabel').prop('hidden', false);
+        });
+    }
+
+    // ================= HELPER =================
+    function getInputClass(fieldId) {
+        const baseClass = "block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500";
+        switch (fieldId) {
+            case 'planDate':
+                return "form-control form-control-sm border-black";
+            default:
+                return baseClass;
+        }
+    }
+            function getTextareaClass(fieldId) {
+                switch (fieldId) {
+                    case 'title':
+                        return "mt-2 resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+                    case 'purpose':
+                    case 'remark':
+                        return "mt-2 resize-none block w-full text-sm rounded-lg border border-gray-300 p-2.5";
+                    case 'currentStatement':
+                    case 'futureStatement':
+                        return "resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300";
+                    default:
+                        return "form-control";
+                }
+            }
+
+            function getPlaceholder(fieldId) {
+                const placeholders = {
+                    title: "Write title here...",
+                    product: "Product",
+                    line: "Line",
+                    purpose: "Write purpose here...",
+                    appliedPart: "Applied Part",
+                    model: "Model",
+                    partNo: "Part No",
+                    remark: "Remark",
+                    forecast: "20,000",
+                    currentStatement: "Write current condition statement here...",
+                    futureStatement: "Write future condition statement here...",
+                    currentCost: "Current condition cost",
+                    futureCost: "Future condition cost"
+                };
+                return placeholders[fieldId] || "";
+            }
+
+            function getTextareaRows(fieldId) {
+                switch (fieldId) {
+                    case 'title':
+                        return "4";
+                    case 'purpose':
+                        return "2";
+                    case 'currentStatement':
+                    case 'futureStatement':
+                        return "4";
+                    default:
+                        return "3";
+                }
+            }
+
+            function getFieldName(fieldId) {
+                const fieldNames = {
+                    title: "Title",
+                    product: "Product",
+                    line: "Line",
+                    purpose: "Purpose",
+                    appliedPart: "Applied_Part",
+                    model: "Model",
+                    partNo: "Part_No",
+                    remark: "Remark",
+                    forecast: "Forecast",
+                    dept: "Dept",
+                    currentStatement: "Current_Statement",
+                    futureStatement: "Future_Statement",
+                    currentCost: "Current_Cost",
+                    futureCost: "Future_Cost",
+                    planDate: "Plan",
+                };
+                return fieldNames[fieldId] || fieldId;
+            }
+
+
+            $('#dtbrOthers').on('change', function () {
+                // Cek apakah checkbox ini sedang dicentang
+                if ($(this).is(':checked')) {
+                    // Jika dicentang: Hapus atribut 'disabled' dan langsung fokuskan kursor
+                    $('#dtbrOthersText').prop('disabled', false).focus();
+                } else {
+                    // Jika tidak dicentang: Tambahkan kembali atribut 'disabled' dan kosongkan nilainya
+                    $('#dtbrOthersText').prop('disabled', true).val('');
+                }
+            });
+            // =================================================================
+            // 1. INISIALISASI PLUGIN (SELECT2, DLL)
+            // =================================================================
+            $('#secondIssuer, #approvedBy').select2({
+                placeholder: '-- Select Name --',
+                width: "100%",
+                allowClear: true
+            });
+
+            $('#docNo').select2({
+                placeholder: '-- Filled by PE --',
+                width: "100%",
+                allowClear: true
+            });
+
+
+            // =================================================================
+            // 2. LOGIKA INTERAKSI FORM STANDAR
+            // =================================================================
+            $('#temporaryDate').prop('disabled', true);
+
+            $('input[name="Condition"]').on('change', function () {
+                if (this.value === 'Temporary') {
+                    $('#temporaryDate').prop('disabled', false);
+                } else {
+                    $('#temporaryDate').prop('disabled', true);
+                }
+            });
+
+            // =================================================================
+            // 3. LOGIKA UNTUK FILE UPLOAD & PREVIEW
+            // =================================================================
+            // --- Inisialisasi Variabel ---
+            const dropZoneLabel = $('#dropZoneLabel');
+            const fileInput = $('#dropzone-file');
+            const fileList = $('#fileList');
+            let existingFiles = []; // This array will hold the filenames of files already on the server
+            let uploadedFiles = []; // This array will hold the File objects of NEWLY uploaded files
+            const fileUrlMap = new Map(); // Untuk menyimpan URL sementara
+
+            $('#fileList .file-item').each(function () {
+                existingFiles.push($(this).data('filename'));
+            });
+
+            // --- Event Listeners untuk Drag & Drop ---
+            dropZoneLabel.on('dragover', function (e) {
+                e.preventDefault();
+                $(this).removeClass('border-gray-300 bg-gray-50').addClass('border-blue-500 bg-blue-100');
+            });
+
+            dropZoneLabel.on('dragleave', function (e) {
+                e.preventDefault();
+                $(this).removeClass('border-blue-500 bg-blue-100').addClass('border-gray-300 bg-gray-50');
+            });
+
+            dropZoneLabel.on('drop', function (e) {
+                e.preventDefault();
+                $(this).removeClass('border-blue-500 bg-blue-100').addClass('border-gray-300 bg-gray-50');
+                const files = e.originalEvent.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            fileInput.off('change').on('change', function () {
+                const files = this.files;
+                handleFiles(files);
+            });
+
+            // Dapatkan file yang sudah ada dari DOM saat halaman dimuat
+            function getExistingFilesFromDOM() {
+                existingFiles = [];
+                $('#fileList a').each(function () {
+                    const fileName = $(this).find('span').text();
+                    // Cek apakah ini file lama (punya atribut 'data-existing')
+                    if ($(this).find('.remove-file').data('existing')) {
+                        existingFiles.push(fileName);
+                    }
+                });
+            }
+
+            // Panggil saat load awal halaman
+            getExistingFilesFromDOM();
+
+
+            // GANTI DENGAN FUNGSI INI (Sudah termasuk fitur download)
+            function handleFiles(files) {
+                for (const file of files) {
+                    // --- VALIDASI TIPE FILE UNTUK HANYA MEMBOLEHKAN PDF ---
+                    const extension = file.name.split('.').pop().toLowerCase();
+                    if (extension !== 'pdf') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Format File Tidak Diizinkan',
+                            text: 'Hanya file dengan format PDF yang dapat diunggah.'
+                        });
+                        continue; // Lanjut ke file berikutnya jika ada
+                    }
+
+                    if (!uploadedFiles.some(f => f.name === file.name) && !existingFiles.some(name => name === file.name)) {
+                        uploadedFiles.push(file);
+
+                        const fileIcon = getFileIcon(file.name);
+                        const isPreviewable = file.type === 'application/pdf';
+
+                        const objectUrl = URL.createObjectURL(file);
+                        fileUrlMap.set(file.name, objectUrl);
+
+                        const fileItemContent = `
+                <div class="flex items-center gap-3 min-w-0">
+                    ${fileIcon}
+                    <span class="text-sm text-gray-700 truncate">${file.name}</span>
+                </div>
+                <button type="button" class="remove-file text-red-500 hover:text-red-700 font-bold z-10 pl-3" data-filename="${file.name}">&times;</button>
+            `;
+
+                        let fileItemHTML = `
+    <a href="${objectUrl}" target="_blank" rel="noopener noreferrer"
+       class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm cursor-pointer hover:bg-gray-50">
+        ${fileItemContent}
+    </a>
+`;
+
+                        if (isPreviewable) {
+                            fileItemHTML = `
+        <a href="${objectUrl}" target="_blank" rel="noopener noreferrer"
+           class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm cursor-pointer hover:bg-gray-50">
+            ${fileItemContent}
+        </a>
+    `;
+                        } else {
+                            fileItemHTML = `
+        <a href="${objectUrl}" download="${file.name}"
+           class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm cursor-pointer hover:bg-gray-50">
+            ${fileItemContent}
+        </a>
+    `;
+                        }
+
+                        fileList.append(fileItemHTML);
+                    }
+                }
+            }
+
+                // Event listener untuk menghapus file
+            fileList.off('click', '.remove-file').on('click', '.remove-file', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const fileName = $(this).data('filename');
+                const isExisting = $(this).data('existing');
+
+                if (isExisting) {
+                    existingFiles = existingFiles.filter(f => f !== fileName);
+                } else {
+                    uploadedFiles = uploadedFiles.filter(f => f.name !== fileName);
+                    if (fileUrlMap.has(fileName)) {
+                        URL.revokeObjectURL(fileUrlMap.get(fileName));
+                        fileUrlMap.delete(fileName);
+                    }
+                }
+
+                $(this).closest('a, div').remove();
+            });
+
+
+
+            // GANTI DENGAN FUNGSI INI (Menggunakan Font Awesome)
+            function getFileIcon(fileName) {
+                const extension = fileName.split('.').pop().toLowerCase();
+
+                // Definisikan ikon menggunakan Font Awesome dengan kelas warna Tailwind
+                const icon_image = `<i class="fa-solid fa-file-image fa-lg text-blue-500"></i>`;
+                const icon_pdf = `<i class="fa-solid fa-file-pdf fa-lg text-red-500"></i>`;
+                const icon_ppt = `<i class="fa-solid fa-file-powerpoint fa-lg text-orange-500"></i>`;
+                const icon_excel = `<i class="fa-solid fa-file-excel fa-lg text-green-500"></i>`;
+                const icon_word = `<i class="fa-solid fa-file-word fa-lg text-sky-600"></i>`;
+                const icon_file = `<i class="fa-solid fa-file fa-lg text-gray-500"></i>`;
+
+                switch (extension) {
+                    case 'jpg': case 'jpeg': case 'png': case 'gif': case 'svg':
+                        return icon_image;
+                    case 'pdf':
+                        return icon_pdf;
+                    case 'ppt': case 'pptx':
+                        return icon_ppt;
+                    case 'xls': case 'xlsx':
+                        return icon_excel;
+                    case 'doc': case 'docx':
+                        return icon_word;
+                    default:
+                        return icon_file;
+                }
+    }
+
+function renderExistingFiles(files, headId) {
+    fileList.empty(); // reset dulu
+
+    files.forEach(f => {
+        // Bisa handle kalau datanya string atau object
+        const fileName = typeof f === "string" ? f : f.File_Name;
+        if (!fileName) return; // skip invalid data
+
+        const fileIcon = getFileIcon(fileName);
+        const extension = fileName.split('.').pop().toLowerCase();
+        const isPreviewable = ['pdf'].includes(extension);
+
+        // Gunakan controller PreviewPdf untuk file PDF
+        const fileUrl = isPreviewable
+            ? `@Url.Action("PreviewPdf", "PCR")?headId=${'${headId}'}&fileName=${encodeURIComponent(fileName)}`
+            : `/Files/PE/PCR/${fileName}`;
+
+        const fileItemHTML = `
+            <a href="${fileUrl}"
+               ${isPreviewable ? 'target="_blank" rel="noopener noreferrer"' : 'download'}
+               class="flex justify-between items-center p-2 border rounded-lg mb-2 bg-white shadow-sm cursor-pointer hover:bg-gray-50 file-item"
+               data-filename="${fileName}">
+                <div class="flex items-center gap-3 min-w-0">
+                    ${fileIcon}
+                    <span class="text-sm text-gray-700 truncate">${fileName}</span>
+                </div>
+                <button type="button"
+                        class="remove-file text-red-500 hover:text-red-700 font-bold z-10 pl-3"
+                        data-filename="${fileName}"
+                        data-existing="true">&times;</button>
+            </a>
+        `;
+
+        fileList.append(fileItemHTML);
+    });
+}
+
+
+            // =================================================================
+            // 4. LOGIKA TOMBOL SAVE (AJAX)
+            // =================================================================
+
+$(document).off('click', '#saveDraftBtn').on('click', '#saveDraftBtn', function (e) {
+    e.preventDefault();
+
+    // Get headId from URL (?headId=85)
+    const urlParams = new URLSearchParams(window.location.search);
+    const headId = urlParams.get("headId") || 0;
+
+    if (window.tinymce) {
+        tinymce.triggerSave();
+    }
+    const dept = "@ViewBag.CostName";
+
+    const formData = new FormData();
+    const approvals = window.lastFormData && window.lastFormData.Approvals && window.lastFormData.Approvals.length > 0
+        ? window.lastFormData.Approvals[0]
+        : null;
+
+     // --- First Issue info (required) ---
+     formData.append('First_Issued_NIK', "@ViewBag.Usernik");
+     formData.append('First_Issued_Name', "@ViewBag.Fullname");
+
+     const approverNIK = $('#approvedBy').val();
+     const secondIssuerNIK = $('#secondIssuer').val();
+
+     formData.append('Approved_By_NIK', approverNIK);
+     formData.append('Second_Issued_By_NIK', secondIssuerNIK);
+
+    // --- Condition & TemporaryDate ---
+    let conditionVal = $('input[name="Condition"]:checked').val() || '';
+    if (conditionVal === 'Temporary') {
+        const tmpDate = $('#temporaryDate').val();
+        conditionVal = `Temporary, (${tmpDate})`;
+        formData.append('TemporaryDate', tmpDate);
+    }
+    formData.append('Condition', conditionVal);
+
+    // --- HEAD ---
+    formData.append('Product', $('#product').val());
+    formData.append('Line', $('#line').val());
+    formData.append('Dept', dept);
+    formData.append('Title', $('#title').val());
+    formData.append('Purpose', $('#purpose').val());
+    formData.append('Applied_Part', $('#appliedPart').val());
+    formData.append('Model', $('#model').val());
+    formData.append('Part_No', $('#partNo').val());
+    formData.append('BCP', $('input[name="BCP"]:checked').map(function(){ return $(this).val(); }).get().join(', '));
+    formData.append('Remark', $('#remark').val());
+    formData.append('Forecast', parseInt($('#forecast').val() || 0));
+
+    // --- Detail ---
+    formData.append('Detail.Current_Statement', $('#currentStatement').val());
+    formData.append('Detail.Current_Sketch', tinymce.get('currentSketch').getContent());
+    formData.append('Detail.Current_Cost', $('#currentCost').val());
+    formData.append('Detail.Future_Statement', $('#futureStatement').val());
+    formData.append('Detail.Future_Sketch', tinymce.get('futureSketch').getContent());
+    formData.append('Detail.Future_Cost', $('#futureCost').val());
+    formData.append('Detail.Plan', $('#planDate').val());
+
+    // --- CLASSIFICATION ---
+    const classArr = [];
+    $('input[name^="PE_PCR_Classification"][type="radio"]:checked').each(function () {
+        const name = $(this).attr('name');
+        const index = name.match(/\[(\d+)\]/)[1];
+        const masterIdValue = $(`input[name="PE_PCR_Classification[${index}].Master_ID"]`).val();
+        classArr.push({ Master_ID: masterIdValue, Status: $(this).val() });
+    });
+    formData.append('PE_PCR_Classification', JSON.stringify(classArr));
+
+    // --- Ambil data FILES (Lama & Baru) ---
+    const filesToKeep = [];
+    $('#fileList a').each(function () {
+        const fileName = $(this).find('span').text().trim();
+        if (fileName) {
+            filesToKeep.push(fileName);
+        }
+    });
+    filesToKeep.forEach(name => formData.append("ExistingFilenames", name));
+
+    if (typeof uploadedFiles !== 'undefined') {
+        uploadedFiles.forEach(file => {
+            formData.append("files", file, file.name);
+        });
+    }
+
+    // --- AJAX ---
+    $.ajax({
+        url: `@Url.Action("SaveDraftWithFiles", "PCR", new { area = "PE" })?headId=${headId}`,
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(res){
+            if (res.not_allowed) {
+                Swal.fire('Not Allowed!', res.message, 'warning');
+            } else if (res.success) {
+                Swal.fire('Success!', res.message, 'success').then(() => {
+                    if (res.page === 1) {
+                        window.location.href = '@Url.Action("Index", "PCR", new { area = "PE" })';
+                    } else if (res.page === 2) {
+                        location.reload();
+                    }
+                });
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+        error: function(xhr){
+            console.error(xhr.responseText);
+            alert('Network error. Check console.');
+        }
+    });
+});
+
+
+function initTinyMCE(callback) {
+    let readyCount = 0;
+    const editors = ["#currentSketch", "#futureSketch"];
+
+    editors.forEach(sel => {
+        tinymce.init({
+            selector: sel,
+            height: 300,
+            branding: false,
+            license_key: 'gpl',
+            plugins: 'table anchor lists code fullscreen image',
+            toolbar: "undo redo fontsize backcolor forecolor bold italic alignleft aligncenter alignright bullist numlist table image fullscreen code",
+            menubar: false,
+            toolbar_mode: 'wrap',
+            font_size_input_default_unit: "8pt",
+            font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+
+            init_instance_callback: function () {
+                readyCount++;
+                if (readyCount === editors.length && typeof callback === "function") {
+                    callback(); // semua editor siap
+                }
+            }
+        });
+    });
+}
+
+
+    // APPROVAL //
+    // ======================
+    // First Issuer Sign
+    // ======================
+$("#IssuedBtn1").on("click", function (e) {
+    if (!validateForm()) return;
+
+    e.preventDefault();
+    if (window.tinymce) tinymce.triggerSave();
+
+    const dept = "@ViewBag.CostName";
+    const formData = new FormData();
+
+    formData.append('First_Issued_NIK', "@ViewBag.Usernik");
+    formData.append('First_Issued_Name', "@ViewBag.Fullname");
+
+    const approverNIK = $('#approvedBy').val();
+    const secondIssuerNIK = $('#secondIssuer').val();
+    formData.append('Approved_By_NIK', approverNIK);
+    formData.append('Second_Issued_By_NIK', secondIssuerNIK);
+
+    // --- Condition & TemporaryDate ---
+    let conditionVal = $('input[name="Condition"]:checked').val();
+    if (conditionVal === 'Temporary') {
+        const tmpDate = $('#temporaryDate').val();
+        conditionVal = `Temporary, (${tmpDate})`;
+        formData.append('TemporaryDate', tmpDate);
+    }
+    formData.append('Condition', conditionVal);
+
+    // --- HEAD ---
+    formData.append('Product', $('#product').val());
+    formData.append('Line', $('#line').val());
+    formData.append('Dept', dept);
+    formData.append('Title', $('#title').val());
+    formData.append('Purpose', $('#purpose').val());
+    formData.append('Applied_Part', $('#appliedPart').val());
+    formData.append('Model', $('#model').val());
+    formData.append('Part_No', $('#partNo').val());
+    formData.append('BCP', $('input[name="BCP"]:checked').map(function(){ return $(this).val(); }).get().join(', '));
+    formData.append('Remark', $('#remark').val());
+    formData.append('Forecast', parseInt($('#forecast').val() || 0));
+
+    // --- Detail ---
+    formData.append('Detail.Current_Statement', $('#currentStatement').val());
+    formData.append('Detail.Current_Sketch', $('#currentSketch').val());
+    formData.append('Detail.Current_Cost', $('#currentCost').val());
+    formData.append('Detail.Future_Statement', $('#futureStatement').val());
+    formData.append('Detail.Future_Sketch', $('#futureSketch').val());
+    formData.append('Detail.Future_Cost', $('#futureCost').val());
+    formData.append('Detail.Plan', $('#planDate').val());
+
+    // --- CLASSIFICATION ---
+    const classArr = [];
+    $('input[name^="PE_PCR_Classification"][type="radio"]:checked').each(function () {
+        const name = $(this).attr('name');
+        const index = name.match(/\[(\d+)\]/)[1];
+        const masterIdValue = $(`input[name="PE_PCR_Classification[${index}].Master_ID"]`).val();
+        classArr.push({ Master_ID: masterIdValue, Status: $(this).val() });
+    });
+    formData.append('PE_PCR_Classification', JSON.stringify(classArr));
+
+    //// --- DTBR ---
+    //const dtbrArr = [];
+    //const classification = $('input[name="PE_PCR_DTBR_3_Classification"]:checked').val() || '';
+
+    //$('input[name="DTBRCheckbox"]:checked').each(function () {
+    //    const id = $(this).val();
+    //    const isOthers = (id === "0"); // Cek apakah value-nya "0"
+
+    //    const dtbrObject = {
+    //        Head_ID: headId,
+    //        DTBR_ID: isOthers ? 0 : parseInt(id), // ID untuk 'Others' adalah 0
+    //        Status: isOthers ? 'Others' : $(this).data('name'),
+    //        Classification: classification,
+    //        Other_Description: isOthers ? $('#dtbrOthersText').val().trim() : null // Ambil nilai text hanya jika 'Others'
+    //    };
+    //    dtbrArr.push(dtbrObject);
+    //});
+
+    //formData.append('DTBRs', JSON.stringify(dtbrArr));
+
+
+    // --- Ambil data FILES (Lama & Baru) ---
+    const filesToKeep = [];
+    $('#fileList a').each(function () {
+        const fileName = $(this).find('span').text().trim();
+        if (fileName) {
+            filesToKeep.push(fileName);
+        }
+    });
+    filesToKeep.forEach(name => formData.append("ExistingFilenames", name));
+
+    if (typeof uploadedFiles !== 'undefined') {
+        uploadedFiles.forEach(file => {
+            formData.append("files", file, file.name);
+        });
+    }
+
+    // --- Confirm dialog ---
+    Swal.fire({
+        title: 'Do you want to sign this document?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, proceed!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        // tambahkan ID baru di sini
+        formData.append("ID", headId);
+        formData.append('pageIndicator', 3);
+
+        $.ajax({
+            url: "@Url.Action("SaveDraftWithFiles", "PCR", new { area = "PE" })",
+            type: "POST",
+            data: formData,
+            contentType: false,
+            processData: false,
+            beforeSend: () => Swal.showLoading(),
+            success: function (res) {
+                if (res.not_allowed) {
+                    Swal.fire('Not Allowed!', res.message, 'warning');
+                } else if (res.success) {
+                    Swal.fire('Success!', res.message, 'success').then(() => {
+                        if (res.page === 1) {
+                            signDocument(res.newId);
+                            window.location.href = '@Url.Action("Index", "PCR", new { area = "PE" })';
+                        } else if (res.page === 3) {
+                            signDocument(res.newId);
+                            location.reload();
+                        }
+                    });
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire("Error", "Server error on saving draft.", "error");
+            }
+        });
+    });
+});
+
+    function signDocument(headId) {
+    const nik = "@ViewBag.Usernik";
+    const name = "@ViewBag.Fullname";
+
+    $.ajax({
+        url: "@Url.Action("SignFirstIssuer", "PCR", new { area = "PE" })",
+        type: "POST",
+        data: { headId: headId, nik: nik, name: name },
+        success: function (res) {
+           if (res.success) {
+                Swal.fire('Success!', res.message, 'success').then(() => {
+                    if (res.page === 1) {
+                        window.location.href = '@Url.Action("Index", "PCR", new { area = "PE" })';
+                    } else {
+                        location.reload();
+                    }
+                });
+            } else {
+                Swal.fire("Failed", res.message, "error");
+            }
+        },
+        error: function () {
+            Swal.fire("Error", "Server error on signing.", "error");
+        }
+    });
+}
+    // ======================
+    // Second Issuer Sign
+    // ======================
+$("#IssuedBtn2").on("click", function() {
+    // --- Validasi Awal untuk Menangani Error "undefined" ---
+    // Periksa apakah data utama dan data 'Approvals' ada sebelum melanjutkan
+    if (!window.lastFormData || !window.lastFormData.Approvals || window.lastFormData.Approvals.length === 0) {
+        Swal.fire({
+            title: "Access Denied!",
+            text: "First Issuer must sign the document first.",
+            icon: "warning"
+        });
+        return;
+    }
+
+    // Ambil data persetujuan setelah dipastikan ada
+    const approvalData = window.lastFormData.Approvals[0];
+
+    // Cek jika tombol dinonaktifkan
+    if ($(this).prop('disabled')) {
+        return;
+    }
+
+    const currentNik = "@ViewBag.Usernik";
+    const secondIssuerNikFromDb = approvalData.Second_Issued_NIK;
+
+    // --- Validasi 1: Periksa Status Tanda Tangan First Issuer ---
+    if (approvalData.First_Status_ID !== 2) {
+        Swal.fire({
+            title: "Action Cannot Be Complete!",
+            text: "The First Issuer must sign this document before you can proceed.",
+            icon: "warning"
+        });
+        return;
+    }
+
+    // --- Validasi 2: Periksa Kesesuaian NIK Current User dengan Second Issuer ---
+    if (currentNik !== secondIssuerNikFromDb) {
+        Swal.fire({
+            title: "Access Denied!",
+            text: "You are not authorized to sign as the Second Issuer.",
+            icon: "warning"
+        });
+        return;
+    }
+
+    // Jika kedua validasi berhasil, tampilkan dialog konfirmasi
+    Swal.fire({
+        title: 'Confirm Sign-off',
+        text: 'Are you sure you want to sign this document as the Second Issuer?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, sign it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const secondIssuerName = "@ViewBag.Fullname";
+            showLoadingState("#IssuedBtn2", true, "Mark as Signed");
+
+            $.ajax({
+                url: '@Url.Action("SignSecondIssuer", "PCR", new { area = "PE" })',
+                type: 'POST',
+                data: {
+                    headId: new URLSearchParams(window.location.search).get("headId"),
+                    nik: currentNik,
+                    name: secondIssuerName
+                },
+                success: function(res) {
+                    if (res.success) {
+                        Swal.fire("Success!", res.message, "success");
+                        location.reload();
+                    } else {
+                        Swal.fire("Error!", res.message, "error");
+                    }
+                },
+                error: function() {
+                    Swal.fire("Error!", "A server error occurred.", "error");
+                },
+                complete: function() {
+                    showLoadingState("#IssuedBtn2", false, "Mark as Signed");
+                }
+            });
+        }
+    });
+});
+    // ======================
+// Approver
+// ======================
+// Function to show/hide loading state on a given button
+function showLoadingState(buttonSelector, isLoading, originalText) {
+    const button = $(buttonSelector);
+    const icon = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    if (isLoading) {
+        button.prop("disabled", true).html(`${icon} Loading...`);
+    } else {
+        button.prop("disabled", false).text(originalText);
+    }
+            }
+// ======================
+// Approver
+// ======================
+$("#approvedBtn").on("click", function () {
+    if (!approvalData || $(this).prop('disabled')) return;
+
+    const currentNik = "@ViewBag.Usernik";
+    const approverNikFromDb = approvalData.Approver_NIK;
+    const approverNameFromDb = approvalData.Approver_Name;
+
+    // Cek issuer sudah sign
+    if (approvalData.First_Status_ID !== 2 || (approvalData.Second_Status_ID !== 2 && approvalData.Second_Status_ID !== 4)) {
+        Swal.fire("Action Cannot Be Completed", "Both First and Second Issuers must sign before you can approve.", "warning");
+        return;
+    }
+
+    // Cek apakah user = approver
+    if (currentNik !== approverNikFromDb) {
+        Swal.fire("Access Denied!", "You are not allowed to sign as approver.", "warning");
+        return;
+    }
+
+    Swal.fire({
+        title: 'Confirm Approval',
+        text: 'Do you want to sign or reject this document?',
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Sign',
+        denyButtonText: 'Reject',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#3085d6',
+        denyButtonColor: '#d33',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sendApproveAction(approverNikFromDb, approverNameFromDb, 2);
+        } else if (result.isDenied) {
+            Swal.fire({
+                title: 'Write Rejection Message',
+                input: 'textarea',
+                inputPlaceholder: 'Write the reason for rejection here...',
+                showCancelButton: true,
+                confirmButtonText: 'Submit',
+                cancelButtonText: 'Cancel',
+                preConfirm: (rejectMessage) => {
+                    if (!rejectMessage) {
+                        Swal.showValidationMessage('Rejection message cannot be empty.');
+                    }
+                    return sendApproveAction(approverNikFromDb, approverNameFromDb, 3, rejectMessage);
+                }
+            });
+        }
+    });
+});
+
+function sendApproveAction(nik, name, statusId, rejectMessage = null) {
+    const headId = new URLSearchParams(window.location.search).get("headId");
+
+    showLoadingState("#approvedBtn", true, "Sign");
+
+    return $.ajax({
+        url: '@Url.Action("Approve", "PCR", new { area = "PE" })',
+        type: 'POST',
+        data: {
+            headId: headId,
+            nik: nik,
+            name: name,
+            status: statusId,
+            rejectMessage: rejectMessage
+        }
+    }).done(function (res) {
+        if (res.success) {
+            Swal.fire("Success!", res.message, "success").then(() => location.reload());
+        } else {
+            Swal.showValidationMessage(`Request failed: ${res.message}`);
+        }
+    }).fail(function (xhr) {
+        Swal.showValidationMessage(`Server error: ${xhr.statusText}`);
+    }).always(function () {
+        showLoadingState("#approvedBtn", false, "Signed");
+    });
+}
+
+
+    // --- FUNGSI VALIDASI UTAMA YANG DIMODIFIKASI ---
+    function validateForm() {
+        let isValid = true; // Tetap true sampai ada kesalahan
+        let firstInvalidElement = null;
+
+        // --- 1. RESET SEMUA STATUS ERROR (TIDAK ADA PERUBAHAN) ---
+        $('.is-invalid').removeClass('is-invalid');
+        $('.tinymce-invalid').removeClass('tinymce-invalid');
+        $('.select2-container').removeClass('is-invalid');
+        $('#conditionGroup').css('background-color', '');
+        $('#conditionError').hide().text('');
+        $('#classificationError').hide().text('');
+        $('#classificationTable').css('background-color', '');
+        $('#bcpv').css('background-color', '');
+        $('#dtbrv').css('background-color', '');
+        $('#dtbrClassificationError').hide();
+        $('#dropZoneLabel').css('border-color', '');
+        $('.invalid-feedback').hide();
+
+        // --- HELPER FUNCTIONS UNTUK MENANDAI ERROR ---
+        // Hapus logika 'if (isValid)' di dalamnya
+        // Modifikasi fungsi markInvalid
+        function markInvalid(selector, message) {
+            $(selector).addClass('is-invalid');
+            $(selector).next('.invalid-feedback').text(message).show();
+            if (firstInvalidElement === null) {
+                firstInvalidElement = selector;
+            }
+            isValid = false;
+        }
+
+        function markInvalidSelect2(selector, message) {
+            $(selector).next('.select2-container').addClass('is-invalid');
+            $(selector).parent().find('.invalid-feedback').text(message).show();
+            if (firstInvalidElement === null) {
+                firstInvalidElement = $(selector).next('.select2-container')[0];
+            }
+            isValid = false;
+        }
+
+        function markInvalidTinyMce(id, message) {
+            const editorContainer = tinymce.get(id).getContainer();
+            $(editorContainer).addClass('tinymce-invalid');
+            $(editorContainer).parent().find('.invalid-feedback').text(message).show();
+            if (firstInvalidElement === null) {
+                firstInvalidElement = editorContainer;
+            }
+            isValid = false;
+        }
+
+        function markInvalidGroup(containerSelector, errorSelector, message) {
+            $(containerSelector).css('background-color', '#fff1f1');
+            $(errorSelector).show().text(message);
+            if (firstInvalidElement === null) {
+                firstInvalidElement = containerSelector;
+            }
+            isValid = false;
+        }
+
+        function isTinyMceEmpty(editorId) {
+            const editor = tinymce.get(editorId);
+            if (!editor) return true;
+            const html = editor.getContent().trim();
+            const clean = html.replace(/<p>(&nbsp;|\s)*<\/p>/gi, '').trim();
+            return clean === '';
+        }
+
+        function markInvalidDate(selector, labelSelector, message) {
+            $(selector).addClass('is-invalid');
+            $(labelSelector).addClass('is-invalid-label');
+            $(selector).next('.invalid-feedback').text(message).show();
+            if (firstInvalidElement === null) {
+                firstInvalidElement = selector;
+            }
+            isValid = false;
+        }
+
+        // --- 2. JALANKAN SEMUA VALIDASI SATU PER SATU ---
+        // Setiap kali ada kesalahan, panggil fungsi markInvalid, dan biarkan `isValid` diubah di dalam fungsi markInvalid.
+        // Lanjutkan ke validasi berikutnya.
+
+        // -- Bagian Head & Purpose --
+        if ($('#title').val().trim() === '') markInvalid('#title', 'Title is required.');
+        if ($('#product').val().trim() === '') markInvalid('#product', 'Product is required.');
+        if ($('#line').val().trim() === '') markInvalid('#line', 'Line is required.');
+        if ($('#purpose').val().trim() === '') markInvalid('#purpose', 'Purpose is required.');
+
+        // -- Bagian Approval --
+        if ($('#approvedBy').val() === '' || $('#approvedBy').val() === null) {
+            markInvalidSelect2('#approvedBy', 'Please select a user for Approved By.');
+        }
+        if ($('#secondIssuer').val() === '' || $('#secondIssuer').val() === null) {
+            markInvalidSelect2('#secondIssuer', 'Please select a user for Issued By.');
+        }
+
+        // -- Bagian Part & BCP & Forecast --
+        if ($('#appliedPart').val().trim() === '') markInvalid('#appliedPart', 'Applied Part is required.');
+        if ($('#model').val().trim() === '') markInvalid('#model', 'Model is required.');
+        if ($('#partNo').val().trim() === '') markInvalid('#partNo', 'Part No is required.');
+        if ($('input[name="BCP"]:checked').length === 0) {
+            markInvalidGroup('#bcpv', '#bcpError', 'Please choose at least one business class.');
+        }
+        if ($('#forecast').val() === '') markInvalid('#forecast', 'Forecast is required.');
+
+        // --- Bagian Condition ---
+        const isTemporary = $('#conditionTemporary').is(':checked');
+        const isPermanent = $('#conditionPermanent').is(':checked');
+
+        if (!isTemporary && !isPermanent) {
+            // highlight seluruh group
+            markInvalidGroup('#conditionGroup', '#conditionError', 'Please choose a condition.');
+        } else if (isTemporary && $('#temporaryDate').val() === '') {
+            // khusus kalau temporary, validasi tanggal
+            markInvalidDate('#temporaryDate', '#temporaryDateLabel span', 'Please specify the date for temporary condition.');
+        }
+
+        // -- Bagian Detail --
+        if ($('#currentStatement').val().trim() === '') markInvalid('#currentStatement', 'Current Statement is required.');
+        if ($('#futureStatement').val().trim() === '') markInvalid('#futureStatement', 'Future Statement is required.');
+        if (isTinyMceEmpty('currentSketch')) markInvalidTinyMce('currentSketch', 'Current Sketch is required.');
+        if (isTinyMceEmpty('futureSketch')) markInvalidTinyMce('futureSketch', 'Future Sketch is required.');
+        if ($('#planDate').val() === '') markInvalid('#planDate', 'Plan date is required.');
+        if ($('#currentCost').val() === '') markInvalid('#currentCost', 'Current cost is required.');
+        if ($('#futureCost').val() === '') markInvalid('#futureCost', 'Future cost is required.');
+
+        // -- Bagian Classification (Table) --
+        if ($('#classificationTable input[type="radio"]:checked').length === 0) {
+            markInvalidGroup('#classificationTable', '#classificationError', 'Please check the classification at least one.');
+        }
+
+        //// -- Bagian DTBR --
+        //if ($('input[name="DTBRCheckbox"]:checked').length === 0) {
+        //    markInvalidGroup('#DTBRV', '#dtbrError', 'Please select at least one document to be reviewed.');
+        //}
+        //if ($('input[name="PE_PCR_DTBR_3_Classification"]:checked').length === 0) {
+        //    markInvalidGroup('#classificationV', '#dtbrClassificationError', 'Please select a DTBR classification.');
+        //}
+        //if ($('#dtbrOthers').is(':checked') && $('#dtbrOthersText').val().trim() === '') {
+        //    markInvalid('#dtbrOthersText', 'Others description is required.');
+        //}
+
+        // -- Bagian Attachment --
+        if (uploadedFiles.length === 0 && $('#fileList').children().length === 0) {
+            markInvalidGroup('#dropZoneLabel', '#attachmentError', 'File is required.');
+        }
+
+        // --- 3. SCROLL & TOAST HANYA JIKA ADA KESALAHAN ---
+        // Logika scroll dan toast sekarang dipindahkan ke akhir fungsi,
+        // setelah semua validasi selesai.
+        if (firstInvalidElement) {
+            const offset = $(firstInvalidElement).offset().top - 100;
+            $('html, body').animate({
+                scrollTop: offset
+            }, 500);
+            showToast('Please fill out all required fields.'); // Satu toast untuk semua kesalahan
+        }
+
+        // Kembalikan hasil validasi
+        return isValid;
+    }
+
+            // A standalone function to validate only the Doc No field
+    function validateByPE() {
+        let isValid = true;
+        let firstInvalidElement = null;
+
+        // --- Validasi DocNo ---
+        const docNoSelect = $('#docNo');
+        docNoSelect.removeClass('is-invalid');
+        docNoSelect.next('.invalid-feedback').hide();
+
+        if (docNoSelect.val().trim() === '') {
+            docNoSelect.addClass('is-invalid');
+            docNoSelect.next('.invalid-feedback').text('Doc No is required.').show();
+            if (!firstInvalidElement) firstInvalidElement = docNoSelect;
+            isValid = false;
+        }
+
+        // --- Validasi DTBR ---
+        if ($('#DTBRV').is(':visible')) {
+            // Validasi Requirement (hanya untuk Rank A/B/C)
+            const selectedClass = $('input[name="PE_PCR_DTBR_3_Classification"]:checked').val();
+
+            if (["A", "B", "C"].includes(selectedClass)) {
+
+                if ($('input[name="RequirementStatus"]:checked').length === 0) {
+                    markInvalidGroup('#requirementSection', '#requirementError', 'Please select requirement status for A, B, or C.');
+                    if (!firstInvalidElement) firstInvalidElement = $('#requirementSection');
+                    isValid = false;
+                }
+
+            }
+
+            // Validasi Checkbox DTBR
+            if ($('input[name="DTBRCheckbox"]:checked').length === 0) {
+                markInvalidGroup('#DTBRV', '#dtbrError', 'Please select at least one document to be reviewed.');
+                if (!firstInvalidElement) firstInvalidElement = $('#DTBRV');
+                isValid = false;
+            }
+
+            // Validasi Klasifikasi DTBR
+            if ($('input[name="PE_PCR_DTBR_3_Classification"]:checked').length === 0) {
+                markInvalidGroup('#classificationV', '#dtbrClassificationError', 'Please select a classification.');
+                if (!firstInvalidElement) firstInvalidElement = $('#classificationV');
+                isValid = false;
+            }
+
+            // Validasi Others
+            if ($('#dtbrOthers').is(':checked') && $('#dtbrOthersText').val().trim() === '') {
+                markInvalid('#dtbrOthersText', 'Others description is required.');
+                if (!firstInvalidElement) firstInvalidElement = $('#dtbrOthersText');
+                isValid = false;
+            }
+        }
+
+        // --- Scroll + Toast jika gagal ---
+        if (!isValid && firstInvalidElement) {
+            const offset = $(firstInvalidElement).offset().top - 100;
+            $('html, body').animate({ scrollTop: offset }, 500);
+            showToast('Please fill out all required fields.');
+        }
+
+        return isValid;
+    }
+
+    // --- Fungsi Helper (Pastikan Anda memiliki fungsi ini di file Anda) ---
+    function markInvalidGroup(groupSelector, errorSelector, message) {
+        $(errorSelector).text(message).show();
+        showToast(message);
+        // Tambahkan logika untuk menandai grup sebagai invalid jika diperlukan
+        // Contoh: $(groupSelector).find('.form-control, .form-check-input').addClass('is-invalid');
+    }
+
+    function markInvalid(selector, message) {
+        const element = $(selector);
+        element.addClass('is-invalid');
+        element.next('.invalid-feedback').text(message).show();
+        showToast(message);
+    }
+
+    $("#saveByPE").on("click", function (e) {
+    e.preventDefault();
+
+
+    Swal.fire({
+        title: "Save Options",
+        text: "Do you want to mark this as fix or just save?",
+        icon: "question",
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: "Mark as Fix",
+        denyButtonText: "Just Save",
+        cancelButtonText: "Cancel"
+    }).then((result) => {
+        if (result.isConfirmed) {
+            saveByPE(2, window.deptDataForSave);
+        } else if (result.isDenied) {
+            saveByPE(1, window.deptDataForSave);
+        }
+    });
+});
+
+
+function saveByPE(peStatusId, deptData) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const headId = urlParams.get("headId") || 0;
+
+    const approvals = window.lastFormData && window.lastFormData.Approvals && window.lastFormData.Approvals.length > 0
+        ? window.lastFormData.Approvals[0]
+        : null;
+
+    const formData = new FormData();
+    formData.append("headId", headId);
+
+    // --- HEAD ---
+    formData.append("docNo", $('#docNo').val() || '');
+    formData.append('Product', $('#product').val());
+    formData.append('Line', $('#line').val());
+    formData.append('Dept', deptData || window.deptDataForSave || '');
+    formData.append('Title', $('#title').val());
+    formData.append('Purpose', $('#purpose').val());
+    formData.append('Applied_Part', $('#appliedPart').val());
+    formData.append('Model', $('#model').val());
+    formData.append('Part_No', $('#partNo').val());
+    formData.append('BCP', $('input[name="BCP"]:checked').map(function () { return $(this).val(); }).get().join(', '));
+    formData.append('Remark', $('#remark').val());
+    formData.append('Forecast', parseInt($('#forecast').val() || 0));
+
+    formData.append("nik", $("#peNik").val() || "");
+    formData.append("name", $("#peName").val() || "");
+    formData.append("peStatusId", peStatusId);
+
+    // --- Ambil data Condition & TemporaryDate ---
+    let conditionVal = $('input[name="Condition"]:checked').val() || '';
+    if (conditionVal === 'Temporary') {
+        const tmpDate = $('#temporaryDate').val();
+        conditionVal = `Temporary, (${tmpDate})`;
+        formData.append('TemporaryDate', tmpDate);
+    }
+    formData.append('Condition', conditionVal);
+
+    // --- Ambil data Detail ---
+    formData.append('Detail.Current_Statement', $('#currentStatement').val() || '');
+    formData.append('Detail.Current_Sketch', window.tinymce ? tinymce.get('currentSketch').getContent() : $('#currentSketch').val() || '');
+    formData.append('Detail.Current_Cost', $('#currentCost').val() || '');
+    formData.append('Detail.Future_Statement', $('#futureStatement').val() || '');
+    formData.append('Detail.Future_Sketch', window.tinymce ? tinymce.get('futureSketch').getContent() : $('#futureSketch').val() || '');
+    formData.append('Detail.Future_Cost', $('#futureCost').val() || '');
+    formData.append('Detail.Plan', $('#planDate').val() || '');
+
+    // --- Ambil data Approvals ---
+    formData.append('First_Issued_NIK', approvals ? approvals.First_Issued_NIK || '' : '');
+    formData.append('First_Issued_Name', approvals ? approvals.First_Issued_Name || '' : '');
+    formData.append('Approved_By_NIK', $('#approvedBy').val() || '');
+    formData.append('Second_Issued_By_NIK', $('#secondIssuer').val() || '');
+
+
+    const classArr = [];
+    $('input[name^="PE_PCR_Classification"][type="radio"]:checked').each(function () {
+        const name = $(this).attr('name');
+        const index = name.match(/\[(\d+)\]/)[1];
+        const masterIdValue = $(`input[name="PE_PCR_Classification[${index}].Master_ID"]`).val();
+
+        // hindari duplikat Master_ID
+        const existing = classArr.find(c => c.Master_ID === masterIdValue);
+        if (!existing) {
+            classArr.push({ Master_ID: masterIdValue, Status: $(this).val() });
+        }
+    });
+    formData.append('PE_PCR_Classification', JSON.stringify(classArr));
+
+
+
+    //// --- Ambil data CLASSIFICATION ---
+    //const classArr = [];
+    //$('input[name^="PE_PCR_Classification"][type="radio"]:checked').each(function () {
+    //    const name = $(this).attr('name');
+    //    const index = name.match(/\[(\d+)\]/)[1];
+    //    const masterIdValue = $(`input[name="PE_PCR_Classification[${index}].Master_ID"]`).val();
+    //    classArr.push({ Master_ID: masterIdValue, Status: $(this).val() });
+    //});
+    //formData.append('PE_PCR_Classification', JSON.stringify(classArr));
+
+    //// --- Ambil data DTBR ---
+    //const dtbrArr = [];
+    //const classification = $('input[name="PE_PCR_DTBR_3_Classification"]:checked').val() || '';
+    //$('input[name="DTBRCheckbox"]:checked').each(function () {
+    //    const id = $(this).val();
+    //    const isOthers = (id === "0");
+    //    dtbrArr.push({
+    //        Head_ID: headId,
+    //        DTBR_ID: isOthers ? 0 : parseInt(id),
+    //        Status: isOthers ? 'Others' : $(this).data('name'),
+    //        Classification: classification,
+    //        Other_Description: isOthers ? $('#dtbrOthersText').val().trim() : null
+    //    });
+    //});
+    //formData.append("DTBRs", JSON.stringify(dtbrArr));
+
+    // --- Ambil data FILES (Lama & Baru) ---
+    const filesToKeep = [];
+    $('#fileList a').each(function () {
+        const fileName = $(this).find('span').text().trim();
+        if (fileName) {
+            filesToKeep.push(fileName);
+        }
+    });
+    filesToKeep.forEach(name => formData.append("ExistingFilenames", name));
+
+    if (typeof uploadedFiles !== 'undefined') {
+        uploadedFiles.forEach(file => {
+            formData.append("files", file, file.name);
+        });
+    }
+
+    showLoadingState("#saveByPE", true, "Save");
+
+    $.ajax({
+        url: '@Url.Action("SaveByPE", "PCR", new { area = "PE" })',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (res) {
+            if (res.success) {
+                Swal.fire("Success!", res.message, "success").then(() => {
+                    location.reload();
+                });
+            } else {
+                Swal.fire("Error!", res.message, "error");
+            }
+        },
+        error: function () {
+            Swal.fire("Error!", "A server error occurred.", "error");
+        },
+        complete: function () {
+            showLoadingState("#saveByPE", false, "Save");
+        }
+    });
+}
+// ======================
+// Approver
+// ======================
+$("#approvalBtn").on("click", function () {
+    if (!approvalData || $(this).prop('disabled')) {
+        return;
+    }
+
+    if (!validateByPE()) {
+        return;
+    }
+
+    const headId = new URLSearchParams(window.location.search).get("headId");
+    const currentNik = "@ViewBag.Usernik";
+    const currentName = "@ViewBag.Fullname";
+
+    const peManagerNik = $('input[name="PE_PCR_Approval_Head.PE_Manager_NIK"]').val();
+
+    const approverStatusId = approvalData.Approver_Status_ID;
+    const firstStatusId = approvalData.First_Status_ID;
+    const secondStatusId = approvalData.Second_Status_ID;
+    const peStatusId = approvalData.PE_Status_ID;
+
+    // --- Validations ---
+    if (firstStatusId !== 2 || (secondStatusId !== 2 && secondStatusId !== 4)) {
+        return Swal.fire("Action Cannot Be Completed", "Both First and Second Issuers must sign before you can approve.", "warning");
+    }
+    if (approverStatusId !== 2) {
+        return Swal.fire("Approval Not Allowed!", "This document must be signed by the Approver first before you can proceed.", "warning");
+    }
+    if (peStatusId !== 2) {
+        return Swal.fire("Approval Not Allowed!", "PE must mark this document as 'Fix' before you can sign as PE Manager.", "warning");
+    }
+    if (currentNik !== peManagerNik) {
+        return Swal.fire("Access Denied!", "You are not authorized to sign as the PE Manager.", "warning");
+    }
+
+    // === Swal with 4 options ===
+    Swal.fire({
+        title: "Confirm Approval",
+        text: "Choose your action for this document.",
+        icon: "question",
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: "Sign",
+        denyButtonText: "Reject",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#3085d6",
+        denyButtonColor: "#d33",
+        html: `
+            <button id="holdBtn" class="swal2-styled" style="background:#f6ad55;margin-top:10px;">Hold</button>
+        `,
+        didRender: () => {
+            // add listener for hold button
+            document.getElementById("holdBtn").addEventListener("click", () => {
+                Swal.fire({
+                    title: "Write Hold Message",
+                    input: "textarea",
+                    inputPlaceholder: "Reason for hold...",
+                    showCancelButton: true,
+                    confirmButtonText: "Submit"
+                }).then(res => {
+                    if (res.isConfirmed && res.value) {
+                        sendApprovalAction(headId, currentNik, currentName, 5, res.value); // 5 = Hold
+                    }
+                });
+            });
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // ✅ Sign
+            sendApprovalAction(headId, currentNik, currentName, 2, null);
+        } else if (result.isDenied) {
+            // ❌ Reject
+            Swal.fire({
+                title: "Write Rejection Message",
+                input: "textarea",
+                inputPlaceholder: "Reason for rejection...",
+                showCancelButton: true,
+                confirmButtonText: "Submit"
+            }).then(res => {
+                if (res.isConfirmed && res.value) {
+                    sendApprovalAction(headId, currentNik, currentName, 3, res.value); // 3 = Reject
+                }
+            });
+        }
+        // ❎ Cancel → auto close
+    });
+});
+
+// helper
+function sendApprovalAction(headId, nik, name, status, message) {
+    showLoadingState("#approvalBtn", true, "Mark as Signed");
+
+    const formData = new FormData();
+
+    // --- Ambil data CLASSIFICATION ---
+    const classArr = [];
+    $('input[name^="PE_PCR_Classification"][type="radio"]:checked').each(function () {
+        const name = $(this).attr('name');
+        const index = name.match(/\[(\d+)\]/)[1];
+        const masterIdValue = $(`input[name="PE_PCR_Classification[${index}].Master_ID"]`).val();
+        classArr.push({ Master_ID: masterIdValue, Status: $(this).val() });
+    });
+    formData.append('PE_PCR_Classification', JSON.stringify(classArr));
+
+    // --- Ambil data DTBR ---
+    const dtbrArr = [];
+    const classification = $('input[name="PE_PCR_DTBR_3_Classification"]:checked').val() || '';
+    $('input[name="DTBRCheckbox"]:checked').each(function () {
+        const id = $(this).val();
+        const isOthers = (id === "0");
+
+        // Tentukan isRequire
+        let isRequire = 0;
+        if (classification === "A" || classification === "B" || classification === "C") {
+            const req = $('input[name="RequirementStatus"]:checked').val();
+            if (req === "Complete") isRequire = 1;
+            else if (req === "NotComplete") isRequire = 2;
+        }
+
+        dtbrArr.push({
+            Head_ID: headId,
+            DTBR_ID: isOthers ? 0 : parseInt(id),
+            Status: isOthers ? 'Others' : $(this).data('name'),
+            Classification: classification,
+            Other_Description: isOthers ? $('#dtbrOthersText').val().trim() : null,
+            isRequire: isRequire
+        });
+    });
+
+    const requirementVal = $('input[name="RequirementStatus"]:checked').val() || null;
+    formData.append("RequirementStatus", requirementVal);
+    formData.append("DTBRs", JSON.stringify(dtbrArr));
+
+    // --- Tambah parameter utama ---
+    formData.append("headId", headId);
+    formData.append("nik", nik);
+    formData.append("name", name);
+    formData.append("status", status);
+    formData.append("rejectMessage", message);
+
+    $.ajax({
+        url: '@Url.Action("SignPE", "PCR", new { area = "PE" })',
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (res) {
+            if (res.success) {
+                Swal.fire("Success!", res.message, "success").then(() => location.reload());
+            } else {
+                Swal.fire("Error!", res.message, "error");
+            }
+        },
+        error: function () {
+            Swal.fire("Error!", "A server error occurred.", "error");
+        },
+        complete: function () {
+            showLoadingState("#approvalBtn", false, "Mark as Signed");
+        }
+    });
+}
+
+// Fungsi showLoadingState (pastikan ini ada di kode Anda)
+function showLoadingState(buttonSelector, isLoading, originalText) {
+    const button = $(buttonSelector);
+    const icon = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    if (isLoading) {
+        button.prop("disabled", true).html(`${icon} Loading...`);
+    } else {
+        button.prop("disabled", false).text(originalText);
+    }
+}
+
+    function showToast(message) {
+        const toast = $('#toast-warning');
+        const toastMessage = $('#toast-message');
+
+        toastMessage.text(message);
+        toast.fadeIn('fast');
+
+        setTimeout(function () {
+            toast.fadeOut('fast');
+        }, 5000);
+    }
+
+});
+
+</script>
+
+<div id="loadingSpinner" style="display:none;"
+     class="fixed inset-0 bg-black bg-opacity-30 flex flex-col items-center justify-center z-50">
+    <div class="loader border-t-4 border-b-4 rounded-full w-12 h-12"></div>
+    <p class="mt-3 text-white font-bold text-xl text-shadow-md">Retrieving Data ...</p>
+</div>
+
+<form id="phase1" method="post">
+
+    <div class="form-container">
+        <!-- ALERT MESSAGES -->
+        <div id="rejectMessage" class="hidden bg-red-500 text-white text-sm font-semibold px-4 py-2 mb-3 rounded">
+            This request has been <span class="font-bold">REJECTED</span>. Please check the remarks.
+        </div>
+
+        <div id="holdMessage" class="hidden bg-orange-500 text-white text-sm font-semibold px-4 py-2 mb-3 rounded">
+            This request is currently <span class="font-bold">ON HOLD</span>.
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <td rowspan="4" style="width:170px; padding:2px; text-align:center; vertical-align:middle;">
+                        <img src="~/Images/niterra-id.png"
+                             alt="Niterra Logo"
+                             class="img-fluid"
+                             style="width:100%; max-width:170px; height:auto;" />
+                    </td>
+                    <td rowspan="2" style="padding:2px; text-align:center; vertical-align:middle; font-weight:bold; font-size:14px;">
+                        FORMULIR INTEGRASI
+                    </td>
+                    <td style="padding: 2px; font-size: 10px;">No. Form</td>
+                    <td style="padding: 2px; font-size: 10px;">PMLK3-PE-03/L1</td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px; font-size: 10px;">Revisi</td>
+                    <td style="padding: 2px; font-size: 10px;">2</td>
+                </tr>
+                <tr>
+                    <td rowspan="2" style="padding:2px; text-align:center; vertical-align:middle; font-size:14px;">
+                        PROCESS CHANGE REQUEST SHEET
+                    </td>
+                    <td style="padding: 2px; font-size: 10px;">Tanggal</td>
+                    <td style="padding: 2px; font-size: 10px;">5-Apr-23</td>
+                </tr>
+                <tr>
+                    <td style="padding: 2px; font-size: 10px;">Halaman</td>
+                    <td id="page" style="padding: 2px; font-size: 10px;">1/2</td>
+                </tr>
+            </thead>
+        </table>
+
+        <table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse; width:100%;">
+            <tr>
+                <td style="vertical-align: middle; padding: 2px 10px; font-weight: bold; width: 170px;">Doc No</td>
+                <td style="width: 35%;">
+                    <select disabled id="docNo" name="Doc_No" class="form-control block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs">
+                        <option value="">-- Pilih Doc No --</option> @if (ViewBag.DocNoList != null)
+                        {
+                            foreach (var doc in ViewBag.DocNoList)
+                            {
+                                <option value="@doc.DocNumber">@doc.DocNumber | @doc.Remark</option>
+                            }
+                        }
+                    </select>
+                    <div class="invalid-feedback">
+                        Doc No is required.
+                    </div>
+                </td>
+                <td style="font-size:14px;" rowspan="3">
+                    <p style="font-weight:bold; font-size:12px; margin:0;">TITLE</p>
+                    <textarea id="title" name="Title" rows="4" class="mt-2 resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500" placeholder="Write title here..."></textarea>
+                    <div class="invalid-feedback">Title is required.</div>
+                </td>
+            </tr>
+            <tr>
+                <td style="vertical-align: middle; font-weight: bold; ">Product</td>
+                <td style="width: 35%;">
+                    <input type="text" id="product" name="Product" placeholder="Product" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                    <div class="invalid-feedback">Product is required.</div>
+                </td>
+            </tr>
+            <tr>
+                <td style="vertical-align: middle; font-weight: bold;">Line</td>
+                <td style="width: 35%;">
+                    <input type="text" id="line" name="Line" placeholder="Line" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                    <div class="invalid-feedback">Line is required.</div>
+                </td>
+            </tr>
+        </table>
+
+        <table style="width:100%; border-collapse: collapse; border-spacing: 0;">
+            <tbody>
+                <tr>
+                    <!-- CONDITION & PURPOSE -->
+                    <td style="width:40%; padding:0; border:1px solid black; vertical-align: top;">
+                        <div id="conditionGroup" class="d-flex p-2">
+                            <div class="flex-fill border-end pe-3">
+                                <p style="font-weight:bold; font-size:12px; margin:0;">CONDITION</p>
+                                <div class="d-flex gap-3 mt-2">
+                                    <div class="form-check">
+                                        <input id="conditionPermanent" class="form-check-input" type="radio" name="Condition" value="Permanent">
+                                        <label class="form-check-label">Permanent</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input id="conditionTemporary" class="form-check-input" type="radio" name="Condition" value="Temporary">
+                                        <label class="form-check-label">Temporary</label>
+                                    </div>
+                                </div>
+                                <div id="conditionError" class="invalid-feedback d-block" style="display:none;"></div>
+                            </div>
+
+                            <div id="temporaryDateContainer" class="flex-fill border-start ps-3">
+                                <span id="temporaryDateLabel" class="d-block">If Temporary, Tell the time:</span>
+                                <input type="date" id="temporaryDate" name="TemporaryDate" class="form-control form-control-sm mt-1 border-black" style="max-width:200px;">
+                                <div class="invalid-feedback">Please specify the date for temporary condition.</div>
+                            </div>
+                        </div>
+                        <div style="padding:5px; border-top:1px solid black;">
+                            <p style="font-weight:bold; font-size:12px; margin:0;">PURPOSE</p>
+                            <textarea id="purpose" name="Purpose" rows="2" class="mt-2 block w-full text-sm rounded-lg border border-gray-300 p-2.5 h-24" placeholder="Write purpose here..."></textarea>
+                            <div class="invalid-feedback">Purpose is required.</div>
+                        </div>
+                    </td>
+                    <!-- APPROVED BY -->
+                    <td style="width:20%; padding:0; text-align:center; border:1px solid black; vertical-align: top;">
+                        <div style="font-size:12px; padding:5px; border-bottom:1px solid black; display:flex; justify-content:space-between;">
+                            <span>DATE:</span>
+                            <span id="approverSignDate" class="text-xs font-semibold"></span>
+                        </div>
+                        <div style="padding:5px; border-bottom:1px solid black; font-weight:bold; font-size:12px; text-align:center;">
+                            APPROVED BY
+                        </div>
+                        <div style="padding:32px 5px; border-bottom:1px solid black;">
+                            <button id="approvedBtn" type="button" class="status" style="background-color:#ffe69c; padding:2px 20px; border-radius:12px; font-size:12px; font-weight:bold; border:none; cursor:pointer;">
+                                Mark as Signed
+                            </button>
+                        </div>
+                        <div id="Approved_By_Container" style="padding:4px;">
+                            <select class="w-full text-center border border-black rounded-md p-1" id="approvedBy" name="PE_PCR_Approval_Head.Approver_NIK" style="width:100%;">
+                                <option value="">-- Select Name --</option>
+                                @foreach (var user in ViewBag.UserlistDept)
+                                {
+                                    <option value="@user.NIK">@user.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </td>
+
+                    <!-- ISSUED BY (FIRST) -->
+                    <td style="width:20%; padding:0; text-align:center; border:1px solid black; vertical-align: top;">
+                        <div style="font-size:12px; padding:5px; border-bottom:1px solid black; display:flex; justify-content:space-between;">
+                            <span>DATE:</span>
+                            <span id="firstIssuerSignDate" class="text-xs font-semibold"></span>
+                        </div>
+                        <div style="padding:5px; border-bottom:1px solid black; font-weight:bold; font-size:12px; text-align:center;">
+                            <span>ISSUED BY</span>
+                        </div>
+                        <div style="padding:32px 5px; border-bottom:1px solid black;">
+                            <button id="IssuedBtn1" type="button" class="status" style="background-color:#ffe69c; padding:2px 20px; border-radius:12px; font-size:12px; font-weight:bold; border:none; cursor:pointer;">
+                                Mark as Signed
+                            </button>
+                        </div>
+                        <div style="padding:4px;">
+                            <div style="padding:4px;">
+                                <input type="hidden" name="PE_PCR_Approval_Head.First_Issued_NIK" value="@ViewBag.Usernik">
+                                <input type="hidden" name="PE_PCR_Approval_Head.First_Issued_Name" value="@ViewBag.Fullname">
+                                <p id="firstIssuer" class="text-sm" style="margin:0; min-height:30px;">@ViewBag.Fullname</p>
+                            </div>
+                        </div>
+                    </td>
+
+                    <!-- ISSUED BY (SECOND) -->
+                    <td style="width:20%; padding:0; text-align:center; border:1px solid black; vertical-align: top;">
+                        <div style="font-size:12px; padding:5px; border-bottom:1px solid black; display:flex; justify-content:space-between;">
+                            <span>DATE:</span>
+                            <span id="secondIssuerSignDate" class="text-xs font-semibold"></span>
+                        </div>
+                        <div style="padding:5px; border-bottom:1px solid black; font-weight:bold; font-size:12px; text-align:center;">
+                            <span>ISSUED BY</span>
+                        </div>
+                        <div style="padding:32px 5px; border-bottom:1px solid black;">
+                            <button id="IssuedBtn2" type="button" class="status" style="background-color:#ffe69c; padding:2px 20px; border-radius:12px; font-size:12px; font-weight:bold; border:none; cursor:pointer;">
+                                Mark as Signed
+                            </button>
+                        </div>
+                        <div id="Second_Issued_Container" style="padding:4px;">
+                            <select class="w-full text-center border border-black rounded-md p-1" id="secondIssuer" name="PE_PCR_Approval_Head.Second_Issued_NIK" style="width:100%;">
+                                <option value="">-- Select Name --</option>
+                                <option value="empty">No Second Issuer</option>
+                                @foreach (var user in ViewBag.UserlistDept)
+                                {
+                                    <option value="@user.NIK">@user.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table>
+            <tbody>
+                <tr>
+                    <td style="width:50%; padding:5px; gap: 2px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <p style="font-weight:bold; font-size:12px; margin:0; width: 100px;">APPLIED PART:</p>
+                            <input type="text" id="appliedPart" name="Applied_Part" placeholder="Applied Part" style="width: 50%; margin-bottom: 5px;" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <div class="invalid-feedback">Applied Part is required.</div>
+
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <p style="margin: 0; width: 100px;">MODEL: </p>
+                            <input type="text" id="model" name="Model" placeholder="Model" style="width: 50%; margin-bottom: 5px;" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <div class="invalid-feedback">Model is required.</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <p style="margin: 0; width: 100px;">PART NO: </p>
+                            <input type="text" id="partNo" name="Part_No" placeholder="Part No" style="width: 50%;" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <div class="invalid-feedback">Part No is required.</div>
+                        </div>
+                    </td>
+                    <td style="width:35%; padding:5px;">
+                        <p style="font-weight:bold; font-size:12px; margin:0;">BUSINESS CLASS PROPOSED:</p>
+                        <div id="bcpv" style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 10px">
+                            <div class="form-check"><input type="checkbox" id="bcpOem" name="BCP" value="OEM"> OEM</div>
+                            <div class="form-check"><input type="checkbox" id="bcpOes" name="BCP" value="OES"> OES</div>
+                            <div class="form-check"><input type="checkbox" id="bcpAmp" name="BCP" value="AMP"> AMP</div>
+                            <div class="form-check"><input type="checkbox" id="bcpExport" name="BCP" value="Export"> Export</div>
+                        </div>
+                        <div id="bcpError" class="invalid-feedback" style="display: none; margin-top: 5px;">
+                            Please choose at least one business class.
+                        </div>
+                        <div id="remarkWrapper" style="display:flex;align-items:center;gap:10px;margin-top:5px;">
+                            <p style="margin:0;">Remark:</p>
+                            <div id="remarkInputWrapper" style="flex:1;">
+                                <input type="text" id="remark" name="Remark" placeholder="Remark"
+                                       class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs
+                      focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                        </div>
+
+                    </td>
+                    <td style="width:15%; padding:5px;">
+                        <p style="font-weight:bold; font-size:12px; margin:0;">FORECAST (monthly):</p>
+                        <div>
+                            <input type="number" id="forecast" name="Forecast" placeholder="20,000" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs focus:ring-blue-500 focus:border-blue-500">
+                            <div class="invalid-feedback">Forecast is required.</div>
+                        </div>
+                    </td>
+                </tr>
+        </table>
+
+        <div id="classificationError" class="invalid-feedback" style="display: none; margin-bottom: 5px;">
+            Please check the classification at least one.
+        </div>
+        <table id="classificationTable" style="margin-top: -1px; border-collapse: collapse;" border="1" cellspacing="0" cellpadding="5">
+            <thead>
+                <tr><td colspan="8" class="center-text" style="font-weight:bold;">CLASSIFICATION</td></tr>
+                <tr class="center-text">
+                    <td colspan="2" style="font-weight: bold;">Item</td>
+                    <td style="width: 120px">New</td>
+                    <td style="width: 120px">Additional</td>
+                    <td style="width: 120px">Change</td>
+                    <td style="width: 120px">Replacement</td>
+                    <td style="width: 120px">Delete</td>
+                    <td style="width: 120px">Action</td>
+                </tr>
+            </thead>
+            <tbody>
+                @if (ViewBag.ClassificationList != null)
+                {
+                    var classifications = (List<NGKBusi.Areas.PE.Models.PE_PCR_Classification_Master>)ViewBag.ClassificationList;
+                    for (int i = 0; i < classifications.Count; i++)
+                    {
+                        var item = classifications[i];
+                        <tr>
+                            <td class="center-text">@(i + 1)</td>
+
+                            <td>
+                                @item.Classification_Name
+                                <input type="hidden" name="PE_PCR_Classification[@i].Master_ID" value="@item.ID" />
+                            </td>
+
+                            <td class="center-text">
+                                <input type="radio" name="PE_PCR_Classification[@i].Status" value="New" />
+                            </td>
+
+                            <td class="center-text">
+                                <input type="radio" name="PE_PCR_Classification[@i].Status" value="Additional" />
+                            </td>
+                            <td class="center-text">
+                                <input type="radio" name="PE_PCR_Classification[@i].Status" value="Change" />
+                            </td>
+                            <td class="center-text">
+                                <input type="radio" name="PE_PCR_Classification[@i].Status" value="Replacement" />
+                            </td>
+                            <td class="center-text">
+                                <input type="radio" name="PE_PCR_Classification[@i].Status" value="Delete" />
+                            </td>
+                            <td class="center-text">
+                                <button type="button" class="clearBtn"
+                                        style="background:none; border:none; color:red; cursor:pointer;"
+                                        onclick="document.querySelectorAll('input[name=&quot;PE_PCR_Classification[@i].Status&quot;]').forEach(r => r.checked = false);">
+                                    Clear
+                                </button>
+                            </td>
+
+                        </tr>
+                    }
+                }
+            </tbody>
+
+        </table>
+
+
+
+        <table style="margin-top: -1px;">
+            <thead>
+                <tr><td colspan="8" class="center-text" style="font-weight:bold;">DETAIL</td></tr>
+                <tr class="center-text">
+                    <td style="width: 10%; font-weight: bold;">Info</td>
+                    <td style="width: 45%; font-weight: bold;">Current Condition</td>
+                    <td style="width: 45%; font-weight: bold;">Future Condition</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="height: 120px; text-align:center; vertical-align:middle; font-weight:bold;">Statement simple</td>
+                    <td>
+                        <textarea id="currentStatement" name="Current_Statement" rows="4" class="resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" placeholder="Write current condition statement here..."></textarea>
+                        <div class="invalid-feedback">Current Statement is required.</div>
+                    </td>
+                    <td>
+                        <textarea id="futureStatement" name="Future_Statement" rows="4" class="resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" placeholder="Write future condition statement here..."></textarea>
+                        <div class="invalid-feedback">Future Statement is required.</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align:center; vertical-align:middle; font-weight:bold;">Picture / Sketch SIMPLE</td>
+                    <td style="vertical-align:top;">
+                        <p style="font-weight:bold; font-size:12px; margin:0; color: white; text-align: left;">Impacted to (Please Choose):</p>
+                        <p style="font-weight: bold; font-size: 12px; margin: 0; color: white; text-align: center;">Q C D S M P E</p>
+                        <textarea id="currentSketch" name="Current_Sketch" rows="4" style="height: 300px;" class="resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" placeholder="Write current condition sketch here..."></textarea>
+                    </td>
+                    <td style="vertical-align:top;">
+                        <p style="font-weight:bold; font-size:12px; margin:0; text-align: left;">Impacted to (Please Choose):</p>
+                        <p style="font-weight:bold; font-size:12px; margin:0; text-align: center;">Q C D S M P E</p>
+                        <textarea id="futureSketch" name="Future_Sketch" rows="4" style="height: 300px;" class="resize-none block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300" placeholder="Write future condition sketch here..."></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align:center; vertical-align:middle; font-weight:bold;">Cost</td>
+                    <td>
+                        <div id="currentCostWrapper" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="vertical-align: middle; font-weight:bold;">Cost:</span>
+                            <input type="text" id="currentCost" name="Current_Cost"
+                                   placeholder="Current condition cost"
+                                   class="block w-full p-2 text-gray-900 text-normal border border-gray-300 rounded-lg bg-gray-50 text-xs">
+                            <div class="invalid-feedback">Current cost is required.</div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <div id="futureCostWrapper" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="vertical-align: middle; font-weight: bold;">Cost:</span>
+                            <input type="text" id="futureCost" name="Future_Cost"
+                                   placeholder="Future condition cost"
+                                   class="block w-full p-2 text-gray-900 text-normal border border-gray-300 rounded-lg bg-gray-50 text-xs">
+                            <div class="invalid-feedback">Future cost is required.</div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table style="margin-top: -1px;">
+            <thead>
+                <tr><td colspan="3" class="center-text" style="font-weight:bold;">TIME</td></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style=" text-align:center; vertical-align:middle; font-weight:bold;">Time</td>
+                    <td>
+                        <div id="planDateContainer" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="vertical-align: middle; font-weight: bold;">PLAN:</span>
+                            <input type="date" id="planDate" name="Plan" class="form-control form-control-sm border-black" style="max-width:200px;">
+                            <div class="invalid-feedback">Plan date is required.</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="vertical-align: middle; font-weight: bold;">ACTUAL:</span>
+                            <input disabled type="date" id="actualDate" name="Actual" class="form-control form-control-sm border-black" style="max-width:200px;">
+                            <div class="invalid-feedback">Actual date is required.</div>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+
+        <table style="margin-top: -1px;">
+            <thead>
+                <tr>
+                    <td class="text-center font-bold">ATTACHMENT FILES</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="p-4">
+                        <div class="flex items-center justify-center w-full">
+                            <label for="dropzone-file" id="dropZoneLabel" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                                <div class="flex flex-col items-center justify-center">
+                                    <svg class="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
+                                    </svg>
+                                    <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                                    <p class="text-xs text-gray-500">Bisa lebih dari satu file (PDF)</p>
+                                </div>
+                                <input id="dropzone-file" type="file" class="hidden" multiple />
+                            </label>
+                        </div>
+                        <div id="attachmentError" class="invalid-feedback">File is required.</div>
+
+
+                        <div id="fileList" class="mt-4"></div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table style="margin-top: -1px; width:100%; border-collapse: collapse;" border="1">
+            <thead>
+                <tr>
+                    <td style="width: 30%; font-weight: bold; font-size: 14px;">DOCUMENT TO BE REVIEWED</td>
+                    <td style="width: 30%; font-weight: bold; font-size: 14px; position: relative;">
+                        RANK
+                        <i class="fa-solid fa-circle-info"
+                           style="cursor: pointer; margin-left: 5px;"
+                           onmouseover="document.getElementById('info').style.display='block'"
+                           onclick="document.getElementById('info').style.display=document.getElementById('info').style.display==='block'?'none':'block'">
+                        </i>
+
+                        <div id="info" style="display:none; position:absolute; top:25px; left:0; background:#333; color:white; padding:10px; border-radius:5px; font-size:12px; font-weight:normal; white-space:nowrap; z-index:1000;">
+                            A = Customer Approval & Localization Request Required<br>
+                            B = Customer Approval Required<br>
+                            C = Localization Request Required<br>
+                            D = Internal Approval Required
+                        </div>
+                    </td>
+                    <td style="width: 20%; font-weight: bold; font-size: 14px; text-align:center;">PE MANAGER CONFIRMATION</td>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td rowspan="3" style="vertical-align: top; padding: 10px;">
+                        <p style="font-size:12px; margin-bottom:5px; text-align: left;">
+                            (filled by PE Manager)
+                        </p>
+                        <div id="DTBRV" style="font-size:15px;">
+                            <div style="display: flex; flex-wrap: wrap; margin-bottom: 6px;">
+                                @if (ViewBag.DTBRList != null)
+                                {
+                                    foreach (var item in (List<NGKBusi.Areas.PE.Models.PE_PCR_DTBR_Master>)ViewBag.DTBRList)
+                                    {
+                                        <div style="width: 50%; margin-bottom: 6px;">
+                                            <input type="checkbox"
+                                                   id="dtbr_@item.ID"
+                                                   name="DTBRCheckbox" value="@item.ID" data-name="@item.DTBR_Name" /> @item.DTBR_Name
+                                            </div>
+                                        }
+                                    }
+
+                            <div style="width: 100%; max-width: 500px;">
+                                <div class="flex items-center gap-2">
+                                    <input type="checkbox" id="dtbrOthers" name="DTBRCheckbox" value="0" data-name="Others" checked />
+                                    <label for="dtbrOthers" class="whitespace-nowrap text-sm">Others:</label>
+
+                                    <input type="text" id="dtbrOthersText"
+                                           value="PCC and Evaluation Report"
+                                           placeholder="Other document..."
+                                           class="block flex-1 p-1 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-xs"
+                                           disabled />
+                                </div>
+                                <div class="invalid-feedback hidden text-red-500 text-xs mt-1">"Others" description is required.</div>
+                            </div>
+                            </div>
+                        </div>
+                        <div id="dtbrError" class="invalid-feedback" style="display: none; margin-top: 5px;">
+                            Please select at least one document to be reviewed.
+                        </div>
+                    </td>
+
+                    <td rowspan="3" style="vertical-align: top; padding: 10px;">
+
+                        <div style="display: flex; gap: 20px; font-size: 12px;">
+
+                            <!-- LEFT: CLASSIFICATION -->
+                            <div id="classificationV" style="display: flex; font-size: 14px; flex-direction: column;">
+
+                                <div style="margin-bottom: 6px;">
+                                    <input type="radio" id="classificationA" name="PE_PCR_DTBR_3_Classification" value="A">
+                                    <label for="classificationA">A</label>
+                                </div>
+
+                                <div style="margin-bottom: 6px;">
+                                    <input type="radio" id="classificationB" name="PE_PCR_DTBR_3_Classification" value="B">
+                                    <label for="classificationB">B</label>
+                                </div>
+
+                                <div style="margin-bottom: 6px;">
+                                    <input type="radio" id="classificationC" name="PE_PCR_DTBR_3_Classification" value="C">
+                                    <label for="classificationC">C</label>
+                                </div>
+
+                                <div style="margin-bottom: 6px;">
+                                    <input type="radio" id="classificationD" name="PE_PCR_DTBR_3_Classification" value="D">
+                                    <label for="classificationD">D</label>
+                                </div>
+
+                                <button type="button" class="clearBtn"
+                                        style="background:none; border:none; color:red; cursor:pointer; font-size:12px;"
+                                        onclick="document.querySelectorAll('input[name=&quot;PE_PCR_DTBR_3_Classification&quot;]').forEach(r => r.checked = false);document.querySelectorAll('input[name=&quot;RequirementStatus&quot;]').forEach(x => {
+                                            x.checked = false;
+                                            x.disabled = true;
+                                        });
+                                    ">
+                                    Clear
+                                </button>
+
+                                <div id="requirementError" class="invalid-feedback" style="display: none; margin-top: 5px;">
+                                    Please select at least one document to be reviewed.
+                                </div>
+
+
+                            </div>
+
+
+                            <!-- RIGHT: REQUIREMENTS -->
+                            <div id="requirementSection" style="font-size:12px; padding-left:50px;">
+
+                                <p style="margin:0 0 10px 0; font-size: 14px;">If Rank A, B, C</p>
+
+                                <div style="margin-bottom: 6px; font-size: 14px;">
+                                    <input type="radio" id="reqComplete" name="RequirementStatus" value="Complete" disabled>
+                                    <label for="reqComplete">Requirement Complete</label>
+                                </div>
+
+                                <div style="margin-bottom: 6px; font-size: 14px;">
+                                    <input type="radio" id="reqNotComplete" name="RequirementStatus" value="NotComplete" disabled>
+                                    <label for="reqNotComplete">Requirement not yet complete</label>
+                                </div>
+
+                                <div id="dtbrClassificationError" class="invalid-feedback" style="display: none; margin-top: 5px;">
+                                    Please select a Requirement.
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                    </td>
+
+                    <td style="height: 30px; text-align: center; vertical-align: top; padding: 10px;">
+                        Approval
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="width:20%; text-align:center; vertical-align:middle; padding:10px;">
+                        <div style="margin:10px;">
+                            <div id="approvalBtnContainer">
+                                <button type="button" id="approvalBtn" class="status" style="background-color:#ffe69c; padding:2px 20px; border-radius:12px; font-size:12px; font-weight:bold; border: none; cursor: pointer;">Mark as Signed</button>
+                            </div>
+                            <p id="approverSignDate" class="text-xs text-gray-500 mt-2"></p>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 0; vertical-align: middle; text-align: center;">
+                        <div style="padding:4px;">
+                            @if (ViewBag.PEManager != null)
+                            {
+                                <input type="hidden" name="PE_PCR_Approval_Head.PE_Manager_NIK" value="@ViewBag.PEManager.NIK">
+                                <p id="peManagerName" class="text-sm">@ViewBag.PEManager.Name</p>
+                            }
+                            else
+                            {
+                                <input type="hidden" name="PE_PCR_Approval_Head.PE_Manager_NIK" value="">
+                                <p id="peManagerName" class="text-sm">PE Manager Not Found</p>
+                            }
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <input type="hidden" id="peNik" name="PE_PCR_Approval_Head.PE_NIK" value="@ViewBag.Usernik" />
+    <input type="hidden" id="peName" name="PE_PCR_Approval_Head.PE_Name" value="@ViewBag.Fullname" />
+
+</form>

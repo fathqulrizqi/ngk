@@ -1,0 +1,867 @@
+﻿@using NGKBusi.Areas.HC.Models
+@{
+    ViewBag.Title = "Review Agreements";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    List<Tbl_LegalPermit_ReviewAgreementRequest> listData = ViewBag.List as List<Tbl_LegalPermit_ReviewAgreementRequest>;
+
+    // Jika listData null (berjaga-jaga), inisialisasi list kosong agar tidak error di bawah
+    if (listData == null)
+    {
+        listData = new List<Tbl_LegalPermit_ReviewAgreementRequest>();
+    }
+    int userLevel = ViewBag.UserLevel;
+
+    // Base Path File
+    string basePath = "~/Files/HC/LegalPermit/Review/";
+
+    // --- HELPER FUNCTION UNTUK ICON FILE ---
+    string GetFileIconClass(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return "fa-file text-muted";
+        string ext = Path.GetExtension(fileName).ToLower();
+
+        if (ext == ".pdf") return "fa-file-pdf pdf";
+        if (ext == ".doc" || ext == ".docx") return "fa-file-word word";
+        if (ext == ".xls" || ext == ".xlsx") return "fa-file-excel excel";
+        if (ext == ".jpg" || ext == ".jpeg" || ext == ".png") return "fa-file-image img";
+
+        return "fa-file text-secondary";
+    }
+
+    // --- HELPER UNTUK BUTTON CLASS ---
+    string GetBtnClass(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return "";
+        string ext = Path.GetExtension(fileName).ToLower();
+
+        if (ext == ".pdf") return "pdf";
+        if (ext == ".doc" || ext == ".docx") return "word";
+        if (ext == ".xls" || ext == ".xlsx") return "excel";
+        if (ext == ".jpg" || ext == ".jpeg" || ext == ".png") return "img";
+        return "";
+    }
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css">
+
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f4f6f9;
+    }
+
+    /* --- STATS CARDS --- */
+    .stat-card {
+        background: white;
+        border: none;
+        border-radius: 15px; /* Radius lebih tumpul */
+        padding: 25px; /* Padding lebih lega */
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        height: 100%; /* Agar tinggi kartu seragam */
+        /* Layout Flex agar icon kiri, text kanan */
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+    /* Icon dibuat lebih besar dan di sebelah kiri */
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem; /* Icon lebih besar */
+        flex-shrink: 0; /* Agar icon tidak tergencet */
+    }
+
+    /* Area Text di sebelah kanan */
+    .stat-text {
+        text-align: right;
+        flex-grow: 1;
+        margin-left: 15px;
+    }
+
+    .stat-label {
+        color: #8898aa;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .stat-number {
+        font-size: 2.5rem; /* Angka JAUH lebih besar */
+        font-weight: 800;
+        color: #32325d;
+        line-height: 1.1;
+        display: block;
+    }
+
+    /* Warna Background Icon */
+    .bg-soft-primary {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .bg-soft-warning {
+        background-color: #fff3e0;
+        color: #f57c00;
+    }
+
+    .bg-soft-info {
+        background-color: #e0f7fa;
+        color: #0097a7;
+    }
+    /* Tambahan warna */
+    .bg-soft-success {
+        background-color: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .bg-soft-primary {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .bg-soft-warning {
+        background-color: #fff3e0;
+        color: #f57c00;
+    }
+
+    .bg-soft-success {
+        background-color: #e8f5e9;
+        color: #388e3c;
+    }
+
+    /* --- MAIN CARD --- */
+    .main-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        margin-top: 20px;
+        background: white;
+    }
+
+    .card-header-custom {
+        padding: 20px 25px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* --- DATATABLES CUSTOM STYLE --- */
+    /* Input filter di header */
+    thead input {
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-top: 5px;
+        font-weight: normal;
+    }
+
+    .table-modern thead th {
+        border-top: none;
+        border-bottom: 2px solid #f0f0f0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #8898aa;
+        font-weight: 600;
+        padding: 15px 10px;
+    }
+
+    .table-modern tbody td {
+        vertical-align: middle;
+        padding: 15px 10px;
+        font-size: 0.95rem;
+        color: #333;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    /* Pagination Style Override */
+    .page-item.active .page-link {
+        background-color: #00747f !important;
+        border-color: #00747f !important;
+    }
+
+    /* --- UPLOAD AREA --- */
+    .upload-area {
+        border: 2px dashed #cbd5e0;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background-color: #fafbfc;
+        position: relative;
+    }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #00747f;
+            background-color: #f0fdfd;
+        }
+
+    .upload-icon {
+        font-size: 2.5rem;
+        color: #00747f;
+        margin-bottom: 10px;
+    }
+
+    .file-info {
+        display: none;
+        margin-top: 15px;
+        padding: 10px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    /* --- BUTTONS --- */
+    .btn-custom-primary {
+        background-color: #00747f;
+        color: white;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 116, 127, 0.2);
+    }
+
+        .btn-custom-primary:hover {
+            background-color: #005f68;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+    /* Style untuk tombol file di tabel */
+    .btn-file {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%; /* Bulat */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        border: 1px solid #e0e0e0;
+        text-decoration: none !important;
+    }
+
+        .btn-file:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Warna khusus per tipe file */
+        .btn-file.pdf {
+            color: #dc3545;
+            background-color: #fff5f5;
+            border-color: #ffcdd2;
+        }
+
+        .btn-file.word {
+            color: #007bff;
+            background-color: #f0f7ff;
+            border-color: #cce5ff;
+        }
+
+        .btn-file.excel {
+            color: #28a745;
+            background-color: #f0fff4;
+            border-color: #c3e6cb;
+        }
+
+        .btn-file.img {
+            color: #6f42c1;
+            background-color: #f3f0ff;
+            border-color: #d6d6d6;
+        }
+</style>
+
+<div class="container-fluid py-4">
+
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-8">
+            <h3 class="font-weight-bold text-dark mb-1">Review Agreement</h3>
+            <p class="text-muted mb-0">Manage and track your document review requests.</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <button class="btn btn-custom-primary" data-toggle="modal" data-target="#modalCreate">
+                <i class="fa fa-plus-circle mr-2"></i> New Request
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-primary">
+                    <i class="fa fa-folder-open"></i>
+                </div>
+                <div class="stat-text">
+                    <span class="stat-label">Total Requests</span>
+                    <span class="stat-number">@listData.Count</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-warning">
+                    <i class="fa fa-clock"></i>
+                </div>
+                <div class="stat-text">
+                    <span class="stat-label">New / Pending</span>
+                    <span class="stat-number">
+                        @listData.Count(x => x.Status == "Pending")
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-info">
+                    <i class="fa fa-spinner fa-pulse" style="font-size: 1.8rem;"></i>
+                </div>
+                <div class="stat-text">
+                    <span class="stat-label">In Progress</span>
+                    <span class="stat-number">
+                        @listData.Count(x => x.Status == "WaitingApproval" || x.Status == "ReturnedL1")
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-success">
+                    <i class="fa fa-check-double"></i>
+                </div>
+                <div class="stat-text">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-number">
+                        @listData.Count(x => x.Status == "Approved")
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card main-card mb-5">
+        <div class="card-header-custom">
+            <h6 class="mb-0 font-weight-bold"><i class="fa fa-list mr-2 text-info"></i> Recent Requests</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive p-3">
+                <table id="tableReview" class="table table-modern table-hover mb-0 w-100">
+                    <thead>
+                        <tr>
+                            <th class="pl-3">Project Name</th>
+                            <th>Company</th>
+                            <th>Req. Date</th>
+                            @if (userLevel > 0)
+                            {
+                                <th>Created By</th>
+                            }
+                            <th>Document</th>
+                            <th>Quotation</th>
+                            <th>Signer Document</th>
+                            <th>Status</th>
+                            <th class="text-right pr-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in listData)
+                        {
+                            <tr>
+                                <td class="pl-3 font-weight-bold">@item.ProjectName</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-light text-primary rounded-circle mr-2 d-flex align-items-center justify-content-center" style="width:30px;height:30px;font-size:12px">
+                                            <i class="fa fa-building"></i>
+                                        </div>
+                                        @item.CompanyName
+                                    </div>
+                                </td>
+                                <td data-sort="@item.CreateTime.ToString("yyyyMMdd")">
+                                    @item.CreateTime.ToString("dd MMM yyyy")
+                                </td>
+                                @if (userLevel > 0)
+                                {
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <small class="font-weight-bold">@item.CreatorName</small>
+                                        </div>
+                                    </td>
+                                }
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.OriginalReviewDocumentName))
+                                    {
+                                        <a href="@Url.Content(basePath + item.ReviewDocument)" target="_blank"
+                                           class="btn-file word" title="Download Draft: @item.OriginalReviewDocumentName">
+                                            <i class="fa fa-file-word"></i>
+                                        </a>
+                                    }
+                                    else
+                                    { <span class="text-muted">-</span>}
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.QuotationDocumentName))
+                                    {
+                                        <a href="@Url.Content(basePath + item.QuotationDocumentName)" target="_blank"
+                                           class="btn-file pdf" title="Preview Quotation">
+                                            <i class="fa fa-file-pdf"></i>
+                                        </a>
+                                    }
+                                    else
+                                    { <span class="text-muted">-</span>}
+                                </td>
+                                <td class="text-center">
+                                    @if (!string.IsNullOrEmpty(item.SignerInfoDocumentName))
+                                    {
+                                        // Gunakan helper untuk menentukan warna & icon
+                                        string iconClass = GetFileIconClass(item.SignerInfoDocumentName);
+                                        string btnClass = GetBtnClass(item.SignerInfoDocumentName);
+
+                                        <a href="@Url.Content(basePath + item.SignerInfoDocumentName)" target="_blank"
+                                           class="btn-file @btnClass" title="Preview Signer Info">
+                                            <i class="fa @iconClass.Replace(" pdf", "").Replace(" word", "").Replace(" excel", "").Replace(" img", "")"></i>
+                                        </a>
+                                    }
+                                    else
+                                    { <span class="text-muted">-</span>}
+                                </td>
+
+                                <td>
+                                    @if (item.Status == "Pending")
+                                    {
+                                        if (userLevel > 0)
+                                        {<span class="badge badge-info">OPEN</span> }
+                                        else
+                                        { <span class="badge badge-primary">SUBMITTED</span> }
+                                    }
+                                    else if (item.Status == "WaitingApproval")
+                                    { <span class="badge badge-warning">WAITING APPROVAL</span> }
+                                    else if (item.Status == "Approved")
+                                    { <span class="badge badge-success">COMPLETED</span> }
+                                    else if (item.Status == "ReturnedL1")
+                                    { <span class="badge badge-danger">RETURNED</span> }
+                                    else
+                                    { <span class="badge badge-secondary">@item.Status</span>}
+                                </td>
+                                <td class="text-right pr-3">
+                                    @{ bool showButton = (userLevel > 0) || (item.Status == "Approved"); }
+                                    @if (showButton)
+                                    {
+                                        <a href="@Url.Action("ProcessReview", new { id = item.ID })" class="btn btn-sm btn-outline-secondary font-weight-bold">
+                                            <i class="fa fa-folder-open mr-1"></i> @(item.Status == "Approved" ? "View Result" : "Process")
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small font-italic"><i class="fa fa-lock mr-1"></i> In Progress</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCreate" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+            <div class="modal-header bg-white pb-0 border-0">
+                <h5 class="modal-title font-weight-bold mt-2 ml-2">New Review Request</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="formRequest">
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase text-muted">Project Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control bg-light border-0" id="inpProject" placeholder="e.g. Procurement Agreement 2026">
+                    </div>
+                    <div class="form-group">
+                        <label class="font-weight-bold small text-uppercase text-muted">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control bg-light border-0" id="inpCompany" placeholder="e.g. PT Vendor Indonesia">
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold small text-uppercase text-primary"><i class="fa fa-file-word mr-1"></i> 1. Draft Agreement (Word) <span class="text-danger">*</span></label>
+                        <div class="upload-area" id="dropZoneWord">
+                            <input type="file" id="inpFileWord" accept=".doc, .docx" style="display:none;">
+                            <div id="dropTextWord">
+                                <i class="fa fa-cloud-upload-alt upload-icon"></i>
+                                <h6 class="font-weight-bold text-dark">Click or Drag Word File</h6>
+                                <small class="text-muted">.DOC / .DOCX (Max 5MB)</small>
+                            </div>
+                            <div class="file-info" id="previewWord">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-file-word text-primary fa-2x mr-3"></i>
+                                        <h6 class="mb-0 font-weight-bold text-truncate" style="max-width: 200px;" id="nameWord">filename.docx</h6>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-light text-danger btn-remove" data-target="Word"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="font-weight-bold small text-uppercase text-danger"><i class="fa fa-file-pdf mr-1"></i> 2. Quotation File (PDF)</label>
+                        <div class="upload-area" id="dropZoneQuot">
+                            <input type="file" id="inpFileQuot" accept=".pdf" style="display:none;">
+                            <div id="dropTextQuot">
+                                <i class="fa fa-file-invoice upload-icon text-danger"></i>
+                                <h6 class="font-weight-bold text-dark">Click or Drag Quotation PDF</h6>
+                                <small class="text-muted">.PDF Only (Max 5MB)</small>
+                            </div>
+                            <div class="file-info" id="previewQuot">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-file-pdf text-danger fa-2x mr-3"></i>
+                                        <h6 class="mb-0 font-weight-bold text-truncate" style="max-width: 200px;" id="nameQuot">quotation.pdf</h6>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-light text-danger btn-remove" data-target="Quot"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-2">
+                        <label class="font-weight-bold small text-uppercase text-info"><i class="fa fa-id-card mr-1"></i> 3. Signer Information</label>
+                        <div class="upload-area" id="dropZoneSign">
+                            <input type="file" id="inpFileSign" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" style="display:none;">
+                            <div id="dropTextSign">
+                                <i class="fa fa-address-card upload-icon text-info"></i>
+                                <h6 class="font-weight-bold text-dark">Click or Drag Signer Info</h6>
+                                <small class="text-muted">PDF / Word / Excel / Image</small>
+                            </div>
+                            <div class="file-info" id="previewSign">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-file-alt text-info fa-2x mr-3"></i>
+                                        <h6 class="mb-0 font-weight-bold text-truncate" style="max-width: 200px;" id="nameSign">info.pdf</h6>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-light text-danger btn-remove" data-target="Sign"><i class="fa fa-times"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light font-weight-bold" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-custom-primary px-4" onclick="submitForm()">
+                    <i class="fa fa-paper-plane mr-2"></i> Submit Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        // --- VARIABEL GLOBAL PENYIMPAN FILE ---
+        var filesData = {
+            Word: null, // Draft Agreement
+            Quot: null, // Quotation
+            Sign: null  // Signer Info
+        };
+
+        // --- FUNGSI HELPER DRAG & DROP ---
+        function setupDropzone(type, allowedExts) {
+            var zone = $('#dropZone' + type);
+            var input = $('#inpFile' + type);
+            var preview = $('#preview' + type);
+            var dropText = $('#dropText' + type);
+            var nameLabel = $('#name' + type);
+
+            // Click Trigger
+            zone.click(function () { input.click(); });
+            input.click(function (e) { e.stopPropagation(); });
+
+            // Drag Effects
+            zone.on('dragover', function (e) { e.preventDefault(); zone.addClass('dragover'); });
+            zone.on('dragleave', function (e) { zone.removeClass('dragover'); });
+
+            // Handle Drop
+            zone.on('drop', function (e) {
+                e.preventDefault(); zone.removeClass('dragover');
+                validateAndSetFile(type, e.originalEvent.dataTransfer.files, allowedExts);
+            });
+
+            // Handle Browse
+            input.change(function () {
+                validateAndSetFile(type, this.files, allowedExts);
+            });
+        }
+
+        // Validasi Ekstensi & Set File
+        function validateAndSetFile(type, files, allowedExts) {
+            if (files.length > 0) {
+                var file = files[0];
+                var ext = file.name.split('.').pop().toLowerCase();
+
+                // Cek Ekstensi
+                if (!allowedExts.includes(ext)) {
+                    Swal.fire('Format Salah', 'File tipe ' + type + ' harus: ' + allowedExts.join(', '), 'error');
+                    return;
+                }
+
+                // Simpan ke Global Var
+                filesData[type] = file;
+
+                // Update UI
+                $('#dropText' + type).hide();
+                $('#name' + type).text(file.name);
+                $('#preview' + type).fadeIn();
+            }
+        }
+
+        // Remove File Handler
+        $(document).on('click', '.btn-remove', function (e) {
+            e.stopPropagation();
+            var type = $(this).data('target');
+
+            filesData[type] = null; // Reset variable
+            $('#inpFile' + type).val(''); // Reset input
+
+            $('#preview' + type).hide();
+            $('#dropText' + type).fadeIn();
+        });
+
+        $(document).ready(function () {
+
+            // --- SETUP 3 DROPZONES ---
+            setupDropzone('Word', ['doc', 'docx']);
+            setupDropzone('Quot', ['pdf']);
+            setupDropzone('Sign', ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png']);
+
+            // --- SUBMIT FORM ---
+            window.submitForm = function() {
+                var project = $('#inpProject').val();
+                var company = $('#inpCompany').val();
+
+                // 1. Validasi Input Text
+                if (!project || !company) {
+                    Swal.fire('Warning', 'Project Name & Company Name wajib diisi.', 'warning');
+                    return;
+                }
+
+                // 2. Validasi File
+                if (!filesData.Word) { Swal.fire('Warning', 'Draft Agreement (Word) belum diupload.', 'warning'); return; }
+                // Quotation & Signer Info are optional now
+                //if (!filesData.Quot) { Swal.fire('Warning', 'Quotation File (PDF) belum diupload.', 'warning'); return; }
+                //if (!filesData.Sign) { Swal.fire('Warning', 'Signer Info belum diupload.', 'warning'); return; }
+
+                // 3. Prepare FormData
+                var fd = new FormData();
+                fd.append('projectName', project);
+                fd.append('companyName', company);
+
+                // Append 3 File
+                fd.append('fileWord', filesData.Word);
+                fd.append('fileQuot', filesData.Quot);
+                fd.append('fileSign', filesData.Sign);
+
+                // 4. Ajax Post
+                Swal.fire({
+                    title: 'Mengupload Data...',
+                    text: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                $.ajax({
+                    url: '@Url.Action("SubmitReviewRequest", "LegalPermit", new { area = "HC" })',
+                    type: 'POST',
+                    data: fd,
+                    contentType: false,
+                    processData: false,
+                    success: function(res) {
+                        if (res.success) {
+                            Swal.fire('Berhasil', 'Request berhasil dibuat!', 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Terjadi kesalahan koneksi server.', 'error');
+                    }
+                });
+            }
+            // --- 1. CONFIGURATION DATATABLES ---
+
+            // Clone the header row untuk tempat input filter
+            $('#tableReview thead tr').clone(true).addClass('filters').appendTo('#tableReview thead');
+
+            var table = $('#tableReview').DataTable({
+                orderCellsTop: true,
+                fixedHeader: true,
+                order: [[ 2, 'desc' ]], // Default Sort by Date (Kolom ke-3, index 2)
+                language: {
+                    search: "Global Search:",
+                    lengthMenu: "Show _MENU_ entries"
+                },
+                initComplete: function () {
+                    var api = this.api();
+
+                    // Logic untuk membuat input box di setiap kolom
+                    api.columns().eq(0).each(function (colIdx) {
+                        var cell = $('.filters th').eq($(api.column(colIdx).header()).index());
+                        var title = $(cell).text();
+
+                        // Jangan kasih filter di kolom Action (index terakhir)
+                        // Dan kolom Document (biasanya tidak perlu di search)
+                        if (title.trim() === "Action" || title.trim() === "Document" || title.trim() === "Quotation" || title.trim() === "Signer Document") {
+                            $(cell).html(''); // Kosongkan
+                        } else {
+                            $(cell).html('<input type="text" placeholder="Filter ' + title + '" />');
+                        }
+
+                        // Event listener untuk input
+                        $('input', $('.filters th').eq($(api.column(colIdx).header()).index()))
+                            .off('keyup change')
+                            .on('keyup change', function (e) {
+                                e.stopPropagation();
+                                $(this).attr('title', $(this).val());
+                                var regexr = '({search})';
+                                var cursorPosition = this.selectionStart;
+
+                                api.column(colIdx)
+                                    .search(this.value != '' ? regexr.replace('{search}', '(((' + this.value + ')))') : '', this.value != '', this.value == '')
+                                    .draw();
+                            });
+                    });
+                }
+            });
+
+            // --- 2. DRAG & DROP LOGIC (Tetap sama seperti kode Anda) ---
+            @*let uploadedFile = null;
+
+            const dropZone = $('#dropZone');
+            const fileInput = $('#inpFile');
+
+            dropZone.on('click', function () { fileInput.click(); });
+            fileInput.on('click', function (e) { e.stopPropagation(); });
+
+            dropZone.on('dragover', function (e) { e.preventDefault(); dropZone.addClass('dragover'); });
+            dropZone.on('dragleave', function (e) { dropZone.removeClass('dragover'); });
+
+            dropZone.on('drop', function (e) {
+                e.preventDefault();
+                dropZone.removeClass('dragover');
+                // Ambil file dari event drop
+                var files = e.originalEvent.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            fileInput.on('change', function () {
+                // Ambil file dari input click
+                handleFiles(this.files);
+            });
+
+            function handleFiles(files) {
+                if (files.length > 0) {
+                    var file = files[0];
+                    var ext = file.name.split('.').pop().toLowerCase();
+
+                    if (ext !== 'doc' && ext !== 'docx') {
+                        Swal.fire('Error', 'Hanya boleh upload file Word (.doc/.docx)', 'error');
+                        return;
+                    }
+
+                    // SIMPAN FILE KE VARIABEL GLOBAL
+                    uploadedFile = file;
+
+                    // Update UI
+                    $('#dropText').hide();
+                    $('#fileNameDisplay').text(file.name);
+                    $('#filePreview').fadeIn();
+                }
+            }
+
+            $('#btnRemoveFile').click(function(e) {
+                e.stopPropagation();
+                fileInput.val('');
+                $('#filePreview').hide();
+                $('#dropText').fadeIn();
+            });
+
+            // --- 3. SUBMIT FORM LOGIC (Tetap sama) ---
+            window.submitForm = function() {
+                var project = $('#inpProject').val();
+                var company = $('#inpCompany').val();
+
+                // Cek variabel global 'uploadedFile', BUKAN input element
+                var file = uploadedFile;
+
+                if(!project || !company) {
+                    Swal.fire('Warning', 'Nama Project dan Company harus diisi', 'warning');
+                    return;
+                }
+
+                if(!file) {
+                    Swal.fire('Warning', 'Silakan pilih dokumen Word', 'warning');
+                    return;
+                }
+
+                var fd = new FormData();
+                fd.append('projectName', project);
+                fd.append('companyName', company);
+                fd.append('fileWord', file); // Append file dari variabel global
+
+                Swal.showLoading();
+
+                $.ajax({
+                    url: '@Url.Action("SubmitReviewRequest", "LegalPermit", new { area = "HC" })',
+                    type: 'POST',
+                    data: fd,
+                    contentType: false,
+                    processData: false,
+                    success: function(res) {
+                        if(res.success) {
+                            Swal.fire('Berhasil', res.message, 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Error', 'Terjadi kesalahan server', 'error');
+                    }
+                });
+            }*@
+        });
+    </script>
+}

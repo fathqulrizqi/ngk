@@ -1,0 +1,672 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Tailwind via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Inline Styles to override Bootstrap conflicts and style premium components -->
+<style>
+    .bcp-table th {
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        letter-spacing: 0.05em !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+    }
+    .bcp-table td {
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155 !important;
+        font-size: 0.875rem !important;
+    }
+    .bcp-btn-primary {
+        background-color: #007581 !important;
+        color: #ffffff !important;
+        border: none !important;
+    }
+    .bcp-btn-primary:hover {
+        background-color: #00555e !important;
+    }
+    .bcp-glass {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+
+    /* Fix Select2 container width so it occupies full column width */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    /* Style Select2 to match premium Tailwind look */
+    .select2-container--default .select2-selection--single {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        height: 42px !important; /* Premium height */
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
+        right: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: #334155 !important;
+        font-weight: 500 !important;
+        font-size: 0.875rem !important;
+        padding-left: 12px !important;
+    }
+    .select2-dropdown {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+        overflow: hidden !important;
+    }
+    .select2-search--dropdown .select2-search__field {
+        border-color: #cbd5e1 !important;
+        border-radius: 0.5rem !important;
+        padding: 6px 10px !important;
+        font-size: 0.875rem !important;
+    }
+    .select2-results__option {
+        font-size: 0.875rem !important;
+        padding: 8px 12px !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #007581 !important;
+    }
+</style>
+
+<div class="container-fluid py-4 px-md-5">
+    <!-- Breadcrumb & Header -->
+    <div class="bg-gradient-to-r from-white to-ngk-primaryLight border border-slate-200/60 rounded-2xl p-6 sm:p-8 mb-8 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors no-underline">BCP Dashboard</a>
+                <span>/</span>
+                <span class="text-ngk-primary font-semibold">User Area Mapping</span>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight m-0">User Area Mapping</h1>
+            <p class="text-slate-500 mt-1 text-sm md:text-base m-0">Assign committee members to their specific BCP monitoring areas.</p>
+        </div>
+        <div class="mt-4 md:mt-0">
+            <button id="btnNewMapping" class="inline-flex items-center gap-2 px-5 py-3 bcp-btn-primary text-white rounded-xl shadow-md hover:shadow-lg transition-all font-semibold cursor-pointer border-0">
+                <i class="fas fa-plus-circle text-ngk-primaryLight"></i>
+                New Assignment
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive Form Panel (Inline, Expandable) -->
+    <div id="formPanel" class="hidden transition-all duration-300 ease-in-out mb-8">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-md overflow-hidden">
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="formTitle" class="text-lg font-bold text-slate-800 m-0">Create User Area Assignment</h3>
+                <button id="btnCancelForm" class="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="mappingForm" class="p-6 m-0">
+                <input type="hidden" id="mappingId" name="ID" />
+                <div class="row">
+                    <!-- NIK Selector with Searchable Select2 -->
+                    <div class="col-md-6 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Employee (NIK - Name)</label>
+                        <select id="userSelect" name="NIK" class="form-control rounded-lg border-slate-200 font-medium w-full" required>
+                            <option value="">-- Select Employee --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Select the BCP Committee member from the master organization.</p>
+                    </div>
+
+                    <!-- Area Selector -->
+                    <div class="col-md-6 mb-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">BCP Area</label>
+                        <select id="areaSelect" name="AreaID" class="form-control rounded-lg border-slate-200 font-medium" required>
+                            <option value="">-- Select Area --</option>
+                        </select>
+                        <p class="text-xs text-slate-400 mt-1">Select the BCP Area this employee is responsible for.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-100 pt-4 mt-2">
+                    <button type="button" id="btnDiscard" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all font-semibold border-0 cursor-pointer">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 bcp-btn-primary text-white rounded-xl transition-all font-semibold border-0 cursor-pointer shadow-sm">
+                        Save Assignment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    @*<div class="row mb-8">
+        <div class="col-md-4 mb-4 mb-md-0">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Assignments</p>
+                    <h3 id="statTotalMappings" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-slate-400 font-medium mt-2">Active mappings</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-primaryLight flex items-center justify-center text-ngk-primary">
+                    <i class="fas fa-link text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4 mb-md-0">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Unique Employees</p>
+                    <h3 id="statUniqueUsers" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-slate-400 font-medium mt-2">Mapped committee members</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-ngk-accentLight flex items-center justify-center text-ngk-accent">
+                    <i class="fas fa-users text-xl"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex justify-between items-start">
+                <div>
+                    <p class="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-1">Areas Monitored</p>
+                    <h3 id="statAreasCovered" class="text-3xl font-extrabold text-slate-800 m-0">0</h3>
+                    <p class="text-xs text-slate-400 font-medium mt-2">Covered BCP zones</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                    <i class="fas fa-map-marked-alt text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>*@
+
+    <!-- Main List Card -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="relative w-full md:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-slate-400"></i>
+                </span>
+                <input type="text" id="tableSearch" placeholder="Search mappings..." class="form-control pl-10 rounded-xl border-slate-200 text-sm py-2" />
+            </div>
+            <div class="text-slate-400 text-sm font-medium" id="recordCountLabel">
+                Showing 0 assignments
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table bcp-table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="pl-6 w-16 text-center">No</th>
+                        <th>Employee Details</th>
+                        <th>Mapped Area</th>
+                        <th>Department</th>
+                        <th class="pr-6 w-32 text-center">Actions</th>
+                    </tr>
+                    <tr class="bg-slate-50/50 filter-row">
+                        <th></th>
+                        <th class="p-2">
+                            <input type="text" id="filterUserDetails" placeholder="Filter NIK/Name..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th class="p-2">
+                            <select id="filterUserArea" class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full">
+                                <option value="">All Areas</option>
+                            </select>
+                        </th>
+                        <th class="p-2">
+                            <input type="text" id="filterUserDept" placeholder="Filter Dept..." class="form-control form-control-sm text-xs font-semibold border-slate-200 focus:border-ngk-primary focus:ring-1 focus:ring-ngk-primary rounded-lg py-1 px-2 w-full" />
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="mappingTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-8 text-slate-400">
+                            <div class="spinner-border spinner-border-sm text-primary mr-2" role="status"></div>
+                            Loading assignments...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Section -->
+        <div class="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50" id="paginationWrapper">
+            <div class="text-xs font-semibold text-slate-500" id="paginationInfo">
+                Showing 0 to 0 of 0 entries
+            </div>
+            <div class="flex items-center gap-1.5" id="paginationControls">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Select2 Script -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // Data stores
+            let allMappings = [];
+            let allUsers = [];
+            let allAreas = [];
+            let currentPage = 1;
+            const rowsPerPage = 10;
+
+            // Initialize Select2 on both dropdowns with 100% width
+            $('#userSelect').select2({
+                placeholder: "-- Select Employee --",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            $('#areaSelect').select2({
+                placeholder: "-- Select Area --",
+                allowClear: true,
+                dropdownParent: $('#formPanel'),
+                width: '100%'
+            });
+
+            // Fetch Form Data (Users & Areas)
+            function loadFormData() {
+                $.ajax({
+                    url: '@Url.Action("GetUserAreaFormData", "BCP")',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allUsers = res.users;
+                            allAreas = res.areas;
+                            
+                            // Populate Area Dropdown in Form
+                            let areaHtml = '<option value="">-- Select Area --</option>';
+                            let filterAreaHtml = '<option value="">All Areas</option>';
+                            res.areas.forEach(function (area) {
+                                let opt = `<option value="${area.ID}">${area.AreaName}</option>`;
+                                areaHtml += opt;
+                                filterAreaHtml += opt;
+                            });
+                            $('#areaSelect').html(areaHtml);
+                            $('#filterUserArea').html(filterAreaHtml);
+
+                            // Populate User Dropdown and refresh select2
+                            populateUserSelect();
+                        } else {
+                            Swal.fire("Error", "Failed to load form lookup data: " + res.message, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Network connection failed.", "error");
+                    }
+                });
+            }
+
+            // Populate users dropdown into select2
+            function populateUserSelect() {
+                let userHtml = '<option value="">-- Select Employee --</option>';
+                allUsers.forEach(function (u) {
+                    userHtml += `<option value="${u.NIK}">${u.NIK} - ${u.Name} (${u.DeptName})</option>`;
+                });
+                $('#userSelect').html(userHtml).trigger('change');
+            }
+
+            // Fetch Mapping Table Data
+            function loadMappings() {
+                $.ajax({
+                    url: '@Url.Action("GetUserAreaList", "BCP")',
+                    type: 'GET',
+                    data: { search: '' },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            allMappings = res.data;
+                            currentPage = 1;
+                            applyFiltersAndPagination();
+                        } else {
+                            $('#mappingTableBody').html(`<tr><td colspan="5" class="text-center py-8 text-danger">Error: ${res.message}</td></tr>`);
+                        }
+                    },
+                    error: function () {
+                        $('#mappingTableBody').html('<tr><td colspan="5" class="text-center py-8 text-danger">Failed to fetch data from server.</td></tr>');
+                    }
+                });
+            }
+
+            // Filter and Paginate logic
+            function applyFiltersAndPagination() {
+                let generalSearch = ($('#tableSearch').val() || '').toLowerCase().trim();
+                let detailsFilter = ($('#filterUserDetails').val() || '').toLowerCase().trim();
+                let areaFilter = $('#filterUserArea').val();
+                let deptFilter = ($('#filterUserDept').val() || '').toLowerCase().trim();
+
+                let filtered = allMappings.filter(function(item) {
+                    // General search
+                    if (generalSearch) {
+                        let matchGeneral = (item.EmployeeName || '').toLowerCase().includes(generalSearch) ||
+                                           (item.NIK || '').toLowerCase().includes(generalSearch) ||
+                                           (item.AreaName || '').toLowerCase().includes(generalSearch) ||
+                                           (item.DepartmentName || '').toLowerCase().includes(generalSearch);
+                        if (!matchGeneral) return false;
+                    }
+                    // Details filter
+                    if (detailsFilter) {
+                        let matchDetails = (item.EmployeeName || '').toLowerCase().includes(detailsFilter) ||
+                                           (item.NIK || '').toLowerCase().includes(detailsFilter);
+                        if (!matchDetails) return false;
+                    }
+                    // Area filter
+                    if (areaFilter && String(item.AreaID) !== areaFilter) {
+                        return false;
+                    }
+                    // Department filter
+                    if (deptFilter && !(item.DepartmentName || '').toLowerCase().includes(deptFilter)) {
+                        return false;
+                    }
+                    return true;
+                });
+
+                let totalItems = filtered.length;
+                let totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+
+                if (currentPage > totalPages) currentPage = totalPages;
+                if (currentPage < 1) currentPage = 1;
+
+                let startIndex = (currentPage - 1) * rowsPerPage;
+                let endIndex = Math.min(startIndex + rowsPerPage, totalItems);
+                let paginatedItems = filtered.slice(startIndex, endIndex);
+
+                renderTable(paginatedItems, startIndex);
+                renderPagination(totalItems, totalPages, startIndex, endIndex);
+                calculateStats(allMappings);
+            }
+
+            // Render Table Rows
+            function renderTable(mappings, startIndex) {
+                if (mappings.length === 0) {
+                    $('#mappingTableBody').html('<tr><td colspan="5" class="text-center py-12 text-slate-400"><i class="fas fa-folder-open text-3xl mb-2 block"></i>No assignments found matching your search.</td></tr>');
+                    return;
+                }
+
+                let html = '';
+                mappings.forEach(function (item, index) {
+                    // Create beautiful initial avatar
+                    let initials = item.EmployeeName.substring(0, 2).toUpperCase();
+                    let randomColors = [
+                        'bg-teal-500 text-teal-50',
+                        'bg-sky-500 text-sky-50',
+                        'bg-indigo-500 text-indigo-50',
+                        'bg-purple-500 text-purple-50',
+                        'bg-emerald-500 text-emerald-50'
+                    ];
+                    let avatarColor = randomColors[index % randomColors.length];
+
+                    html += `
+                        <tr>
+                            <td class="pl-6 text-center font-semibold text-slate-400">${startIndex + index + 1}</td>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 rounded-full ${avatarColor} flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+                                        ${initials}
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold text-slate-800">${item.EmployeeName}</div>
+                                        <div class="text-xs text-slate-400 font-mono">${item.NIK}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 font-medium text-xs border border-slate-200/50">
+                                    <i class="fas fa-map-marker-alt text-ngk-primary mr-1"></i>${item.AreaName}
+                                </span>
+                            </td>
+                            <td class="font-medium text-slate-500">${item.DepartmentName || '-'}</td>
+                            <td class="pr-6 text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary rounded-lg edit-btn p-2" data-id="${item.ID}" title="Edit Assignment">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger rounded-lg delete-btn p-2" data-id="${item.ID}" title="Delete Assignment">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                $('#mappingTableBody').html(html);
+            }
+
+            // Render pagination controls
+            function renderPagination(totalItems, totalPages, startIndex, endIndex) {
+                $('#recordCountLabel').text(`Showing ${totalItems} assignment${totalItems !== 1 ? 's' : ''}`);
+
+                if (totalItems === 0) {
+                    $('#paginationInfo').text('Showing 0 to 0 of 0 entries');
+                    $('#paginationControls').html('');
+                    return;
+                }
+
+                $('#paginationInfo').text(`Showing ${startIndex + 1} to ${endIndex} of ${totalItems} entries`);
+
+                let paginationHtml = '';
+                if (currentPage === 1) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-left"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-prev-btn"><i class="fas fa-chevron-left"></i></button>`;
+                }
+
+                let maxVisiblePages = 5;
+                let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+
+                if (startPage > 1) {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="1">1</button>`;
+                    if (startPage > 2) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    if (i === currentPage) {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-ngk-primary text-white border border-ngk-primary shadow-sm">${i}</button>`;
+                    } else {
+                        paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${i}">${i}</button>`;
+                    }
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) {
+                        paginationHtml += `<span class="px-2 text-slate-400">...</span>`;
+                    }
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-num-btn" data-page="${totalPages}">${totalPages}</button>`;
+                }
+
+                if (currentPage === totalPages) {
+                    paginationHtml += `<button disabled class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-400 cursor-not-allowed opacity-60"><i class="fas fa-chevron-right"></i></button>`;
+                } else {
+                    paginationHtml += `<button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors page-next-btn"><i class="fas fa-chevron-right"></i></button>`;
+                }
+
+                $('#paginationControls').html(paginationHtml);
+            }
+
+            // Stats calculator
+            function calculateStats(mappings) {
+                $('#statTotalMappings').text(mappings.length);
+
+                let uniqueNiks = new Set();
+                let uniqueAreas = new Set();
+                
+                mappings.forEach(function (m) {
+                    if (m.NIK) uniqueNiks.add(m.NIK);
+                    if (m.AreaID) uniqueAreas.add(m.AreaID);
+                });
+
+                $('#statUniqueUsers').text(uniqueNiks.size);
+                $('#statAreasCovered').text(uniqueAreas.size);
+            }
+
+            // Pagination button events
+            $(document).on('click', '.page-num-btn', function() {
+                currentPage = parseInt($(this).attr('data-page'));
+                applyFiltersAndPagination();
+            });
+
+            $(document).on('click', '.page-prev-btn', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    applyFiltersAndPagination();
+                }
+            });
+
+            $(document).on('click', '.page-next-btn', function() {
+                currentPage++;
+                applyFiltersAndPagination();
+            });
+
+            // Bind column filter inputs and table search
+            $('#filterUserDetails, #filterUserArea, #filterUserDept, #tableSearch').on('input change', function () {
+                currentPage = 1;
+                applyFiltersAndPagination();
+            });
+
+            // Expand Inline Form panel
+            $('#btnNewMapping').click(function () {
+                resetForm();
+                $('#formTitle').text('Create User Area Assignment');
+                $('#formPanel').removeClass('hidden');
+                $('html, body').animate({
+                    scrollTop: $("#formPanel").offset().top - 100
+                }, 500);
+            });
+
+            // Cancel form
+            $('#btnCancelForm, #btnDiscard').click(function () {
+                $('#formPanel').addClass('hidden');
+                resetForm();
+            });
+
+            // Edit Action Click
+            $(document).on('click', '.edit-btn', function () {
+                let id = $(this).data('id');
+                let item = allMappings.find(x => x.ID == id);
+                if (item) {
+                    $('#mappingId').val(item.ID);
+                    $('#formTitle').text('Edit User Area Assignment');
+                                        // Pre-populate Select2 and trigger change
+                    $('#userSelect').val(item.NIK).trigger('change');
+                    $('#areaSelect').val(item.AreaID).trigger('change');
+
+                    $('#formPanel').removeClass('hidden');
+                    $('html, body').animate({
+                        scrollTop: $("#formPanel").offset().top - 100
+                    }, 500);
+                }
+            });
+
+            // Form Submit Action
+            $('#mappingForm').submit(function (e) {
+                e.preventDefault();
+
+                let data = {
+                    ID: $('#mappingId').val(),
+                    NIK: $('#userSelect').val(),
+                    AreaID: $('#areaSelect').val()
+                };
+
+                $.ajax({
+                    url: '@Url.Action("SaveUserArea", "BCP")',
+                    type: 'POST',
+                    data: data,
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            Swal.fire("Success", res.message, "success");
+                            $('#formPanel').addClass('hidden');
+                            resetForm();
+                            loadMappings();
+                        } else {
+                            Swal.fire("Warning", res.message, "warning");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Request failed. Please try again.", "error");
+                    }
+                });
+            });
+
+            // Delete Action Click
+            $(document).on('click', '.delete-btn', function () {
+                let id = $(this).data('id');
+                Swal.fire({
+                    title: "Are you sure?",
+                    text: "Once deleted, you will need to re-assign this employee to BCP area mapping.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33",
+                    confirmButtonText: "Yes, delete it!"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteUserArea", "BCP")',
+                            type: 'POST',
+                            data: { ID: id },
+                            success: function (res) {
+                                if (res.status === 'success') {
+                                    Swal.fire("Deleted!", res.message, "success");
+                                    loadMappings();
+                                } else {
+                                    Swal.fire("Error", res.message, "error");
+                                }
+                            },
+                            error: function () {
+                                Swal.fire("Error", "Request failed. Please try again.", "error");
+                            }
+                        });
+                    }
+                });
+            });
+            // Helper to reset form
+            function resetForm() {
+                $('#mappingId').val('');
+                $('#mappingForm')[0].reset();
+                $('#userSelect').val('').trigger('change');
+                $('#areaSelect').val('').trigger('change');
+            }
+
+            // Initial loads
+            loadFormData();
+            loadMappings();
+        });
+    </script>
+}

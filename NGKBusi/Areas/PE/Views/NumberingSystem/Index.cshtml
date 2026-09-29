@@ -1,0 +1,225 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using System.Text.RegularExpressions;
+@using System.Linq;
+
+@{
+    ViewBag.Title = "Index";
+    var currUser = ((ClaimsIdentity)User.Identity);
+    ViewBag.SideMenuHeader = "Numbering System";
+    DefaultConnection db = new DefaultConnection();
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/PE/NumberingSystem.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+@section sideMenu{
+    @Html.Partial("_SideMenuPartial")
+}
+<table id="nsNumberingListTable" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="4" class="sorter-false">
+                <h2 class="table-title">Numbering List<img class="pointer" src="@Url.Content("~/Content/Images/add-white.png")" width="55" height="55" data-toggle="modal" data-target="#srModal" /></h2>
+            </th>
+        </tr>
+        <tr>
+            <th>Doc Number</th>
+            <th>Remark</th>
+            <th class="filter-select" data-placeholder="-Pilih-">Issued By</th>
+            <th class="filter-false sorter-false"></th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="4">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+        @foreach (var item in ViewBag.NumberingList)
+            {
+                String currParentDoc = item.DocNumber;
+                var childRow = db.PE_NumberingSystem_NumberingList.Where(x => x.ParentDoc == currParentDoc).ToList();
+
+            <tr>
+                <td class="text-left">
+                    @if (childRow.Count > 0)
+                    {
+                        <a href="#" class="toggle">@(item.DocNumber)</a>
+                    }
+                    else
+                    {@(item.DocNumber)}
+                </td>
+                <td>@(item.Remark)</td>
+                <td>@(item.IssuedBy == "SYSTEM" ? item.IssuedBy : item.UserIssuedBy.Name)</td>
+                <td>
+                    @if (((IEnumerable<PE_NumberingSystem_DocCode>)ViewBag.CheckCode).Where(x => x.code.Contains(Regex.Replace(item.DocNumber.Substring(0, 2), @"\d", ""))).ToList().Count() > 0 && item.IssuedBy == currUser.GetUserId())
+                    {
+                        <span class="addNSChild pointerFade fa fa-plus" data-parentid="@item.id"></span>
+                    }
+                    @if (item.IssuedBy == currUser.GetUserId() && (DateTime.Now - item.IssuedDate).Days < 25 || currUser.GetUserId() == "659.04.13" || currUser.GetUserId() == "P141017" || currUser.GetUserId() == "727.11.15")
+                    {
+                        <span class="editNSItem pointerFade fa fa-edit" data-issuedid="@item.IssuedBy" data-parentid="@item.id"></span>
+                        if (childRow.Count == 0)
+                        {
+                            <span class="deleteNSItem pointerFade fa fa-trash" data-issuedid="@item.IssuedBy" data-parentid="@item.id"></span>
+                        }
+                        else
+                        {
+                            <span class="deleteNSItem pointerFade fa fa-trash" data-issuedid="@item.IssuedBy" data-parentid="@item.id" style="display:none;"></span>
+                        }
+                    }
+                </td>
+            </tr>
+
+                @Html.Partial("_NumberingChildRow", new ViewDataDictionary() { { "parentDoc", item.DocNumber }, { "paddingLeft", 0 } })
+        }
+    </tbody>
+</table>
+
+<div id="srModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Add New Doc</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-horizontal">
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold" for="#selDoc">Document</label>
+                        <div class="col-9">
+                            <select id="selDoc" name="iDoc" class="form-control">
+                                <option style="font-family:'Courier New';">-Pilih Document-</option>
+                                @foreach (var item in ViewBag.DocList)
+                                {
+                                    <option value="@(item.id)" style="font-family:'Courier New';">@(item.name)</option>
+                                }
+                            </select>
+                            <input id="hfNSMode" type="hidden" value="0" />
+                            <input id="hfNSParentID" type="hidden" />
+                        </div>
+                    </div>
+                    <div class="form-group row docSub" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold" for="#rbCat">Category</label>
+                        <div class="col-9">
+                            <div class="radio">
+                                @foreach (var item in ViewBag.DocList_Sub)
+                                {
+                                    <label><input type="radio" name="iCat" id="rbCat" class="rbCat" value="@item.id" />@item.name</label>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    @Html.Partial("_NumberingListForm")
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnNSCreate" type="button" class="btn btn-default">Create</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="srSubModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form action="@Url.Action("NSAddChild","NumberingSystem",new { area = "PE" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add New Sub Doc</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#srSubParentNumber">Parent Doc</label>
+                            <div class="col-9">
+                                <span id="srSubParentNumber">asfasfasssst</span>
+                                <input id="hfSubParentNumber" type="hidden" name="iParentDoc" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtSubRemark">Remark</label>
+                            <div class="col-9">
+                                <textarea id="txtSubRemark" rows="5" name="iRemark" class="form-control text-capitalize" placeholder="Remark" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnNSCreate" type="submit" class="btn btn-default">Create</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="srEditModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form action="@Url.Action("NSEdit","NumberingSystem",new { area = "PE" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add New Sub Doc</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#srEditParentNumber">Parent Doc</label>
+                            <div class="col-9">
+                                <span id="srEditParentNumber">asfasfasssst</span>
+                                <input id="hfEditParentNumber" type="hidden" name="iParentDoc" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtSubRemark">Remark</label>
+                            <div class="col-9">
+                                <textarea id="txtEditRemark" rows="5" name="iRemark" class="form-control text-capitalize" placeholder="Remark" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnNSEdit" type="submit" class="btn btn-default">Edit</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

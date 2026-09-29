@@ -1,0 +1,735 @@
+﻿@{
+    ViewBag.Title = "Other Setting";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+<script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+<script src="@Url.Content("~/Content/jquery/jquery-3.6.0.min.js")"></script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.4s ease-out forwards;
+    }
+
+        .tab-content.active {
+            display: block;
+        }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-backdrop {
+        animation: fadeInBackdrop 0.3s ease-out forwards;
+    }
+
+    .modal-panel {
+        animation: scaleInModal 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @@keyframes fadeInBackdrop {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @@keyframes scaleInModal {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    .swal2-container {
+        z-index: 100000 !important;
+    }
+</style>
+
+<div class="min-h-screen pt-3 sm:px-0">
+
+    <div class="mb-4">
+        <h2 class="text-3xl font-extrabold text-white drop-shadow-sm tracking-tight">Other Settings</h2>
+        <p class="mt-2 text-sm text-blue-100">Manage user access, categories, and tooling specifications.</p>
+    </div>
+
+    <div class="flex flex-row overflow-x-auto sm:flex-wrap gap-2 mb-8 pb-2 sm:pb-0 hide-scrollbar">
+        <button onclick="openTab(event, 'access')" class="tab-btn active whitespace-nowrap bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors border border-transparent" id="defaultOpen">
+            Manage Access
+        </button>
+        <button onclick="openTab(event, 'category')" class="tab-btn whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+            Manage Tooling Category
+        </button>
+        <button onclick="openTab(event, 'spec')" class="tab-btn whitespace-nowrap bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-semibold shadow-sm transition-colors">
+            Manage Tooling Spec
+        </button>
+    </div>
+
+    <div class="pb-10">
+
+        <div id="access" class="tab-content active">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl shadow-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+                    <div>
+                        <h4 class="text-xl font-bold text-white tracking-wide drop-shadow-sm">User Access Settings</h4>
+                        <p class="text-sm text-blue-100 mt-1">Manage role mapping and permissions for BMS.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
+                        <div class="relative w-full sm:w-64">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="search-Access" oninput="handleSearch('Access')" placeholder="Search NIK or Name..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all outline-none">
+                        </div>
+                        <button type="button" onclick="openAccessModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-all duration-300 text-white px-5 py-2.5 rounded-lg flex items-center font-semibold shadow-md hover:shadow-lg focus:ring-2 focus:ring-cyan-300 focus:outline-none text-sm border border-cyan-400/30 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2"><path fill-rule="evenodd" d="M10.5 4.5a1.5 1.5 0 0 1 3 0v6h6a1.5 1.5 0 0 1 0 3h-6v6a1.5 1.5 0 0 1-3 0v-6h-6a1.5 1.5 0 0 1 0-3h6v-6Z" clip-rule="evenodd" /></svg>
+                            Add Access
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full overflow-hidden rounded-xl shadow-inner border border-slate-200/60 bg-white flex flex-col">
+                    <div class="overflow-x-auto table-container">
+                        <table class="min-w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50/80 border-b border-slate-200">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">NIK</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Name</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Access Role</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Created At</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-Access" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="pagination-Access" class="px-6 py-4 border-t border-slate-200 bg-slate-50/50"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="category" class="tab-content">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl shadow-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+                    <div>
+                        <h4 class="text-xl font-bold text-white tracking-wide drop-shadow-sm">Tooling Category List</h4>
+                        <p class="text-sm text-blue-100 mt-1">Manage main categories for toolings.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
+                        <div class="relative w-full sm:w-64">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="search-ToolingCategory" oninput="handleSearch('ToolingCategory')" placeholder="Search category..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all outline-none">
+                        </div>
+                        <button type="button" onclick="openCategoryModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-all duration-300 text-white px-5 py-2.5 rounded-lg flex items-center font-semibold shadow-md hover:shadow-lg focus:ring-2 focus:ring-cyan-300 focus:outline-none text-sm border border-cyan-400/30 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2"><path fill-rule="evenodd" d="M10.5 4.5a1.5 1.5 0 0 1 3 0v6h6a1.5 1.5 0 0 1 0 3h-6v6a1.5 1.5 0 0 1-3 0v-6h-6a1.5 1.5 0 0 1 0-3h6v-6Z" clip-rule="evenodd" /></svg>
+                            Add Category
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full overflow-hidden rounded-xl shadow-inner border border-slate-200/60 bg-white flex flex-col">
+                    <div class="overflow-x-auto table-container">
+                        <table class="min-w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50/80 border-b border-slate-200">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Category ID</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Category Name</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ToolingCategory" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="pagination-ToolingCategory" class="px-6 py-4 border-t border-slate-200 bg-slate-50/50"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="spec" class="tab-content">
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-2xl shadow-2xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 sm:gap-0">
+                    <div>
+                        <h4 class="text-xl font-bold text-white tracking-wide drop-shadow-sm">Tooling Spec List</h4>
+                        <p class="text-sm text-blue-100 mt-1">Manage specifications and minimum stock.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center">
+                        <div class="relative w-full sm:w-64">
+                            <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            <input type="text" id="search-ToolingSpec" oninput="handleSearch('ToolingSpec')" placeholder="Search spec..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all outline-none">
+                        </div>
+                        <button type="button" onclick="openSpecModal()" class="w-full sm:w-auto justify-center bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-all duration-300 text-white px-5 py-2.5 rounded-lg flex items-center font-semibold shadow-md hover:shadow-lg focus:ring-2 focus:ring-cyan-300 focus:outline-none text-sm border border-cyan-400/30 whitespace-nowrap">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 mr-2"><path fill-rule="evenodd" d="M10.5 4.5a1.5 1.5 0 0 1 3 0v6h6a1.5 1.5 0 0 1 0 3h-6v6a1.5 1.5 0 0 1-3 0v-6h-6a1.5 1.5 0 0 1 0-3h6v-6Z" clip-rule="evenodd" /></svg>
+                            Add Spec
+                        </button>
+                    </div>
+                </div>
+
+                <div class="w-full overflow-hidden rounded-xl shadow-inner border border-slate-200/60 bg-white flex flex-col">
+                    <div class="overflow-x-auto table-container">
+                        <table class="min-w-full text-left text-sm whitespace-nowrap">
+                            <thead class="bg-slate-50/80 border-b border-slate-200">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Spec ID</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Category</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider">Spec Name</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider text-center">Min Stock</th>
+                                    <th scope="col" class="px-6 py-4 font-bold text-xs text-slate-600 uppercase tracking-wider text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-ToolingSpec" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="pagination-ToolingSpec" class="px-6 py-4 border-t border-slate-200 bg-slate-50/50"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="accessModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden h-full w-full flex items-center justify-center p-4" style="z-index: 99999;" role="dialog" aria-modal="true">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-lg flex flex-col max-h-[90vh] modal-panel">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-95 flex items-center gap-3 shrink-0 rounded-t-2xl">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide" id="accessModalTitle">Add Access Mapping</h3>
+                <p class="text-xs text-cyan-50 mt-0.5">Map user roles and system permissions.</p>
+            </div>
+        </div>
+        <form id="accessForm" class="flex flex-col flex-1 overflow-hidden">
+            <input type="hidden" id="modal_access_id" name="access_id" value="" />
+            <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">NIK <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal_access_nik" name="NIK" required placeholder="e.g. 19259112" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal_access_name" name="name" required placeholder="e.g. John Doe" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" autocomplete="off">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Access Role <span class="text-red-500">*</span></label>
+                    <select id="modal_access_role" name="access" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white transition-all">
+                        <option value="" disabled selected>-- Select Role --</option>
+                        <option value="User">User</option>
+                        <option value="Administrator">Administrator</option>
+                    </select>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-slate-50/50 shrink-0 rounded-b-2xl">
+                <button type="button" onclick="closeModal('accessModal')" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 text-center">Cancel</button>
+                <button type="button" onclick="saveData('Access')" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-90 hover:opacity-100 transition-opacity text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-500/30 text-center">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="categoryModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden h-full w-full flex items-center justify-center p-4" style="z-index: 99999;" role="dialog" aria-modal="true">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-lg flex flex-col max-h-[90vh] modal-panel">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-95 flex items-center gap-3 shrink-0 rounded-t-2xl">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide" id="categoryModalTitle">Add Tooling Category</h3>
+                <p class="text-xs text-cyan-50 mt-0.5">Manage master data for tooling categories.</p>
+            </div>
+        </div>
+        <form id="categoryForm" class="flex flex-col flex-1 overflow-hidden">
+            <input type="hidden" id="modal_category_id" name="category_id" value="" />
+            <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Category Name <span class="text-red-500">*</span></label>
+                    <input type="text" id="modal_category_name" name="category_name" required placeholder="e.g. Wiredies" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" autocomplete="off">
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-slate-50/50 shrink-0 rounded-b-2xl">
+                <button type="button" onclick="closeModal('categoryModal')" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 text-center">Cancel</button>
+                <button type="button" onclick="saveData('ToolingCategory')" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-90 hover:opacity-100 transition-opacity text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-500/30 text-center">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="specModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden h-full w-full flex items-center justify-center p-4" style="z-index: 99999;" role="dialog" aria-modal="true">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-lg flex flex-col max-h-[90vh] modal-panel">
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-95 flex items-center gap-3 shrink-0 rounded-t-2xl">
+            <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide" id="specModalTitle">Add Tooling Spec</h3>
+                <p class="text-xs text-cyan-50 mt-0.5">Manage specification and minimum stock.</p>
+            </div>
+        </div>
+        <form id="specForm" class="flex flex-col flex-1 overflow-hidden">
+            <input type="hidden" id="modal_spec_id" name="spec_id" value="" />
+            <div class="p-6 overflow-y-auto flex-1 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Tooling Category <span class="text-red-500">*</span></label>
+                    <select id="modal_spec_category_id" name="category_id" required class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white transition-all">
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Spec Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="modal_spec_name" name="spec_name" required placeholder="e.g. WD-001-A" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Min Stock <span class="text-red-500">*</span></label>
+                        <input type="number" id="modal_min_stock" name="min_stock" required min="0" placeholder="e.g. 10" class="block w-full border border-slate-300 rounded-lg shadow-sm py-2 px-3 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-3 bg-slate-50/50 shrink-0 rounded-b-2xl">
+                <button type="button" onclick="closeModal('specModal')" class="w-full sm:w-auto px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 text-center">Cancel</button>
+                <button type="button" onclick="saveData('ToolingSpec')" class="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-500 opacity-90 hover:opacity-100 transition-opacity text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-500/30 text-center">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const tableState = {
+            'Access': { originalData: [], filteredData: [], currentPage: 1, itemsPerPage: 5 },
+            'ToolingCategory': { originalData: [], filteredData: [], currentPage: 1, itemsPerPage: 5 },
+            'ToolingSpec': { originalData: [], filteredData: [], currentPage: 1, itemsPerPage: 5 }
+        };
+
+        $(document).ready(function() {
+            loadData('Access');
+            loadData('ToolingCategory');
+            loadData('ToolingSpec');
+        });
+
+        function formatDate(dateStr, includeTime = false) {
+            if (!dateStr) return "-";
+            let date;
+            if (typeof dateStr === 'string' && dateStr.includes('/Date(')) {
+                date = new Date(parseInt(dateStr.replace(/\/Date\((.*?)\)\//gi, "$1")));
+            } else {
+                date = new Date(dateStr);
+            }
+            if (isNaN(date.getTime())) return "-";
+            const pad = n => n.toString().padStart(2, '0');
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            let formatted = `${pad(date.getDate())} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            if (includeTime) formatted += `, ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+            return formatted;
+        }
+
+        function loadData(type) {
+            const getEndpoints = {
+                'Access': 'getAccess',
+                'ToolingCategory': 'GetToolingCategory',
+                'ToolingSpec': 'GetToolingSpec'
+            };
+
+            const actionName = getEndpoints[type];
+            const baseUrl = '@Url.Action("Placeholder", "BMS", new { area = "PE" })';
+            const url = baseUrl.replace("Placeholder", actionName);
+
+            $(`#tbody-${type}`).html(`<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">Loading data...</td></tr>`);
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        tableState[type].originalData = response.data || [];
+                        const searchTerm = $(`#search-${type}`).val() || "";
+                        applySearch(type, searchTerm);
+                    } else {
+                        $(`#tbody-${type}`).html(`<tr><td colspan="5" class="px-6 py-8 text-center text-rose-500">Failed: ${response.message}</td></tr>`);
+                    }
+                },
+                error: function () {
+                    $(`#tbody-${type}`).html(`<tr><td colspan="5" class="px-6 py-8 text-center text-rose-500">Server error while loading data.</td></tr>`);
+                }
+            });
+        }
+
+        function handleSearch(type) {
+            const term = $(`#search-${type}`).val();
+            applySearch(type, term);
+        }
+
+        function applySearch(type, term) {
+            const state = tableState[type];
+            const lowerTerm = term.toLowerCase().trim();
+
+            state.currentPage = 1;
+
+            if (!lowerTerm) {
+                state.filteredData = [...state.originalData];
+            } else {
+                state.filteredData = state.originalData.filter(item => {
+                    return Object.values(item).some(val =>
+                        val !== null && String(val).toLowerCase().includes(lowerTerm)
+                    );
+                });
+            }
+
+            renderPaginatedTable(type);
+        }
+
+        function renderPaginatedTable(type) {
+            const state = tableState[type];
+
+            const totalItems = state.filteredData.length;
+            const totalPages = Math.ceil(totalItems / state.itemsPerPage) || 1;
+
+            if (state.currentPage > totalPages) state.currentPage = totalPages;
+            if (state.currentPage < 1) state.currentPage = 1;
+
+            const startIndex = (state.currentPage - 1) * state.itemsPerPage;
+            const endIndex = startIndex + state.itemsPerPage;
+
+            const currentData = state.filteredData.slice(startIndex, endIndex);
+
+            renderTable(type, currentData);
+            renderPaginationControls(type, totalItems, totalPages, startIndex, Math.min(endIndex, totalItems));
+        }
+
+        function renderTable(type, data) {
+            const tbody = $(`#tbody-${type}`);
+            tbody.empty();
+
+            if (!data || data.length === 0) {
+                tbody.html(`<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400">No data found</td></tr>`);
+                return;
+            }
+
+            data.forEach(item => {
+                let tr = `<tr class="hover:bg-slate-50 transition-colors duration-200">`;
+
+                if (type === 'Access') {
+                    const safeName = item.name ? item.name : '-';
+                    const escapedName = item.name ? item.name.replace(/'/g, "\\'") : '';
+
+                    tr += `<td class="px-6 py-4 text-slate-800 font-semibold">${item.NIK}</td>`;
+                    tr += `<td class="px-6 py-4 text-slate-600 font-medium">${safeName}</td>`;
+                    tr += `<td class="px-6 py-4"><span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20">${item.access}</span></td>`;
+                    tr += `<td class="px-6 py-4 text-slate-500">${formatDate(item.created_at)}</td>`;
+                    tr += `<td class="px-6 py-4 text-center">
+                                <button onclick="openAccessModal('${item.access_id}', '${item.NIK}', '${escapedName}', '${item.access}')" class="text-blue-600 hover:text-blue-800 font-semibold mr-4 transition-colors">Edit</button>
+                                <button onclick="deleteData('Access', '${item.access_id}')" class="text-rose-500 hover:text-rose-700 font-semibold transition-colors">Delete</button>
+                           </td>`;
+                }
+                else if (type === 'ToolingCategory') {
+                    const escapedName = item.category_name ? item.category_name.replace(/'/g, "\\'") : '';
+
+                    tr += `<td class="px-6 py-4 text-slate-500 font-medium">${item.category_id}</td>`;
+                    tr += `<td class="px-6 py-4 text-slate-800 font-semibold">${item.category_name}</td>`;
+                    tr += `<td class="px-6 py-4 text-center">
+                                <button onclick="openCategoryModal('${item.category_id}', '${escapedName}')" class="text-blue-600 hover:text-blue-800 font-semibold mr-4 transition-colors">Edit</button>
+                                <button onclick="deleteData('ToolingCategory', '${item.category_id}')" class="text-rose-500 hover:text-rose-700 font-semibold transition-colors">Delete</button>
+                           </td>`;
+                }
+                else if (type === 'ToolingSpec') {
+                    const escapedName = item.spec_name ? item.spec_name.replace(/'/g, "\\'") : '';
+                    const minStock = item.min_stock || 0;
+
+                    tr += `<td class="px-6 py-4 text-slate-500 font-medium">${item.spec_id}</td>`;
+                    tr += `<td class="px-6 py-4 text-slate-600 font-medium">${item.category_name}</td>`;
+                    tr += `<td class="px-6 py-4 text-slate-800 font-semibold">${item.spec_name}</td>`;
+                    tr += `<td class="px-6 py-4 text-center font-bold text-rose-600">${minStock}</td>`;
+                    tr += `<td class="px-6 py-4 text-center">
+                                <button onclick="openSpecModal('${item.spec_id}', '${item.category_id}', '${escapedName}', '${minStock}')" class="text-blue-600 hover:text-blue-800 font-semibold mr-4 transition-colors">Edit</button>
+                                <button onclick="deleteData('ToolingSpec', '${item.spec_id}')" class="text-rose-500 hover:text-rose-700 font-semibold transition-colors">Delete</button>
+                           </td>`;
+                }
+
+                tr += `</tr>`;
+                tbody.append(tr);
+            });
+        }
+
+        function renderPaginationControls(type, totalItems, totalPages, startIndex, actualEnd) {
+            const container = $(`#pagination-${type}`);
+            if (totalItems === 0) { container.html(''); return; }
+
+            const current = tableState[type].currentPage;
+            let html = `
+                <div class="flex flex-col sm:flex-row w-full items-center justify-between gap-4 text-sm text-slate-600">
+                    <div>
+                        Showing <span class="font-medium text-slate-900">${startIndex + 1}</span> to <span class="font-medium text-slate-900">${actualEnd}</span> of <span class="font-medium text-slate-900">${totalItems}</span> results
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="changePage('${type}', ${current - 1})" class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" ${current === 1 ? 'disabled' : ''}>Prev</button>
+            `;
+
+            const getPageList = (c, t) => {
+                if (t <= 5) return Array.from({ length: t }, (_, i) => i + 1);
+                if (c <= 3) return [1, 2, 3, 4, '...', t];
+                if (c >= t - 2) return [1, '...', t - 3, t - 2, t - 1, t];
+                return [1, '...', c - 1, c, c + 1, '...', t];
+            };
+
+            const pages = getPageList(current, totalPages);
+
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span class="px-2 py-1.5 text-slate-400 font-medium tracking-widest">...</span>`;
+                } else if (p === current) {
+                    html += `<button class="px-3 py-1.5 bg-blue-600 text-white border border-blue-600 rounded-md font-medium shadow-sm">${p}</button>`;
+                } else {
+                    html += `<button onclick="changePage('${type}', ${p})" class="px-3 py-1.5 border border-slate-200 text-slate-700 rounded-md hover:bg-slate-100 transition-colors">${p}</button>`;
+                }
+            });
+
+            html += `
+                        <button onclick="changePage('${type}', ${current + 1})" class="px-3 py-1.5 border border-slate-200 rounded-md hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" ${current === totalPages ? 'disabled' : ''}>Next</button>
+                    </div>
+                </div>
+            `;
+            container.html(html);
+        }
+
+        function changePage(type, newPage) {
+            tableState[type].currentPage = newPage;
+            renderPaginatedTable(type);
+        }
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'border-transparent');
+                btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200', 'hover:bg-slate-50');
+            });
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.remove('bg-white', 'text-slate-600', 'border-slate-200', 'hover:bg-slate-50');
+            evt.currentTarget.classList.add('bg-blue-600', 'text-white', 'border-transparent');
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.classList.add('hidden');
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === "Escape") ['accessModal', 'categoryModal', 'specModal'].forEach(id => closeModal(id));
+        });
+
+        function openAccessModal(id = '', nik = '', name = '', role = '') {
+            document.getElementById('accessForm').reset();
+            document.getElementById('modal_access_id').value = id;
+            document.getElementById('modal_access_nik').value = nik;
+            document.getElementById('modal_access_name').value = name;
+            document.getElementById('modal_access_role').value = role;
+            document.getElementById('accessModalTitle').innerText = id ? "Edit Access Mapping" : "Add Access Mapping";
+            document.getElementById('accessModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal_access_nik').focus(), 100);
+        }
+
+        function openCategoryModal(id = '', name = '') {
+            document.getElementById('categoryForm').reset();
+            document.getElementById('modal_category_id').value = id;
+            document.getElementById('modal_category_name').value = name;
+            document.getElementById('categoryModalTitle').innerText = id ? "Edit Tooling Category" : "Add Tooling Category";
+            document.getElementById('categoryModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal_category_name').focus(), 100);
+        }
+
+        function populateCategoryDropdown(selectedId) {
+            const select = document.getElementById('modal_spec_category_id');
+            const categories = tableState['ToolingCategory'].originalData;
+
+            // PENYESUAIAN: Jika kategori kosong (belum ada master kategori yang dibuat)
+            if (categories.length === 0) {
+                select.innerHTML = '<option value="" disabled selected>-- No Categories Available (Add First) --</option>';
+                return;
+            }
+
+            select.innerHTML = '<option value="" disabled selected>-- Select Category --</option>';
+
+            categories.forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.category_id;
+                option.text = c.category_name;
+                if (c.category_id == selectedId) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        function openSpecModal(id = '', categoryId = '', name = '', minStock = '') {
+            document.getElementById('specForm').reset();
+            populateCategoryDropdown(categoryId);
+
+            document.getElementById('modal_spec_id').value = id;
+            document.getElementById('modal_spec_name').value = name;
+            document.getElementById('modal_min_stock').value = minStock;
+            document.getElementById('specModalTitle').innerText = id ? "Edit Tooling Spec" : "Add Tooling Spec";
+            document.getElementById('specModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('modal_spec_category_id').focus(), 100);
+        }
+
+        function saveData(type) {
+            let formId, modalId, dataPayload = {};
+
+            if (type === 'Access') {
+                formId = 'accessForm'; modalId = 'accessModal';
+                const id = document.getElementById('modal_access_id').value;
+                const nik = document.getElementById('modal_access_nik').value;
+                const name = document.getElementById('modal_access_name').value;
+                const role = document.getElementById('modal_access_role').value;
+
+                if (!nik.trim() || !name.trim() || !role) return validationWarning('NIK, Name, and Access Role');
+                dataPayload = { id: id, access_id: id, NIK: nik, name: name, access: role };
+            }
+            else if (type === 'ToolingCategory') {
+                formId = 'categoryForm'; modalId = 'categoryModal';
+                const id = document.getElementById('modal_category_id').value;
+                const name = document.getElementById('modal_category_name').value;
+
+                if (!name.trim()) return validationWarning('Category Name');
+                dataPayload = { id: id, category_id: id, category_name: name };
+            }
+            else if (type === 'ToolingSpec') {
+                formId = 'specForm'; modalId = 'specModal';
+                const id = document.getElementById('modal_spec_id').value;
+                const catId = document.getElementById('modal_spec_category_id').value;
+                const name = document.getElementById('modal_spec_name').value;
+                const minStock = document.getElementById('modal_min_stock').value;
+
+                if (!catId || !name.trim() || minStock === "") return validationWarning('Category, Spec Name, and Min Stock');
+                dataPayload = { id: id, spec_id: id, category_id: catId, spec_name: name, min_stock: minStock };
+            }
+
+            const isUpdate = Object.values(dataPayload)[0];
+            const actionName = isUpdate ? `Update${type}` : `Create${type}`;
+            const baseUrl = '@Url.Action("Placeholder", "BMS", new { area = "PE" })';
+            const url = baseUrl.replace("Placeholder", actionName);
+
+            Swal.fire({ title: 'Saving changes...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: dataPayload,
+                success: function (response) {
+                    if (response.success) {
+                        closeModal(modalId);
+                        Swal.fire({ title: 'Success!', text: response.message || 'Data processed successfully.', icon: 'success', timer: 1000, showConfirmButton: false }).then(() => {
+                            loadData(type);
+                            // Refresh list spec juga jika kita baru menambah/edit kategori
+                            if (type === 'ToolingCategory') loadData('ToolingSpec');
+                        });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Failed', text: response.message || 'Error occurred while saving.', confirmButtonColor: '#2563eb' });
+                    }
+                },
+                error: function () {
+                    Swal.fire({ icon: 'error', title: 'Server Error', text: 'Could not communicate with server application context.', confirmButtonColor: '#2563eb' });
+                }
+            });
+        }
+
+        function deleteData(type, id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: `This configuration item will be removed from the active list.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#cbd5e1',
+                cancelButtonText: '<span style="color:#0f172a">Cancel</span>',
+                confirmButtonText: 'Yes, remove it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Removing entry...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                    const actionNameDelete = `Delete${type}`;
+                    const baseUrlDelete = '@Url.Action("Placeholder", "BMS", new { area = "PE" })';
+                    const urlDelete = baseUrlDelete.replace("Placeholder", actionNameDelete);
+
+                    $.ajax({
+                        url: urlDelete,
+                        type: 'POST',
+                        data: { id: id },
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire({ title: 'Removed!', text: 'The item has been successfully removed.', icon: 'success', timer: 1000, showConfirmButton: false }).then(() => {
+                                    loadData(type);
+                                    if (type === 'ToolingCategory') loadData('ToolingSpec');
+                                });
+                            } else {
+                                Swal.fire('Error', response.message || 'Failed to remove entry asset.', 'error');
+                            }
+                        },
+                        error: function () {
+                            Swal.fire('Error', 'Server processing execution failed.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+
+        function validationWarning(fieldName) {
+            Swal.fire({ icon: 'warning', title: 'Validation Warning', text: `${fieldName} data cannot be evaluated empty!`, confirmButtonColor: '#2563eb' });
+            return false;
+        }
+
+    </script>
+}

@@ -1,0 +1,2914 @@
+﻿@{
+    ViewBag.Title = "Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.tailwindcss.css" />
+    <link href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6.3.7/dist/tippy.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+
+    <style>
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+       /* #itemHistory tbody tr {
+            cursor: pointer;
+        }
+*/
+        #cartTable thead th,
+        #itemHistory thead th {
+            background-color: #F6F7F8 !important;
+            border-bottom: 2px solid #F6F7F8 !important;
+            color: black !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        #cartTable .dataTables_empty {
+            padding: 2rem !important;
+            color: #9ca3af !important;
+            font-style: italic;
+            background-color: transparent !important;
+        }
+
+        #cartTable {
+            border-collapse: collapse !important;
+            border: none !important;
+        }
+
+            #cartTable tbody td {
+                border-bottom: 1px solid #f3f4f6 !important;
+                background-color: transparent !important;
+                padding: 12px 8px !important;
+            }
+
+
+        .dt-container .grid {
+            margin-bottom: 0 !important;
+            gap: 0 !important;
+        }
+
+        .dt-container .dt-length {
+            margin-right: 1rem;
+        }
+
+        input[aria-controls="itemHistory"] {
+            padding: 2px !important;
+            border-radius: 0.5rem;
+            border: 1px solid #007582;
+            outline: none;
+        }
+
+        select[aria-controls="itemHistory"] {
+            padding: 2px !important;
+            border-radius: 0.5rem;
+            border: 1px solid #007582;
+            outline: none;
+            margin-right: 10px !important;
+        }
+
+        #itemHistory td {
+            white-space: normal !important;
+            word-break: break-word;
+        }
+
+        #itemHistory th {
+            white-space: normal !important;
+            word-break: break-word;
+        }
+
+        select[aria-controls="itemHistory"]:focus {
+            border-color: #007582;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 2rem;
+            border-color: #DEE2E6 !important;
+            padding: 0.25rem;
+            width: auto !important;
+            display: inline-block;
+        }
+
+        .select2-selection__rendered {
+            word-wrap: break-word !important;
+            text-overflow: inherit !important;
+            white-space: normal !important;
+        }
+
+        table.dataTable td,
+        table.dataTable th {
+            padding: 0.5rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        input[aria-controls="itemHistory"],
+        select[aria-controls="itemHistory"],
+        #dt-search-0,
+        #dt-length-0 {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            margin-bottom: 5px;
+            border: 1px solid #DEE2E6 !important;
+            border-radius: 0.5rem !important;
+            padding: 0.4rem 0.8rem !important;
+            transition: all 0.2s ease;
+        }
+
+        #cartTable tbody tr:nth-child(even),
+        #itemHistory tbody tr:nth-child(even),
+        tr.even {
+            background-color: #F9FAFB !important;
+        }
+    </style>
+}
+
+@section scriptHead {
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.tailwindcss.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.print.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+
+    <script>
+        // Deklarasi global variables
+        const itemList = @Html.Raw(Json.Encode(ViewBag.ItemList));
+        const userCostNames = @Html.Raw(Json.Encode(ViewBag.userCostNames));
+        const subcategoryList = @Html.Raw(Json.Encode(ViewBag.SubcategoryList));
+        const categoryList = @Html.Raw(Json.Encode(ViewBag.CategoryList));
+        const baseImagePath = '@Url.Content("~/Files/HC/Inventory/")';
+        const Budget = @Html.Raw(Json.Encode(ViewBag.Budget ?? new object()));
+        const previewPOUrl = "@Url.Action("NonPO", "PaymentRequest", new { area = "FA" })";
+        const previewRequestUrl = "@Url.Action("PreviewRequest", "Inventory", new { area = "HC" })";
+        const previewInvoiceUrl = "@Url.Action("PreviewInvoice", "Inventory", new { area = "HC" })";
+        var inventoryBasePath = '@Url.Content("~/Files/HC/Inventory/")';
+
+        console.log("sampleBudget", Budget);
+        // Buat peta (map) untuk mencari nama kategori dengan cepat
+        const categoryNameMap = {};
+        categoryList.forEach(category => {
+            categoryNameMap[category.ID] = category.Category_Name;
+        });
+
+        // ========================
+        // Helper Functions
+        // ========================
+        cartTable = {
+    ajax: {
+        url: "@Url.Action("GetCartbyUser", "Inventory", new { area = "HC" })",
+        type: 'GET',
+        dataSrc: function (res) {
+            const container = $('#cartTablesContainer');
+            container.empty(); // Bersihkan container sebelum render ulang
+
+            if (!res.carts || res.carts.length === 0) {
+                container.append('<div class="p-4 text-center italic text-gray-500">No items in the cart.</div>');
+                return [];
+            }
+
+            // 1. Grouping data berdasarkan Section_To_Name
+            let groupedCarts = {};
+            res.carts.forEach(item => {
+                const section = item.Section_To_Name || 'Unknown Section';
+                if (!groupedCarts[section]) {
+                    groupedCarts[section] = [];
+                }
+                groupedCarts[section].push(item);
+            });
+
+            // 2. Render Header, Table, dan Budget per Section
+            Object.keys(groupedCarts).forEach((sectionName, index) => {
+                const sectionData = groupedCarts[sectionName];
+                const tableId = `table_${index}`;
+
+                // Hitung total harga untuk section ini saja
+                let sectionTotal = 0;
+                sectionData.forEach(item => {
+                    sectionTotal += (parseFloat(item.Qty_Request) || 0) * (parseFloat(item.Price) || 0);
+                });
+
+                // Cari data budget yang relevan dengan section ini (opsional)
+                // Disini kita asumsikan budgetSummary akan muncul di bawah masing-masing tabel
+
+                let htmlSection = `
+                    <div class="section-group mb-10 border-b pb-6">
+                        <h3 class="text-lg font-bold text-cyan-800 mb-3 uppercase flex items-center">
+                            <i class="fa-solid fa-building-user mr-2"></i> ${sectionName}
+                        </h3>
+                        <div class="overflow-x-auto mb-4">
+                            <table id="${tableId}" class="stripe hover w-full text-sm cart-dynamic-table">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th width="30px">NO</th>
+                                        <th>ITEM</th>
+                                        <th>QTY</th>
+                                        <th>PRICE</th>
+                                        <th>BUDGET</th>
+                                        <th width="60px">ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded flex justify-between items-center border border-dashed border-gray-300">
+                            <span class="text-gray-600 font-medium text-sm">Est. Total for ${sectionName}:</span>
+                            <span class="text-cyan-700 font-bold text-lg">${rupiah.format(sectionTotal)}</span>
+                        </div>
+                    </div>
+                `;
+
+                container.append(htmlSection);
+
+                // 3. Inisialisasi DataTable untuk tabel yang baru dibuat
+                $(`#${tableId}`).DataTable({
+                    data: sectionData,
+                    responsive: true,
+                    autoWidth: true,
+                    ordering: false,
+                    paging: false,
+                    info: false,
+                    searching: false,
+                    columns: [
+                        { data: null, render: (data, type, row, meta) => meta.row + 1 },
+                        {
+                            data: 'Item_Name',
+                            render: (data, type, row) => `
+                                <div class="whitespace-normal break-words text-sm font-semibold text-gray-800">${row.Item_Name}</div>
+                                <div class="text-sm text-gray-600">Note: ${(row.Notes && row.Notes.trim() !== '') ? row.Notes : '-'}</div>
+                            `
+                        },
+                        { data: 'Qty' },
+                        {
+                            data: 'Price',
+                            render: (data) => rupiah.format(data)
+                        },
+                        {
+                            data: null,
+                            render: (data, type, row) => {
+                                const budgetNo = row.Budget_No || '-';
+                                const budgetDesc = row.Budget_Desc || '-';
+                                return `<div class="flex flex-col leading-tight">
+                                            <span class="font-medium text-gray-800">${budgetNo}</span>
+                                            <span class="text-xs text-gray-500">${budgetDesc}</span>
+                                        </div>`;
+                            }
+                        },
+                        {
+                            data: null,
+                            render: (data, type, row) => `
+                                <div class="flex gap-2">
+                                    <button title="Edit" class="btn btn-edit px-1"
+                                        data-id="${row.ID}" data-itemid="${row.Item_Id}" data-item="${row.Item_Name}"
+                                        data-qty="${row.Qty_Request}" data-budgetno="${row.Budget_No}"
+                                        data-note="${row.Notes ?? ''}" data-budgetdesc="${row.Budget_Desc ?? ''}"
+                                        data-sectiontoname="${row.Section_To_Name ?? ''}">
+                                        <i class="fa-solid fa-pen text-[14px]" style="color: #F6AA04;"></i>
+                                    </button>
+                                    <button class="btn btn-delete text-red-500" data-id="${row.ID}" title="Delete">
+                                        <i class="fa-solid fa-trash text-[14px]" style="color: #D91F1F;"></i>
+                                    </button>
+                                </div>`
+                        }
+                    ]
+                });
+            });
+
+            // Tetap jalankan summary global jika diperlukan
+            let totalCartPriceByBudget = {};
+            res.carts.forEach(item => {
+                const bNo = item.Budget_No;
+                totalCartPriceByBudget[bNo] = (totalCartPriceByBudget[bNo] || 0) +
+                                              (parseFloat(item.Qty_Request) * parseFloat(item.Price));
+            });
+            renderBudgetSummary(res.budgets || [], totalCartPriceByBudget);
+
+            return res.carts;
+        }
+    }
+};
+
+// Panggil AJAX pertama kali saat page load
+function loadCart() {
+    $.ajax(cartTable.ajax).done(function(res) {
+        // DataTables diinisialisasi di dalam dataSrc callback
+    });
+}
+        function renderBudgetSummary(budgets, cartTotals, returnHtml = false) {
+            let htmlOutput = "";
+
+            budgets.forEach(b => {
+                const bNo = b.budgetNo || b.BudgetNo;
+                const bDesc = b.budgetDesc || b.BudgetDesc;
+                const totalFY2 = parseFloat(b.totalFY2 || b.TotalFY2) || 0;
+
+                // 1. Ambil nilai purchasedUsage dari data controller
+                const purchased = parseFloat(b.purchasedUsage || b.PurchasedUsage) || 0;
+
+                // 2. Mengambil nilai current usage (keranjang aktif) dari object cartTotals
+                const used = cartTotals[bNo] || 0;
+
+                // 3. Sisa budget dikurangi keranjang aktif DAN yang sudah di-purchase
+                const remaining = totalFY2 - used - purchased;
+
+                const remainingClass = remaining < 0 ? 'text-red-600 font-bold' : 'text-emerald-600 font-semibold';
+
+                htmlOutput += `
+<div class="mb-3 p-3 border-l-4 border-cyan-700 bg-white shadow-sm rounded-r-lg">
+    <div class="text-sm font-bold text-gray-800 mb-2 uppercase">
+        ${bNo} | ${bDesc}
+    </div>
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-500">Total Budget:</span>
+        <span class="font-semibold">${rupiah.format(totalFY2)}</span>
+    </div>
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-500 font-bold">Purchased Usage:</span>
+        <span class="font-bold text-red-600">${rupiah.format(purchased)}</span> <!-- Diganti menjadi purchased -->
+    </div>
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-500 font-bold">Current Usage (In Cart):</span>
+        <span class="font-bold text-blue-600">${rupiah.format(used)}</span>
+    </div>
+    <div class="flex justify-between text-sm border-t mt-1 pt-1">
+        <span class="text-gray-500 font-semibold">Remaining:</span>
+        <span class="${remainingClass}">${rupiah.format(remaining)}</span>
+    </div>
+</div>`;
+            });
+            if (returnHtml) {
+                return htmlOutput;
+            } else {
+                $('#budgetSummary').empty().append(htmlOutput);
+            }
+        }
+
+        // Fungsi untuk mengelompokkan subkategori berdasarkan categoryId
+        function groupSubcategoriesByCategory(data) {
+            const groupedData = {};
+
+            data.forEach(item => {
+                const categoryId = item.Category_Id;
+
+                if (!groupedData[categoryId]) {
+                    const categoryName = categoryNameMap[categoryId] || `Category ${categoryId}`;
+                    groupedData[categoryId] = {
+                        CategoryName: categoryName,
+                        Items: []
+                    };
+                }
+
+                groupedData[categoryId].Items.push({
+                    ID: item.ID,
+                    Item_Name: item.Subcategory_Name,
+                    Image: item.Subcategory_Image,
+                });
+            });
+            return Object.values(groupedData);
+        }
+
+function renderSubcategorySection(category) {
+    let html = `
+        <div class="mb-6">
+            <div class="self-stretch inline-flex flex-col justify-start items-start gap-[5px] mb-2">
+                <div class="self-stretch justify-start text-black text-lg font-bold">${category.CategoryName}</div>
+                <div class="self-stretch h-[1px] p-[2px] bg-cyan-700"></div>
+            </div>
+            <div class="flex flex-wrap gap-4">
+    `;
+
+    if (category.Items.length === 0) {
+        html += `<div class="text-sm text-gray-400">No items available.</div>`;
+    } else {
+        category.Items.forEach(item => {
+            let imageUrl = 'https://placehold.co/150x150';
+
+            if (item.Image) {
+                let isFullUrl = item.Image.startsWith("http://") || item.Image.startsWith("https://");
+
+                imageUrl = isFullUrl
+                    ? item.Image
+                    : '@Url.Content("~/Files/HC/Inventory/")' + item.Image;
+            }
+
+            html += `
+                <div class="card-item-subcategory w-36 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-100 transition duration-200 cursor-pointer"
+                     data-id="${item.ID}"
+                     data-name="${item.Item_Name}"
+                     data-image="${item.Image ?? ''}"
+                >
+                    <img class="rounded-t-lg w-full h-24 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+                    <div class="p-2">
+                        <h5 class="mb-2 text-md font-bold tracking-tight text-gray-800">${item.Item_Name}</h5>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    html += `</div></div>`;
+    return html;
+}
+        function groupItemsByCategory(data) {
+            const groupedData = {};
+
+            data.forEach(item => {
+                const categoryId = item.Category_Id;
+
+                if (!groupedData[categoryId]) {
+                    const categoryName = categoryNameMap[categoryId] || `Category ${categoryId}`;
+                    groupedData[categoryId] = {
+                        CategoryName: categoryName,
+                        Items: []
+                    };
+                }
+
+                groupedData[categoryId].Items.push(item);
+            });
+            return Object.values(groupedData);
+        }
+
+        function renderEditingItemThumbnail(item) {
+            let imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150/cccccc/333333?text=No+Image';
+            return `
+        <div class="item-thumbnail w-32 h-32 p-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-not-allowed border-cyan-700 ring-2 ring-cyan-700"
+             data-id="${item.ID}">
+             <img class="w-20 h-20 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+             <div class="text-xs font-medium text-gray-700 mt-1 truncate w-full px-1">${item.Item_Name}</div>
+        </div>
+    `;
+        }
+
+        // Fungsi untuk merender item sesuai mode (default atau search)
+        function renderItems(data, isSearchMode = false) {
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = '';
+
+            if (data.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 mt-8">No items found.</div>';
+                return;
+            }
+
+            if (isSearchMode) {
+                const groupedItems = groupItemsByCategory(data);
+                groupedItems.forEach(group => {
+                    container.innerHTML += renderItemThumbnailSection(group);
+                });
+            } else {
+                const groupedSubcategories = groupSubcategoriesByCategory(data);
+                groupedSubcategories.forEach(category => {
+                    container.innerHTML += renderSubcategorySection(category);
+                });
+            }
+        }
+
+        // Fungsi utama untuk filter dan render
+        function filterAndRenderItems(searchText) {
+            if (!searchText || searchText.trim() === '') {
+                renderItems(subcategoryList, false);
+            } else {
+                const lowerSearchText = searchText.toLowerCase();
+                const filteredItems = itemList.filter(item =>
+                    item.Item_Name.toLowerCase().includes(lowerSearchText)
+                );
+                renderItems(filteredItems, true);
+            }
+        }
+
+        function renderStamp(dateValue, label, status = "") {
+            const isRejected = status.toLowerCase().includes("reject");
+
+            if (isRejected) {
+                return `
+        <div class="w-[70px] h-[70px] bg-red-500 rounded-full flex items-center justify-center cursor-default">
+            <span class="text-white text-xs">Rejected</span>
+        </div>
+        `;
+            }
+
+            // normalize value untuk selain reject
+            const invalid =
+                !dateValue ||
+                dateValue === "NULL" ||
+                dateValue === "null" ||
+                dateValue === "0" ||
+                dateValue === "-" ||
+                dateValue.trim() === "";
+
+            if (invalid) {
+                return `
+        <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+            <span class="text-white text-xs">Pending</span>
+        </div>
+        `;
+            }
+
+            // kalau valid
+            return `
+        <div class="w-[70px] h-[70px] bg-green-500 rounded-full flex items-center justify-center">
+            <span class="text-white text-[10px] text-center">${label}<br>${dateValue}</span>
+        </div>
+    `;
+        }
+
+        // Panggilan AJAX untuk mengambil detail item spesifik
+        const rupiah = new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 2
+        });
+
+
+function formatHistoryDetails(detail) {
+    // =================================================================
+    // 1. HELPER FUNCTIONS
+    // =================================================================
+
+    // Helper untuk mengecek apakah status tanggal masih pending
+    function isPending(dateValue) {
+        return !dateValue ||
+            dateValue === "NULL" ||
+            dateValue === "null" ||
+            dateValue === "0" ||
+            dateValue === "-" ||
+            (typeof dateValue === 'string' && dateValue.trim() === "");
+    }
+
+    // Helper untuk merender class dan atribut button secara dinamis
+    function getButtonAttributes(dateValue, status) {
+        const isRejected = (status || "").toLowerCase().includes("reject");
+        const pending = isPending(dateValue);
+
+        // Disable tombol jika statusnya rejected ATAU jika sudah tidak pending (sudah di-stamp)
+        const isDisabled = isRejected || !pending;
+
+        if (isDisabled) {
+            // pointer-events-none memastikan tombol benar-benar tidak bisa diklik/di-hover
+            return `class="relative cursor-default pointer-events-none" disabled`;
+        } else {
+            // Jika masih pending, kursor jadi pointer
+            return `class="relative cursor-pointer hover:opacity-80 transition-opacity"`;
+        }
+    }
+
+    // renderStamp sekarang menerima parameter nameValue untuk ditampilkan di stamp SVG
+    function renderStamp(dateValue, nameValue, status = "") {
+        const isRejected = (status || "").toLowerCase().includes("reject");
+
+        if (isRejected) {
+            return `
+            <div class="w-[70px] h-[70px] bg-red-500 rounded-full flex items-center justify-center cursor-default">
+                <span class="text-white text-xs">Rejected</span>
+            </div>
+            `;
+        }
+
+        // Gunakan helper isPending
+        if (isPending(dateValue)) {
+            return `
+            <div class="w-[70px] h-[70px] bg-orange-300 rounded-full flex items-center justify-center">
+                <span class="text-white text-xs">Pending</span>
+            </div>
+            `;
+        }
+
+        // Format tanggal jika bentuknya "/Date(123456789)/"
+        let formattedDate = dateValue;
+        if (typeof dateValue === 'string' && dateValue.includes('/Date(')) {
+            formattedDate = moment(parseInt(dateValue.replace(/[^\d]/g, ''))).format('DD-MM-YYYY');
+        }
+
+        // Ambil kata pertama dari nama
+        const shortName = nameValue ? nameValue.split(' ')[0] : '-';
+
+        // Return desain Stamp SVG persis seperti getStamp (tanpa background hijau)
+        return `
+            <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                 style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${shortName}</p>
+                <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${formattedDate}</p>
+            </div>
+        `;
+    }
+
+    const readyIcon = (val) => {
+        if (val === true) {
+            return `<i class="fa fa-check text-green-600 text-lg"></i>`;
+        }
+        if (val === false) {
+            return `<i class="fa fa-times text-red-600 text-lg"></i>`;
+        }
+        return `-`;
+    };
+
+    // =================================================================
+    // 2. DATA PROCESSING
+    // =================================================================
+    const isReadyToPick = detail.Status === 'Ready to Pick';
+    const isComplete = detail.Status === 'Complete' || detail.Status === 'Generated' || detail.Status === 'Upload File' || detail.Status === 'E-Voucher Issued';
+
+    let totalUsageByBudget = {};
+    let grandTotalUsage = 0;
+
+    if (detail.BudgetSummary && detail.BudgetSummary.length > 0) {
+        detail.BudgetSummary.forEach(summary => {
+            const val = parseFloat(summary.TotalRequest) || 0;
+            totalUsageByBudget[summary.BudgetNo] = val;
+            grandTotalUsage += val;
+        });
+    }
+
+    // Tentukan tampilan summary berdasarkan status
+    const budgetSummaryHtml = isComplete
+        ? `<div class="bg-gray-100 p-3 rounded flex justify-between items-center border border-dashed border-gray-300 mb-4">
+            <span class="text-gray-600 font-medium text-sm uppercase">Total:</span>
+            <span class="text-cyan-700 font-bold text-lg">${rupiah.format(grandTotalUsage)}</span>
+           </div>`
+        : renderBudgetSummary(detail.Budgets || [], totalUsageByBudget, true);
+
+    // Table Header Extras (is Ready)
+    const headerExtra = (isReadyToPick || isComplete)
+        ? `${isReadyToPick ? `<th class="border px-2 py-1 text-center">Is Ready</th>` : ''}`
+        : '';
+
+    // Build Rows
+    const tableRows = detail.Items.map((item, i) => {
+        let rowExtra = "";
+
+        if (isReadyToPick) {
+            rowExtra = `
+                <td class="border px-2 py-1 text-center">
+                    ${readyIcon(item.isReady)}
+                </td>
+            `;
+        }
+
+        const price = Number(item.Price) || 0;
+        const qty = Number(item.Qty_Request) || 0;
+        const totalPrice = price * qty;
+
+        return `
+            <tr>
+                <td class="border px-2 py-1 text-center">${i + 1}</td>
+                <td class="border px-2 py-1">${item.Item_Name}</td>
+                <td class="border px-2 py-1 text-center">${item.Qty}</td>
+                <td class="border px-2 py-1 text-right">${rupiah.format(price)}</td>
+                <td class="border px-2 py-1 text-right font-semibold">${rupiah.format(totalPrice)}</td>
+                <td class="border px-2 py-1 whitespace-normal break-words w-[250px]">
+                    <div class="font-semibold">${item.Budget || '-'}</div>
+                    <div class="font-thin">${item.Section_To_Name || '-'}</div>
+                </td>
+                <td class="border px-2 py-1">${item.Notes || '-'}</td>
+                ${rowExtra}
+            </tr>
+        `;
+    }).join("");
+
+    // Reject / Return Message
+    let rejectMessageHtml = "";
+    if (detail.RejectMessage) {
+        const statusLower = detail.Status.toLowerCase();
+        if (statusLower.includes("rejected")) {
+            rejectMessageHtml = `
+            <div class="mb-2 p-2 bg-red-100 border border-red-300 text-red-700 text-sm rounded">
+                <strong>Message:</strong> ${detail.RejectMessage}
+            </div>
+            `;
+        } else if (statusLower.includes("return")) {
+            rejectMessageHtml = `
+            <div class="mb-2 p-2 bg-orange-100 border border-orange-300 text-orange-700 text-sm rounded">
+                <strong>Message:</strong> ${detail.RejectMessage}
+            </div>
+            `;
+        }
+    }
+
+    // Invoice / Voucher Buttons
+    let generateSection = "";
+    let generateSection2 = "";
+
+    // const previewInvoiceUrl = "@Url.Action("PreviewInvoice", "Inventory", new { area = "HC" })";
+    const previewPOUrl = "@Url.Action("NonPO", "PaymentRequest", new { area = "FA" })";
+
+    if (isComplete) {
+        const hasInvoice = !!detail.Invoice_No;
+
+        // ---- Invoice ----
+        generateSection = hasInvoice
+            ? `
+                <div class="flex justify-end pt-3">
+                    <span class="text-sm font-semibold text-gray-700">
+                        Invoice No:
+                        <a href="${previewInvoiceUrl}?requestNo=${detail.Request_No}"
+                           target="_blank"
+                           class="text-blue-600 underline hover:text-blue-800">
+                           ${detail.Invoice_No}
+                        </a>
+                    </span>
+                </div>
+              `
+            : `
+                <div class="flex justify-end">
+                    <button class="btn btn-sm btn-primary generate-invoice-btn px-4 py-2"
+                        data-requestno="${detail.Request_No}">
+                        Generate Invoice
+                    </button>
+                </div>
+              `;
+
+        // ---- Voucher ----
+        if (!hasInvoice) {
+            generateSection2 = `
+                <div class="flex justify-end pt-3">
+                    <button class="btn btn-danger text-sm px-4 py-2 opacity-50 cursor-not-allowed" disabled>
+                        Generate E-Voucher
+                    </button>
+                </div>
+            `;
+        } else {
+            generateSection2 = detail.Receive_Number
+                ? `
+                    <div class="flex justify-end pt-3">
+                        <span class="text-sm font-semibold text-gray-700">
+                            Receive No:
+                            <a href="${previewPOUrl}"
+                               target="_blank"
+                               class="text-blue-600 underline hover:text-blue-800">
+                                ${detail.Receive_Number}
+                            </a>
+                        </span>
+                    </div>
+                  `
+                : `
+                    <div class="flex justify-end mt-2">
+                        <button class="btn btn-danger generateVoucherBtn text-sm px-4 py-2"
+                            data-requestno="${detail.Request_No}">
+                            Generate E-Voucher
+                        </button>
+                    </div>
+                  `;
+        }
+    }
+
+    // Delete Button (Only when Pending)
+    let deleteBtnHtml = "";
+    if (detail.Status === "Pending") {
+        deleteBtnHtml = `
+        <div class="flex">
+            <button class="delete-request-btn bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded shadow"
+                data-requestno="${detail.Request_No}">
+                <i class="fa fa-trash mr-1"></i> Delete
+            </button>
+        </div>
+        `;
+    }
+
+    // =================================================================
+    // 3. FINAL RETURN HTML
+    // =================================================================
+    return `
+        <div class="p-2 text-xs w-full bg-gray-50 space-y-3 relative" data-request-no="${detail.Request_No}">
+            ${rejectMessageHtml}
+            <div class="overflow-x-auto">
+                <p class="font-semibold mb-2">
+                    Due Date: <span>${moment(parseInt(detail.Due_Date.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')}</span>
+                </p>
+                <table class="min-w-full text-sm border-collapse border border-gray-300">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="border px-2 py-1 text-center">No</th>
+                            <th class="border px-2 py-1">Item</th>
+                            <th class="border px-2 py-1 text-center">Qty</th>
+                            <th class="border px-2 py-1 text-center">Price</th>
+                            <th class="border px-2 py-1 text-center">Total Price</th>
+                            <th class="border px-2 py-1">Budget</th>
+                            <th class="border px-2 py-1">Notes</th>
+                            ${headerExtra}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            ${budgetSummaryHtml}
+
+            <div id="approval">
+                <div class="flex justify-start gap-12 mb-6 mx-4">
+
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="text-[12px]">Approved By:</div>
+                        <button id="approvalbtn" ${getButtonAttributes(detail.ApproveDate, detail.Status)} data-requestno="${detail.Request_No}">
+                            ${renderStamp(detail.ApproveDate, detail.Approver ? detail.Approver.Name : detail.ApproveBy, detail.Status)}
+                        </button>
+                        <div id="longnameapproved" class="text-[12px] font-bold italic">${detail.Approver ? detail.Approver.Name : '-'}</div>
+                    </div>
+
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="text-[12px]">Checked By:</div>
+                        <button id="checkbtn" ${getButtonAttributes(detail.CheckDate, detail.Status)} data-requestno="${detail.Request_No}">
+                            ${renderStamp(detail.CheckDate, detail.Checker ? detail.Checker.Name : detail.CheckBy, detail.Status)}
+                        </button>
+                        <div id="longnamechecked" class="text-[12px] font-bold italic">${detail.Checker ? detail.Checker.Name : '-'}</div>
+                    </div>
+
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="text-[12px]">Prepared By:</div>
+                        <button id="preparebtn" ${getButtonAttributes(detail.PrepareDate, detail.Status)} data-requestno="${detail.Request_No}">
+                            ${renderStamp(detail.PrepareDate, detail.Admin ? detail.Admin.Name : detail.PrepareBy, detail.Status)}
+                        </button>
+                        <div id="longnameprepared" class="text-[12px] font-bold italic">${detail.Admin ? detail.Admin.Name : detail.PrepareBy}</div>
+                    </div>
+
+                </div>
+
+                <div class="mt-4 flex justify-end gap-3">
+                    ${deleteBtnHtml}
+                </div>
+            </div>
+        </div>
+    `;
+        }
+
+        // Delete Request
+        $(document).on("click", ".delete-request-btn", function () {
+            const requestNo = $(this).data("requestno");
+
+            Swal.fire({
+                title: "Are you sure?",
+                text: "This request and all items inside will be permanently deleted.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, delete",
+                cancelButtonText: "Cancel"
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                $.ajax({
+                    url: '@Url.Action("DeleteRequest", "Inventory", new { area = "HC" })',
+                    type: "POST",
+                    data: { requestNo: requestNo },
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire('Deleted', res.message, 'success').then(() => {
+                                location.reload();
+                            });
+                            // refresh datatable biar row hilang
+                            $("#requestTable").DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire("Failed", res.message, "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Server error occurred.", "error");
+                    }
+                });
+            });
+        });
+
+
+       $(document).on("click", ".generateVoucherBtn", function () {
+    const reqNo = $(this).data("requestno");
+    const data = window._invoiceParams?.[reqNo];
+
+    if (!data) {
+        alert("Invoice data belum ke-load. Klik detail dulu.");
+        return;
+    }
+
+
+    let processedDetails = "";
+    if (Array.isArray(data.details)) {
+        processedDetails = data.details.map(item => {
+            let bgtNo = item.Budget_No || "UNB";
+            let bgtDesc = item.Budget_Desc || "Unbudgeted";
+            let bgtFull = (bgtNo === "UNB")
+                ? "UNB|Unbudgeted"
+                : `${bgtNo}|${bgtDesc}`;
+
+            return `${item.Qty}||${bgtFull}||${item.Description}||${item.COA || ''}||${item.sectionTo}`;
+        }).join("#");
+
+    } else {
+        processedDetails = data.details; // fallback jika sudah berupa string
+    }
+
+    const baseUrl = '@Url.Action("NonPO", "PaymentRequest", new { area = "FA" })';
+
+    const url = baseUrl
+        + "?addNew=addNew"
+        + "&invNumber=" + encodeURIComponent(data.invoiceNo)
+        + "&currency=" + encodeURIComponent(data.currency)
+        + "&thirdParty=" + encodeURIComponent(data.thirdParty)
+        + "&dueDate=" + encodeURIComponent(data.dueDate)
+        + "&description=" + encodeURIComponent(data.description)
+        + "&requestNo=" + encodeURIComponent(reqNo)
+        + "&amountOfInvoice=" + encodeURIComponent(data.amount)
+        + "&paymentType=" + encodeURIComponent(data.paymentType)
+        + "&sectionTo=" + encodeURIComponent(data.sectionTo)
+        + "&details=" + encodeURIComponent(processedDetails); // Kirim yang sudah di-map
+
+    window.open(url, "_blank");
+});
+
+
+        function openNonPOPage() {
+            const inv = window._invoiceMap.invNumber;
+            const due = window._invoiceMap.dueDate;
+
+            const url = `/FA/PaymentRequest/NonPO?addNew=addNew`
+                + `&invNumber=${encodeURIComponent(inv)}`
+                + `&NIK=` // kosong atau isi default?
+                + `&currency=IDR`
+                + `&dueDate=${due}`
+                + `&thirdParty=D0136%20%7C%20KOPERASI%20KARYAWAN%20NGK`;
+
+            window.open(url, '_blank');
+        }
+
+
+$(document).on('click', '.generate-invoice-btn', function () {
+    const requestNo = $(this).data('requestno');
+
+    Swal.fire({
+        title: 'Generate Invoice?',
+        text: `For request ${requestNo}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, generate'
+    }).then(result => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '@Url.Action("GenerateInvoiceNumber", "Inventory", new { area = "HC" })',
+                type: 'POST',
+                data: { requestNo: requestNo },
+               success: function (res) {
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Invoice Generated!',
+                            html: `
+                                <p><b>Invoice:</b> ${res.invoiceNumber}</p>
+                                <p><b>Date:</b> ${res.invoiceDate}</p>
+                            `
+                        }).then(() => {
+                            const previewUrl = '@Url.Action("PreviewInvoice", "Inventory", new { area = "HC" })';
+                            window.open(`${previewUrl}?requestNo=${requestNo}`, '_blank');
+
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Failed to generate invoice.', 'error');
+                }
+            });
+        }
+    });
+});
+
+        function populateModalWithItemDetails(item, cartList) {
+            if (!item) {
+                resetItemDetails();
+                return;
+            }
+
+            const itemInCart = cartList.find(cartItem => cartItem.ID === item.ID);
+
+            $('#modalItemId').val(item.ID);
+
+            if (itemInCart) {
+                $('#formModal').data('mode', 'edit');
+                $('#modalCartId').val(itemInCart.CartID);
+                $('#qty').val(itemInCart.Qty).prop('disabled', false);
+                $('#note').val(itemInCart.Note).prop('disabled', false);
+                $('#submitCart').prop('disabled', false);
+                $('#budgetNumber').val(itemInCart.BudgetNumber).trigger('change');
+            } else {
+                $('#formModal').data('mode', 'add');
+                $('#modalCartId').val('');
+                $('#qty').val(1).prop('disabled', false);
+                $('#note').val('').prop('disabled', false);
+                $('#submitCart').prop('disabled', false);
+                $('#budgetNumber').val('').trigger('change');
+            }
+
+            $('#itemName').text(item.Item_Name);
+            $('#qtyStock').text(`${item.Qty} ${item.Unit}`);
+            $('#price').text(`Rp ${item.Price}`);
+
+            let imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150/cccccc/333333?text=No+Image';
+            $('.itemimage').css({
+                'background-image': `url(${imageUrl})`,
+                'background-size': 'cover',
+                'background-position': 'center',
+                'background-color': 'transparent'
+            }).empty();
+
+            if (item.Category_Id === 3) {
+                $('#budgetWrapper').hide();
+                $('#budgetNumber').prop('disabled', true);
+            } else {
+                $('#budgetWrapper').show();
+                $('#budgetNumber').prop('disabled', false);
+                $('#budgetNumber').select2({ placeholder: "-- Select budget number --", allowClear: true });
+            }
+        }
+
+        // Fungsi untuk mengisi sisi kiri modal dengan item dari subkategori yang sama
+        function populateModalWithRelatedItems(items, cartList, editingItemId) {
+            const $mapItemContainer = $('#MapItem');
+            $mapItemContainer.empty();
+
+            if (items.length === 0) {
+                $mapItemContainer.html('<div class="text-sm text-gray-400 w-full text-center">No items found for this subcategory.</div>');
+            } else {
+                let html = '';
+                items.forEach(item => {
+                    const isItemInCart = cartList.some(cartItem => cartItem.ID === item.ID);
+                    const inCartClass = isItemInCart ? 'item-in-cart' : '';
+                    const isEditing = item.ID === editingItemId;
+                    const editingClass = isEditing ? 'border-cyan-700 ring-2 ring-cyan-700' : '';
+
+                    let imageUrl = 'https://placehold.co/150x150';
+
+                    if (item.Image) {
+                        const isFullUrl = item.Image.startsWith('http://') || item.Image.startsWith('https://');
+
+                        imageUrl = isFullUrl ? item.Image : inventoryBasePath + item.Image;
+                    }
+
+                    html += `
+                <div class="item-thumbnail w-32 h-32 p-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition duration-200 ${inCartClass} ${editingClass}"
+                     data-id="${item.ID}"
+                     data-subcategory-id="${item.Subcategory_Id}"
+                     data-item-name="${item.Item_Name}"
+                     data-qty-stock="${item.Qty}"
+                     data-unit="${item.Unit}"
+                     data-category-id="${item.Category_Id}"
+                     data-image="${item.Image ?? ''}">
+
+                    <img class="w-20 h-20 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+
+                    <div class="text-xs font-medium text-gray-700 mt-1 truncate w-full px-1">${item.Item_Name}</div>
+                </div>
+            `;
+                });
+                $mapItemContainer.append(html);
+
+                // Memicu klik pada item yang sedang diedit
+                const $editingItem = $mapItemContainer.find(`.item-thumbnail[data-id="${editingItemId}"]`);
+                if ($editingItem.length > 0) {
+                    $editingItem.trigger('click');
+                }
+            }
+        }
+        // Fungsi untuk mengambil dan menampilkan stempel (stamp)
+function getStamp(requestNo, $child) {
+    $.ajax({
+        url: '@Url.Action("GetStampStatus", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        data: { requestNo: requestNo },
+        success: function (response) {
+            if (!response) return;
+
+            // === Ambil data dari response ===
+            const approvedName = response.ApproveBy;
+            const approvedDate = response.ApproveDate
+                ? moment(parseInt(response.ApproveDate.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')
+                : '-';
+            const checkerName = response.CheckBy;
+            const checkerDate = response.CheckDate
+                ? moment(parseInt(response.CheckDate.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')
+                : '-';
+
+            // === Target tombol ===
+            const $approvalBtn = $child.find('#approvalbtn');
+            const $checkBtn = $child.find('#checkbtn');
+
+            // === CHECK STAMP ===
+            if (checkerName && checkerDate && checkerDate !== '-') {
+                const checkStampHtml = `
+                    <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                         style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${checkerName.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${checkerDate}</p>
+                    </div>`;
+                $checkBtn.html(checkStampHtml)
+                    .prop('disabled', true)
+                    .css({ cursor: 'default', pointerEvents: 'none' })
+                    .off('click');
+            }
+
+            // === APPROVAL STAMP ===
+            if (approvedName && approvedDate && approvedDate !== '-') {
+                const approvalStampHtml = `
+                    <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                         style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${approvedName.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${approvedDate}</p>
+                    </div>`;
+                $approvalBtn.html(approvalStampHtml)
+                    .prop('disabled', true)
+                    .css({ cursor: 'default', pointerEvents: 'none' })
+                    .off('click');
+            }
+        },
+        error: function () {
+            console.error('Gagal ambil data stamp untuk', requestNo);
+        }
+    });
+}
+
+        function clearModal() {
+            $('#qty').val(1).prop('disabled', true);
+            $('#subject').val('');
+            $('#itemName').text('Select an item');
+            $('#qtyStock').text('-');
+            $('#price').text('-');
+            $('#note').val('').prop('disabled', true);
+
+            $('#modalCartId').val('');
+            $('#modalItemId').val('');
+            $('#tempRequestNo').val('');
+            $('#formModal').removeData('mode');
+
+            $('.itemimage').css({
+                'background-image': '',
+                'background-color': ''
+            }).html('<i class="fa-solid fa-image text-4xl"></i>');
+
+            $('#budgetNumber').val(null).trigger('change').prop('disabled', true);
+
+            $('#unbCostCenter').val(null).trigger('change');
+            $('#unbCostWrapper').addClass('hidden');
+            $('#budgetWrapper').show();
+
+            $('#submitCart').prop('disabled', true).html('<i class="fa-solid fa-plus mr-2"></i> Add Item');
+
+            $('#MapItem .item-thumbnail').removeClass('border-cyan-700 ring-2 ring-cyan-700');
+        }
+        function resetItemDetails() {
+            $('#itemName').text('Select an item');
+            $('#qtyStock').text('-');
+            $('#qty').val(1).prop('disabled', true);
+            $('#note').val('').prop('disabled', true);
+            $('#budgetNumber').val('').trigger('change').prop('disabled', true);
+            $('#modalItemId').val('');
+            $('#modalCartId').val('');
+            $('#submitCart').prop('disabled', true);
+            $('.itemimage').css({
+                'background-image': 'none',
+                'background-color': '#e5e7eb'
+            }).html('<i class="fa-solid fa-image text-4xl text-gray-500"></i>');
+            $('#budgetWrapper').show();
+        }
+
+        $(document).ready(function () {
+            const $btn = $(this);
+            $btn.prop('disabled', true).text('Submitting...');
+
+            const usernik = "@ViewBag.UserNik";
+            const username = "@ViewBag.UserName";
+            const deptname = "@ViewBag.DeptName";
+            const divisionName = "@ViewBag.DivName";
+            console.log("divisionName", divisionName)
+            const sectionName = "@ViewBag.SecName";
+
+$(document).on('click', '#submitAccQtyBtn', function () {
+        const $btn = $(this);
+        const $section = $btn.closest('[data-request-no]');
+        const requestNo = $section.data('request-no');
+
+        const originalText = $btn.text();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Submitting...');
+
+        const items = $section.find('.acc-qty-input').map(function () {
+            return {
+                Item_Id: $(this).data('item-id'),
+                Cart_No: $(this).data('cart-no'),
+                Qty_Acc: parseInt($(this).val()) || 0,
+                Request_No: requestNo
+            };
+        }).get();
+
+        if (items.length === 0) {
+            Swal.fire('Warning', 'No items found to submit.', 'warning');
+            $btn.prop('disabled', false).text(originalText);
+            return;
+        }
+
+        // Send the data to the server via AJAX
+        $.ajax({
+            url: '@Url.Action("SubmitAcceptedQuantities", "Inventory", new { area = "HC" })',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(items),
+            success: (res) => {
+                if (res.success) {
+                    Swal.fire('Success', res.message, 'success').then(() => {
+                        // Reload the page or update the table after a successful submission
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire("Error", "Something went wrong. Please try again.", "error");
+            },
+            complete: function () {
+                // Re-enable the button and restore its original text
+                $btn.prop('disabled', false).text(originalText);
+            }
+        });
+    });
+            // Render subcategory cards initially
+            renderItems(subcategoryList, false);
+
+            // Inisialisasi DataTable: History Order
+            const historyTable = $('#itemHistory').DataTable({
+                orderCellsTop: true,
+                order: [[1, 'desc']],
+                responsive: true,
+                autoWidth: true,
+                fixedHeader: true,
+                ajax: {
+                    url: '@Url.Action("GetHistoryByDept", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: { costNames: userCostNames },
+                    dataSrc: ''
+                },
+                columns: [
+                    {
+                        className: 'dt-control',
+                        orderable: false,
+                        data: null,
+                        defaultContent: '',
+                        width: '20px'
+                    },
+                    {
+                        data: 'Timestamps',
+                        className: 'text-start',
+                        title: 'Date',
+                        type: 'date',
+                        render: {
+                            display: function (data) {
+                                if (!data) return '';
+                                // Ubah format string untuk moment.js
+                                return moment(data, "YYYY-MM-DD HH:mm").format("DD MMM YYYY");
+                            },
+                            sort: function (data) {
+                                if (!data) return 0;
+                                return moment(data, "YYYY-MM-DD HH:mm").unix();
+                            }
+                        }
+                    },
+                    {
+                        data: 'Request_No',
+                        title: 'Request No',
+                        render: function (data, type, row) {
+                            if (!data) return '-';
+
+                            if (row.Status === 'Complete' || row.Status === 'E-Voucher Issued' || row.Status === 'Upload File' || row.Status === 'Generated') {
+                                const url = `${previewRequestUrl}?requestNos=${encodeURIComponent(data)}`;
+
+                                return `
+                <a href="${url}" target="_blank" class="text-blue-600 underline hover:opacity-80 font-semibold">
+                    ${data}
+                </a>
+            `;
+                            }
+
+                            return `<span class="text-gray-700">${data}</span>`;
+                        }
+                    },
+                    { data: 'Subject' },
+                    { data: 'User_Name' },
+                    { data: 'Dept_Request' },
+
+//                    {
+//                        data: 'Invoice_Number',
+//                        title: 'Invoice Number',
+//                        render: function (data, type, row) {
+//                            if (!data) return '-';
+
+//                            const url = `${previewInvoiceUrl}?invoiceNo=${encodeURIComponent(data)}`;
+
+//                            return `
+//    <a href="${url}" target="_blank" class="text-blue-600 underline hover:opacity-80 font-semibold">
+//        ${data}
+//    </a>
+//`;
+//                        }
+//                    },
+//                    {
+//                        data: 'Receive_Number',
+//                        title: 'Receive Number',
+//                        render: function (data, type, row) {
+//                            if (!data) return '-';
+
+//                            // Buat URL lengkap dengan parameter
+//                            const url = `${previewPOUrl}?receiveNumber=${encodeURIComponent(data)}`;
+
+//                            return `
+//    <a href="${url}" target="_blank" class="text-blue-600 underline hover:opacity-80">
+//        ${data}
+//    </a>
+//`;
+//                        }
+                    //},
+                    {
+                        data: 'Status',
+                        title: 'Status',
+                        render: function (data, type, row) {
+
+                            if (!data) return '-';
+
+                            let displayText = data;
+
+                            if (data === 'Need to Be Order') {
+                                displayText = 'Need to Be Order';
+                            }
+
+                            if (data === 'Upload File') {
+                                displayText = 'Complete';
+                            }
+                            if (data === 'Generated') {
+                                displayText = 'Complete';
+                            }
+
+                            let extraInfo = '';
+
+                            if (data === 'Ready to Pick' && row.Carts) {
+
+                                const total = row.Carts.length;
+
+                                const checkIsReady = (val) =>
+                                    String(val).toLowerCase() === 'true' || val === 1 || val === true;
+
+                                // READY TO PICK
+                                const readyToPick = row.Carts.filter(x =>
+                                    checkIsReady(x.isReady) &&
+                                    (x.Pick_Date == null || x.Pick_Date === "")
+                                ).length;
+
+                                // PICKED UP
+                                const pickedUp = row.Carts.filter(x =>
+                                    checkIsReady(x.isReady) &&
+                                    x.Pick_Date != null &&
+                                    x.Pick_Date !== ""
+                                ).length;
+
+                                extraInfo = `
+        <div class="text-xs mt-1">
+            <span class="text-orange-700 font-semibold">
+                Ready: ${readyToPick}/${total}
+            </span> |
+            <span class="text-green-700 font-semibold">
+                Picked: ${pickedUp}/${total}
+            </span>
+        </div>
+    `;
+                            }
+
+                            const statusColors = {
+                                'On Order': 'bg-yellow-300 text-yellow-900',
+                                'Rejected': 'bg-red-400 text-white',
+                                'On Prepare': 'bg-blue-400 text-white',
+                                'Pending': 'bg-yellow-500 text-white',
+                                'Ready to Pick': 'bg-orange-400 text-white',
+                                'Complete': 'bg-green-500 text-white',
+                                'Approved': 'bg-purple-500 text-white',
+                                'E-Voucher Issued': 'bg-teal-500 text-white',
+                                'E-Voucher Stamped': 'bg-red-400 text-white',
+                                'Need to Be Order': 'bg-gray-400 text-white',
+                                'Waiting for Check': 'bg-cyan-500 text-white',
+                                'Waiting for Approval': 'bg-slate-500 text-white'
+                            };
+
+                            const colorClass = statusColors[displayText] || 'bg-gray-200 text-gray-800';
+
+                            return `
+        <span class="px-2 py-1 text-sm rounded ${colorClass}">
+            ${displayText}
+        </span>
+        ${extraInfo}
+    `;
+                        }
+                    }
+
+
+                ],
+                initComplete: function () {
+                    const api = this.api();
+                    $('#itemHistory thead tr.search-row input').on('keyup change', function () {
+                        const colIndex = $(this).data('column');
+                        api.column(colIndex).search(this.value).draw();
+                    });
+
+                    $('#itemHistory thead tr.search-row select').on('change', function () {
+                        const colIndex = $(this).data('column');
+                        api.column(colIndex).search(this.value).draw();
+                    });
+                }
+            });
+
+            // Inisialisasi DataTable: Cart
+cartTable = $("#cartTable").DataTable({
+        responsive: true,
+        autoWidth: true,
+        fixedHeader: true,
+        ordering: false,
+        paging: false,
+        info: false,
+        searching: false,
+       ajax: {
+        url: "@Url.Action("GetCartbyUser", "Inventory", new { area = "HC" })",
+        type: 'GET',
+        // Ganti dataSrc: 'carts', menjadi fungsi data:
+        data: function (data) {
+        },
+           dataSrc: function (res) {
+              
+               let totalCartPriceByBudget = {};
+               let categoryName = "";
+
+               if (res.carts && res.carts.length > 0) {
+                   categoryName = res.category || "";
+                   res.carts.forEach(item => {
+                       const budgetNo = item.Budget_No;
+                       const qty = parseFloat(item.Qty_Request) || 0;
+                       const price = parseFloat(item.Price) || 0;
+
+                       totalCartPriceByBudget[budgetNo] =
+                           (totalCartPriceByBudget[budgetNo] || 0) + (qty * price);
+                   });
+
+               }
+               if (categoryName) {
+                   $("#txtCategory").val(categoryName);
+
+               }
+
+               renderBudgetSummary(res.budgets || [], totalCartPriceByBudget);
+
+               return res.carts || [];
+           }
+
+
+    },
+        columns: [
+            { data: null, title: 'No', width: '30px', render: (data, type, row, meta) => meta.row + 1 },
+            {
+                data: 'Item_Name',
+                title: 'Item',
+                render: (data, type, row) => `
+                    <div class="whitespace-normal break-words text-sm font-semibold text-gray-800">${row.Item_Name}</div>
+                    <div class="text-sm text-gray-600">Note: ${(row.Notes && row.Notes.trim() !== '') ? row.Notes : '-'}</div>
+                `
+            },
+            { data: 'Qty', title: 'Qty' },
+            {
+                data: 'Price',
+                title: 'Price',
+                render: function (data) {
+                    return rupiah.format(data);
+                }
+            },
+            {
+                data: null,
+                title: 'Budget',
+                render: (data, type, row) => {
+                    const budgetNo = row.Budget_No || '-';
+                    const budgetDesc = row.Budget_Desc || '-';
+                    const sectionToName = row.Section_To_Name || '-';
+                    return `<div class="flex flex-col leading-tight whitespace-normal break-words">
+                                <span class="font-medium text-gray-800">${budgetNo} | ${sectionToName}</span>
+                                <span class="text-sm text-gray-500">${budgetDesc}</span>
+                            </div>`;
+                }
+            },
+            {
+                data: null,
+                title: '',
+                searchable: false,
+                orderable: false,
+                width: '20px',
+                render: (data, type, row) => `
+                    <button title="Edit" class="btn btn-edit px-1"
+                        data-id="${row.ID}"
+                        data-itemid="${row.Item_Id}"
+                        data-item="${row.Item_Name}"
+                        data-qty="${row.Qty_Request}"
+                        data-budgetno="${row.Budget_No}"
+                        data-note="${row.Notes ?? ''}"
+                        data-budgetdesc="${row.Budget_Desc ?? ''}"
+                        data-cartno="${row.Cart_No}"
+                        data-sectiontoname="${row.Section_To_Name ?? ''}"
+                        data-subcategoryid="${row.Subcategory_Id ?? ''}">
+                        <i class="fa-solid fa-pen text-[14px]" style="color: #F6AA04;"></i>
+                    </button>
+                    <button class="btn btn-delete text-red-500" data-id="${row.ID}" title="Delete">
+                        <i class="fa-solid fa-trash text-[14px]" style="color: #D91F1F;"></i>
+                    </button>`
+            }
+        ],
+        layout: { topStart: null, bottom: null },
+        language: { emptyTable: "No items in the cart." }
+    });
+            // Inisialisasi select2
+            $('#budgetNumber').select2({ placeholder: "-- Select budget number --", allowClear: true });
+
+            // duedate min today
+            const today = new Date().toISOString().split('T')[0];
+            $('#dueDate').attr('min', today);
+
+            // ========================
+            // Event Handlers
+            // ========================
+
+            // Event handler untuk search input
+            $('#itemSearchInput').on('keyup', function() {
+                const searchText = $(this).val();
+                filterAndRenderItems(searchText);
+            });
+
+            // Event untuk membuka modal saat card subkategori diklik
+// Event untuk membuka modal saat card subkategori diklik
+$(document).on('click', '.card-item-subcategory', function () {
+    clearModal();
+    const subcategoryId = $(this).data('id');
+    const subcategoryName = $(this).data('name');
+
+    $('.modal-right-section').addClass('hidden');
+    $('#formModal').removeClass('hidden');
+
+    $.ajax({
+        url: "@Url.Action("GetItemBySubcategory", "Inventory", new { area = "HC" })",
+        type: 'GET',
+        data: { subcategoryId: subcategoryId },
+        success: function (items) {
+            const $mapItemContainer = $('#MapItem');
+            $mapItemContainer.empty();
+            if (items.length === 0) {
+                $mapItemContainer.html('<div class="text-sm text-gray-400 w-full text-center">No items found for this subcategory.</div>');
+            } else {
+                let html = '';
+                items.forEach(item => {
+                    let imageUrl = 'https://placehold.co/150x150';
+
+                    if (item.Image) {
+                        const isFullUrl = item.Image.startsWith('http://') || item.Image.startsWith('https://');
+                        imageUrl = isFullUrl ? item.Image : inventoryBasePath + item.Image;
+                    }
+
+                    html += `
+                        <div class="item-thumbnail w-32 h-32 p-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition duration-200"
+                             data-id="${item.ID}"
+                             data-item-name="${item.Item_Name}"
+                             data-qty-stock="${item.Qty}"
+                             data-unit="${item.Unit}"
+                             data-category-id="${item.Category_Id}"
+                             data-subcategory-id="${item.Subcategory_Id}"
+                             data-image="${item.Image ?? ''}">
+
+                            <img class="w-20 h-20 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+
+                            <div class="text-xs font-medium text-gray-700 mt-1 truncate w-full px-1">${item.Item_Name}</div>
+                        </div>
+                    `;
+                });
+                $mapItemContainer.append(html);
+            }
+            $('.modal-right-section').removeClass('hidden');
+        },
+        error: function () {
+            $('#MapItem').html('<div class="text-sm text-gray-400 w-full text-center text-red-500">Failed to load items for this subcategory.</div>');
+            alert('Failed to fetch subcategory items.');
+        }
+    });
+});
+// Event untuk memilih item thumbnail (dari search atau modal subkategori)
+$(document).on('click', '.item-thumbnail', function () {
+    $('#MapItem .item-thumbnail').removeClass('border-cyan-700 ring-2 ring-cyan-700');
+
+    $(this).addClass('border-cyan-700 ring-2 ring-cyan-700');
+
+    const isInsideModal = $(this).closest('#formModal').length > 0;
+    const itemId = $(this).data('id');
+    const subcategoryId = $(this).data('subcategory-id');
+
+    // Tampilkan state loading
+    if (!isInsideModal) {
+        // Jika dari search, bersihkan dan tampilkan modal
+        clearModal();
+        $('#formModal').removeClass('hidden');
+    }
+    $('.modal-right-section').removeClass('hidden');
+    $('#itemName').text('Loading...');
+    $('#qtyStock').text('...');
+
+
+    $.ajax({
+        url: '@Url.Action("GetItemById", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        data: { id: itemId },
+        success: function (item) {
+            if (item) {
+                // Isi detail item di sisi kanan modal
+                $('#modalItemId').val(item.ID);
+                $('#formModal').data('mode', 'add');
+                $('#modalCartId').val('');
+
+                $('#itemName').text(item.Item_Name);
+                $('#qtyStock').text(`${item.Qty} ${item.Unit}`);
+                $('#price').text(rupiah.format(item.Price));
+                $('#qty').val(1).prop('disabled', false);
+                $('#note').val('').prop('disabled', false);
+                $('#submitCart').prop('disabled', false);
+
+                let imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150/cccccc/333333?text=No+Image';
+                $('.itemimage').css({
+                    'background-image': `url(${imageUrl})`,
+                    'background-size': 'cover',
+                    'background-position': 'center',
+                    'background-color': 'transparent'
+                }).empty();
+
+                if (item.Category_Id === 3) {
+                    $('#budgetWrapper').hide();
+                    $('#budgetNumber').val('UNB').trigger('change').prop('disabled', true);
+                } else {
+                    $('#budgetWrapper').show();
+                    $('#budgetNumber').val('').trigger('change').prop('disabled', false);
+                    $('#budgetNumber').select2({ placeholder: "-- Select budget number --", allowClear: true });
+                }
+
+                if (!isInsideModal) {
+                    // Panggilan AJAX untuk mendapatkan relatedItems
+                    $.ajax({
+                        url: '@Url.Action("GetItemBySubcategory", "Inventory", new { area = "HC" })',
+                        type: 'GET',
+                        data: { subcategoryId: subcategoryId },
+                        success: function (relatedItems) {
+                             const cartItems = cartTable.rows().data().toArray();
+                            populateModalWithRelatedItems(relatedItems, cartItems);
+                        },
+                        error: () => Swal.fire('Error', 'Failed to load related items.', 'error')
+                    });
+                }
+            } else {
+                Swal.fire('Error', 'Item not found.', 'error');
+                $('#formModal').addClass('hidden');
+            }
+        },
+        error: () => {
+            console.error('Gagal ambil data item stock & image.');
+            Swal.fire('Error', 'Failed to load item details.', 'error');
+            $('#formModal').addClass('hidden');
+        }
+    });
+});
+            // Event untuk menutup modal
+            $('#closeModalBtn').on('click', function () {
+                $('#formModal').addClass('hidden');
+                filterAndRenderItems(''); // Render ulang default subcategory view
+            });
+            $(document).on('click', function (e) {
+                if ($(e.target).is('#formModal')) {
+                    $('#formModal').addClass('hidden');
+                    filterAndRenderItems('');
+                }
+            });
+
+            // Event untuk menyimpan atau mengupdate cart
+            $(document).on('click', '#submitCart', function (e) {
+                e.preventDefault();
+                const mode = $('#formModal').data('mode');
+                const cartId = $('#modalCartId').val();
+                const itemId = $('#modalItemId').val();
+                const qtyReq = parseInt($('#qty').val());
+
+                // --- Validasi untuk Select2 ---
+                const budgetNo = $('#budgetNumber').val(); // Ambil nilai (value) yang dipilih
+                if (!budgetNo) {
+                    Swal.fire('Warning', 'Please select a valid Budget Number.', 'warning');
+                    return;
+                }
+
+                const selectedOptionText = $('#budgetNumber option:selected').text();
+                const budgetParts = selectedOptionText.split('|').map(part => part.trim());
+
+                let budgetDesc = budgetParts[2] || '';
+                let sectionToName = budgetParts[1] || '';
+
+                let sectionToCode = "";
+
+                if (budgetNo === 'UNB') {
+                    const isHCGA = (deptname === 'HUMAN CAPITAL' || deptname === 'HRD & GA' || deptname === 'GENERAL AFFAIR' || deptname === 'GA');
+
+                    if (isHCGA) {
+                        const unbVal = $('#unbCostCenter').val();
+                        const unbText = $('#unbCostCenter option:selected').text();
+
+                        if (!unbVal) {
+                            Swal.fire('Warning', 'Please select UNB Cost Center.', 'warning');
+                            return;
+                        }
+
+                        sectionToName = unbText;
+                        sectionToCode = unbVal;
+                    } else {
+                        sectionToName = sectionName; 
+                        sectionToCode = "";
+                    }
+                } else {
+                    sectionToCode = budgetParts[0] || "";
+                }
+
+                // ===== KHUSUS GENERAL AFFAIR + UNB =====
+                if ((deptname === 'GENERAL AFFAIR' || divisionName === 'SALES & MARKETING' || divisionName === 'PRODUCTION') && budgetNo === 'UNB') {
+                    const unbText = $('#unbCostCenter option:selected').text();
+                    const unbVal = $('#unbCostCenter').val();
+
+                    if (!unbVal) {
+                        Swal.fire('Warning', 'Please select UNB Cost Center.', 'warning');
+                        return;
+                    }
+
+                    sectionToName = unbText;
+                }
+
+                const notes = $('#note').val();
+
+                if (qtyReq <= 0 || isNaN(qtyReq)) {
+                    Swal.fire('Warning', 'Please enter a valid quantity.', 'warning');
+                    return;
+                }
+
+                if (mode === 'edit' && cartId) {
+                    $.ajax({
+                        url: "@Url.Action("UpdateCart", "Inventory", new { area = "HC" })",
+                        type: 'POST',
+                        data: {
+                            id: cartId,
+                            User_NIK: usernik,
+                            User_Name: username,
+                            Dept_Name: sectionToName,
+                            Section_Name: sectionName,
+                            Division_Name: divisionName,
+                            Item_Id: itemId,
+                            Qty_Request: qtyReq,
+                            Budget_No: budgetNo,
+                            Budget_Desc: budgetDesc,
+                            Section_To_Name: sectionToName, // Teks (AXCostName)
+                            Section_To_Code: sectionToCode, // ID (AXCostID) <--- TAMBAHKAN INI
+                            Notes: notes
+                        },
+                        success: (res) => {
+                            if (res.success) {
+                                Swal.fire('Updated!', res.message, 'success');
+                                $('#formModal').addClass('hidden');
+                                cartTable.ajax.reload();
+                                clearModal();
+                                filterAndRenderItems('');
+                            } else {
+                                Swal.fire('Error', res.message, 'error');
+                            }
+                        },
+                        error: () => Swal.fire('Error', 'An error occurred while updating the data.', 'error')
+                    });
+                } else {
+                    let existingItemInCart = null;
+                    let existingCartId = null;
+                    let existingQty = 0;
+                    cartTable.rows().every(function () {
+                        const rowData = this.data();
+
+                        const isSameItem = rowData.Item_Id == itemId;
+                        const isSameBudget = rowData.Budget_No == budgetNo;
+
+                        if (budgetNo === 'UNB') {
+                            if (isSameItem && isSameBudget && rowData.Section_To_Name === sectionToName) {
+                                existingItemInCart = rowData;
+                                existingCartId = rowData.ID;
+                                existingQty = parseInt(rowData.Qty_Request);
+                                return false;
+                            }
+                        }
+                        else {
+                            if (isSameItem && isSameBudget) {
+                                existingItemInCart = rowData;
+                                existingCartId = rowData.ID;
+                                existingQty = parseInt(rowData.Qty_Request);
+                                return false;
+                            }
+                        }
+                    });
+
+                    if (existingItemInCart) {
+                        const newQty = existingQty + qtyReq;
+                        $.ajax({
+                            url: "@Url.Action("UpdateCart", "Inventory", new { area = "HC" })",
+                            type: 'POST',
+                            data: {
+                                id: cartId,
+                                User_NIK: usernik,
+                                User_Name: username,
+                                Dept_Name: sectionToName,
+                                Section_Name: sectionName,
+                                Division_Name: divisionName,
+                                Item_Id: itemId,
+                                Qty_Request: qtyReq,
+                                Budget_No: budgetNo,
+                                Budget_Desc: budgetDesc,
+                                Section_To_Name: sectionToName, // Teks (AXCostName)
+                                Section_To_Code: sectionToCode, // ID (AXCostID) <--- TAMBAHKAN INI
+                                Notes: notes
+                            },
+                            success: (res) => {
+                                if (res.success) {
+                                    Swal.fire('Updated!', 'Item quantity has been updated successfully.', 'success');
+                                    $('#formModal').addClass('hidden');
+                                    cartTable.ajax.reload();
+                                    clearModal();
+                                    filterAndRenderItems('');
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            },
+                            error: () => Swal.fire('Error', 'An error occurred while updating the item quantity.', 'error')
+                        });
+                    } else {
+                        $.ajax({
+                            url: "@Url.Action("SaveCart", "Inventory", new { area = "HC" })",
+                            type: 'POST',
+                            data: {
+                                id: cartId,
+                                User_NIK: usernik,
+                                User_Name: username,
+                                Dept_Name: sectionToName,
+                                Section_Name: sectionName,
+                                Division_Name: divisionName,
+                                Item_Id: itemId,
+                                Qty_Request: qtyReq,
+                                Budget_No: budgetNo,
+                                Budget_Desc: budgetDesc,
+                                Section_To_Name: sectionToName, // Teks (AXCostName)
+                                Section_To_Code: sectionToCode, // ID (AXCostID) <--- TAMBAHKAN INI
+                                Notes: notes
+                            },
+                            success: (res) => {
+                                if (res.success) {
+                                    Swal.fire('Success', res.message, 'success');
+                                    $('#formModal').addClass('hidden');
+                                    cartTable.ajax.reload();
+                                    clearModal();
+                                    filterAndRenderItems('');
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            },
+                            error: () => Swal.fire('Error', 'An error occurred while saving the data.', 'error')
+                        });
+                    }
+                }
+            });
+
+            // Function to render thumbnail item (for search results)
+            function renderEditingItemThumbnail(item) {
+                let imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150';
+                return `
+        <div class="item-thumbnail w-32 h-32 p-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-not-allowed border-cyan-700 ring-2 ring-cyan-700"
+             data-id="${item.ID}">
+             <img class="w-20 h-20 z-99 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+             <div class="text-xs font-medium text-gray-700 mt-1 truncate w-full px-1">${item.Item_Name}</div>
+        </div>
+    `;
+            }
+
+            // Event untuk mengedit item di cart
+$(document).on('click', '.btn-edit', function () {
+    clearModal();
+    $('#formModal').data('mode', 'edit');
+
+    const cartId = $(this).data('id');
+    const itemId = $(this).data('itemid');
+    const qty = $(this).data('qty');
+    const budgetNo = $(this).data('budgetno');
+    const note = $(this).data('note');
+    const budgetDesc = $(this).data('budgetdesc');
+    const sectionToName = $(this).data('sectiontoname');
+    const itemName = $(this).data('item');
+
+    $('#modalCartId').val(cartId);
+    $('#modalItemId').val(itemId);
+    $('#qty').val(parseInt(qty)).prop('disabled', false);
+    $('#note').val(note).prop('disabled', false);
+    $('#itemName').text(itemName);
+    $('#submitCart').prop('disabled', false);
+    $('#formModal').removeClass('hidden');
+
+    if (budgetNo === 'UNB') {
+        // 1. Set dropdown budget ke UNB
+        $('#budgetNumber').val('UNB').trigger('change');
+
+        // 2. Load data Cost Center terlebih dahulu, baru lakukan mapping teks
+        loadUnbCostCenter(function() {
+            $('#unbCostCenter option').each(function () {
+                const optionText = $(this).text().trim();
+                // Bandingkan teks option dengan data sectionToName dari tabel
+                if (optionText === sectionToName.trim()) {
+                    $('#unbCostCenter').val($(this).val()).trigger('change');
+                    return false;
+                }
+            });
+        });
+    } else {
+        // Logika budget normal (non-UNB)
+        const optionValue = `${budgetNo} | ${sectionToName} | ${budgetDesc}`;
+        $('#budgetNumber option').each(function () {
+            if ($(this).text().trim() === optionValue.trim()) {
+                $(this).prop('selected', true);
+                return false;
+            }
+        });
+        $('#budgetNumber').trigger('change');
+        $('#unbCostWrapper').addClass('hidden');
+    }
+
+    $('#budgetNumber').prop('disabled', false);
+    // Inisialisasi ulang Select2
+    $('#budgetNumber, #unbCostCenter').select2({ placeholder: "-- Select budget number --", allowClear: true, width: '100%' });
+
+    // Ajax ambil detail item (tetap sama)
+    $.ajax({
+        url: '@Url.Action("GetItemById", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        data: { id: itemId },
+        success: function (item) {
+            if (item) {
+                $('#qtyStock').text(`${item.Qty} ${item.Unit}`);
+                const imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150';
+                $('.itemimage').css({ 'background-image': `url(${imageUrl})`, 'background-size': 'cover', 'background-position': 'center' });
+                $('#MapItem').html(renderEditingItemThumbnail(item));
+                $('.modal-right-section').removeClass('hidden');
+            }
+        }
+    });
+});
+
+$('#budgetNumber').on('change', function () {
+    const selected = $(this).val();
+
+    if ((deptname === 'GENERAL AFFAIR' || divisionName === 'SALES & MARKETING' || divisionName === 'PRODUCTION') && selected === 'UNB') {
+        loadUnbCostCenter();
+    } else {
+        $('#unbCostWrapper').addClass('hidden');
+        $('#unbCostCenter').empty()
+            .append('<option value="" selected disabled>Select section to name</option>');
+    }
+});
+
+function loadUnbCostCenter(callback) {
+    $.ajax({
+        url: '@Url.Action("GetUnbCostCenters", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        success: function (res) {
+            const $select = $('#unbCostCenter');
+            $select.empty().append('<option value="" selected disabled>Select section to name</option>');
+
+            res.forEach(item => {
+                $select.append(`<option value="${item.AXCostID}">${item.AXCostName}</option>`);
+            });
+
+            $('#unbCostWrapper').removeClass('hidden');
+            $select.trigger('change.select2');
+
+            // Jalankan callback jika ada (untuk proses mapping edit)
+            if (typeof callback === "function") {
+                callback();
+            }
+        }
+    });
+}
+            // Event untuk menghapus item dari cart
+            $(document).on('click', '.btn-delete', function () {
+                const cartId = $(this).data('id');
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "Do you want to delete this item?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!',
+                    reverseButtons: true
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "@Url.Action("DeleteCart", "Inventory", new { area="HC" })",
+                            type: 'POST',
+                            data: { id: cartId },
+                            success: (res) => {
+                                if (res.success) {
+                                    Swal.fire('Deleted!', res.message, 'success');
+                                    cartTable.ajax.reload();
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            },
+                            error: () => Swal.fire('Error', 'Error while deleting', 'error')
+                        });
+                    }
+                });
+            });
+
+            // Event untuk submit request
+$(document).on('click', '#submitRequestBtn', function (e) {
+    e.preventDefault();
+
+    const subject = $('#txtCategory').val() || "";
+    const dueDate = $('#dueDate').val();
+    const submitBtn = $(this);
+
+    //// Basic validation
+    if (!subject) {
+        Swal.fire('Warning', 'Please enter a subject', 'warning');
+        return;
+    }
+    if (!dueDate) {
+        Swal.fire('Warning', 'Please select a due date', 'warning');
+        return;
+    }
+
+    const cartData = cartTable.data().toArray();
+
+    if (cartData.length === 0) {
+        Swal.fire('Error', 'Cart is empty. Please add items first.', 'error');
+        return;
+    }
+
+    //const newDeptReq = cartData[0].Section_To_Name;
+    //if (!newDeptReq) {
+    //    Swal.fire('Error', 'Section To Name not found in cart data.', 'error');
+    //    return;
+    //}
+
+    // Loading State
+    submitBtn.prop('disabled', true)
+        .addClass('cursor-not-allowed')
+        .html(`<span class="spinner-border spinner-border-sm"></span> Loading...`);
+
+    // ===========================================================
+    // 1️⃣ GET CART BY USER → ambil requestNo kalau ada
+    // ===========================================================
+    $.ajax({
+        url: '@Url.Action("GetCartbyUser", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        success: function (res) {
+
+            let requestNo = "";
+
+            // Jika cart punya requestNo → pakai itu
+            if (res.carts && res.carts.length > 0) {
+                requestNo = res.carts[0].requestNo || "";
+                category = res.category || "";
+            }
+
+            // Simpan ke hidden input
+            $("#tempRequestNo").val(requestNo);
+            $("#txtCategory").val(category);
+
+            // Ambil kembali dari hidden input (untuk jaga-jaga)
+            const finalRequestNo = $("#tempRequestNo").val();
+
+            // ===========================================================
+            // 2️⃣ SUBMIT REQUEST → kirim requestNo (baru atau lama)
+            // ===========================================================
+            $.ajax({
+                url: '@Url.Action("SaveRequest", "Inventory", new { area = "HC" })',
+                type: 'POST',
+                data: {
+                    subject,
+                    dueDate,
+                    requestNo: finalRequestNo,
+                    userNik: usernik,
+                    userName: username,
+                    deptName: deptname,
+                    deptReq: deptname,
+                },
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Success', res.message, 'success')
+                            .then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Failed processing request.', 'error');
+                },
+                complete: function () {
+                    submitBtn.prop('disabled', false)
+                        .removeClass('cursor-not-allowed')
+                        .text('Submit Request');
+                }
+            });
+        },
+        error: function () {
+            Swal.fire('Error', 'Failed getting user cart (checker/approver/admin).', 'error');
+
+            submitBtn.prop('disabled', false)
+                .removeClass('cursor-not-allowed')
+                .text('Submit Request');    
+        }
+    });
+});
+
+            $('#itemHistory tbody').on('click', 'td.dt-control', function () {
+                const tr = $(this).closest('tr');
+                const row = historyTable.row(tr);
+                const requestNo = row.data().Request_No;
+
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown');
+                } else {
+                    $.ajax({
+                        url: '@Url.Action("GetRequestHistoryDetails", "Inventory", new { area = "HC" })',
+                        type: 'GET',
+                        data: { requestNo },
+                        success: function (detail) {
+                            row.child(formatHistoryDetails(detail)).show();
+                            tr.addClass('shown');
+
+
+                            getStamp(requestNo, row.child());
+                        },
+                        error: () => console.error('Gagal ambil detail request:', requestNo)
+                    });
+                    $.ajax({
+                        url: '@Url.Action("GetInvoiceParams", "Inventory", new { area = "HC" })',
+                        type: 'GET',
+                        data: { requestNo },
+                        success: function (res) {
+                            if (!res) return;
+
+                            const reqKey = requestNo.trim();
+
+                            window._invoiceParams = window._invoiceParams || {};
+                            window._invoiceParams[reqKey] = {
+                                invoiceNo: res.invoiceNumber,
+                                invoiceDate: res.invoiceDate,
+                                dueDate: res.dueDate,
+                                thirdParty: res.thirdParty,
+                                description: res.description,
+                                amount: res.amount,
+                                currency: "IDR",
+                                paymentType: res.paymentType,
+                                sectionTo: res.sectionTo,
+                                details: res.details || []
+                            };
+
+                            console.log("INVOICE STORED:", reqKey, window._invoiceParams[reqKey]);
+                        },
+                        error: function () {
+                            console.error("Failed loading invoice params", requestNo);
+                        }
+                    });
+                }
+            });
+
+            $(document).on('click', '#preparebtn, #checkbtn, #approvalbtn', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                const $btn = $(this);
+                const $span = $btn.find('span');
+                const requestNo = $btn.data('requestno');
+
+                let action, confirmText, confirmTitle;
+                const originalSpanContent = $span.html();
+
+                // PREPARE
+                if (this.id === 'preparebtn') {
+                    action = 'prepare';
+                    confirmTitle = 'Confirm Prepare?';
+                    confirmText = 'Are you sure you want to mark this request as prepared?';
+
+                    Swal.fire({
+                        title: confirmTitle,
+                        text: confirmText,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Yes, Prepare'
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            processAction(action, requestNo, $btn, $span, originalSpanContent, null, null);
+                        }
+                    });
+
+                    return;
+                }
+
+                // CHECK / APPROVE
+                if (this.id === 'checkbtn') {
+                    action = 'check';
+                    confirmTitle = 'Check This Request?';
+                } else {
+                    action = 'approve';
+                    confirmTitle = 'Approve This Request?';
+                }
+
+                Swal.fire({
+                    title: confirmTitle,
+                    text: 'Choose what you want to do',
+                    icon: 'question',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: action === 'check' ? 'Sign' : 'Sign',
+                    denyButtonText: 'Return',
+                    cancelButtonText: 'Reject',
+
+                    confirmButtonColor: '#3085d6',
+                    denyButtonColor: '#f59e0b',
+                    cancelButtonColor: '#d33',
+                }).then(result => {
+
+                    // ===============================
+                    // CONFIRM (check / approve)
+                    // ===============================
+                    if (result.isConfirmed) {
+                        processAction(action, requestNo, $btn, $span, originalSpanContent, null, null);
+                    }
+
+                    // ===============================
+                    // RETURN (with input)
+                    // ===============================
+                    else if (result.isDenied) {
+                        Swal.fire({
+                            title: "Return Request",
+                            input: "text",
+                            inputPlaceholder: "Reason for returning...",
+                            showCancelButton: true,
+                            confirmButtonText: "Submit",
+                        }).then(ret => {
+                            if (ret.isConfirmed && ret.value) {
+                                processAction("return", requestNo, $btn, $span, originalSpanContent, ret.value, null);
+                            }
+                        });
+                    }
+
+                    // ===============================
+                    // REJECT (with input)
+                    // ===============================
+                    else if (result.dismiss === Swal.DismissReason.cancel) {
+
+                        Swal.fire({
+                            title: "Reject Request",
+                            input: "text",
+                            inputPlaceholder: "Reason for rejection...",
+                            showCancelButton: true,
+                            confirmButtonText: "Submit",
+                        }).then(rej => {
+                            if (rej.isConfirmed && rej.value) {
+
+                                // FE menentukan siapa yang reject
+                                const newStatus =
+                                    action === "check"
+                                        ? "Rejected by Checker"
+                                        : "Rejected by Approver";
+
+                                processAction(
+                                    "reject",
+                                    requestNo,
+                                    $btn,
+                                    $span,
+                                    originalSpanContent,
+                                    rej.value,
+                                    newStatus
+                                );
+                            }
+                        });
+                    }
+                });
+            });
+
+            function processAction(action, requestNo, $btn, $span, originalSpanContent, reason, newStatus) {
+
+                $btn.prop('disabled', true).addClass('cursor-not-allowed');
+                $span.html('<div class="spinner-border spinner-border-sm" role="status"></div>');
+
+                $.ajax({
+                    url: '@Url.Action("SaveStampStatus", "Inventory", new { area = "HC" })',
+                    type: 'POST',
+                    data: {
+                        Request_No: requestNo,
+                        Action: action,
+                        Reason: reason || null,
+                        NewStatus: newStatus || null,
+                        User_NIK: usernik,
+                        User_Name: username
+                    },
+                    success: res => {
+                        if (res.success) {
+                            Swal.fire('Success', res.message, 'success')
+                                .then(() => location.reload());
+                        } else {
+                            Swal.fire('Error', res.message, 'error')
+                                .then(() => location.reload());
+                        }
+                    },
+                    error: () => {
+                        Swal.fire('Error', 'Something went wrong.', 'error')
+                            .then(() => location.reload());
+                    }
+                }).always(() => {
+                    $btn.prop('disabled', false).removeClass('cursor-not-allowed');
+                    $span.html(originalSpanContent);
+                });
+            }
+
+
+function getStamp(requestNo, $child) {
+    $.ajax({
+        url: '@Url.Action("GetStampStatus", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        data: { requestNo: requestNo },
+        success: function (response) {
+            if (!response) return;
+
+            const preparedName = response.PrepareBy;
+            const preparedDate = response.PrepareDate
+                ? moment(parseInt(response.PrepareDate.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')
+                : '-';
+
+            // Mengambil data untuk "Checked By"
+            const checkedName = response.CheckedBy;
+            const checkedDate = response.CheckedDate
+                ? moment(parseInt(response.CheckedDate.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')
+                : '-';
+
+            const approvedName = response.ApproveBy;
+            const approvedDate = response.ApproveDate
+                ? moment(parseInt(response.ApproveDate.replace(/[^\d]/g, ''))).format('DD-MM-YYYY')
+                : '-';
+
+            const $prepareBtn = $child.find('#preparebtn');
+            const $checkBtn = $child.find('#checkbtn'); // Target tombol check
+            const $approvalBtn = $child.find('#approvalbtn');
+
+            // Logika untuk tombol Prepare
+            if (preparedName && preparedDate) {
+                const stampHtml = `
+                    <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                         style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${preparedName.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${preparedDate}</p>
+                    </div>`;
+                $prepareBtn.html(stampHtml).prop('disabled', true).css({ cursor: 'default', pointerEvents: 'none' }).off('click');
+                $child.find('#longnameprepared').text(`${preparedName}`).removeClass('hidden');
+
+                // Aktifkan tombol check jika sudah diprepare
+                $checkBtn.prop('disabled', false);
+            } else {
+                // Jika belum diprepare, pastikan tombol check dan approve tetap disabled
+                $checkBtn.prop('disabled', true);
+                $approvalBtn.prop('disabled', true);
+            }
+
+            // Logika untuk tombol Check
+            if (checkedName && checkedDate) {
+                const stampHtml = `
+                    <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                         style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${checkedName.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${checkedDate}</p>
+                    </div>`;
+                $checkBtn.html(stampHtml).prop('disabled', true).css({ cursor: 'default', pointerEvents: 'none' }).off('click');
+
+                // Aktifkan tombol approval jika sudah dicek
+                $approvalBtn.prop('disabled', false);
+            } else {
+                // Jika belum dicek, pastikan approval button tetap disabled
+                $approvalBtn.prop('disabled', true);
+            }
+
+            // Logika untuk tombol Approve
+            if (approvedName && approvedDate) {
+                const stampHtml = `
+                    <div class="flex w-[70px] h-[70px] py-[15px] flex-col items-center gap-[9px] bg-no-repeat bg-center bg-contain select-none pointer-events-none"
+                         style="background-image: url('@Url.Content("~/images/stamp.svg")'); background-size: cover;">
+                        <p class="text-[10px] font-bold text-red-500 leading-[10px] text-center">${approvedName.split(' ')[0]}</p>
+                        <p class="text-[10px] font-normal text-red-500 leading-[10px] text-center">${approvedDate}</p>
+                    </div>`;
+                $approvalBtn.html(stampHtml).prop('disabled', true).css({ cursor: 'default', pointerEvents: 'none' }).off('click');
+            }
+        },
+        error: function () {
+            console.error('Gagal ambil data stamp untuk', requestNo);
+        }
+    });
+            }
+        });
+
+        $('#itemHistory').on('draw.dt', function () {
+            $('#itemHistory td, #itemHistory th')
+                .removeClass('whitespace-nowrap')
+                .addClass('whitespace-normal break-words');
+        });
+
+        // Fungsi untuk merender thumbnail item (untuk hasil pencarian)
+        function renderItemThumbnailSection(category) {
+            let html = `
+        <div class="mb-6">
+            <div class="self-stretch inline-flex flex-col justify-start items-start gap-[5px] mb-2">
+                <div class="self-stretch justify-start text-black text-lg font-bold">${category.CategoryName}</div>
+                <div class="self-stretch h-[1px] p-[2px] bg-cyan-700"></div>
+            </div>
+            <div class="flex flex-wrap gap-4">
+    `;
+
+            if (category.Items.length === 0) {
+                html += `<div class="text-sm text-gray-400">No items available.</div>`;
+            } else {
+                category.Items.forEach(item => {
+                    let imageUrl = item.Image ? (item.Image.startsWith('http') ? item.Image : baseImagePath + item.Image) : 'https://via.placeholder.com/150/cccccc/333333?text=No+Image';
+                    html += `
+                <div class="item-thumbnail w-32 h-32 p-1 bg-white border border-gray-200 rounded-lg shadow-sm flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-100 transition duration-200"
+                     data-id="${item.ID}"
+                     data-subcategory-id="${item.Subcategory_Id}"
+                     data-subcategory-name="${item.Subcategory_Name}"
+                     data-image="${item.Image ?? ''}">
+                    <img class="w-20 h-20 object-contain" src="${imageUrl}" alt="${item.Item_Name}" />
+                    <div class="text-xs font-medium text-gray-700 mt-1 truncate w-full px-1">${item.Item_Name}</div>
+                </div>
+            `;
+                });
+            }
+            html += `</div></div>`;
+            return html;
+        }
+    </script>
+    <script>
+        console.log('@ViewBag.DeptName', "deptname")
+        console.log('@ViewBag.SecName', "secname")
+        var deptList = @Html.Raw(Json.Encode(ViewBag.UserCostNames));
+        console.log("dept list", deptList);
+
+    </script>
+    <script>
+// ================================================================
+    // LOGIC DEEP LINKING: OPEN MODAL DIRECTLY
+    // ================================================================
+
+    // 1. Ambil Request No dari URL
+    function getRequestNoFromUrl() {
+        // Bersihkan slash akhir jika ada
+        const path = window.location.pathname.replace(/\/$/, "");
+        const parts = path.split('/');
+        const lastPart = decodeURIComponent(parts[parts.length - 1]);
+
+        // Cek format REQ-...
+        if (lastPart && lastPart.toUpperCase().startsWith('REQ-')) {
+            return lastPart;
+        }
+        return null;
+    }
+
+    // 2. Fungsi Utama: Load Data & Buka Modal
+function loadAndShowDetailModal(requestNo) {
+        // Tampilkan Modal & Loading State
+        $('#historyDetailModal').removeClass('hidden');
+        $('#historyLoading').removeClass('hidden');
+        $('#historyDataContainer').addClass('hidden').empty();
+
+        const reqKey = requestNo.trim();
+
+        // --- AJAX 1: Get Details (Isi HTML) ---
+        $.ajax({
+            url: '@Url.Action("GetRequestHistoryDetails", "Inventory", new { area = "HC" })',
+            type: 'GET',
+            data: { requestNo: requestNo },
+            success: function (detail) {
+                // LOG DATA RESPON AJAX 1
+                console.log(">>> Response AJAX 1 (Details):", detail);
+
+                if (!detail) {
+                    Swal.fire("Error", "Detail not found for " + requestNo, "error");
+                    $('#historyDetailModal').addClass('hidden');
+                    return;
+                }
+
+                const htmlContent = formatHistoryDetails(detail);
+
+                $('#historyDataContainer').html(htmlContent).removeClass('hidden');
+                $('#historyLoading').addClass('hidden');
+
+                if (typeof getStamp === "function") {
+                    getStamp(requestNo, $('#historyDataContainer'));
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX 1 Error:", error);
+                Swal.fire("Error", "Failed to fetch details.", "error");
+                $('#historyDetailModal').addClass('hidden');
+            }
+        });
+
+        // --- AJAX 2: Get Invoice Params ---
+        $.ajax({
+            url: '@Url.Action("GetInvoiceParams", "Inventory", new { area = "HC" })',
+            type: 'GET',
+            data: { requestNo: requestNo },
+            success: function (res) {
+                // LOG DATA RESPON AJAX 2
+                console.log(">>> Response AJAX 2 (Invoice Params):", res);
+
+                if (!res) return;
+
+                window._invoiceParams = window._invoiceParams || {};
+                window._invoiceParams[reqKey] = {
+                    invoiceNo: res.invoiceNumber,
+                    invoiceDate: res.invoiceDate,
+                    dueDate: res.dueDate,
+                    thirdParty: res.thirdParty,
+                    description: res.description,
+                    amount: res.amount,
+                    currency: "IDR",
+                    paymentType: res.paymentType,
+                    sectionTo: res.sectionTo,
+                    details: res.details || []
+                };
+
+                console.log("Final Saved Params in Window object:", window._invoiceParams[reqKey]);
+            },
+            error: function(xhr, status, error) {
+                console.error("AJAX 2 Error:", error);
+            }
+        });
+    }
+    // 3. Event Listener: Close Modal
+    $('#closeHistoryModalBtn').on('click', function() {
+        $('#historyDetailModal').addClass('hidden');
+
+        // Opsional: Reset URL browser kembali ke bersih
+        // var cleanUrl = '@Url.Action("Inventory", "Inventory", new { area = "HC" })';
+        // window.history.pushState(null, "", cleanUrl);
+    });
+
+    // 4. Eksekusi Deep Link saat Halaman Siap
+    $(document).ready(function() {
+        const reqNo = getRequestNoFromUrl();
+        if (reqNo) {
+            console.log("🚀 Deep link detected. Opening modal for:", reqNo);
+            loadAndShowDetailModal(reqNo);
+        }
+    });
+
+    $('#itemHistory tbody').on('click', 'td.dt-control', function (e) {
+        // Stop default DataTables expand behavior
+        e.preventDefault();
+        e.stopPropagation();
+
+        const tr = $(this).closest('tr');
+        const row = historyTable.row(tr);
+        const data = row.data();
+
+        if (data && data.Request_No) {
+            // Update URL Browser agar bisa dicopy-paste
+            var newUrl = '@Url.Action("Inventory", "Inventory", new { area = "HC" })' + '/' + data.Request_No;
+            window.history.pushState({path: newUrl}, "", newUrl);
+
+            // Buka Modal
+            loadAndShowDetailModal(data.Request_No);
+        }
+    });
+    </script>
+    
+    }
+
+<!-- Header Section -->
+<div class="p-4 mb-2">
+    <div class="flex flex-col space-y-4 sm:space-y-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+            <h1 class="text-2xl font-bold text-gray-50">Request</h1>
+
+        </div>
+    </div>
+</div>
+
+@*BODY*@
+<div class="flex flex-col gap-6">
+
+    @*===== ATAS: LIST ITEM & YOUR CART =====*@
+    <div class="flex flex-col lg:flex-row gap-6">
+        @* KIRI: LIST ITEM *@
+        <div class="w-full lg:w-1/2 bg-white rounded-xl shadow-lg">
+            <div class="px-6 py-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100">
+                <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                    <i class="fas fa-list mr-2 text-blue-600"></i>
+                    List Items
+                </h3>
+            </div>
+            <div class="p-6">
+                <div class="mb-6 relative w-full">
+                    <label for="itemSearchInput" class="sr-only">Search Items</label>
+
+                    <!-- Icon di kiri input -->
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <i class="fas fa-search"></i>
+                    </div>
+
+                    <input type="text" id="itemSearchInput" placeholder="Search items..."
+                           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md
+                  focus:outline-none focus:ring-1 focus:ring-cyan-700"
+                           autocomplete="off" />
+                </div>
+
+
+                <div id="cardContainer" class="flex flex-col"></div>
+            </div>
+
+
+            @* MODAL *@
+            <div id="formModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 overflow-y-auto flex justify-center items-center">
+                <div class="bg-white rounded-[20px] w-full max-w-4xl mx-auto my-12">
+                    <div class="flex gap-8 px-8 py-10">
+                        @* KIRI MODAL *@
+                        <div class="w-2/5 h-[525px] flex flex-shrink-0 flex-col items-center gap-6 border border-gray-200 rounded-lg">
+                            <div id="modalSubcategoryName" class="text-black text-lg font-bold text-center w-full"></div>
+                            <div id="MapItem" class="w-full flex flex-wrap justify-between items-start gap-2 overflow-y-auto px-4">
+                                <div class="text-sm text-gray-400 w-full text-center">Select a subcategory to view items.</div>
+                            </div>
+                        </div>
+
+                        @* KANAN MODAL *@
+                        <div class="w-3/5 flex flex-col gap-2 modal-right-section">
+                            <div class="itemimage w-40 h-40 object-contain rounded self-center mb-4 bg-gray-200 flex items-center justify-center text-gray-500">
+                                <i class="fa-solid fa-image text-4xl"></i>
+                            </div>
+                            <div id="itemName" class="text-black text-lg font-bold">Select an item</div>
+                            <div>
+                                <span class="text-black text-md font-normal">Stock Available: </span>
+                                <span id="qtyStock" class="text-cyan-700 text-md font-bold">-</span>
+                            </div>
+                            <div>
+                                <span class="text-black text-md font-normal">Price: </span>
+                                <span id="price" class="text-cyan-700 text-md font-bold">-</span>
+                            </div>
+
+                            <div class="flex items-center gap-4">
+                                <label for="qty" class="text-black text-md font-normal m-0">Qty</label>
+                                <input type="number" id="qty" name="qty" class="w-24 h-8 px-2 rounded border border-gray-300 text-sm" min="1" value="1" disabled>
+                            </div>
+
+                            <div id="budgetWrapper" class="flex flex-col gap-1">
+                                <label for="budgetNumber" class="text-black text-md font-normal">Budget Number</label>
+                                <select id="budgetNumber" name="budgetNumber" class="select2 w-full h-9 rounded-[10px] border border-gray-300 text-md" disabled>
+                                    <option value="" selected disabled hidden>Select Budget Number...</option>
+                                    <option value="UNB">UNB</option>
+                                    @foreach (var budget in ViewBag.Budget)
+                                    {
+                                        <option value="@budget.Budget_No">@budget.Budget_No | @budget.Section_To_Name | @budget.Description</option>
+                                    }
+                                </select>
+                            </div>
+                            <div id="unbCostWrapper" class="flex flex-col gap-1 hidden mt-2">
+                                <label class="text-black text-md font-normal">Section to Name</label>
+                                <select id="unbCostCenter"
+                                        class="select2 w-full h-9 rounded-[10px] border border-gray-300 text-md">
+                                    <option value="" selected disabled>Select section to name</option>
+                                </select>
+                            </div>
+
+
+                            <div class="flex flex-col gap-1">
+                                <label for="note" class="text-black text-md font-normal">Note</label>
+                                <textarea id="note" name="note" rows="4"
+                                          class="w-full rounded-sm resize-none border border-gray-300 p-2 text-md text-gray-800"
+                                          placeholder="Write your note..." disabled></textarea>
+                            </div>
+
+                            <input type="hidden" id="modalItemId" name="modalItemId" />
+                            <input type="hidden" id="modalCartId" value="" />
+                            <input type="hidden" id="tempRequestNo" value="" />
+
+                            <div class="flex justify-end">
+                                <button id="submitCart" type="submit"
+                                        class="btn btn-primary px-6 py-2 rounded-sm text-white text-sm font-bold"
+                                        disabled>
+                                    <i class="fa-solid fa-plus mr-2"></i>
+                                    Add Item
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* KANAN: YOUR CART *@
+        <div class="w-full lg:w-1/2 flex flex-col gap-4 rounded-xl">
+            <div class="bg-white rounded-xl shadow-lg h-fit">
+                <div class="px-6 py-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                        <i class="fas fa-cart-shopping mr-2 text-blue-600"></i>
+                        Your Cart
+                    </h3>
+                </div>
+                <div id="cartTablesContainer"></div>
+                <div class="overflow-x-auto p-4 rounded-sm">
+                    <div class="flex items-end gap-4 mx-2 mb-2">
+                        <div class="flex flex-col">
+                            <label for="dueDate" class="text-sm font-semibold text-gray-700 mb-1">Due Date</label>
+                            <input id="dueDate" type="date"
+                                   class="w-48 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-cyan-700" />
+                        </div>
+                        @*<div class="flex flex-col flex-1">
+            <label class="text-sm font-semibold text-gray-700 mb-2">
+                Stationery / Refreshment
+            </label>
+
+            <div class="flex gap-6">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio"
+                           id="subjectStationery" name="subject"
+                           value="Stationery"
+                           class="w-4 h-4 text-cyan-700 border-gray-300 focus:ring-cyan-700" />
+                    <span class="text-sm text-gray-700">Stationery</span>
+                </label>
+
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio"
+                           id="subjectRefreshment" name="subject"
+                           value="Refreshment"
+                           class="w-4 h-4 text-cyan-700 border-gray-300 focus:ring-cyan-700" />
+                    <span class="text-sm text-gray-700">Refreshment</span>
+                </label>
+            </div>
+        </div>*@
+                        <div class="flex flex-col flex-1">
+                            <label for="txtCategory" class="text-sm font-semibold text-gray-700 mb-2">
+                                Stationery / Refreshment
+                            </label>
+                            <input type="text"
+                                   id="txtCategory"
+                                   name="subject"
+                                   readonly
+                                   class="w-full px-3 py-2 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-md focus:outline-none cursor-not-allowed" />
+                        </div>
+
+
+                    </div>
+                    <div class="mx-2">
+                        <table id="cartTable" class="stripe hover w-full text-sm"></table>
+                    </div>
+                    <div id="budgetSummary" class="mx-2 mt-4 border-t pt-4 space-y-3"></div>
+
+
+                    <div class="p-2">
+                        <button id="submitRequestBtn" type="submit"
+                                class="w-full py-2 bg-gray-800 hover:bg-black text-white rounded-xl font-bold transition-all shadow-lg flex justify-center items-center gap-2">
+                            SUBMIT REQUEST <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @*===== BAWAH: YOUR ORDERS (FULL WIDTH) =====*@
+    <div class="w-full bg-white rounded-xl shadow-lg h-fit">
+        <div class="px-6 py-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-receipt mr-2 text-blue-600"></i>
+                Your Orders
+            </h3>
+        </div>
+        <div class="overflow-x-auto  p-4 rounded-sm">
+            <table id="itemHistory" class="hover w-full text-sm whitespace-normal">
+                <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+                    <tr class="bg-gray-50">
+                        <th></th>
+                        <th class="py-2 px-3">Date</th>
+                        <th class="py-2 px-3">Request No</th>
+                        <th class="py-2 px-3">Subject</th>
+                        <th class="py-2 px-3">Requestor</th>
+                        <th class="py-2 px-3">Dept</th>
+                        @*<th class="py-2 px-3">Invoice Number</th>
+                        <th class="py-2 px-3">Receive Number</th>*@
+                        <th class="py-2 px-3">Status</th>
+                    </tr>
+                    <tr class="search-row caret-cyan-700">
+                        <th></th>
+                        <th><input data-column="1" placeholder="Search Date" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        <th><input data-column="2" placeholder="Search Request No" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        <th><input data-column="3" placeholder="Search Subject" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        <th><input data-column="4" placeholder="Search Requestor" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        <th><input data-column="5" placeholder="Search Department" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        @*<th><input data-column="6" placeholder="Search Invoice Number" class="w-full p-2 border rounded caret-cyan-700"></th>
+                        <th><input data-column="7" placeholder="Search Receive Number" class="w-full p-2 border rounded caret-cyan-700"></th>*@
+                        <th>
+                            <select data-column="6" class="w-full text-gray-500 p-2 border rounded">
+                                <option class="text-gray-600" value="">-- Select Status --</option>
+                                <option class="text-black" value="Pending">Pending</option>
+                                <option class="text-black" value="Waiting for Check">Waiting for Check</option>
+                                <option class="text-black" value="Waiting for Approval">Waiting for Approval</option>
+                                <option class="text-black" value="Approved">Approved</option>
+                                <option class="text-black" value="Ready to Pick">Ready to Pick</option>
+                                <option class="text-black" value="Complete">Complete</option>
+                                @*<option class="text-black" value="E-Voucher Issued">E-Voucher Issued</option>
+        <option class="text-black" value="E-Voucher Stamped">E-Voucher Stamped</option>*@
+                            </select>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <div id="historyDetailModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 overflow-y-auto flex justify-center items-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 my-8 transform transition-all">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-file-invoice mr-2 text-cyan-700"></i> Request Detail
+            </h3>
+            <button id="closeHistoryModalBtn" onclick="$('#historyDetailModal').addClass('hidden')" class="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div id="historyDetailContent" class="p-6 max-h-[80vh] overflow-y-auto">
+            <div id="historyLoading" class="flex flex-col items-center justify-center py-10">
+                <div class="spinner-border text-cyan-700 mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                <span class="text-gray-500 font-medium">Loading request details...</span>
+            </div>
+            
+            <div id="historyDataContainer" class="hidden">
+                </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex justify-end">
+            <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition" onclick="$('#historyDetailModal').addClass('hidden')">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+<div id="historyDetailModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 overflow-y-auto flex justify-center items-center backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 my-8 transform transition-all">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-file-invoice mr-2 text-cyan-700"></i> Request Detail
+            </h3>
+            <button id="closeHistoryModalBtn" class="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+        </div>
+
+        <div id="historyDetailContent" class="p-6 max-h-[80vh] overflow-y-auto">
+            <div id="historyLoading" class="flex flex-col items-center justify-center py-10">
+                <div class="spinner-border text-cyan-700 mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                <span class="text-gray-500 font-medium">Loading request details...</span>
+            </div>
+
+            <div id="historyDataContainer" class="hidden">
+            </div>
+        </div>
+
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-xl flex justify-end">
+            <button class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition" onclick="$('#historyDetailModal').addClass('hidden')">
+                Close
+            </button>
+        </div>
+    </div>
+</div>

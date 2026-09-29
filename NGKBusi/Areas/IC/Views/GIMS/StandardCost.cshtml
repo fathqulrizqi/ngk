@@ -1,0 +1,112 @@
+﻿
+@{
+    ViewBag.Title = "StandardCost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/handsontable/handsontable.full.min.css")" rel="stylesheet" />
+    <style type="text/css">
+
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/handsontable/handsontable.full.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($(".tblGIMSSTDCost").length > 0) {
+                $(".tblGIMSSTDCost").tablesorter({
+                    theme: "bootstrap",
+                    widthFixed: true,
+                    widgets: ["filter", "columns", "stickyHeaders","zebra"],
+                    widgetOptions: {
+                        columns: ["primary", "secondary", "tertiary"],
+                        filter_cssFilter: [
+                            'form-control',
+                            'form-control',
+                            'form-control',
+                            'form-control'
+                        ], filter_defaultFilter: {
+                        }
+                    }
+                }).tablesorterPager({
+                    cssGoto: '.pagenum',
+                    container: $(".ts-pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: '10'
+                });
+            }
+
+
+            $(".cbGIMSSelectAll").change(function () {
+                if ($(this).is(":checked") == true) {
+                    $(".cbGIMSSelectItem:visible").prop("checked", $(this).is(":checked"));
+                } else {
+                    $(".cbGIMSSelectItem").prop("checked", $(this).is(":checked"));
+                }
+                $(".cbGIMSSelectItem").change();
+            });
+        });
+    </script>
+}
+
+<h2>StandardCost</h2>
+
+<table class="tblGIMSSTDCost">
+    <thead>
+        <tr>
+            <th class="align-middle sorter-false filter-false">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input cbGIMSSelectAll">
+                </div>
+            </th>
+            <th>Item</th>
+            <th>Site</th>
+            <th>STD Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.STDList)
+        {
+            <tr>
+                <td width="25px" class="text-center">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input cbGIMSSelectItem">
+                    </div>
+                </td>
+                <td>@data.Q2</td>
+                <td>BNGK</td>
+                <td>@(double.Parse(data.Standard_Cost_Price).ToString("N0"))</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="4" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>

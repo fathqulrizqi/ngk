@@ -1,0 +1,264 @@
+﻿@{
+    ViewBag.Title = "ViewPrint";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section scriptHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+    <style>
+        .main-barcode, .hanko-barcode {
+            width: 100%;
+            height: auto;
+        }
+
+        td {
+            padding: 0;
+        }
+
+        @@media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            #qr-info {
+                display: none !important;
+            }
+            /* Menambahkan class untuk memisahkan halaman saat dicetak */
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+}
+
+@{
+    var data = ViewBag.Data as NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_History;
+
+    // Tangkap data detail
+    var details = ViewBag.Details as List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_History_Detail> ?? new List<NGKBusi.Areas.Production.Models.Production_Assembly_QrSparkPlug_History_Detail>();
+
+    // Cek apakah detail kosong (data lama yang belum pakai fitur sequence)
+    bool isDetailEmpty = details.Count == 0;
+
+    // Buat QR Teks Manual untuk berjaga-jaga jika QR_Header dari database kosong (data lama)
+    string generatedFallbackQr = $"{data.Part_No}|1202402|{data.Qty}|{data.Lot_No}";
+    string displayHeaderQrInfo = !string.IsNullOrEmpty(data.QR_Header) ? data.QR_Header : generatedFallbackQr;
+
+    // Menghitung berapa banyak halaman (1 halaman = 16 item)
+    // Jika detail kosong, paksa totalChunks menjadi 1 agar template halaman depan tetap muncul
+    int totalChunks = isDetailEmpty ? 1 : (int)Math.Ceiling(details.Count / 16.0);
+}
+
+<body class="bg-gray-50 flex flex-col justify-content-center align-items-center">
+
+    <!-- Tombol diletakkan DI LUAR area print agar layout fisik kertas tidak terganggu -->
+    <div class="text-center mb-3 mt-4 flex justify-center gap-4">
+        <a href="@Url.Action("Index", "AssemblyQrSparkPlug")" id="back-button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow-lg no-underline hover:no-underline">
+            ⬅️ Kembali
+        </a>
+
+        <button id="print-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg">
+            🖨️ Cetak Label
+        </button>
+    </div>
+
+    <!-- Info diletakkan DI LUAR area kertas print -->
+    <div class="mb-3 text-center" id="qr-info">
+        <p class="text-lg bg-yellow-100 p-2 rounded inline-block">
+            Information QR: <b>@(displayHeaderQrInfo)</b>
+        </p>
+    </div>
+
+    <!-- Wrapper utama untuk area print -->
+    <div id="print-area" class="flex flex-col gap-8 align-items-center mb-5">
+
+        @for (int c = 0; c < totalChunks; c++)
+        {
+            // Ambil 16 item untuk halaman (chunk) saat ini jika ada detail
+            var chunkDetails = isDetailEmpty ? null : details.Skip(c * 16).Take(16).ToList();
+
+            <!-- ================= PAGE DEPAN (GANJIL) ================= -->
+            <div class="page bg-white border shadow-lg flex flex-col m-0 @(c > 0 ? "page-break" : "")" style="width: 29.7cm; height: 21cm; padding: 1.2cm; box-sizing: border-box;">
+                <div class="flex flex-wrap h-[100%] border" style="border-color: black !important;">
+                    @for (int i = 0; i < 16; i++)
+                    {
+                        // Kondisi kotak dirender: Jika detail kosong (render semua 16 box) ATAU jika ada datanya di chunkDetails
+                        bool shouldRenderBox = isDetailEmpty || (chunkDetails != null && i < chunkDetails.Count);
+
+                        <div class="col-3 h-[25%] border p-1" style="border-color: black !important; box-sizing: border-box;">
+                            @if (shouldRenderBox)
+                            {
+                                // Jika detail kosong, abaikan QR_Header database dan paksakan format generate manual
+                                string qrTextValue = isDetailEmpty ? generatedFallbackQr : chunkDetails[i].QR_Header;
+
+                                <div class="border border-black h-100 p-2 relative" style="border-color: black !important;">
+                                    <table>
+                                        <colgroup>
+                                            <col class="w-[28.3%]">
+                                            <col class="w-[0.2%]">
+                                            <col class="w-[19%]">
+                                            <col class="w-[23.5%]">
+                                            <col class="w-[29%]">
+                                        </colgroup>
+                                        <tbody class="font-bold" style="font-size:9px">
+                                            <tr>
+                                                <td class="pr-1">Type</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="px-1"></td>
+                                                <!-- Container QR disisipkan data-qr-text berisi QR_Header / Fallback saja -->
+                                                <td rowspan="5" class="pl-2 qrcode-container" data-qr-text="@qrTextValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1">Part No</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.Part_No)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1">Part Name</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.Part_Name)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1">Quantity</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.Qty) Pcs</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1">No.Lot Prod</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.Lot_No)</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1" style="font-size:9px;">Tgl Inspection</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="3" class="border-b border-dotted border-black" style="font-size:8.5px;">
+                                                    @if (data.Tgl_Inspection.HasValue)
+                                                    {
+                                                        @data.Tgl_Inspection.Value.ToString("dd/MM/yyyy")
+                                                    }
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1" style="font-size:9px;">Tgl Kirim</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="3" class="border-b border-dotted border-black"></td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="5" style="font-size:8.5px;">S/C : PT. NITERRA MOBILITY INDONESIA</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1" style="font-size:9px;">No. IRD</td>
+                                                <td class="px-1">:</td>
+                                                <td class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.IRD_No)</td>
+                                                <td colspan="2"></td>
+                                            </tr>
+                                            <tr>
+                                                <td class="pr-1" style="font-size:9px;">Inspector</td>
+                                                <td class="px-1">:</td>
+                                                <td colspan="2" class="border-b border-dotted border-black" style="font-size:8.5px;">@(data.Inspector)</td>
+                                                <td></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="w-[22%] h-[35%] top-[62%] right-[3%] absolute rounded-full border !border-dashed bg-white flex items-center justify-center" style="border-color: black !important;">
+                                        <span><b>OK</b></span>
+                                    </div>
+
+                                    
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ================= PAGE BELAKANG (GENAP) - HANYA MUNCUL JIKA DETAIL TIDAK KOSONG ================= -->
+            if (!isDetailEmpty)
+            {
+                <div class="page bg-white border shadow-lg m-0 page-break" style="width: 29.7cm; height: 21cm; padding: 1.2cm; box-sizing: border-box; page-break-before: always;">
+                    <div class="flex flex-wrap h-[100%] border" style="border-color: black !important;">
+                        @for (int i = 0; i < 16; i++)
+                        {
+                            // LOGIKA MIRRORING TOTAL / DIAGONAL
+                            int mappedIndex = 15 - i;
+
+                            var mirroredItem = mappedIndex < chunkDetails.Count ? chunkDetails[mappedIndex] : null;
+
+                            <div class="col-3 h-[25%] border p-1" style="border-color: black !important; box-sizing: border-box;">
+                                <div class="border border-black h-100 p-2 flex justify-center items-center relative" style="border-color: black !important; height: 100%;">
+                                    @if (mirroredItem != null)
+                                    {
+                                        <!-- Container QR disisipkan data-qr-text berisi FULL QR (QR_String) -->
+                                        <div class="qrcode-page2-container" data-qr-text="@mirroredItem.QR_String"></div>
+
+                                        <!-- Hanya untuk bantuan visual saat Anda nge-cek di layar (Bisa dihapus nanti) -->
+                                        <div class="absolute bottom-1 right-2 text-gray-400" style="font-size: 7px;">Seq: @mirroredItem.Sequence_No</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+
+    </div>
+
+    @section scripts {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+
+                var qrCodeContainers = document.querySelectorAll('.qrcode-container');
+                var qrCodePage2Containers = document.querySelectorAll('.qrcode-page2-container');
+
+                // Render QR Code untuk Halaman 1 (Ganjil) - Data diambil dari atribut
+                qrCodeContainers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        container.innerHTML = "";
+                        new QRCode(container, {
+                            text: textQr,
+                            width: 81,
+                            height: 81,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                });
+
+                // Render QR Code untuk Halaman 2 (Genap) - Data (sudah plus sequence) diambil dari atribut
+                qrCodePage2Containers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        container.innerHTML = "";
+                        new QRCode(container, {
+                            text: textQr,
+                            width: 90,
+                            height: 90,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                });
+
+                // Target print mencakup #print-area (semua halaman)
+                $('#print-button').on('click', function () {
+                    $('#print-area').printThis({
+                        importCSS: true,
+                        importStyle: true,
+                        loadCSS: "",
+                        pageTitle: "Parts Contents Card",
+                    });
+                });
+            });
+        </script>
+    }
+</body>

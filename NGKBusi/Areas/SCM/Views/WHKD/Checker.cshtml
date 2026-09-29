@@ -1,0 +1,328 @@
+﻿
+@{
+    ViewBag.Title = "Checker";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.css")" rel="stylesheet">
+<link href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet" />
+
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+<!-- X-Editable CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-editable/1.5.1/css/bootstrap-editable.css">
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="@Url.Content("~/Content/bootstrap-table/bootstrap-table.min.js")"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+
+<!-- X-Editable JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-editable/1.5.1/js/bootstrap-editable.min.js"></script>
+
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+@section cssHead{
+    <style type="text/css">
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card .maincard {
+            text-align: left;
+            box-shadow: 0 5px 5px rgba(0,0,0,.2);
+        }
+
+        .card .card-header {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: medium;
+            box-shadow: inherit;
+        }
+
+        #txtQuantity-error {
+            font-size: 18px;
+        }
+
+        .boxInfo {
+            font-size: 36px;
+            text-align: center
+        }
+
+            .boxInfo[readonly] {
+                background-color: white;
+                border: 1px solid #ffffff;
+            }
+
+        .text-danger {
+            color: #dc3545
+        }
+        .text-success {
+            color: #28a745
+        }
+        .form-group {
+            margin-bottom: 0.2rem;
+        }
+        .bg-blue {
+            background: #8ac3ff;
+        }
+            .bg-blue[readonly] {
+                background: #8ac3ff;
+                border-color: #8ac3ff;
+            }
+
+            .label-card {
+                font-size:16px;
+            }
+    </style>
+}
+<div class="row">
+    <div class="col-lg-12">
+        <a href="@Url.Action("CheckerData", "WHKD", new { area = "SCM" })" class="btn btn-primary"><i class="fa fa-arrow-circle-left"></i> Back to List</a>
+    </div>
+</div>
+<div class="row mt-2">
+    <div class="col-sm-12">
+        <div class="row">
+            <div class="col-lg-3 col-md-6 col-sm-6">
+                <form action="@Url.Action("AddRequestList", "Sparepart", new { area = "SCM" })" id="formRequestList" name="formAddItem">
+                    <div class="card">
+                        <div class="card-body">
+                            <input type="hidden" name="userRequest" value="" />
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="selItem" class="label-card">No Trans</label>
+                                    <input type="text" name="HItemNo" class="form-control boxInfo" value="@(ViewBag.Header.NoTrans)" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-1">
+                        <div class="card-body border-primary">
+                            <input type="hidden" name="userRequest" value="" />
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="selItem" class="label-card">Sending Card Item</label>
+                                    <input type="text" name="HItemNo" class="form-control boxInfo" value="@(ViewBag.Header.SendingCard)" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-1">
+                        <div class="card-body">
+
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="selItem" class="label-card">Quantity Request</label>
+                                    <input type="text" name="HQty" class="form-control boxInfo" value="@(ViewBag.Header.TotalQuantity)" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-1">
+                        <div class="card-body">
+
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="selItem" class="label-card">Total Box</label>
+                                    <input type="text" name="" id="TotalBox" class="form-control boxInfo" value="" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card mt-1">
+                        <div class="card-body">
+
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+                                    <label for="selItem" class="label-card">Total Quantity Box</label>
+                                    <input type="text" name="" id="TotalQtyBox" class="form-control boxInfo" value="" readonly />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-lg-9 col-md-12 col-sm-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="@Url.Action("AddScanBox", "WHKD", new { area = "SCM" })" id="formAddItem" name="formAddItem">
+                            <input type="hidden" name="Notrans" value="@(ViewBag.Header.NoTrans)" />
+                            <input type="hidden" name="CheckerID" value="@(ViewBag.Header.ID)" />
+                            <div class="form-row">
+                                <div class="form-group col-md-12">
+
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-md-4 col-lg-2">
+                                    <label for="selItem">Quantity per Box</label>
+                                    <input type="number" name="Quantity" id="tQty" class="form-control" min="0" />
+                                </div>
+                                <div class="form-group col-md-4 col-lg-6">
+                                    <label for="selItem">Scan Box</label>
+                                    <input type="text" name="tCheckSendingCard" class="form-control" placeholder="click here to scan box" id="tScanInput" />
+                                </div>
+                                <div class="form-group col-md-4 col-lg-4">
+                                    <label for="selItem">Item No</label>
+                                    <input type="text" name="ScanItem" id="tItemNo" class="form-control" readonly />
+                                </div>
+                            </div>
+                        </form>
+                        <table id="fresh-table"
+                               data-height="660"
+                               data-toolbar="#toolbar"
+                               data-click-to-select="true"
+                               data-ajax="ajaxRequest"
+                               data-query-params="queryParams"
+                               data-row-style="rowStyle"
+                               data-click-to-edit="true"
+                               data-editable-emptytext="Klik untuk edit"
+                               class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th data-field="No">#</th>
+                                    <th data-field="ScanItem">Box Item</th>
+                                    <th data-field="Quantity" class="editable">Quantity</th>
+                                    <th data-field="btnAction" data-width="10"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var $process = $('#process');
+    var $table = $('#fresh-table');
+
+    $(function () {
+        $('#fresh-table').bootstrapTable({
+            exportDataType: "all",
+            exportTypes: ['excel', 'pdf'],
+            buttonsClass: 'primary',
+        })
+    });
+
+    $(document).ready(function () {
+        $('#tQty').focus();
+        $('#tScanInput').on('keypress', function (e) {
+            if (e.which === 13) {
+                let scannedText = $(this).val().trim();
+                let extractedText = extractCode(scannedText);
+                $('#tItemNo').val(extractedText);
+                saveBox();
+                $('#tScanInput').val("").focus();
+
+            } else {
+
+            }
+
+        });
+
+        $('.editable').editable();
+
+    });
+    $(document).on('click', "#btnDeleteItem", function (e) {
+        var id = $(this).data('id');
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("DeleteItemBox", "WHKD", new { area = "SCM" })",
+            dataType: 'json',
+            data: { Id: id },
+            success: function (json) {
+                if (json.status == 1) {
+                    $('#fresh-table').bootstrapTable('refresh');
+                    toastr.options.positionClass = 'toast-top-right';
+                    toastr.success(json.msg);
+                } else {
+                    toastr.error(json.msg);
+                }
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+
+    });
+    function extractCode(scannedText) {
+        if (!scannedText || scannedText.length < 188) {
+            return "Tidak ditemukan " + scannedText.length;
+        }
+        let match = scannedText.substring(188).split(' ')[0];
+        return match ? match : "Tidak ditemukan / gagal";
+    }
+
+    function saveBox() {
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("AddScanBox", "WHKD", new { area = "SCM" })",
+            dataType: 'json',
+            data: $('#formAddItem').serialize(),
+            success: function (items) {
+                // Clear scan input
+                $('#tScanInput').val("").focus();
+                $('#fresh-table').bootstrapTable('refresh');
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+
+    function queryParams(params) {
+
+        return params;
+    }
+
+    function ajaxRequest(params) {
+        var RequestNo = "@(ViewBag.Header.ID)";
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("GetCheckerDetailBox", "WHKD", new { area = "SCM"})",
+            dataType: 'json',
+            data: {
+                ID:@ViewBag.Header.ID
+                },
+            success: function (items) {
+                $('#TotalQtyBox').removeClass("text-danger text-success");
+                $('#TotalQtyBox').val(items.count);
+                $('#TotalBox').val(items.checkerList.length);
+                var qtySendingCard = @ViewBag.Header.TotalQuantity;
+                if (items.count > qtySendingCard)
+                { $('#TotalQtyBox').addClass("text-danger"); }
+                else if (items.count == qtySendingCard) { $('#TotalQtyBox').addClass("text-success"); }
+                else { $('#TotalQtyBox').removeClass("text-danger"); }
+                params.success({
+                    rows: items.checkerList
+                }, null);
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+    // Fungsi untuk memberi warna hanya jika age = 1
+    function rowStyle(row, index) {
+        if (row.ScanItem !== "@ViewBag.Header.SendingCard") {
+            return { classes: 'table-danger' }; // Baris merah jika age = 1
+        }
+        return {}; // Tanpa warna untuk selain age = 1
+    }
+</script>

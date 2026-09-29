@@ -1,0 +1,69 @@
+﻿
+@{
+    ViewBag.Title = "WorkingDay";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Year;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Scripts/jexcel/dist/css/jquery.jexcel.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        #divWorkingDayWrapper {
+            position: relative;
+        }
+
+        #divWorkingDay {
+            margin-left: 150px;
+            overflow-x: scroll;
+            overflow-y: visible;
+            padding-bottom: 5px;
+        }
+            #divWorkingDay table td {
+                height:31px;
+            }
+
+            #divWorkingDay table .c0, #divWorkingDay table thead #col-0 {
+                left: 30px;
+                position: absolute;
+                top: auto;
+                width: 120px;
+            }
+
+            #divWorkingDay table thead td.jexcel_label, #divWorkingDay table tbody td.jexcel_label {
+                left: 0;
+                position: absolute;
+                top: auto;
+                width: 30px;
+            }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/jquery.jexcel.js")"></script>
+    <script src="@Url.Content("~/Scripts/jexcel/dist/js/jquery.csv.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/jquery.mask.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/WorkingDay.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    Working Day
+    <button id="btnLCWorkingDaySave" class="btn btn-success" title="Upload">Save</button>
+    <input type="file" name="iLCUpload" id="fileLCUpload" style="display:none;" />
+</h2>
+<form action="@Url.Action("WorkingDay", "LaborCost", new { area = "FA" })" method="post">
+    <select id="selLCWorkingDayPeriod" name="iLCWorkingDayPeriod" class="form-control selLCWorkingDayPeriod" style="width:125px; display:inline-block;">
+        @for (var z = beginYear; z <= endYear; z++)
+        {
+            <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+        }
+    </select>    
+    <button type="submit" id="btnLCWorkingDay" style="display:none;">Submit</button>
+</form>
+<div id="divWorkingDayWrapper">
+    <div id="divWorkingDay"></div>
+</div>

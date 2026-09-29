@@ -1,0 +1,878 @@
+@using Microsoft.AspNet.Identity
+@using System.Security.Claims;
+@{
+    ViewBag.Title = "Niterra Portal";
+    ViewBag.Nav = "partialNavMain";
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/jssor.slider/js/jssor.slider.min.js?v=" + DateTime.Now.TimeOfDay)"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($('#mainBodySlider').length > 0) {
+
+                var options = {
+                    $AutoPlay: true,
+                    $Loop: 1,
+                    $DragOrientation: 1,                                //[Optional] Orientation to drag slide, 0 no drag, 1 horizontal, 2 vertical, 3 either, default value is 1 (Note that the $DragOrientation should be the same as $PlayOrientation when $Cols is greater than 1, or parking position is not 0)
+                    $SlideDuration: 500,                                //[Optional] Specifies default duration (swipe) for slide in milliseconds, default value is 500
+                    $SlideSpacing: 5, 					                //[Optional] Space between each slide in pixels, default value is 0
+                    $FillMode: 2,
+                    $BulletNavigatorOptions: {                                //[Optional] Options to specify and enable navigator or not
+                        $Class: $JssorBulletNavigator$,                       //[Required] Class to create navigator instance
+                        $ChanceToShow: 2,                               //[Required] 0 Never, 1 Mouse Over, 2 Always
+                        $AutoCenter: 1,                                 //[Optional] Auto center navigator in parent container, 0 None, 1 Horizontal, 2 Vertical, 3 Both, default value is 0
+                        $Steps: 1,                                      //[Optional] Steps to go for each navigation request, default value is 1
+                        $Rows: 1,                                      //[Optional] Specify lanes to arrange items, default value is 1
+                        $SpacingX: 8,                                   //[Optional] Horizontal space between each item in pixel, default value is 0
+                        $SpacingY: 8,                                   //[Optional] Vertical space between each item in pixel, default value is 0
+                        $Orientation: 1                                 //[Optional] The orientation of the navigator, 1 horizontal, 2 vertical, default value is 1
+                    },
+                    $ArrowNavigatorOptions: {                       //[Optional] Options to specify and enable arrow navigator or not
+                        $Class: $JssorArrowNavigator$,              //[Requried] Class to create arrow navigator instance
+                        $ChanceToShow: 2,                               //[Required] 0 Never, 1 Mouse Over, 2 Always
+                        $AutoCenter: 2,                                 //[Optional] Auto center arrows in parent container, 0 No, 1 Horizontal, 2 Vertical, 3 Both, default value is 0
+                        $Steps: 1                                       //[Optional] Steps to go for each navigation request, default value is 1
+                    }
+                };
+
+                var jssor_slider1 = new $JssorSlider$("mainBodySlider", options);
+
+                function ScaleSlider() {
+                    var parentWidth = $('#mainBodySlider').parent().width();
+                    if (parentWidth) {
+                        jssor_slider1.$ScaleWidth(parentWidth);
+                    } else {
+                        window.setTimeout(ScaleSlider, 30);
+                    }
+                }
+                $(".imgMainSlider:not([data-content='0'])").click(function () {
+                    var currID = $(this).data("id");
+                    var win = window.open('/NGKBusi/Other/Slider/Content?id=' + currID, '_blank');
+                    if (win) {
+                        //Browser has allowed it to be opened
+                        win.focus();
+                    } else {
+                        //Browser has blocked it
+                        alert('Please allow popups for this website');
+                    }
+                });
+
+                ScaleSlider();
+
+                $(window).on("load", ScaleSlider);
+                $(window).on("resize", ScaleSlider);
+                $(window).on("orientationchange", ScaleSlider);
+            }
+        });
+    </script>
+}
+
+@section cssHead{
+    <style type="text/css">
+        .jssora12l, .jssora12r {
+            display: block;
+            position: absolute;
+            /* size of arrow element */
+            width: 30px;
+            height: 46px;
+            cursor: pointer;
+            background: url("/NGKbusi/Scripts/jssor.slider/img/a12.png") no-repeat;
+            overflow: hidden;
+        }
+
+        .jssorb055 .i {
+            position: absolute;
+            cursor: pointer;
+        }
+
+            .jssorb055 .i .b {
+                fill: #fff;
+                fill-opacity: 0.5;
+            }
+
+            .jssorb055 .i:hover .b {
+                fill-opacity: .7;
+            }
+
+        .jssorb055 .iav .b {
+            fill-opacity: 1;
+        }
+
+        .jssorb055 .i.idn {
+            opacity: .3;
+        }
+
+        .jssora22l, .jssora22r {
+            display: block;
+            position: absolute;
+            /* size of arrow element */
+            width: 40px;
+            height: 58px;
+            cursor: pointer;
+            background: url("/NGKbusi/Scripts/jssor.slider/img/a22.png") center center no-repeat;
+            overflow: hidden;
+        }
+
+        .jssora22l {
+            background-position: -10px -31px;
+        }
+
+        .jssora22r {
+            background-position: -70px -31px;
+        }
+
+        .jssora22l:hover {
+            background-position: -130px -31px;
+        }
+
+        .jssora22r:hover {
+            background-position: -190px -31px;
+        }
+
+        .jssora22l.jssora22ldn {
+            background-position: -250px -31px;
+        }
+
+        .jssora22r.jssora22rdn {
+            background-position: -310px -31px;
+        }
+
+        .jssora22l.jssora22lds {
+            background-position: -10px -31px;
+            opacity: .3;
+            pointer-events: none;
+        }
+
+        .jssora22r.jssora22rds {
+            background-position: -70px -31px;
+            opacity: .3;
+            pointer-events: none;
+        }
+
+        .imgMainSlider:not([data-content='0']) {
+            cursor: pointer;
+        }
+
+
+        /* info box */
+        .info-box {
+            /*box-shadow: 0 0 1px rgb(0 0 0 / 13%), 0 1px 3px rgb(0 0 0 / 20%);*/
+            box-shadow: 0 0 1px rgb(0 117 128 / 70%), 0 1px 3px rgb(0 117 128 / 75%);
+            border-radius: 0.25rem;
+            background-color: #fff;
+            display: -ms-flexbox;
+            display: flex;
+            margin-bottom: 1rem;
+            min-height: 80px;
+            padding: 0.5rem;
+            position: relative;
+            width: 100%;
+        }
+
+            .info-box .info-box-icon {
+                border-radius: 0.25rem;
+                -ms-flex-align: center;
+                align-items: center;
+                display: -ms-flexbox;
+                display: flex;
+                font-size: 1.875rem;
+                -ms-flex-pack: center;
+                justify-content: center;
+                text-align: center;
+                width: 70px;
+            }
+
+            .info-box .info-box-content, .info-box .info-box-content > a, .info-box .info-box-content > a:hover, .info-box .info-box-content > a:link {
+                display: -ms-flexbox;
+                display: flex;
+                -ms-flex-direction: column;
+                flex-direction: column;
+                -ms-flex-pack: center;
+                justify-content: center;
+                line-height: 1.8;
+                -ms-flex: 1;
+                flex: 1;
+                padding: 0 10px;
+                overflow: hidden;
+            }
+
+            .info-box .info-box-text, .info-box .progress-description, .info-box .info-box-text > a {
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+
+            .info-box .info-box-number {
+                display: block;
+                margin-top: 0.25rem;
+                font-weight: 700;
+            }
+
+            .info-box .info-box-icon {
+                border-radius: 0.25rem;
+                -ms-flex-align: center;
+                align-items: center;
+                display: -ms-flexbox;
+                display: flex;
+                font-size: 1.875rem;
+                -ms-flex-pack: center;
+                justify-content: center;
+                text-align: center;
+                width: 70px;
+            }
+
+        .bg-info, .bg-info > a {
+            color: #fff !important;
+        }
+
+        a:hover {
+            text-decoration: none;
+        }
+
+        a:hover, a:visited, a:link, a:active {
+            color: black
+        }
+
+        body {
+            background-color: #f4f4f5;
+            background-image: url('@Url.Content("~/Images/niterra-bg.jpg")');
+            background-size: cover;
+}
+
+        .card-header {
+                            text-align: center;
+                            font-weight: bold;
+                        color: white;
+                            font-size: 18px;
+                        }
+        .card-body {
+                        padding :0px;
+                        }
+
+        /* Custom premium styling for Task Approval Widget */
+        .approval-task-card {
+            border: none;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            margin-bottom: 24px;
+            align-self: flex-start;
+            width: 100%;
+        }
+
+        .approval-task-card:hover {
+            box-shadow: 0 15px 35px rgba(0, 117, 128, 0.12);
+        }
+
+        .approval-task-header {
+            background: linear-gradient(31deg, #0043ee, #ffffff);
+            padding: 16px 20px;
+            border-bottom: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .approval-task-header h5 {
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .approval-task-badge {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+        }
+
+        .approval-task-body {
+            padding: 12px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+        }
+
+        /* Custom scrollbar */
+        .approval-task-body::-webkit-scrollbar {
+            width: 6px;
+        }
+        .approval-task-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .approval-task-body::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .approval-task-body::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .approval-item {
+            display: flex;
+            flex-direction: column;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            transition: all 0.2s ease-in-out;
+            gap: 0px;
+        }
+
+        .approval-item:hover {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.1);
+            background: #ffffff;
+        }
+
+        .approval-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .approval-item-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .approval-item-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: #eff6ff;
+            color: #2563eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .approval-item-titles {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .approval-item-title {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 14px;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .approval-item-module {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .approval-item-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #f1f5f9;
+            flex-wrap: wrap;
+        }
+
+        .approval-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .ref-badge {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            padding: 2px 8px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-family: monospace;
+        }
+
+        .task-type-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: inline-block;
+        }
+
+        .type-approval {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid rgba(29, 78, 216, 0.2);
+        }
+        .type-sign {
+            background: #faf5ff;
+            color: #7e22ce;
+            border: 1px solid rgba(126, 34, 206, 0.2);
+        }
+        .type-acknowledge {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid rgba(180, 83, 9, 0.2);
+        }
+        .type-generic {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid rgba(71, 85, 105, 0.2);
+        }
+
+        .deadline-pill {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .deadline-urgent {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+        }
+
+        .deadline-normal {
+            background: #f8fafc;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .approval-action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .approval-action-btn:hover {
+            background: #3b82f6;
+            color: #ffffff;
+            border-color: #3b82f6;
+            transform: scale(1.1);
+        }
+
+        .approval-expand-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            outline: none;
+            margin-right: -2px;
+        }
+        .approval-expand-btn:hover {
+            color: #3b82f6;
+        }
+        .approval-expand-btn:focus {
+            outline: none;
+        }
+
+        .approval-item-details {
+            padding-top: 12px;
+            margin-top: 10px;
+            border-top: 1px dashed #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .approval-detail-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .detail-label {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .detail-value {
+            color: #0f172a;
+            font-size: 12px;
+        }
+
+        .ref-badge-inline {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            font-family: monospace;
+        }
+
+        .deadline-pill-inline {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .empty-approval-state {
+            text-align: center;
+            padding: 32px 16px;
+        }
+
+        .empty-approval-icon {
+            font-size: 36px;
+            color: #10b981;
+            margin-bottom: 12px;
+            animation: pulse-green 2s infinite;
+        }
+
+        @@keyframes pulse-green {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+}
+@if ((ViewBag.MainSlider as List<NGKBusi.Models.Sliders>).Count() > 0)
+{
+    <div id="mainSlider" style="margin: 0px;">
+        <div id="mainBodySlider" style="position: relative; margin: 0px auto; top: 0px; left: 0px; width: 940px; height: 500px; overflow: hidden;">
+            <!-- Loading Screen -->
+            <div data-u="loading" style="position: absolute; top: 0px; left: 0px;">
+                <div style="filter: alpha(opacity=70); opacity: 0.7; position: absolute; display: block; top: 0px; left: 0px; width: 100%; height: 100%;"></div>
+                <div style="position:absolute;display:block;background:url('/NGKbusi/Scripts/jssor.slider/img/loading.gif') no-repeat center center;top:0px;left:0px;width:100%;height:100%;"></div>
+            </div>
+            <div data-u="slides" style="cursor: default; position: relative; top: 0px; left: 0px; width: 940px; height: 500px; overflow: hidden;">
+                @foreach (var item in ViewBag.MainSlider)
+                {
+                    <div><img src="@(item.Path)" alt="main Slider" class="img-fluid imgMainSlider" data-id="@(item.ID)" data-content="@(!String.IsNullOrEmpty(item.Content)?1:0)" title="@(!String.IsNullOrEmpty(item.Content)?"Click for more detail":"")"></div>
+                }
+            </div>
+            <!-- Bullet Navigator -->
+            <div data-u="navigator" class="jssorb055" style="position:absolute;bottom:12px;left:350px;" data-scale="0.5" data-scale-bottom="0.75">
+                <div data-u="prototype" class="i" style="width:16px;height:16px;">
+                    <svg viewBox="0 0 16000 16000" style="position:absolute;top:0;left:0;width:100%;height:100%;">
+                        <rect class="b" x="2200" y="2200" width="11600" height="11600"></rect>
+                    </svg>
+                </div>
+            </div>
+            <!-- Arrow Navigator -->
+            <span data-u="arrowleft" class="jssora22l" style="top:0px;left:12px;width:40px;height:58px;" data-autocenter="2"></span>
+            <span data-u="arrowright" class="jssora22r" style="top:0px;right:12px;width:40px;height:58px;" data-autocenter="2"></span>
+        </div>
+        <!-- Trigger -->
+    </div>
+}
+else
+{
+    @*<div class="jumbotron" style="background-color:white">
+            <h1>Niterra Portal</h1>
+        </div>*@
+    @*<div class="text-center">
+            <img src="~/Images/Main/Continous Improvement - Contest.png" class="img-fluid" />
+        </div>*@
+
+    <!-- info box -->
+    if (ViewBag.FavoriteMenu != null)
+    {
+        <div class="row">
+            <div class="col-8">
+                <div class="row">
+                    @foreach (var item in ViewBag.FavoriteMenu)
+                    {
+
+                        <div class="col-md-4 col-sm-6">
+                            <a href="@Url.Action(@item.action, @item.controller, new { area = @item.area })">
+                                <div class="info-box">
+                                    <span class="info-box-icon bg-info"><i class="far fa-star"></i></span>
+
+                                    <div class="info-box-content">
+                                        <span class="info-box-text">@item.area</span>
+                                        <span class="info-box-number">@item.name</span>
+                                    </div>
+                                    <!-- /.info-box-content -->
+                                </div>
+                            </a>
+                            <!-- /.info-box -->
+                        </div>
+                    }
+                </div>
+            </div>
+            @if (User.Identity.IsAuthenticated && ((ClaimsIdentity)User.Identity).FindFirst("dept").Value != "DISTRIBUTOR")
+            {
+                <div class="col-sm-4">
+                    @if (ViewBag.TaskList != null)
+                    {
+                        var taskList = (List<NGKBusi.Models.Task_Approval_List>)ViewBag.TaskList;
+                        <div class="card approval-task-card">
+                            <div class="card-header approval-task-header">
+                                <h5>
+                                    <i class="fas fa-tasks"></i> Approval Tasks
+                                </h5>
+                                @if (taskList.Count > 0)
+                                {
+                                    <span class="approval-task-badge">@taskList.Count</span>
+                                }
+                            </div>
+                            <div class="approval-task-body">
+                                @if (taskList.Count > 0)
+                                {
+                                    foreach (var itemTask in taskList)
+                                    {
+                                        string controllerName = itemTask.Menu?.controller ?? itemTask.Module;
+                                        string actionName = itemTask.Menu?.action ?? "Index";
+                                        string areaName = itemTask.Menu?.area ?? "";
+
+                                        var routeValues = new System.Web.Routing.RouteValueDictionary();
+                                        if (!string.IsNullOrEmpty(areaName))
+                                        {
+                                            routeValues.Add("area", areaName);
+                                        }
+                                        routeValues.Add("id", itemTask.Referal_id);
+
+                                        string targetUrl = "";
+                                        if (!string.IsNullOrEmpty(itemTask.DetailUrl))
+                                        {
+                                            string rawUrl = itemTask.DetailUrl;
+                                            if (!rawUrl.StartsWith("~") && !rawUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !rawUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                rawUrl = "~" + (rawUrl.StartsWith("/") ? "" : "/") + rawUrl;
+                                            }
+                                            targetUrl = Url.Content(rawUrl);
+                                        }
+                                        else
+                                        {
+                                            targetUrl = Url.Action(actionName, controllerName, routeValues);
+                                        }
+
+                                        // Determine if deadline is near (less than 24 hours)
+                                        bool isUrgent = itemTask.ApprovalDeadline < DateTime.Now.AddDays(1);
+                                        string deadlineText = itemTask.ApprovalDeadline.ToString("dd MMM yyyy HH:mm");
+                                        
+                                        // Dynamic display name
+                                        string taskTitle = !string.IsNullOrEmpty(itemTask.TaskTitle) ? itemTask.TaskTitle : (itemTask.Menu?.name ?? itemTask.Module);
+                                        string refInfo = $"Ref: #{itemTask.Referal_id}";
+
+                                        // Determine badge class for TaskType
+                                        string typeClass = "type-generic";
+                                        string typeName = string.IsNullOrEmpty(itemTask.TaskType) ? "Approval" : itemTask.TaskType;
+                                        if (typeName.Equals("Approval", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            typeClass = "type-approval";
+                                        }
+                                        else if (typeName.Equals("Sign", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            typeClass = "type-sign";
+                                        }
+                                        else if (typeName.Equals("Acknowledge", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            typeClass = "type-acknowledge";
+                                        }
+
+                                        <div class="approval-item">
+                                            <!-- Top Row: Expand Button, Icon, Title (Module) & Action Button -->
+                                            <div class="approval-item-header">
+                                                <div class="approval-item-title-group">
+                                                    <button class="approval-expand-btn" onclick="toggleApprovalDetail(this, event)" title="Show Details">
+                                                        <i class="fas fa-chevron-down"></i>
+                                                    </button>
+                                                    <div class="approval-item-icon">
+                                                        <i class="fas fa-file-signature"></i>
+                                                    </div>
+                                                    <div class="approval-item-titles">
+                                                        <div class="approval-item-title" title="@itemTask.Module">@itemTask.Module</div>
+                                                        <div class="approval-item-module" style="font-family: monospace;">Ref: #@itemTask.Referal_id</div>
+                                                    </div>
+                                                </div>
+                                                <a href="@targetUrl" class="approval-action-btn" title="View Approval Details">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </a>
+                                            </div>
+
+                                            <!-- Expandable Details Row (hidden by default) -->
+                                            <div class="approval-item-details" style="display: none;">
+                                                <div class="approval-detail-row">
+                                                    <span class="detail-label">Task Name:</span>
+                                                    <span class="detail-value font-weight-bold text-dark">@taskTitle</span>
+                                                </div>
+                                                <div class="approval-detail-row">
+                                                    <span class="detail-label">Ref ID:</span>
+                                                    <span class="ref-badge-inline"><i class="fas fa-hashtag"></i> @itemTask.Referal_id</span>
+                                                </div>
+                                                <div class="approval-detail-row">
+                                                    <span class="detail-label">Task Type:</span>
+                                                    <span class="task-type-badge @typeClass">@typeName</span>
+                                                </div>
+                                                <div class="approval-detail-row">
+                                                    <span class="detail-label">Deadline:</span>
+                                                    <span class="deadline-pill-inline @(isUrgent ? "deadline-urgent" : "deadline-normal")">
+                                                        <i class="far fa-clock"></i> @(isUrgent ? "Urgent: " : "")@deadlineText
+                                                     </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="empty-approval-state">
+                                        <div class="empty-approval-icon">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        <h6 class="font-weight-bold text-dark">All Caught Up!</h6>
+                                        <p class="text-muted mb-0 small">You have no pending approvals to review.</p>
+                                    </div>
+                                }
+                            </div>
+                            <!-- Paginasi Task List -->
+                            <div class="approval-task-pagination" id="approvalPagination" style="display: none; padding: 10px 16px; border-top: 1px solid #e2e8f0; align-items: center; justify-content: space-between; background: #f8fafc; border-radius: 0 0 16px 16px;">
+                                <span class="pagination-info text-muted small" id="paginationInfo" style="font-size: 11px;">Showing 1 to 10 of 10 tasks</span>
+                                <div class="pagination-buttons" style="display: flex; gap: 4px;">
+                                    <button class="btn btn-xs btn-outline-secondary" id="prevPageBtn" onclick="changePage(-1)" style="border-radius: 4px; padding: 2px 8px; font-size: 10px;"><i class="fas fa-chevron-left"></i></button>
+                                    <button class="btn btn-xs btn-outline-secondary" id="nextPageBtn" onclick="changePage(1)" style="border-radius: 4px; padding: 2px 8px; font-size: 10px;"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="row ">
+
+    </div>
+
+}
+
+<script>
+    var currentPage = 1;
+    var itemsPerPage = 7;
+    var totalItems = 0;
+    var totalPages = 1;
+
+    function toggleApprovalDetail(btn, event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var item = $(btn).closest('.approval-item');
+        var details = item.find('.approval-item-details');
+        details.slideToggle(200);
+        
+        // Toggle chevron icon direction
+        var icon = $(btn).find('i');
+        if (icon.hasClass('fa-chevron-down')) {
+            icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+        } else {
+            icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        }
+    }
+
+    function initPagination() {
+        var $items = $('.approval-item');
+        totalItems = $items.length;
+        totalPages = Math.ceil(totalItems / itemsPerPage);
+
+        if (totalItems > itemsPerPage) {
+            $('#approvalPagination').css('display', 'flex');
+            showPage(1);
+        } else {
+            $('#approvalPagination').hide();
+            $items.show();
+        }
+    }
+
+    function showPage(page) {
+        var $items = $('.approval-item');
+        currentPage = page;
+        var start = (currentPage - 1) * itemsPerPage;
+        var end = start + itemsPerPage;
+
+        $items.hide();
+        $items.slice(start, end).show();
+
+        // Update info text
+        var displayEnd = end > totalItems ? totalItems : end;
+        var displayStart = totalItems === 0 ? 0 : start + 1;
+        $('#paginationInfo').text('Showing ' + displayStart + ' to ' + displayEnd + ' of ' + totalItems + ' tasks');
+
+        // Toggle button states
+        $('#prevPageBtn').prop('disabled', currentPage === 1);
+        $('#nextPageBtn').prop('disabled', currentPage === totalPages);
+    }
+
+    function changePage(direction) {
+        var targetPage = currentPage + direction;
+        if (targetPage >= 1 && targetPage <= totalPages) {
+            showPage(targetPage);
+        }
+    }
+
+    $(document).ready(function() {
+        initPagination();
+    });
+</script>
+

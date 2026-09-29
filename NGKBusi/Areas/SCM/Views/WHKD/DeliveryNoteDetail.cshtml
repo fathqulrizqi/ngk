@@ -1,0 +1,278 @@
+﻿
+@{
+    ViewBag.Title = "Delivery Note Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@*<h2>CreateDeliveryNote</h2>*@
+
+<div class="row">
+    <div class="col-12">
+        <form name="DlvNotesLines" id="formDlvNotesLines" method="post">
+            <input type="hidden" name="HeaderID" value="@(ViewBag.DlvHeader.ID)" />
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white font-weight-bolder"><h5>Delivery Information</h5></div>
+
+                <div class="card-body">
+
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Date</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="CreateDate" class="form-control" id="txtCreateDate" value="@(ViewBag.DlvHeader.CreateTime.ToString("dd MMM yyyy"))" readonly />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Supplier Name</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="SupplierName" class="form-control" id="txtSupplierName" value="@(ViewBag.DlvHeader.SupplierName)" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "") />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Address</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="Address" class="form-control" id="txtAddress" value="@(ViewBag.DlvHeader.Address)" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "") />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Recipient Name</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="RecipientName" class="form-control" id="txtAddress" value="@(ViewBag.DlvHeader.RecipientName)" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "") />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Vehicle Number Plate</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="VehicleNumberPlate" class="form-control" id="txtAddress" value="@(ViewBag.DlvHeader.VehicleNumberPlate)" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "") />
+                        </div>
+                    </div>
+                    <hr />
+                    <table class="table table-bordered" id="dynamicTable">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Item Name</th>
+                                <th>Type</th>
+                                <th>Qty</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{ int no = 0; }
+                            @foreach (var item in ViewBag.DlvDetail)
+                            {
+                                no++;
+                                <tr class="data-row">
+                                    <td>@no</td>
+                                    <td><input type="text" name="ItemName[@item.ID]" class="form-control text-input" value="@item.ItemName" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "required")></td>
+                                    <td><input type="text" name="Type[@item.ID]" class="form-control" value="@item.Type" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "required")></td>
+                                    <td><input type="number" name="Qty[@item.ID]" class="form-control" value="@item.Qty" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "required")></td>
+                                    <td><input type="text" name="Description[@item.ID]" class="form-control" value="@item.Description" @((ViewBag.DlvHeader.IsCommit == 1) ? "readonly" : "required")></td>
+                                    <td><button type="button" class="btn btn-danger" data-id="@(item.ID)" id="delRow" @((ViewBag.DlvHeader.IsCommit == 1) ? "style=display:none" : "")><i class="fa fa-trash"></i></button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer">
+                    <button type="button" class="btn btn-primary" id="addRow" title="Add Item Lines" @((ViewBag.DlvHeader.IsCommit == 1) ? "style=display:none" : "")><i class="fa fa-add"></i> Add Item</button>
+                    <button type="button" class="btn btn-success" id="btnUpdate" title="Update Header & Lines Item" @((ViewBag.DlvHeader.IsCommit == 1) ? "style=display:none" : "")><i class="fa fa-floppy-disk"></i> Update</button>                    
+                    <div class="btn-group dropup">
+                        <button type="button" class="btn btn-warning dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-print"></i> Print
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="@Url.Action("GeneratePdf", "WHKD", new { area="SCM", Notrans=ViewBag.DlvHeader.NoTrans, logo="yes" })" class="dropdown-item" id="resetTable" target="_blank" title="Print Delivery Note"> With Logo </a>
+                            <a href="@Url.Action("GeneratePdf", "WHKD", new { area="SCM", Notrans=ViewBag.DlvHeader.NoTrans, logo="no" })" class="dropdown-item" id="resetTable" target="_blank" title="Print Delivery Note"> Without Logo </a>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-info" id="btnCommit" data-id="@(ViewBag.DlvHeader.ID)" title="close delivery note" @((ViewBag.DlvHeader.IsCommit == 1) ? "style=display:none" : "")><i class="fa fa-check"></i> Commit</button>
+                    <a href="@Url.Action("DeliveryNote", "WHKD", new { area="SCM", Notrans=ViewBag.DlvHeader.NoTrans })" class="btn btn-secondary" id="btnUpdate" title="Update Header & Lines Item"><i class="fa fa-arrow-left"></i> Back</a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        //let rowCount = 1;
+        var rowCount = $("#dynamicTable tbody tr").length;
+        let rowIndex = 0;
+        $("#addRow").click(function () {
+            console.log("klik ok");
+            rowCount++;
+            rowIndex++;
+            let row = `<tr class="data-row">
+                <td>${rowCount}</td>
+                <td><input type="text" name="NewItemName[${rowIndex}]" class="form-control text-input" required></td>
+                <td><input type="text" name="NewType[${rowIndex}]" class="form-control" required></td>
+                <td><input type="number" name="NewQty[${rowIndex}]" class="form-control" required></td>
+                <td><input type="text" name="NewDescription[${rowIndex}]" class="form-control" required></td>
+                <td><button type="button" class="btn btn-danger removeRow">Remove</button></td>
+            </tr>`;
+            $("#dynamicTable tbody").append(row);
+        });
+
+        $(document).on("click", ".removeRow", function () {
+            $(this).closest("tr").remove();
+            updateRowNumbers();
+        });
+
+        function updateRowNumbers() {
+            rowCount = 0;
+            $("#dynamicTable tbody tr.data-row").each(function () {
+                rowCount++;
+                $(this).find("td:first").text(rowCount);
+            });
+        }
+
+        $(document).on("blur", ".text-input", function (e) {
+            let values = [];
+            let isDuplicate = false;
+            $(".text-input").each(function () {
+                let val = $(this).val().trim();
+                if (val && values.includes(val)) {
+                    alert("Item Name values must be unique!");
+                    $(this).val("");
+                    isDuplicate = true;
+                    return false;
+                }
+                values.push(val);
+            });
+        });
+
+        $(document).on("click", "#delRow", function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            if (id !== null) {
+                $.ajax({
+                    url: '@Url.Action("DeleteItem", "WHKD", new { area = "SCM" })',
+                    type: "POST",
+                    cache: false,
+                    dataType: "json",
+                    data: { id: id },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            swal({
+                                title: "Success",
+                                text: json.msg,
+                                type: "success"
+                            }, function () {
+                                location.reload();
+                            });
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Canceled!", json.msg, "error");
+                    }
+
+                })
+            } else {
+                alert("Failed to delete");
+            }
+        });
+
+        $(document).on("click", "#btnCommit", function (e) {
+            e.preventDefault();
+            var id = $(this).data('id');
+            swal({
+                title: "Are you sure?",
+                text: "Commit Delivery Note ?",
+                type: "warning",
+                showCancelButton: true,
+                cancelButtonText: "Cancel",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: '@Url.Action("CommitDeliveryNote", "WHKD", new { area = "SCM" })',
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        //data: JSON.stringify(formData),
+                        data: { ID: id },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                swal({
+                                    title: "Success",
+                                    text: json.msg,
+                                    type: "success"
+                                }, function () {
+                                    location.reload();
+                                });
+
+                            } else {
+                                swal("Failed!", json.msg, "error");
+                            }
+                        },
+                        error: function () {
+                            swal("Canceled!", Link, "error");
+                        }
+                    })
+                } else {
+                    swal("Cancelled", "Request Not Send", "error");
+                }
+            });
+        });
+
+        $("#btnUpdate").click(function () {
+            let isValid = true;
+            $("#dynamicTable input").each(function () {
+                if (!$(this).val().trim()) {
+                    isValid = false;
+                    return false;
+                }
+            });
+
+            if (!isValid) {
+                swal("Validation Error", "All fields are required!", "error");
+                return;
+            }
+
+            swal({
+                title: "Are you sure?",
+                text: "Submit Delivery Note ?",
+                type: "warning",
+                showCancelButton: true,
+                cancelButtonText: "Close",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: '@Url.Action("UpdateDeliveryNote", "WHKD", new { area = "SCM" })',
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        //data: JSON.stringify(formData),
+                        data: $('form').serialize(),
+                        success: function (json) {
+                            if (json.status == 1) {
+                                swal({
+                                    title: "Success",
+                                    text: json.msg,
+                                    type: "success"
+                                }, function () {
+                                    location.reload();
+                                });
+
+                            } else {
+                                swal("Failed!", json.msg, "error");
+                            }
+                        },
+                        error: function () {
+                            swal("Canceled!", Link, "error");
+                        }
+
+                    })
+                } else {
+                    swal("Cancelled", "Request Not Send", "error");
+                }
+            });
+        });
+    });
+</script>

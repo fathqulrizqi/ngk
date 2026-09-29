@@ -1,0 +1,474 @@
+﻿@{
+    ViewBag.Title = "Audit Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var eventInfo = ViewBag.EventInfo as dynamic;
+    bool isAdmin = ViewBag.role == "Administrator";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    /* Custom scrollbar for table to make it look premium */
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+</style>
+
+<div class="min-h-screen pt-4 pb-10 p-1 sm:p-4 md:p-6 lg:px-0 relative">
+
+    <a href="@Url.Action("AuditEvent", "EAudit")" class="inline-flex items-center text-white hover:text-blue-100 font-semibold mb-6 transition-colors drop-shadow-sm">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        Back to Audit Events
+    </a>
+
+    <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-4 sm:p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-800" id="currentEventId" data-event-id="@(eventInfo != null ? eventInfo.audit_event_id : "")">
+                @(eventInfo != null ? eventInfo.audit_name : "Audit Name Not Found")
+            </h1>
+
+            @{
+                var statusColor = eventInfo?.audit_status == "Completed" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-800 border-amber-200";
+            }
+            <span class="@statusColor border text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full inline-flex items-center w-max">
+                <span class="w-2 h-2 rounded-full mr-2 @(eventInfo?.audit_status == "Completed" ? "bg-emerald-500" : "bg-amber-500")"></span>
+                @(eventInfo != null ? eventInfo.audit_status : "Unknown")
+            </span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div class="bg-slate-50 rounded-xl p-2 sm:p-3 border border-slate-100">
+                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Type</span>
+                <span class="font-semibold text-sm sm:text-base text-slate-800 line-clamp-1">@(eventInfo?.audit_type ?? "-")</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2 sm:p-3 border border-slate-100">
+                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Standard</span>
+                <span class="font-semibold text-sm sm:text-base text-slate-800 line-clamp-1">@(eventInfo?.audit_standard ?? "-")</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2 sm:p-3 border border-slate-100">
+                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Fiscal Year</span>
+                <span class="font-semibold text-sm sm:text-base text-slate-800 line-clamp-1">@(eventInfo?.fiscal_year ?? "-")</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2 sm:p-3 border border-slate-100">
+                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">PIC</span>
+                <span class="font-semibold text-sm sm:text-base text-slate-800 line-clamp-1">@(eventInfo?.PIC ?? "-")</span>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-2 sm:p-3 border border-slate-100 col-span-2 lg:col-span-1">
+                <span class="block text-[10px] sm:text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Created Date</span>
+                <span class="font-semibold text-sm sm:text-base text-slate-800 line-clamp-1">@(eventInfo != null ? eventInfo.created_at.ToString("dd MMM yyyy") : "-")</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden relative">
+        <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 class="text-lg sm:text-xl font-bold text-slate-800">Check Sheets</h2>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">Daftar bagian yang ditugaskan dalam audit ini.</p>
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <div class="relative w-full sm:w-64">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg class="w-4 h-4 text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="tableSearch" class="bg-slate-50 border border-slate-200 text-slate-900 text-xs sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-2 pr-2 pl-10 sm:py-2.5 sm:pr-3 sm:pl-10 transition-colors placeholder-slate-400 outline-none" placeholder="Search section, date, status...">
+                </div>
+
+                @if (isAdmin)
+                {
+                    <button type="button" onclick="toggleModal('addSectionModal')" class="shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 sm:py-2.5 rounded-lg transition-colors shadow-sm focus:ring-4 focus:ring-blue-200 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span class="hidden sm:inline">Add Section</span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="overflow-x-auto table-container pb-2">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="hidden sm:table-cell px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">START EVENT</th>
+                        <th class="hidden sm:table-cell px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">END EVENT</th>
+                        <th class="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">SECTION</th>
+                        <th class="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">STATUS</th>
+                        <th class="px-3 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="text-sm divide-y divide-slate-100">
+                    <tr>
+                        <td colspan="5" class="px-6 py-10 text-center">
+                            <div class="flex justify-center items-center gap-2 text-slate-400">
+                                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                <span>Memuat data...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="addSectionModal" tabindex="-1" aria-hidden="true" class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full bg-slate-900/50 backdrop-blur-sm transition-opacity">
+    <div class="relative p-4 w-full max-w-md max-h-full mx-auto mt-20">
+        <div class="relative bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col max-h-[80vh]">
+            <div class="flex items-center justify-between p-4 md:p-5 border-b border-slate-100 rounded-t-2xl shrink-0">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800">
+                        Add New Check Sheet
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">Pilih satu atau lebih section di bawah ini.</p>
+                </div>
+                <button type="button" onclick="toggleModal('addSectionModal')" class="end-2.5 text-slate-400 bg-transparent hover:bg-slate-100 hover:text-slate-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center transition-colors">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" /></svg>
+                    <span class="sr-only">Close modal</span>
+                </button>
+            </div>
+
+            <div class="p-4 md:p-5 overflow-y-auto table-container shrink">
+                <form id="formAddSection" class="space-y-4">
+                    <div class="space-y-2">
+                        @if (ViewBag.AvailableSections != null)
+                        {
+                            foreach (var sec in ViewBag.AvailableSections)
+                            {
+                                <label class="flex items-center p-3 w-full bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors group">
+                                    <input type="checkbox" name="selectedSections" value="@sec.section_name" class="w-4 h-4 text-blue-600 bg-white border-slate-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+                                    <span class="ml-3 text-sm font-bold text-slate-700 group-hover:text-blue-700">@sec.section_name</span>
+                                </label>
+                            }
+                        }
+                    </div>
+                </form>
+            </div>
+
+            <div class="p-4 md:p-5 border-t border-slate-100 bg-white rounded-b-2xl shrink-0">
+                <button type="button" id="btnSubmitSection" class="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 font-bold rounded-xl text-sm px-5 py-3 text-center transition-colors flex justify-center items-center shadow-sm">
+                    Simpan Section
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Flag & Konfigurasi Global
+    const isAdmin = @isAdmin.ToString().ToLower();
+    const eventId = $("#currentEventId").attr("data-event-id");
+    const auditQuestionUrl = '@Url.Action("AuditQuestion", "EAudit")';
+
+    // Konfigurasi SweetAlert Toast
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+
+    // Buka/Tutup Modal
+    function toggleModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Uncheck semua box saat dibuka
+            $("input[name='selectedSections']").prop('checked', false);
+        } else {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    }
+
+    // Fungsi Render Table (Generate HTML dari JSON)
+    function renderTable(data) {
+        var tbody = $("#tableBody");
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.append(`
+                <tr>
+                    <td colspan="5" class="px-6 py-10 text-center">
+                        <div class="flex flex-col items-center justify-center text-slate-400">
+                            <svg class="w-12 h-12 mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                            <span class="text-base font-medium">No stakeholders found</span>
+                        </div>
+                    </td>
+                </tr>
+            `);
+            return;
+        }
+
+        data.forEach(function (item) {
+            // Logika Status
+            var statusHtml = item.status === "Completed"
+                ? `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-md inline-block">Completed</span>`
+                : `<span class="bg-amber-100 text-amber-700 border border-amber-200 text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-md inline-block">${item.status}</span>`;
+
+            // Logika Tanggal
+            var startHtml = item.start_event ? `<span>${item.start_event}</span>` : `<span class="text-[10px] sm:text-xs italic text-slate-400">Not set by Admin</span>`;
+            var endHtml = item.end_event ? `<span>${item.end_event}</span>` : `<span class="text-[10px] sm:text-xs italic text-slate-400">Not set by Admin</span>`;
+
+            // Logika Disable Tombol Audit
+            var isSystemDisabled = isAdmin ? false : (!item.user_can_system || !item.has_system);
+            var isProcessDisabled = isAdmin ? false : (!item.user_can_process || !item.has_process);
+            var isProductDisabled = isAdmin ? false : (!item.user_can_product || !item.has_product);
+
+            var attrSystem = isSystemDisabled ? "disabled" : "";
+            var attrProcess = isProcessDisabled ? "disabled" : "";
+            var attrProduct = isProductDisabled ? "disabled" : "";
+
+            var classSystem = isSystemDisabled
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : "bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300 ring-indigo-200 cursor-pointer";
+
+            var classProcess = isProcessDisabled
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-200 cursor-pointer";
+
+            var classProduct = isProductDisabled
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
+                : "bg-teal-600 hover:bg-teal-700 text-white focus:ring-teal-200 cursor-pointer";
+
+            var deleteBtnHtml = isAdmin ? `
+                <button type="button" data-id="${item.stakeholder_id}" class="btn-delete inline-flex justify-center items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg transition-all shadow-sm bg-red-600 hover:bg-red-700 text-white focus:ring-4 focus:ring-red-200 active:scale-95 cursor-pointer">
+                    <svg class="w-3 h-3 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    <span>Delete</span>
+                </button>
+            ` : "";
+
+            // ========================================================
+            // LOGIKA BADGE ROLE USER (BARU)
+            // ========================================================
+            var roleBadgeHtml = "";
+            if (item.user_role && item.user_role.trim() !== "") {
+                let badgeColor = "bg-slate-100 text-slate-700 border-slate-300"; // Default Abu-abu
+                let iconClass = "bi-person-badge";
+
+                let r = item.user_role.toLowerCase();
+                if (r === "administrator") {
+                    badgeColor = "bg-purple-100 text-purple-700 border-purple-200";
+                    iconClass = "bi-shield-lock-fill";
+                } else if (r === "auditor") {
+                    badgeColor = "bg-blue-100 text-blue-700 border-blue-200";
+                    iconClass = "bi-person-check-fill";
+                } else if (r === "auditee" || r === "auditie") {
+                    badgeColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                    iconClass = "bi-people-fill";
+                }
+
+                roleBadgeHtml = `
+                    <div class="mt-1.5">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${badgeColor}">
+                            <i class="bi ${iconClass}"></i> ${item.user_role}
+                        </span>
+                    </div>
+                `;
+            }
+
+            // Menyusun Row Tabel
+            var tr = `
+            <tr class="hover:bg-blue-50/50 transition-colors duration-200 group searchable-row">
+                <td class="hidden sm:table-cell px-6 py-4 text-slate-600">${startHtml}</td>
+                <td class="hidden sm:table-cell px-6 py-4 text-slate-600">${endHtml}</td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4">
+                    <div class="font-bold text-slate-800 text-xs sm:text-sm">${item.section_name}</div>
+                    ${roleBadgeHtml} </td>
+                <td class="px-3 sm:px-6 py-3 sm:py-4">${statusHtml}</td>
+                <td class="px-2 sm:px-6 py-3 sm:py-4">
+                    <div class="flex flex-wrap items-center justify-center gap-2">
+
+                        <button type="button" ${attrSystem} onclick="location.href='${auditQuestionUrl}?stakeholderId=${item.stakeholder_id}&type=System'"
+                            class="inline-flex justify-center items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg transition-all shadow-sm ${classSystem} focus:ring-4 active:scale-95">
+                            <svg class="w-3 h-3 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <span class="hidden md:inline-block">Audit System</span><span class="md:hidden">System</span>
+                        </button>
+
+                        <button type="button" ${attrProcess} onclick="location.href='${auditQuestionUrl}?stakeholderId=${item.stakeholder_id}&type=Process'"
+                            class="inline-flex justify-center items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg transition-all shadow-sm ${classProcess} focus:ring-4 active:scale-95">
+                            <svg class="w-3 h-3 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                            <span class="hidden md:inline-block">Audit Process</span><span class="md:hidden">Process</span>
+                        </button>
+
+                        <button type="button" ${attrProduct} onclick="location.href='${auditQuestionUrl}?stakeholderId=${item.stakeholder_id}&type=Product'"
+                            class="inline-flex justify-center items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-md sm:rounded-lg transition-all shadow-sm ${classProduct} focus:ring-4 active:scale-95">
+                            <svg class="w-3 h-3 sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            <span class="hidden md:inline-block">Audit Product</span><span class="md:hidden">Product</span>
+                        </button>
+
+                        ${deleteBtnHtml}
+                    </div>
+                </td>
+            </tr>
+            `;
+            tbody.append(tr);
+        });
+    }
+
+    // Fungsi Hit API Get Data Stakeholder
+    function loadStakeholders() {
+        $.ajax({
+            url: '@Url.Action("GetDataStakeholderList", "EAudit")',
+            type: 'GET',
+            data: { eventId: eventId },
+            success: function (response) {
+                if (response.success) {
+                    renderTable(response.data);
+                } else {
+                    Toast.fire({ icon: 'error', title: response.message });
+                }
+            },
+            error: function () {
+                Toast.fire({ icon: 'error', title: 'Gagal memuat data dari server.' });
+            }
+        });
+    }
+
+    $(document).ready(function () {
+
+        // Panggil data pada saat halaman pertama kali load
+        loadStakeholders();
+
+        // 1. SCRIPT PENCARIAN
+        $("#tableSearch").on("keyup", function () {
+            var value = $(this).val().toLowerCase();
+            $("#tableBody tr.searchable-row").filter(function () {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+
+        // 2. SCRIPT DELETE (Event Delegation - sangat penting untuk elemen hasil AJAX)
+        $("#tableBody").on("click", ".btn-delete", function () {
+            var button = $(this);
+            var stakeholderId = button.attr("data-id");
+            var row = button.closest("tr");
+
+            Swal.fire({
+                title: 'Apakah Anda yakin?',
+                text: "Data yang dihapus tidak dapat dikembalikan!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    var originalText = button.html();
+                    button.html("...").prop("disabled", true);
+
+                    $.ajax({
+                        url: '@Url.Action("DeleteStakeholder", "EAudit")',
+                        type: 'POST',
+                        data: { id: stakeholderId },
+                        success: function (response) {
+                            if (response.success) {
+                                row.fadeOut(400, function () {
+                                    $(this).remove();
+
+                                    // Tampilkan state kosong jika row habis
+                                    if($("#tableBody tr.searchable-row").length === 0){
+                                        loadStakeholders();
+                                    }
+                                });
+                                Toast.fire({ icon: 'success', title: response.message || 'Data berhasil dihapus' });
+                            } else {
+                                Toast.fire({ icon: 'error', title: response.message });
+                                button.html(originalText).prop("disabled", false);
+                            }
+                        },
+                        error: function () {
+                            Toast.fire({ icon: 'error', title: 'Terjadi kesalahan sistem saat menghapus data.' });
+                            button.html(originalText).prop("disabled", false);
+                        }
+                    });
+                }
+            });
+        });
+
+        // 3. SCRIPT CREATE / ADD SECTION
+        $("#btnSubmitSection").on("click", function (e) {
+            e.preventDefault();
+
+            var btnSubmit = $(this);
+            var selectedSections = [];
+            $("input[name='selectedSections']:checked").each(function () {
+                selectedSections.push($(this).val());
+            });
+
+            if (selectedSections.length === 0) {
+                Toast.fire({ icon: 'warning', title: 'Harap centang minimal 1 section!' });
+                return;
+            }
+
+            // Animasi Loading Tombol
+            var originalBtnText = btnSubmit.html();
+            btnSubmit.html('<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Menyimpan...');
+            btnSubmit.prop('disabled', true);
+
+            var requestData = {
+                eventId: eventId,
+                dto: { ListSection: selectedSections }
+            };
+
+            $.ajax({
+                url: '@Url.Action("CreateStakeholder", "EAudit")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(requestData),
+                success: function (response) {
+                    if (response.success) {
+                        toggleModal('addSectionModal');
+                        Toast.fire({ icon: 'success', title: response.message });
+
+                        // Render ulang tabel secara asinkron (tanpa refresh halaman)
+                        loadStakeholders();
+                    } else {
+                        Toast.fire({ icon: 'error', title: response.message });
+                    }
+                },
+                error: function () {
+                    Toast.fire({ icon: 'error', title: 'Terjadi kesalahan sistem saat menyimpan section.' });
+                },
+                complete: function () {
+                    // Selalu kembalikan tombol ke state awal meskipun error atau sukses
+                    btnSubmit.html(originalBtnText).prop('disabled', false);
+                }
+            });
+        });
+    });
+</script>

@@ -1,0 +1,528 @@
+﻿@using NGKBusi.Areas.HSE.Controllers;
+
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tbIndex = 0;
+    var SIK = ViewContext.Controller as SIKController;
+    var formSIK = ViewBag.FormSIK;
+}
+
+@section cssHead{
+    <style>
+        .divForm1 {
+        }
+
+        table td {
+            position: relative;
+            text-align: center;
+        }
+
+            table td input[type=text] {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+            table td img {
+                width: 175px;
+                height: auto;
+            }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/jquery.qrcode.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".btnNext,.btnPrev").click(function () {
+                var iRisk = $(".rbRisk:checked").val();
+                var iLongDay = $(".rbLongDay:checked").val();
+                var formClass = $(this).hasClass("btnNext") ? ".divForm1|.divForm2" : ".divForm2|.divForm1";
+                $(".SIKclassA").hide();
+                $(".SIKclassAInput").prop("required", false);
+                //$(".divForm2 input").val("");
+
+
+                if ($(".rbRisk:checked").length == 0 || $(".rbLongDay:checked").length == 0 || $("#selVendor").val().length == 0 || $("#txtEmail").val().length == 0 || $("#txtPhone").val().length == 0) {
+                    $(".btnSIKSubmit").click();
+                    return false;
+                }
+
+                $(formClass.split("|")[0]).fadeOut(function () {
+                    $(formClass.split("|")[1]).fadeIn();
+                });
+                if (iRisk == 1 && iLongDay == 1) {
+                    $(".SIKclassA").show();
+                    $(".SIKclassAInput").prop("required", true);
+                    $("#hfRiskClass").val("A");
+                } else if (iRisk == 1 && iLongDay == 0) {
+                    $(".SIKclassB").show();
+                    $(".SIKclassBInput").prop("required", true);
+                    $("#hfRiskClass").val("B");
+                } else {
+                    $(".SIKclassC").show();
+                    $(".SIKclassCInput").prop("required", true);
+                    $("#hfRiskClass").val("C");
+                }
+                if ($("#hfFormID").val() > 0) {
+                    $(".SIKclassAInput,.SIKclassBInput,.SIKclassCInput").prop("required", false);
+                    if ($("#hfFormApproval").val() > 1) {
+                        $(".SIKclassAInput[type!='text'],.SIKclassBInput[type!='text'],.SIKclassCInput[type!='text']").hide();
+                        $("#txtBadgeNo").prop("disabled", true);
+                    } else {
+                        $(".SIKclassAInput[type!='text'],.SIKclassBInput[type!='text'],.SIKclassCInput[type!='text']").show();
+                        $("#txtBadgeNo").prop("disabled", false);
+                    }
+                }
+            });
+
+            $(".btnAddNew").click(function () {
+                $("#divSIKForm").show("blind");
+            });
+            $(".btnCancel").click(function () {
+                $("#divSIKForm").hide("blind");
+            });
+            $(".workerQRCode").qrcode();
+            $("table td img").click(function () {
+                $("#exampleModal").modal("show");
+            });
+            $(".btnApproval").click(function () {
+                $("#approvalModal").modal("show");
+            });
+        });
+    </script>
+}
+<h2>
+    SIK Form
+    <a href="/NGKBusi/HSE/SIK/?addNew=addNew" class="btn btn-success">Submit New Form</a>
+</h2>
+
+<hr />
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Worker QR Code</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="workerQRCode"></div><br />
+                <h3>PT NGK BUSI INDONESIA</h3>
+                <label>CONTRACTOR CARD</label><br />
+                <label>PERMIT</label>
+            </div>
+            <div class="modal-footer text-center">
+                <button type="button" class="btn btn-primary">Print</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="divSIKForm" style="@(Request.QueryString["SIK"]!=null || Request.QueryString["addNew"]!=null ? "":"display:none;")">
+    <form id="formSIK" action="@Url.Action(formSIK != null? "formSubmitEdit" : "formSubmitAdd", "SIK", new { area = "HSE" })" class="form-horizontal" method="post" enctype='multipart/form-data'>
+        <input type="hidden" id="hfFormID" name="iFormID" value="@(formSIK != null ? formSIK.ID : "")" />
+        <input type="hidden" id="hfFormApproval" name="iFormApproval" value="@(formSIK != null ? formSIK.Approval : "")" />
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="divForm1">
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Perusahaan:</label>
+                        <div class="col-9">
+                            <select id="selVendor" name="iVendor" class="form-control select2" style="width:100%;" required>
+                                <option value="">-Third Party-</option>
+                                @foreach (var item in ViewBag.ThirdParty)
+                                {
+                                    <option value="@(item.ACCOUNTNUM + "|" + item.Name)" @(item.ACCOUNTNUM == formSIK?.Third_Party_Code ? "Selected" : "")>@(item.ACCOUNTNUM + " | " + item.Name)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Email:</label>
+                        <div class="col-9">
+                            <input type="email" id="txtEmail" name="iEmail" class="form-control" placeholder="Email" value="@(formSIK?.Email)" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">Phone:</label>
+                        <div class="col-9">
+                            <input type="text" id="txtPhone" name="iPhone" class="form-control" placeholder="Phone" value="@(formSIK?.Phone)" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-12 text-center">
+                            <h3>Klasifikasi Pekerjaan</h3>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-8">
+                            Apakah anda melakukan pekerjaan yang memiliki salah satu atau lebih potensi bahaya dan risiko dibawah ini :<br />
+                            <ol>
+                                <li>Terbakar</li>
+                                <li>Peledakan</li>
+                                <li>Terjatuh dari Ketinggian lebih dari 2 meter</li>
+                                <li>Tertimbun dikedalaman lebih dari 2 meter</li>
+                                <li>Keracunan gas / Kehabisan Oksigen</li>
+                                <li>Tersengat Arus listrik</li>
+                                <li>Pengangkatan menggunakan alat berat</li>
+                                <li>Kecacunan B3 / Pencemaran B3</li>
+                                <li>Terjepit mesin / Terpotong</li>
+                            </ol>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input class="form-check-input rbRisk" type="radio" name="iRisk" id="rbRisk1" value="1" @(formSIK != null && formSIK?.Is_Risk ? "Checked" : "") required>
+                                <label class="form-check-label" for="rbRisk1">
+                                    Ya
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input rbRisk" type="radio" name="iRisk" id="rbRisk2" value="0" @(formSIK != null && !formSIK?.Is_Risk ? "Checked" : "") required>
+                                <label class="form-check-label" for="rbRisk2">
+                                    Tidak
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-8">
+                            Anda Melakukan pekerjaan lebih dari 10 Hari ?
+                        </div>
+                        <div class="col-4">
+                            <div class="form-check">
+                                <input class="form-check-input rbLongDay" type="radio" name="iLongDay" id="rbLongDay1" value="1" @(formSIK != null && formSIK?.Is_Long_Day ? "Checked" : "") required>
+                                <label class="form-check-label" for="rbLongDay1">
+                                    Ya
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input rbLongDay" type="radio" name="iLongDay" id="rbLongDay2" value="0" @(formSIK != null && !formSIK?.Is_Long_Day ? "Checked" : "") required>
+                                <label class="form-check-label" for="rbLongDay2">
+                                    Tidak
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-3">
+                            <button type="button" class="btn btn-primary btnCancel form-control">Cancel</button>
+                        </div>
+                        <div class="col-9">
+                            <button type="button" class="btn btn-primary btnNext form-control">Next >></button>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="divForm2" style="display:none;">
+                    <input type="hidden" id="hfRiskClass" name="iRiskClass" value="A" />
+                    <div class="form-group row SIKclassA SIKclassB SIKclassC">
+                        <label class="control-label col-3 text-right font-weight-bold">FC KTP:</label>
+                        <div class="col-9">
+                            @{String[] fcKTP = formSIK?.KTP.ToString().Split(',');}
+                            @if (fcKTP?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in fcKTP)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileFCKTP" name="iFCKTP[]" class="SIKclassAInput SIKclassBInput SIKclassCInput" multiple required>
+                            <input type="hidden" id="hfFCKTP" name="iFCKTPList" value="@(formSIK?.KTP.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA SIKclassB SIKclassC">
+                        <label class="control-label col-3 text-right font-weight-bold">HSE Induksi:</label>
+                        <div class="col-9">
+                            <input type="text" id="txtBadgeNo" name="iBadgeNo" class="form-control SIKclassAInput SIKclassBInput SIKclassCInput" placeholder="Nomor Badge" value="@(formSIK?.Badge_Number)" required />
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA">
+                        <label class="control-label col-3 text-right font-weight-bold">Hasil MCU:</label>
+                        <div class="col-9">
+                            @{String[] mcuResult = formSIK?.MCU_Result.ToString().Split(',');}
+                            @if (mcuResult?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in mcuResult)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileMCU" name="iMCU[]" class="SIKclassAInput" multiple required>
+                            <input type="hidden" id="hfMCU" name="iMCUList" value="@(formSIK?.MCU_Result.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA">
+                        <label class="control-label col-3 text-right font-weight-bold">Metode Kerja/SOP:</label>
+                        <div class="col-9">
+                            @{String[] sop = formSIK?.SOP.ToString().Split(',');}
+                            @if (sop?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in sop)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileSOP" name="iSOP[]" class="SIKclassAInput" multiple required>
+                            <input type="hidden" id="hfSOP" name="iSOPList" value="@(formSIK?.SOP.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA SIKclassB">
+                        <label class="control-label col-3 text-right font-weight-bold">Sertifikat Keahlian:</label>
+                        <div class="col-9">
+                            @{String[] expertiseCert = formSIK?.Expertise_Certificate.ToString().Split(',');}
+                            @if (expertiseCert?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in expertiseCert)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileExpCertificate" name="iExpCertificate[]" class="SIKclassAInput SIKclassBInput" multiple required>
+                            <input type="hidden" id="hfExpCertificate" name="iExpCertificateList" value="@(formSIK?.Expertise_Certificate.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA">
+                        <label class="control-label col-3 text-right font-weight-bold">Sertifikat AK3U:</label>
+                        <div class="col-9">
+                            @{String[] ak3uCert = formSIK?.AK3U_Certificate.ToString().Split(',');}
+                            @if (ak3uCert?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in ak3uCert)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileAK3U" name="iAK3U[]" class="SIKclassAInput" multiple required>
+                            <input type="hidden" id="hfAK3U" name="iAK3UList" value="@(formSIK?.AK3U_Certificate.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA SIKclassB SIKclassC">
+                        <label class="control-label col-3 text-right font-weight-bold">List Equipment Tools:</label>
+                        <div class="col-9">
+                            @{String[] listEquipment = formSIK?.List_Equipment.ToString().Split(',');}
+                            @if (listEquipment?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in listEquipment)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileTools" name="iTools[]" class="SIKclassAInput SIKclassBInput SIKclassCInput" multiple required>
+                            <input type="hidden" id="hfTools" name="iToolsList" value="@(formSIK?.List_Equipment.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA SIKclassB SIKclassC">
+                        <label class="control-label col-3 text-right font-weight-bold">Job Safety Analysis:</label>
+                        <div class="col-9">
+                            @{String[] jobSafety = formSIK?.Job_Safety_Analysis.ToString().Split(',');}
+                            @if (jobSafety?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in jobSafety)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileSafetyAnalysis" name="iSafetyAnalysis[]" class="SIKclassAInput SIKclassBInput SIKclassCInput" multiple required>
+                            <input type="hidden" id="hfSafetyAnalysis" name="iSafetyAnalysisList" value="@(formSIK?.Job_Safety_Analysis.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row SIKclassA">
+                        <label class="control-label col-3 text-right font-weight-bold">Absen Pekerja:</label>
+                        <div class="col-9">
+                            @{String[] workerAttendance = formSIK?.Worker_Attendance.ToString().Split(',');}
+                            @if (workerAttendance?.Length > 0)
+                            {
+                                <ul>
+                                    @foreach (var item in workerAttendance)
+                                    {
+                                        <li>
+                                            <a href="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" +formSIK.ID + "/" + @item)" target="_blank">@item</a>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            <input type="file" id="fileWorkerAttendance" name="iWorkerAttendance[]" class="SIKclassAInput" multiple required>
+                            <input type="hidden" id="hfWorkerAttendance" name="iWorkerAttendanceList" value="@(formSIK?.Worker_Attendance.ToString() + ",")">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        @{
+                            String[] workerName = formSIK?.Worker_Name.ToString().Split(',');
+                            String[] workerPosition = formSIK?.Worker_Position.ToString().Split(',');
+                            String[] workerPhoto = formSIK?.Worker_Photo.ToString().Split(',');
+                        }
+                        <label class="control-label col-12 text-left font-weight-bold">LIST PEKERJA</label>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>NAMA PEKERJA</th>
+                                    <th>BAGIAN/POSISI</th>
+                                    <th>PHOTO</th>
+                                </tr>
+                            </thead>
+                            <tBody>
+                                @if (workerName != null)
+                                {
+                                    for (var i = 0; i <= workerName.Length - 1; i++)
+                                    {
+                                        if (workerName[i]?.Length > 0)
+                                        {
+                                            <tr>
+                                                <td style="width: 75px;" class="text-center align-middle">@(i + 1)</td>
+                                                <td><input type="text" name="iWorker[]" value="@(workerName != null ? workerName[i] : "")" placeholder="Nama" /></td>
+                                                <td><input type="text" name="iPosition[]" value="@(workerPosition != null ? workerPosition[i] : "")" placeholder="Posisi" /></td>
+                                                <td style="width: 200px;">
+                                                    @if (workerPhoto != null && workerPhoto[i] != "")
+                                                    {
+                                                        <img src="@("/NGKbusi/Files/HSE/SIK/FormSubmit/" + formSIK.ID + "/" + workerPhoto[i])" alt="Alternate Text" class="img-fluid" />
+                                                    }
+                                                    @if (formSIK.Approval <= 1)
+                                                    {
+                                                        <input type="file" name="iPhoto[]" accept="image/*" class="mt-4" />
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    for (var i = 0; i <= 3; i++)
+                                    {
+                                        <tr>
+                                            <td style="width: 75px;" class="text-center align-middle">@(i + 1)</td>
+                                            <td><input type="text" name="iWorker[]" placeholder="Nama" /></td>
+                                            <td><input type="text" name="iPosition[]" placeholder="Posisi" /></td>
+                                            <td style="width: 200px;">
+                                                <input type="file" name="iPhoto[]" accept="image/*" />
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tBody>
+                        </table>
+                        @if (formSIK != null && formSIK.Approval <= 1)
+                        {
+                            <button id="btnWorkerAdd" class="btn btn-success form-control" type="button">+</button>
+                        }
+                    </div>
+                    @if (formSIK == null || (formSIK != null && formSIK.Approval <= 1))
+                    {
+                        <div class="form-group row">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-primary form-control btnPrev"><< Prev</button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-primary form-control btnSIKSubmit">Submit</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="form-group row">
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary form-control btnPrev"><< Prev</button>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-success form-control btnSIKSubmit">Approve</button>
+                            </div>
+                            <div class="col-6">
+                                <button type="submit" class="btn btn-danger form-control btnSIKSubmit">Reject</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </form>
+    <hr />
+</div>
+<!-- Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Note</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <textarea class="form-control" rows="5" placeholder="Note"></textarea>
+            </div>
+            <div class="modal-footer text-center">
+                <button type="button" class="btn btn-primary form-control">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>No SIK</th>
+            <th>Klasifikasi Pekerjaan</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.SIKList)
+        {
+            <tr>
+                <td>@(++tbIndex)</td>
+                <td><a href="@("/NGKBusi/HSE/SIK/?SIK=" + @data.ID)">@data.Number</a></td>
+                <td>@SIK.RiskClass(data.Risk_Class)</td>
+                <td><span class="badge badge-@(data.Approval <= 1 ? "info": data.Approval == 2 ? "warning" : "success" )">@SIK.ApprovalStatus(data.Approval)</span></td>
+                <td></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+

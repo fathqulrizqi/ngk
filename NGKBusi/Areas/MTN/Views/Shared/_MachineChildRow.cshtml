@@ -1,0 +1,67 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using System.Text.RegularExpressions;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.MTN.Models;
+@{
+    var currUser = ((ClaimsIdentity)User.Identity);
+    MachineDatabaseConnection db = new MachineDatabaseConnection();
+    DefaultConnection dbDef = new DefaultConnection();
+    int currParentID = (ViewData["parentID"] == null ? 0 : Int32.Parse(ViewData["parentID"].ToString()));
+    var childRow = db.MTN_MachineDatabase_List.Where(x => x.Machine_Parent_ID == currParentID).ToList();
+    var paddingLeft = Int32.Parse(ViewData["paddingLeft"].ToString()) + 10;
+}
+@foreach (var item in childRow)
+{
+    int currChildID = item.id;
+    var childsRow = db.MTN_MachineDatabase_List.Where(x => x.Machine_Parent_ID == currChildID).ToList();
+<tr class="@(item.Machine_Parent_ID != null ? item.Machine_Parent_ID.ToString() : "")">
+    <td style="@("padding-left:"+ paddingLeft.ToString() + "px")">
+        @if (childsRow.Count > 0)
+        {
+            <a href="#" class="toggle" data-id="@item.id">@(item.Name)</a>
+        }
+        else
+        {@(item.Name)}
+    </td>
+    <td>@(item.Machine_Number)</td>
+    <td>@(item.Asset_No)</td>
+    <td>@(item.Model)</td>
+    <td>@(item.Power)</td>
+    <td>@(item.Maker)</td>
+    <td>@(item.Serial_No)</td>
+    <td>@(item.Coming_Date != null ? item.Coming_Date.Value.ToString("MMM-yyyy") : "" )</td>
+    <td>@(item.Qty)</td>
+    <td>@(item.Start_Date != null ? item.Start_Date.Value.ToString("MMM-yyyy") : "" )</td>
+    <td>@(item.End_Date != null ? item.End_Date.Value.ToString("MMM-yyyy") : "" )</td>
+    <td>@(item.Overhaul_Schedule != null ? item.Overhaul_Schedule.Value.ToString("MMM-yyyy") : "" )</td>
+    <td>@(item.Remark)</td>
+    <td>@(item.Status)</td>
+    <td>@(item.Area.Name)</td>
+    <td class="text-center" data-isscheduled="@(item.Is_Scheduled)">
+        @if (item.Is_Scheduled == true)
+        {
+            <i class="fa-solid fa-check"></i>
+            <label class="d-none">Scheduled</label>
+        }
+        else
+        {
+            <i class="fa-solid fa-xmark"></i>
+            <label class="d-none">Not Scheduled</label>
+        }
+    </td>
+    <td>
+        <span class="addMDChild pointerFade fa fa-plus" data-area="@item.Area.Name" data-areaid="@item.Area_ID" data-id="@item.id"></span>
+        <span class="editMDItem pointerFade fa fa-edit" data-issuedid="@item.Issued_By" data-areaid="@item.Area_ID" data-id="@item.id"></span>
+        @if (childsRow.Count == 0)
+        {
+            <span class="deleteMDItem deleteChild pointerFade fa fa-trash" data-issuedid="@item.Issued_By" data-id="@item.id" data-relid="@(item.Machine_Parent_ID != null ? item.Machine_Parent_ID.ToString() : "")"></span>
+        }
+        else
+        {
+            <span class="deleteMDItem deleteChild pointerFade fa fa-trash" data-issuedid="@item.Issued_By" data-id="@item.id" style="display:none;"></span>
+        }
+    </td>
+</tr>
+    @Html.Partial("_MachineChildRow", new ViewDataDictionary() { { "parentID", item.id }, { "paddingLeft", paddingLeft } })
+}

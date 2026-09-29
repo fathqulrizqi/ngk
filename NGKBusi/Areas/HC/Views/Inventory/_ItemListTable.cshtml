@@ -1,0 +1,1450 @@
+﻿@{
+    ViewBag.Title = "Master Item List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.tailwindcss.css" />
+    <link href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6.3.7/dist/tippy.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+
+    <style>
+
+        div.dt-length label {
+            margin-left: 0.5rem; /* jarak antara select dan label */
+        }
+
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+
+        input[aria-controls="itemList"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+        select[aria-controls="itemList"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 2rem;
+            border-color: #DEE2E6 !important;
+            padding: 0.25rem;
+            width: auto !important;
+            display: inline-block;
+        }
+
+        .select2-selection__rendered {
+            word-wrap: break-word !important;
+            text-overflow: inherit !important;
+            white-space: normal !important;
+        }
+
+        table.dataTable td,
+        table.dataTable th {
+            padding: 0.5rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #itemList thead th,
+        #categoryListTable thead th,
+        #subcategoryListTable thead th {
+            background-color: #F6F7F8 !important;
+            border-bottom: 2px solid #F6F7F8 !important;
+            color: black !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
+
+        #categoryListTable .dataTables_empty,
+        #itemList .dataTables_empty,
+        #subcategoryListTable .dataTables_empty {
+            padding: 2rem !important;
+            color: #9ca3af !important;
+            font-style: italic;
+            background-color: transparent !important;
+        }
+
+        #itemList tbody tr:nth-child(even),
+        #categoryListTable tbody tr:nth-child(even),
+        #subcategoryListTable tbody tr:nth-child(even),
+        tr.even {
+            background-color: #F9FAFB !important;
+        }
+
+        #itemList,
+        #categoryListTable,
+        #subcategoryListTable {
+            border-collapse: collapse !important;
+            border: none !important;
+        }
+
+            #itemList tbody td,
+            #categoryListTable tbody td,
+            #subcategoryListTable tbody td {
+                border-bottom: 1px solid #F6F7F8 !important;
+                background-color: transparent !important;
+                padding: 12px 8px !important;
+            }
+
+            #categoryListTable tr {
+                white-space: normal !important;
+                word-break: break-word;
+            }
+
+            #categoryListTable th {
+                white-space: normal !important;
+                word-break: break-word;
+            }
+
+        input[aria-controls="itemList"],
+        select[aria-controls="itemList"],
+        #dt-search-0,
+        #dt-length-0 {
+            background-color: #ffffff !important;
+            color: #1f2937 !important;
+            margin-bottom: 5px;
+            border: 1px solid #DEE2E6 !important;
+            border-radius: 0.5rem !important;
+            padding: 0.4rem 0.8rem !important;
+            transition: all 0.2s ease;
+        }
+    </style>
+
+}
+
+
+@section scriptHead {
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.tailwindcss.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.print.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+}
+<!-- Header Section -->
+<div class="p-4 mb-2">
+    <div class="flex flex-col space-y-4 sm:space-y-0">
+        <div class="flex items-center space-x-4">
+            <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+            <h1 class="text-2xl font-bold text-gray-50">Master Item List</h1>
+
+        </div>
+    </div>
+</div>
+
+<!-- Category & Subcategory Section -->
+<div class="flex flex-col md:flex-row gap-6 mt-6">
+
+    <div class="w-full md:w-1/2 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-list text-blue-600 text-sm"></i>
+                Category List
+            </h3>
+            <button id="createCategory" class="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
+                <i class="fas fa-plus"></i> Add New
+            </button>
+        </div>
+
+        <div class="p-6">
+            <table id="newCategoryTable" class="hidden w-full text-sm mb-4 border border-dashed border-gray-300 rounded-lg">
+                <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
+                    <tr>
+                        <th class="py-2 px-3 text-left">Category Name</th>
+                        <th class="py-2 px-3 text-center w-24">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="p-2">
+                            <input id="newCategoryName" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-200 focus:border-green-500 outline-none transition" placeholder="Enter Category Name">
+                        </td>
+                        <td class="flex items-center justify-center gap-2 p-2">
+                            <button id="btnAddCategory" title="Save" class="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition"><i class="fa-solid fa-check"></i></button>
+                            <button id="btnCancelAddCategory" title="Cancel" class="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"><i class="fa-solid fa-xmark"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="overflow-x-auto w-full">
+                <table id="categoryListTable" class="stripe hover row-border w-full text-sm border border-gray-200">
+                    <thead class="bg-gray-800 text-white text-xs uppercase">
+                        <tr>
+                            <th class="py-3 px-4 text-left">Category Name</th>
+                            <th class="py-3 px-4 text-center w-24">Action</th>
+                        </tr>
+                        <tr class="search-row bg-gray-50 text-gray-800">
+                            <th class="p-2"><input type="text" placeholder="Search..." class="w-full p-1 text-xs border rounded" data-column="0"></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full md:w-1/2 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-layer-group text-blue-600 text-sm"></i>
+                Subcategory List
+            </h3>
+            <button id="createSubcategory" class="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
+                <i class="fas fa-plus"></i> Add New
+            </button>
+        </div>
+
+        <div class="p-6">
+            <table id="newSubcategoryTable" class="hidden w-full text-sm mb-4 border border-dashed border-gray-300 rounded-lg">
+                <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
+                    <tr>
+                        <th class="py-2 px-3 text-left">Name</th>
+                        <th class="py-2 px-3 text-left">Category</th>
+                        <th class="py-2 px-3 text-left">Image</th>
+                        <th class="py-2 px-3 text-center w-24">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="p-2 align-top">
+                            <input class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-green-200 outline-none" id="newSubcategoryName" placeholder="Name">
+                        </td>
+                        <td class="p-2 align-top">
+                            <select id="newSubcategoryCategory" class="select2 w-full p-2 text-md border border-gray-300 rounded">
+                                <option value="" selected disabled hidden>-- Select --</option>
+                                @foreach (var category in ViewBag.CategoryList)
+                                {
+                                    <option value="@category.ID">@category.Category_Name</option>
+                                }
+                            </select>
+                        </td>
+                        <td class="p-2 align-top min-w-[180px]">
+                            <div class="flex items-center gap-2 mb-2">
+                                <input type="text" class="w-full p-2 text-xs border border-gray-300 rounded" id="newSubcategoryImage" placeholder="URL">
+                                <button id="subcategoryImageTooltipBtn" type="button" class="text-blue-500 hover:text-blue-700" data-bs-toggle="tooltip" title="Preview">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            </div>
+                            <label class="w-full cursor-pointer flex flex-col items-center justify-center border border-dashed border-gray-300 rounded py-2 hover:bg-blue-50 hover:border-blue-400 transition">
+                                <input type="file" accept="image/*" class="hidden" id="subcategoryImageUpload">
+                                <div class="flex items-center gap-1 text-xs text-gray-500">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                                </div>
+                            </label>
+                        </td>
+                        <td class="flex items-center justify-center gap-2 p-2 align-top h-full">
+                            <button id="btnAddSubcategory" title="Save" class="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition"><i class="fa-solid fa-check"></i></button>
+                            <button id="btnCancelAddSubcategory" title="Cancel" class="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"><i class="fa-solid fa-xmark"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="overflow-x-auto w-full">
+                <table id="subcategoryListTable" class="stripe hover row-border w-full text-sm border border-gray-200">
+                    <thead class="bg-gray-800 text-white text-xs uppercase">
+                        <tr>
+                            <th class="py-3 px-4 text-left">Subcategory</th>
+                            <th class="py-3 px-4 text-left">Category</th>
+                            <th class="py-3 px-4 text-center">Image</th>
+                            <th class="py-3 px-4 text-center w-24">Action</th>
+                        </tr>
+                        <tr class="search-row bg-gray-50 text-gray-800">
+                            <th class="p-2">
+                                <select id="searchSubcategoryCategory" class="w-full p-1 text-xs border rounded" data-column="0">
+                                    <option value="">All Subcategories</option>
+                                    @foreach (var subcategory in ViewBag.SubcategoryList)
+                                    {
+                                        <option value="@subcategory.Subcategory_Name">@subcategory.Subcategory_Name</option>
+                                    }
+                                </select>
+                            </th>
+                            <th class="p-2">
+                                <select id="searchCategoryCategory" class="w-full p-1 text-xs border rounded" data-column="1">
+                                    <option value="">All Categories</option>
+                                    @foreach (var category in ViewBag.CategoryList)
+                                    {
+                                        <option value="@category.Category_Name">@category.Category_Name</option>
+                                    }
+                                </select>
+                            </th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Item List (Full Width) -->
+<div class="w-full bg-white rounded-xl shadow-lg mt-6 border border-gray-100 overflow-hidden">
+
+    <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+
+        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 self-start md:self-center">
+            <i class="fas fa-boxes-stacked text-blue-600 text-sm"></i>
+            Item List
+        </h3>
+
+        <div class="flex items-center gap-2 self-end md:self-center">
+            <button id="uploadXls" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
+                <i class="fas fa-file-excel"></i> Upload Xls
+            </button>
+            <button id="createItem" class="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm transition-all duration-200">
+                <i class="fas fa-plus"></i> Add New Item
+            </button>
+        </div>
+    </div>
+
+    <div class="p-6">
+        <div class="overflow-x-auto">
+            @Html.Partial("Partial/_Item")
+        </div>
+    </div>
+</div>
+<script>
+    const categoryList = @Html.Raw(Json.Encode(ViewBag.CategoryList));
+    const subcategoryList = @Html.Raw(Json.Encode(ViewBag.SubcategoryList));
+</script>
+
+<script>
+
+$(document).ready(function () {
+    $('#categoryListTable').DataTable({
+        responsive: true,
+        autoWidth: true,
+        orderCellsTop: true,
+        fixedHeader: true,
+        dom: 'rtip',
+        data: categoryList,
+        columns: [
+            { data: 'Category_Name' },
+            {
+                data: null,
+                orderable: false,
+                render: (data, type, row) => `
+             <button class="text-yellow-500 p-2 btn-edit-category" data-id="${row.ID}">
+                 <i class="fa-solid fa-pen"></i>
+             </button>
+             <button class="text-red-500 p-2 btn-delete-category" data-id="${row.ID}">
+                 <i class="fa-solid fa-trash"></i>
+             </button>`
+            }
+        ],
+        initComplete: function () {
+            const api = this.api();
+            $('#categoryListTable thead tr.search-row input').on('keyup change clear', function () {
+                const colIndex = $(this).data('column');
+                api.column(colIndex).search(this.value, true, false).draw();
+            });
+        }
+    });
+    $('#categoryList').select2({
+        placeholder: '--Select Category--',
+        width: '100%',
+    });
+    $('#newSubcategoryList').select2({
+        placeholder: '--Select Subcategory--',
+        width: '100%',
+    });
+
+    // Event listener untuk memfilter subkategori saat kategori diubah
+    $('#categoryList').on('change', function () {
+        const selectedCategoryId = $(this).val();
+        const $subcategoryList = $('#newSubcategoryList');
+        $subcategoryList.empty();
+
+        if (selectedCategoryId) {
+            const filteredSubcategories = subcategoryList.filter(sub => sub.Category_Id == selectedCategoryId);
+            let options = '<option value="" selected disabled hidden>--Select Subcategory--</option>';
+            filteredSubcategories.forEach(sub => {
+                options += `<option value="${sub.ID}">${sub.Subcategory_Name}</option>`;
+            });
+            $subcategoryList.html(options);
+            $subcategoryList.prop('disabled', false);
+        } else {
+            $subcategoryList.html('<option value="" selected disabled hidden>--Select Subcategory--</option>');
+            $subcategoryList.prop('disabled', true);
+        }
+        $subcategoryList.trigger('change');
+    });
+
+    $('#newSubcategoryList').select2({
+        placeholder: '--Select Subcategory--',
+        width: '100%',
+    });
+
+    $('#categoryFilter, #subcategoryFilter').select2({
+        width: 'auto',
+        multiple: true,
+        closeOnSelect: false,
+        dropdownAutoWidth: true
+    });
+
+    $('#categoryFilter').on('change', function () {
+        let selected = $(this).val() || [];
+        let regex = selected.length ? selected.join('|') : '';
+        $('#itemList').DataTable().column(1).search(regex, true, false).draw();
+    });
+    const urlParams = new URLSearchParams(window.location.search);
+    let initialPage = parseInt(urlParams.get('page')) || 1;
+    let pageLength = 10;
+        const table = $('#itemList').DataTable({
+            orderCellsTop: true,
+            displayStart: (initialPage - 1) * pageLength,
+        responsive: true,
+        autoWidth: true,
+            fixedHeader: true,
+
+        ajax: {
+            url: '@Url.Action("GetItemDatas","Inventory", new { area = "HC" })',
+            type: 'GET',
+            dataSrc: 'datas'
+        },
+        columns: [
+            { data: null, orderable: true, render: (data, type, row, meta) => meta.row + 1 },
+            {
+                data: 'CategoryName',
+                width: '150px',
+                render: function (data, type, row) {
+                    return data ? data : '<span class="text-gray-400 italic">undefined</span>';
+                }
+            },
+            // Kolom Subcategory baru
+            {
+                data: 'SubcategoryName',
+                width: '150px',
+                render: function (data, type, row) {
+                    return data ? data : '<span class="text-gray-400 italic">undefined</span>';
+                }
+            },
+            {
+                data: 'Image',
+                orderable: true,
+                width: '150px',
+                render: function (data, type, row) {
+                    var isFullUrl = data.startsWith("http://") || data.startsWith("https://");
+                    var imageUrl = isFullUrl ? data : '@Url.Content("~/Files/HC/Inventory/")' + data;
+                    return `<img src="${imageUrl}" alt="${row.Item_Name}" class="h-16 w-16 object-cover rounded border" />`;
+                }
+            },
+            { data: 'Item_Name', className: 'uppercase' },
+            { data: 'Qty', className: 'text-center', width: '80px', title: 'Qty Stock' },
+            { data: 'Qty_Order', className: 'text-center text-blue-500', width: '80px' },
+            { data: 'Unit', className: 'text-center', width: '80px' },
+            {
+                data: 'Price',
+                className: 'text-center',
+                width: '80px',
+                render: function (data, type, row) {
+                    if (data == null || data === 0) return '<span class="text-gray-400 italic">-</span>';
+                    return parseFloat(data).toLocaleString('en-US'); // Format 16500 -> 16,500
+                }
+            },
+            { data: 'Location', width: '100px' },
+            {
+                data: 'Ref_Code',
+                width: '100px',
+                render: function (data, type, row) {
+                    if (!data) {
+                        return '<span class="text-gray-400 italic">No Data</span>';
+                    }
+                    return data;
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                render: (data, type, row) => `
+                    <button title="Edit" class="btn btnedit p-2" data-id="${row.ID}">
+                    <i class="fa-solid fa-pen text-yellow-500"></i>
+                    </button>
+                    <button title="Delete" class="btn btndelete p-2" data-id="${row.ID}">
+                    <i class="fa-solid fa-trash text-red-500"></i>
+                    </button>`
+            }
+        ],
+            initComplete: function () {
+                const api = this.api();
+                $('#itemList thead tr.search-row input').each(function () {
+                    $(this).on('keyup change', function () {
+                        const colIndex = $(this).data('column');
+                        api.column(colIndex).search(this.value, true, false).draw();
+                    });
+                });
+            }
+        });
+
+    // === pas data ajax selesai di-load ===
+    table.on('xhr.dt', function (e, settings, json) {
+        if (json && json.lastPriceUpdate) {
+            const match = /\/Date\((\d+)\)\//.exec(json.lastPriceUpdate);
+            let formatted = '-';
+            if (match) {
+                const ms = parseInt(match[1]);
+                const date = new Date(ms);
+                formatted = date.toLocaleString('EN', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            $('#lastUpdateFooter span').text('Last Price Update: ' + formatted);
+        }
+    });
+
+    table.on('page.dt', function () {
+        var info = table.page.info();
+        var pageNum = info.page + 1; // DataTables page index mulai dari 0, jadi +1
+
+        // Update URL tanpa reload halaman
+        var newUrl = window.location.pathname + '?page=' + pageNum;
+        history.replaceState(null, '', newUrl);
+    });
+
+    // Logika untuk tombol Edit dan Delete di Item List
+    $(document).on('click', '.btnedit', function () {
+        const $row = $(this).closest('tr');
+        const rowData = $('#itemList').DataTable().row($row).data();
+
+        if (!rowData || !rowData.ID) {
+            console.error("Row data is undefined.");
+            return;
+        }
+
+        // Ambil ID kategori dan subkategori dari data baris
+        let categoryId = rowData.Category_Id;
+        let subcategoryId = rowData.Subcategory_Id;
+
+        // Buat HTML untuk dropdown kategori
+        let categoryOptionsHtml = (categoryList || []).map(cat => {
+            const selected = cat.ID === categoryId ? 'selected' : '';
+            return `<option value="${cat.ID}" ${selected}>${cat.Category_Name}</option>`;
+        }).join('');
+
+        // Buat HTML awal untuk dropdown subkategori
+        let subcategoryOptionsHtml = `<option value="" selected disabled hidden>--Select Subcategory--</option>`;
+        if (categoryId) {
+            const filteredSubcategories = (subcategoryList || []).filter(sub => sub.Category_Id == categoryId);
+            subcategoryOptionsHtml += filteredSubcategories.map(sub => {
+                const selected = sub.ID === subcategoryId ? 'selected' : '';
+                return `<option value="${sub.ID}" ${selected}>${sub.Subcategory_Name}</option>`;
+            }).join('');
+        }
+
+        // Perbarui kolom Category (indeks 1)
+        $row.find('td').eq(1).html(`
+        <select class="w-full p-2 border rounded category-select">
+            ${categoryOptionsHtml}
+        </select>
+    `);
+        $row.find('.category-select').select2({ width: '100%' });
+
+        // Perbarui kolom Subcategory (indeks 2)
+        $row.find('td').eq(2).html(`
+        <select class="w-full p-2 border rounded subcategory-select" ${!categoryId ? 'disabled' : ''}>
+            ${subcategoryOptionsHtml}
+        </select>
+    `);
+        $row.find('.subcategory-select').select2({ width: '100%' });
+
+        // Tambahkan Event listener untuk memfilter subkategori saat kategori diubah
+        $row.find('.category-select').on('change', function () {
+            const newCategoryId = $(this).val();
+            const $subcategorySelect = $row.find('.subcategory-select');
+            $subcategorySelect.empty();
+
+            if (newCategoryId) {
+                const filteredSubcategories = (subcategoryList || []).filter(sub => sub.Category_Id == newCategoryId);
+                let options = '<option value="" selected disabled hidden>--Select Subcategory--</option>';
+                options += filteredSubcategories.map(sub => `<option value="${sub.ID}">${sub.Subcategory_Name}</option>`).join('');
+                $subcategorySelect.html(options);
+                $subcategorySelect.prop('disabled', false);
+            } else {
+                $subcategorySelect.html('<option value="" selected disabled hidden>--Select Subcategory--</option>');
+                $subcategorySelect.prop('disabled', true);
+            }
+            $subcategorySelect.trigger('change');
+        });
+
+        // ... (kode HTML untuk Image, Item, Qty, Qty Order, Unit, Location, dan Action)
+        // PERHATIKAN: Indeks kolom telah bergeser!
+        $row.find('td').eq(3).html(`
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <input type="text" class="w-full p-2 border rounded input-edit-image" value="${rowData.Image}" placeholder="Image URL">
+                <button type="button" class="text-blue-500 hover:text-blue-600 btn-preview-image" title=""><i class="fa-solid fa-eye"></i></button>
+            </div>
+            <div class="text-center text-xs text-gray-400">or</div>
+            <label class="w-full cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded p-2 hover:border-blue-400 hover:bg-blue-50">
+                <input type="file" accept="image/*" class="hidden input-upload-image">
+                <i class="fa-solid fa-upload text-blue-500 mb-1"></i>
+                <span class="text-xs text-gray-600">Drop image or click to upload</span>
+            </label>
+        </div>`);
+        // ... (kode tooltip tetap sama)
+        $row.find('td').eq(4).html(`<input type="text" class="w-full p-2 border rounded text-center" value="${rowData.Item_Name}">`);
+        $row.find('td').eq(5).html(`<input type="number" class="w-full p-2 border rounded text-center" value="${rowData.Qty}">`);
+        $row.find('td').eq(6).html(`<p class="w-full p-2 text-center">${rowData.Qty_Order ?? '-'}</p>`);
+        $row.find('td').eq(7).html(`<input type="text" class="w-full p-2 border rounded" value="${rowData.Unit}">`);
+        $row.find('td').eq(8).html(`<input type="number" class="w-full p-2 border rounded" value="${rowData.Price}">`);
+        $row.find('td').eq(9).html(`<input type="text" class="w-full p-2 border rounded" value="${rowData.Location}">`);
+        $row.find('td').eq(10).html(`<input type="text" class="w-full p-2 border rounded" value="${rowData.Ref_Code}">`);
+
+        // Perbarui kolom Action (indeks 9)
+        $row.find('td').eq(11).html(`
+        <button title="Save" class="btn btn-save p-2 text-green-500"><i class="fa-solid fa-check"></i></button>
+        <button title="Cancel" class="btn btn-cancel p-2 text-red-500"><i class="fa-solid fa-xmark"></i></button>
+    `);
+
+        setupImageUploadTooltip($row);
+    });
+    function setupImageUploadTooltip($row) {
+        const $inputUpload = $row.find('.input-upload-image');
+        const $inputUrl = $row.find('.input-edit-image');
+        const $previewBtn = $row.find('.btn-preview-image');
+        $inputUpload.on('change', function () {
+            const file = this.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                $inputUrl.val(url);
+                const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+                $previewBtn.attr('title', imageHtml).tooltip('dispose').tooltip();
+            }
+        });
+        $previewBtn.on('mouseenter', function () {
+            const url = $inputUrl.val().trim() || 'https://via.placeholder.com/150';
+            const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+            $(this).attr('title', imageHtml).tooltip('dispose').tooltip({ trigger: 'hover', html: true }).tooltip('show');
+        });
+        $previewBtn.on('mouseleave', function () {
+            $(this).tooltip('dispose');
+        });
+    }
+
+    $(document).on('click', '.btndelete', function () {
+        const itemId = $(this).data('id');
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Item will be deleted permanently.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    type: 'POST',
+                    url: "@Url.Action("DeleteItem","Inventory", new { area = "HC" })",
+                    data: { id: itemId },
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: res.message,
+                                showConfirmButton: 'OK'
+                            }).then(() => { location.reload(); });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Update Failed',
+                                text: res.message
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'Something went wrong.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-cancel', function () {
+        const $row = $(this).closest('tr');
+        const dt = $('#itemList').DataTable();
+        dt.row($row).invalidate().draw(false);
+    });
+
+   $(document).on('click', '.btn-save', function () {
+    const $row = $(this).closest('tr');
+    const usernik = "@ViewBag.UserNik";
+    const rowData = $('#itemList').DataTable().row($row).data();
+    if (!rowData || !rowData.ID) {
+        Swal.fire('Error', 'Invalid item data.', 'error');
+        return;
+    }
+    const id = rowData.ID;
+    const formData = new FormData();
+    formData.append('id', id);
+
+    // Ambil nilai dari dropdown kategori dan subkategori
+    formData.append('Category_Id', $row.find('.category-select').val());
+    formData.append('Subcategory_Id', $row.find('.subcategory-select').val());
+
+    // Perhatikan pergeseran indeks kolom
+    formData.append('Item_Name', $row.find('td').eq(4).find('input').val());
+    formData.append('Qty', $row.find('td').eq(5).find('input').val());
+    formData.append('Unit', $row.find('td').eq(7).find('input').val());
+    formData.append('Price', $row.find('td').eq(8).find('input').val());
+    formData.append('Location', $row.find('td').eq(9).find('input').val());
+    formData.append('Ref_Code', $row.find('td').eq(10).find('input').val());
+    formData.append('User_NIK', usernik);
+    const fileInput = $row.find('.input-upload-image')[0];
+    const urlInput = $row.find('.input-edit-image').val().trim();
+
+    if (fileInput && fileInput.files.length > 0) {
+        formData.append('Image', fileInput.files[0]);
+    } else if (urlInput) {
+        formData.append('Image', urlInput);
+    }
+
+    $.ajax({
+        url: '@Url.Action("UpdateItem", "Inventory", new { area = "HC" })',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (res) {
+            if (res.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: res.message,
+                    showConfirmButton: true
+                }).then(() => {
+                    table.ajax.reload(null, false);
+                });
+            }
+        },
+        error: function () {
+            Swal.fire({
+                icon: 'error',
+                title: 'Server Error',
+                text: 'Something went wrong while updating.'
+            });
+        }
+    });
+});
+    $('#createItem').on('click', function () {
+        $('#newItemTable').toggleClass('hidden');
+    });
+
+    $('#uploadXls').on('click', function () {
+        $('#uploadXlsInput').toggleClass('hidden');
+    });
+
+    $('#btnCancelAdd').on('click', function () {
+        resetForms();
+    });
+
+    $('#imageTooltipBtn').tooltip({ trigger: 'hover' });
+    $('#imageTooltipBtn').on('mouseenter', function () {
+        const url = $('#newImage').val().trim() || 'https://via.placeholder.com/150';
+        const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+        $(this).attr('title', imageHtml).tooltip('dispose').tooltip({ trigger: 'hover' }).tooltip('show');
+    });
+    $('#imageTooltipBtn').on('mouseleave', function () {
+        $(this).tooltip('dispose');
+    });
+
+    $('#imageUpload').on('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            $('#newImage').val(url);
+            $('#imageTooltipBtn').attr('title', `<img src="${url}" class="max-w-[200px]">`).tooltip('dispose').tooltip();
+        }
+    });
+
+$(document).on('click', '#submitUpload', function (e) {
+    e.preventDefault();
+
+    const fileInput = $('#file_input')[0];
+    if (!fileInput.files.length) {
+        Swal.fire('No file selected', 'Please choose an Excel file before uploading.', 'warning');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    // 🚀 LOG AWAL: Memastikan file terpilih di frontend
+    console.log("🚀 Menyiapkan upload file:", {
+        NamaFile: file.name,
+        Ukuran: (file.size / 1024).toFixed(2) + " KB",
+        Tipe: file.type
+    });
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    Swal.fire({
+        title: 'Uploading...',
+        text: 'Please wait while we process your file.',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+
+    $.ajax({
+        url: "@Url.Action("UploadPriceXls", "Inventory", new { area = "HC" })",
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (res) {
+            Swal.close();
+            if (res.success) {
+                console.log("✅ Upload & Parsing Berhasil:", res.message);
+
+                // 📊 LOG TABEL: Menampilkan detail baris, kolom yang dibaca, dan statusnya
+                console.log("📊 Detail Data yang Dibaca dari Excel (Maks 50 baris):");
+                console.table(res.debugData);
+
+                Swal.fire('Success', res.message, 'success').then(() => location.reload());
+            } else {
+                console.error("❌ Proses Gagal di Server:", res.message);
+                Swal.fire('Failed', res.message || 'Something went wrong.', 'error');
+            }
+        },
+        error: function (xhr) {
+            Swal.close();
+            console.error("❌ HTTP Error:", xhr.status, xhr.statusText);
+            console.error("Detail Error:", xhr.responseText);
+            Swal.fire('Error', xhr.responseText || 'Upload failed.', 'error');
+        }
+    });
+});
+    // SAVE ITEM DATA
+    $('#btnAddItem').on('click', function (e) {
+        e.preventDefault();
+
+        const categoryId = $('#categoryList').val();
+        const subcategoryId = $('#newSubcategoryList').val();
+        const imageUrlInput = $('#newImage').val().trim();
+        const itemName = $('#newItem').val().trim();
+        const qty = $('#newQty').val().trim();
+        const unit = $('#newUnit').val().trim();
+        const price = parseFloat($('#newPrice').val()) || 0;
+        const location = $('#newLocation').val().trim();
+        const refCode = $('#newRefCode').val().trim();
+        const usernik = "@ViewBag.UserNik";
+        const imageFile = $('#imageUpload')[0].files[0];
+
+        // Perbarui validasi untuk Subcategory
+        if (!categoryId || !subcategoryId || !itemName || !qty || !unit || !location || (!imageUrlInput && !imageFile)) {
+            Swal.fire('Error', 'Mohon lengkapi semua data!', 'error');
+            return;
+        }
+
+        // Gunakan satu objek FormData untuk semua data
+        const formData = new FormData();
+        formData.append('Category_Id', categoryId);
+        formData.append('Subcategory_Id', subcategoryId);
+        formData.append('Item_Name', itemName);
+        formData.append('Qty', qty);
+        formData.append('Unit', unit);
+        formData.append('Price', price);
+        formData.append('Location', location);
+        formData.append('Ref_Code', refCode);
+        formData.append('User_NIK', usernik);
+
+        // Kirim gambar sebagai file atau URL
+        if (imageFile) {
+            formData.append('Image', imageFile); // Kirim file dengan nama 'Image'
+        } else if (imageUrlInput) {
+            formData.append('Image', imageUrlInput); // Kirim URL dengan nama 'Image'
+        }
+
+        $.ajax({
+            url: "@Url.Action("SaveItem", "Inventory", new { area = "HC" })",
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire(
+                        'Success',
+                        res.message,
+                        'success'
+                    ).then((result) => {
+                        location.reload();
+                    });
+                    $('#newItemTable input').val('');
+                    $('#newItemTable select').val(null).trigger('change');
+                    $('#newItemTable').addClass('hidden');
+                    $('#itemList').DataTable().ajax.reload(null, false);
+                }
+            },
+            error: function () {
+                Swal.fire('Error', 'Server Error', 'error');
+            }
+        });
+    });
+
+    $(document).on('click', '#btnCancelItem', function (e) {
+        e.preventDefault();
+
+        $('#newItemTable').addClass('hidden');
+
+        $('#newItemTable input').val('');
+
+        $('#newItemTable select').val('').trigger('change');
+
+        $('#newImage').val('');
+    });
+
+    // Handler untuk tombol "Add New Category"
+    $('#createCategory').on('click', function () {
+        $('#newCategoryTable').toggleClass('hidden');
+        $('#newCategoryName').val('');
+    });
+
+    // Handler untuk tombol "Cancel" di formulir Add Category
+    $('#btnCancelAddCategory').on('click', function () {
+        $('#newCategoryTable').addClass('hidden');
+        $('#newCategoryName').val('');
+    });
+
+    $('#btnAddCategory').on('click', function() {
+        const categoryName = $('#newCategoryName').val().trim();
+        if (!categoryName) {
+            Swal.fire('Error', 'Nama kategori wajib diisi', 'error');
+            return;
+        }
+        $.ajax({
+            url: "@Url.Action("SaveCategory","Inventory", new { area = "HC" })",
+            type: 'POST',
+            data: { Category_Name: categoryName },
+            success: function(res) {
+                if (res.success) {
+                    Swal.fire('Success', res.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'Gagal menyimpan kategori', 'error');
+            }
+        });
+    });
+
+    function resetForms() {
+        $('#newItemTable').addClass('hidden');
+        $('#newCategoryTable').addClass('hidden');
+        $('#newItemTable input').val('');
+        $('#newItemTable select').val(null).trigger('change');
+        $('#newCategoryName').val('');
+        $('#createItem').show();
+        $('#createCategory').show();
+    }
+
+
+    $(document).on('click', '.btn-edit-category', function () {
+        const $row = $(this).closest('tr');
+        const rowData = $('#categoryListTable').DataTable().row($row).data();
+        if (!rowData || !rowData.ID) {
+            console.error("Row data is undefined.");
+            return;
+        }
+        const originalName = rowData.Category_Name;
+        const id = rowData.ID;
+        $row.find('td').eq(0).html(`<input type="text" class="w-full p-2 border rounded input-edit-category" value="${originalName}" />`);
+        $row.find('td').eq(1).html(`
+            <button class="btn-save-category text-green-500 p-2" data-id="${id}"><i class="fa-solid fa-check"></i></button>
+            <button class="btn-cancel-category text-red-500 p-2"><i class="fa-solid fa-xmark"></i></button>`);
+    });
+
+    $(document).on('click', '.btn-save-category', function () {
+        const id = $(this).data('id');
+        const $row = $(this).closest('tr');
+        const newName = $row.find('input').val().trim();
+        if (!newName) {
+            Swal.fire('Error', 'Category name must be filled', 'error');
+            return;
+        }
+        $.ajax({
+            url: "@Url.Action("UpdateCategory", "Inventory", new { area = "HC" })",
+            type: 'POST',
+            data: { id: id, Category_Name: newName },
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Updated',
+                        text: res.message,
+                        showConfirmButton: 'OK'
+                    }).then(() => { location.reload(); });
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function () {
+                Swal.fire({ icon: 'error', title: 'Server Error', text: 'Something went wrong while updating.' });
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-delete-category', function () {
+        const categoryId = $(this).data('id');
+        Swal.fire({
+            title: 'Are you sure?',
+            text: "Category will be deleted permanently.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("DeleteCategory","Inventory", new { area = "HC" })',
+                    data: { id: categoryId },
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire({ icon: 'success', title: 'Success', text: res.message, showConfirmButton: 'OK' }).then(() => { location.reload(); });
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Update Failed', text: res.message });
+                        }
+                    },
+                    error: function () { Swal.fire('Error', 'Something went wrong.', 'error'); }
+                });
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-cancel-category', function () {
+        const $row = $(this).closest('tr');
+        const table = $('#categoryListTable').DataTable();
+        table.row($row).invalidate().draw(false);
+    });
+
+$('#subcategoryListTable').DataTable({
+    responsive: true,
+    autoWidth: true,
+    orderCellsTop: true,
+    fixedHeader: true,
+    stateSave: true,
+    dom: 'rtip',
+    ajax: {
+        url: '@Url.Action("GetSubcategoryDatas", "Inventory", new { area = "HC" })',
+        type: 'GET',
+        dataSrc: ''
+    },
+    columns: [
+        { data: 'Subcategory_Name' },
+        {
+            data: 'CategoryName',
+            render: function (data) {
+                return data ? data : '<span class="text-gray-400 italic">undefined</span>';
+            }
+        },
+        // Definisi kolom gambar yang sama dengan item list
+        {
+            data: 'Subcategory_Image',
+            orderable: false, // Disarankan untuk gambar
+            width: '150px',
+            render: function (data, type, row) {
+                if (!data) return '';
+                var isFullUrl = data.startsWith("http://") || data.startsWith("https://");
+                var imageUrl = isFullUrl ? data : '@Url.Content("~/Files/HC/Inventory/")' + data;
+                return `<img src="${imageUrl}" alt="${row.Subcategory_Name}" class="h-16 w-16 object-cover rounded border" />`;
+            }
+        },
+        {
+            data: null,
+            orderable: false,
+            render: (data, type, row) => {
+                if (!row || !row.ID) return '';
+                return `
+                    <button class="text-yellow-500 p-2 btn-edit-subcategory" data-id="${row.ID}">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <button class="text-red-500 p-2 btn-delete-subcategory" data-id="${row.ID}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>`;
+            }
+        }
+    ],
+    initComplete: function () {
+        const api = this.api();
+
+        // 1. Filter Dropdown untuk Subcategory Name (Kolom 0)
+        const $subcategorySelect = $('#searchSubcategoryCategory');
+
+        // Atur ulang data-column ke 0 (sesuai Subcategory Name) jika belum diatur di HTML
+        $subcategorySelect.attr('data-column', '0');
+
+        // Inisialisasi Select2
+        $subcategorySelect.select2({
+            placeholder: '-- Search Subcategory --',
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Terapkan filter saat nilai berubah
+        $subcategorySelect.on('change', function () {
+            const colIndex = $(this).data('column'); // colIndex akan menjadi 0
+            const selectedValue = this.value;
+            api.column(colIndex).search(selectedValue ? selectedValue : '', true, false).draw();
+        });
+
+
+        // 2. Filter Dropdown untuk Category Name (Kolom 1)
+        const $categorySelect = $('#searchCategoryCategory');
+
+        // Atur ulang data-column ke 1 (sesuai Category Name) jika belum diatur di HTML
+        $categorySelect.attr('data-column', '1');
+
+        // Inisialisasi Select2
+        $categorySelect.select2({
+            placeholder: '-- Search Category --',
+            allowClear: true,
+            width: '100%'
+        });
+
+        // Terapkan filter saat nilai berubah
+        $categorySelect.on('change', function () {
+            const colIndex = $(this).data('column'); // colIndex akan menjadi 1
+            const selectedValue = this.value;
+            api.column(colIndex).search(selectedValue ? selectedValue : '', true, false).draw();
+        });
+    }
+});
+
+// SETUP TOOLTIP DAN UPLOAD GAMBAR BARU
+$('#subcategoryImageTooltipBtn').tooltip({ trigger: 'hover' });
+$('#subcategoryImageTooltipBtn').on('mouseenter', function () {
+    const url = $('#newSubcategoryImage').val().trim() || 'https://via.placeholder.com/150';
+    const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+    $(this).attr('title', imageHtml).tooltip('dispose').tooltip({ trigger: 'hover', html: true }).tooltip('show');
+});
+$('#subcategoryImageTooltipBtn').on('mouseleave', function () {
+    $(this).tooltip('dispose');
+});
+$('#subcategoryImageUpload').on('change', function () {
+    const file = this.files[0];
+    if (file) {
+        const url = URL.createObjectURL(file);
+        $('#newSubcategoryImage').val(url);
+        $('#subcategoryImageTooltipBtn').attr('title', `<img src="${url}" class="max-w-[200px]">`).tooltip('dispose').tooltip();
+    }
+});
+
+// SAVE NEW SUBCATEGORY
+$(document).on('click', '#btnAddSubcategory', function () {
+    const subcategoryName = $('#newSubcategoryName').val().trim();
+    const categoryId = $('#newSubcategoryCategory').val();
+    const imageUrlInput = $('#newSubcategoryImage').val().trim();
+    const imageFile = $('#subcategoryImageUpload')[0].files[0];
+
+    if (!subcategoryName || !categoryId) {
+        Swal.fire('Error', 'Nama subkategori dan kategori wajib diisi', 'error');
+        return;
+    }
+
+    // Buat satu objek FormData untuk semua data, termasuk file
+    const formData = new FormData();
+    formData.append('Subcategory_Name', subcategoryName);
+    formData.append('Category_Id', categoryId);
+
+    // Kirim gambar sebagai file atau URL
+    if (imageFile) {
+        formData.append('file', imageFile);
+    } else if (imageUrlInput) {
+        formData.append('Subcategory_Image', imageUrlInput);
+    }
+
+    $.ajax({
+        url: "@Url.Action("SaveSubcategory","Inventory", new { area = "HC" })",
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (res) {
+            if (res.success) {
+                Swal.fire('Success', res.message, 'success').then(() => { location.reload(); });
+            }
+        },
+        error: function () {
+            Swal.fire('Error', 'Gagal menyimpan subkategori', 'error');
+        }
+    });
+});
+
+// ENABLE EDIT MODE
+$(document).on('click', '.btn-edit-subcategory', function () {
+    const $row = $(this).closest('tr');
+    const rowData = $('#subcategoryListTable').DataTable().row($row).data();
+    if (!rowData || !rowData.ID) {
+        console.error("Row data is undefined.");
+        return;
+    }
+    const originalName = rowData.Subcategory_Name;
+    const originalCategoryId = rowData.Category_Id;
+    const originalImage = rowData.Subcategory_Image;
+    const id = rowData.ID;
+
+    // ... (kode HTML untuk dropdown kategori dan input nama tetap sama)
+    let optionsHtml = (categoryList || []).map(cat => {
+        const selected = cat.ID === originalCategoryId ? 'selected' : '';
+        return `<option value="${cat.ID}" ${selected}>${cat.Category_Name}</option>`;
+    }).join('');
+
+    $row.find('td').eq(0).html(`<input type="text" class="w-full p-2 border rounded input-edit-subcategory" value="${originalName}" />`);
+    $row.find('td').eq(1).html(`<select class="w-full p-2 border rounded subcategory-category-select">${optionsHtml}</select>`);
+
+    // HTML baru untuk kolom gambar di mode edit
+    $row.find('td').eq(2).html(`
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2">
+                <input type="text" class="w-full p-2 border rounded input-edit-image" value="${originalImage}" placeholder="Image URL">
+                <button type="button" class="text-blue-500 hover:text-blue-600 btn-preview-image" title=""><i class="fa-solid fa-eye"></i></button>
+            </div>
+            <div class="text-center text-xs text-gray-400">or</div>
+            <label class="w-full cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded p-2 hover:border-blue-400 hover:bg-blue-50">
+                <input type="file" accept="image/*" class="hidden input-upload-image">
+                <i class="fa-solid fa-upload text-blue-500 mb-1"></i>
+                <span class="text-xs text-gray-600">Drop image or click to upload</span>
+            </label>
+        </div>`);
+
+    $row.find('td').eq(3).html(`
+        <button class="btn-save-subcategory text-green-500 p-2" data-id="${id}"><i class="fa-solid fa-check"></i></button>
+        <button class="btn-cancel-subcategory text-red-500 p-2"><i class="fa-solid fa-xmark"></i></button>
+    `);
+
+    $row.find('.subcategory-category-select').select2({ width: '100%' });
+    setupSubcategoryImageUploadTooltip($row);
+});
+
+// Fungsi pembantu untuk setup tooltip gambar subkategori
+function setupSubcategoryImageUploadTooltip($row) {
+    const $inputUpload = $row.find('.input-upload-image');
+    const $inputUrl = $row.find('.input-edit-image');
+    const $previewBtn = $row.find('.btn-preview-image');
+    $inputUpload.on('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const url = URL.createObjectURL(file);
+            $inputUrl.val(url);
+            const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+            $previewBtn.attr('title', imageHtml).tooltip('dispose').tooltip();
+        }
+    });
+    $previewBtn.on('mouseenter', function () {
+        const url = $inputUrl.val().trim() || 'https://via.placeholder.com/150';
+        const imageHtml = `<img src="${url}" class="w-32 h-32 object-cover rounded" />`;
+        $(this).attr('title', imageHtml).tooltip('dispose').tooltip({ trigger: 'hover', html: true }).tooltip('show');
+    });
+    $previewBtn.on('mouseleave', function () {
+        $(this).tooltip('dispose');
+    });
+}
+
+    // SAVE EDITED SUBCATEGORY
+$(document).on('click', '.btn-save-subcategory', function () {
+    const id = $(this).data('id');
+    const $row = $(this).closest('tr');
+    const newName = $row.find('input.input-edit-subcategory').val().trim();
+    const newCategoryId = $row.find('.subcategory-category-select').val();
+    const imageUrlInput = $row.find('.input-edit-image').val().trim();
+    const imageFile = $row.find('.input-upload-image')[0].files[0];
+
+    const formData = new FormData();
+    formData.append('id', id);
+    formData.append('Subcategory_Name', newName);
+    formData.append('Category_Id', newCategoryId);
+    if (imageFile) {
+        formData.append('Subcategory_Image', imageFile);
+    } else if (imageUrlInput) {
+        formData.append('Subcategory_Image', imageUrlInput);
+    }
+
+    $.ajax({
+        url: "@Url.Action("UpdateSubcategory", "Inventory", new { area = "HC" })",
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function (res) {
+            if (res.success) {
+                Swal.fire({ icon: 'success', title: 'Updated', text: res.message, showConfirmButton: 'OK' }).then(() => { location.reload(); });
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+        error: function () {
+            Swal.fire({ icon: 'error', title: 'Server Error', text: 'Terjadi kesalahan saat mengupdate.' });
+        }
+    });
+});
+    $('#createSubcategory').on('click', function () {
+        $('#newSubcategoryTable').toggleClass('hidden');
+        // Mengatur ulang input saat formulir dibuka/disembunyikan
+        $('#newSubcategoryName').val('');
+        $('#newSubcategoryCategory').val(null).trigger('change');
+        $('#newSubcategoryImage').val('');
+        $('#subcategoryImageUpload').val('');
+    });
+
+    // Handler untuk tombol "Cancel" di formulir Add Subcategory
+    $('#btnCancelAddSubcategory').on('click', function () {
+        $('#newSubcategoryTable').addClass('hidden');
+        $('#newSubcategoryName').val('');
+        $('#newSubcategoryCategory').val(null).trigger('change');
+        $('#newSubcategoryImage').val('');
+        $('#subcategoryImageUpload').val('');
+    });
+
+    //$(document).on('click', '.btn-edit-subcategory', function () {
+    //    const $row = $(this).closest('tr');
+    //    const rowData = $('#subcategoryListTable').DataTable().row($row).data();
+    //    if (!rowData || !rowData.ID) {
+    //        console.error("Row data is undefined.");
+    //        return;
+    //    }
+    //    const originalName = rowData.Subcategory_Name;
+    //    const originalCategoryId = rowData.Category_Id;
+    //    const id = rowData.ID;
+    //    let optionsHtml = (categoryList || []).map(cat => {
+    //        const selected = cat.ID === originalCategoryId ? 'selected' : '';
+    //        return `<option value="${cat.ID}" ${selected}>${cat.Category_Name}</option>`;
+    //    }).join('');
+
+    //    $row.find('td').eq(0).html(`<input type="text" class="w-full p-2 border rounded input-edit-subcategory" value="${originalName}" />`);
+    //    $row.find('td').eq(1).html(`<select class="w-full p-2 border rounded subcategory-category-select">${optionsHtml}</select>`);
+    //    $row.find('td').eq(2).html(`
+    //        <button class="btn-save-subcategory text-green-500 p-2" data-id="${id}"><i class="fa-solid fa-check"></i></button>
+    //        <button class="btn-cancel-subcategory text-red-500 p-2"><i class="fa-solid fa-xmark"></i></button>`);
+    //    $row.find('.subcategory-category-select').select2({ width: '100%' });
+    //});
+
+    @*$(document).on('click', '.btn-save-subcategory', function () {
+        const id = $(this).data('id');
+        const $row = $(this).closest('tr');
+        const newName = $row.find('input.input-edit-subcategory').val().trim();
+        const newCategoryId = $row.find('.subcategory-category-select').val();
+        if (!newName || !newCategoryId) {
+            Swal.fire('Error', 'Nama subkategori dan kategori harus diisi', 'error');
+            return;
+        }
+        $.ajax({
+            url: "@Url.Action("UpdateSubcategory", "Inventory", new { area = "HC" })",
+            type: 'POST',
+            data: { id: id, Subcategory_Name: newName, Category_Id: newCategoryId },
+            success: function (res) {
+                if (res.success) {
+                    Swal.fire({ icon: 'success', title: 'Updated', text: res.message, showConfirmButton: 'OK' }).then(() => { location.reload(); });
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function () { Swal.fire({ icon: 'error', title: 'Server Error', text: 'Terjadi kesalahan saat mengupdate.' }); }
+        });
+    });*@
+
+    $(document).on('click', '.btn-cancel-subcategory', function () {
+        const $row = $(this).closest('tr');
+        const table = $('#subcategoryListTable').DataTable();
+        table.row($row).invalidate().draw(false);
+    });
+
+    $(document).on('click', '.btn-delete-subcategory', function () {
+        const $row = $(this).closest('tr');
+        const rowData = $('#subcategoryListTable').DataTable().row($row).data();
+
+        // Pastikan data baris ada sebelum melanjutkan
+        if (!rowData || !rowData.ID) {
+            Swal.fire('Error', 'Invalid subcategory data.', 'error');
+            return;
+        }
+
+        const subcategoryId = rowData.ID;
+        const subcategoryName = rowData.Subcategory_Name;
+
+        // Buat pesan dinamis dengan nama subkategori
+        const confirmText = `Subcategory '${subcategoryName}' will be permanently removed.`;
+
+        Swal.fire({
+            title: 'Are you sure?',
+            text: confirmText,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("DeleteSubcategory","Inventory", new { area = "HC" })',
+                    data: { id: subcategoryId },
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success',
+                                text: res.message,
+                                showConfirmButton: 'OK'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Failed',
+                                text: res.message
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Server Error',
+                            text: 'Terjadi kesalahan.'
+                        });
+                    }
+                });
+            }
+        });
+    });
+});
+</script>

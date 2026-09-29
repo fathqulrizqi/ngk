@@ -1,0 +1,573 @@
+﻿@using Microsoft.AspNet.Identity;
+@using System.Security.Claims;
+@using NGKBusi.Models;
+
+@{
+    DefaultConnection db = new DefaultConnection();
+    Int32 i = 1;
+    string CurrentURL = Request.Url.AbsoluteUri;
+    ViewBag.Title = "DataList";
+    string currURL = Request.Url.AbsoluteUri;
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId();
+}
+<form id="formKaizen" action="@(Request.Url.ToString())" method="post">
+    <label class="font-weight-bold">Periode : </label><select id="selPeriod" class="form-control" name="iPeriod">
+        <option value="">-Pilih Periode-</option>
+        @for (var p = 2016; p <= DateTime.Now.Year; p++)
+        {
+            <option value="@(p)" @(ViewBag.Period == p ? "selected" : "")>@("FY1" + (Int32.Parse(new DateTime(p, 1, 1).ToString("yy")) + 1))</option>
+        }
+    </select>
+</form>
+<table id="KaizenDataTable" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="16" class="sorter-false">
+                <h2 class="table-title">
+                    Kaizen Data List
+                    @if (currURL.Contains("OCD"))
+                    {
+                        <button id="btnAdd" class="btn btn-light" data-toggle="modal" data-target="#OCDModal" style="z-index:98;">Add New</button>
+                    }
+                    <button id="btnDownload" class="btn btn-light" style="z-index:99;">Download</button>
+                </h2>
+            </th>
+        </tr>
+        <tr>
+            <th>Reg No</th>
+            <th class="filter-select" data-placeholder="-Scope-">Scope</th>
+            <th>NIK</th>
+            <th>Name</th>
+            <th>Line Leader</th>
+            <th class="filter-select" data-placeholder="-Dept-">Dept</th>
+            <th class="filter-select" data-placeholder="-Section-">Section</th>
+            <th>Tanggal</th>
+            <th>Judul</th>
+            <th>Area</th>
+            <th>OCD Score</th>
+            <th>KOC Score</th>
+            <th>SC Score</th>
+            <th>Reward</th>
+            @*<th>Benefit</th>*@
+            @if (currURL.Contains("Admin") || currURL.Contains("Report"))
+            {
+                if (currURL.Contains("Admin"))
+                {
+                    <th>
+                        Reward Date
+                    </th>
+                }
+                <th class="filter-select" data-placeholder="-Status-">
+                    Reward Status
+                </th>
+            }
+            else if (currURL.Contains("PI"))
+            {
+                <th class="filter-select" data-placeholder="-Status-">
+                    Implement Status
+                </th>
+            }
+            else
+            {
+                <th class="filter-false">
+                </th>
+            }
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="16">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+        @foreach (var item in ViewBag.kaizenList)
+        {
+            <tr data-id="@(item.ID)" data-regno="@(item.RegNo)" data-reward="@(item.Reward)" data-lineleader="@(item.lineLeader)" data-divName="@(item.Division)" data-deptName="@(item.Dept)" data-sectionName="@(item.Section)" data-subSectionName="@(item.SubSection)">
+                <td><a target="_blank" href="@Url.Content("~/Files/Kaizen/" + item.RegNo + ".pdf")">@(item.RegNo)</a></td>
+                <td>@(item.improveType)</td>
+                <td>@(item.NIK)</td>
+                <td>@(item.issuedUser.Name)</td>
+                <td>@((item.leader != null ? item.leader.Name : ""))</td>
+                <td>@(item.Dept != null ? item.Dept : (item.Division != null ? item.Division : null))</td>
+                <td>
+                    @if (item.Division.Trim() == "PRODUCTION" || item.Division.Trim() == "SALES & MARKETING")
+                    {
+                        if (item.Section.Trim() == "OEM & OES SALES")
+                        {
+                            @(item.SubSection)
+                        }
+                        else
+                        {
+                            @(item.SubSection != null ? item.SubSection : (item.Section != null ? item.Section : item.Dept != null ? item.Dept : (item.Division != null ? item.Dept : null)))
+                        }
+                    }
+                    else if (item.Division.Trim() == "ACCOUNTING & IT")
+                    {
+                        @(item.Dept != null ? item.Dept : (item.Division != null ? item.Division : null))
+                    }
+                    else
+                    {
+                        @(item.Section != null ? item.Section : (item.Dept != null ? item.Dept : (item.Division != null ? item.Dept : null)))
+                    }
+                </td>
+                <td>@(item.issuedDate.ToString("dd-MMM-yyyy"))</td>
+                <td>@(item.Title)</td>
+                <td>@(item.Area)</td>
+                <td><a href="#" class="OCDScoreSet">@((item.OCDScore)) </a></td>
+                <td><a href="#" class="KOCScoreSet">@((item.KOCScore))</a></td>
+                <td><a href="#" class="SCScoreSet">@((item.SCScore))</a></td>
+                <td>
+                    @if (currUserID != "SCReward")
+                    {
+                        @(item.Reward > 1 ? @String.Format((item.Reward < 1 ? "{0:F0}" : "{0:F0}"), item.Reward) : item.Reward)
+                    }
+                    else
+                    {
+                        <a href="#" class="SCRewardSet" data-rewardby="@(item.SCBy)">@(item.Reward > 1 ? @String.Format((item.Reward < 1 ? "{0:F0}" : "{0:N0}"), item.Reward) : item.Reward)</a>
+                    }
+                </td>
+                @if (currURL.Contains("Admin"))
+                {
+                    <td>@(item.OCDScore >= 16 ? (item.OCDScore + item.KOCScore >= 40 ? item.SCDate?.ToString("dd-MMM-yyyy") : item.KOCDate?.ToString("dd-MMM-yyyy")) : item.OCDDate?.ToString("dd-MMM-yyyy") )</td>
+                }
+                <td class="text-nowrap" style="@(currURL.Contains("OCD")?"":"")text-align:center;">
+                    @if (currURL.Contains("OCD"))
+                    {
+                        if ((currUser.GetUserId() == @item.OCDBy || currUser.GetUserId() == "767.11.16" || currUser.GetUserId() == "629.01.13" || currUser.GetUserId() == "759.09.16" || currUser.GetUserId() == "798.06.18" || currUser.GetUserId() == "796.05.18"))
+                        {
+                            <button type="button" class="btnFeedback btn @(item.Has_Feedback ? "btn-success" : "btn-warning")" data-toggle="tooltip" title="Feedback" data-id="@(item.ID)" data-active="true"><span class="fa @(item.Has_Feedback ? "fa-check" : "fa-exclamation")"></span></button>
+                            <hr class="m-1" />
+                            <button type="button" class="btnEdit btn btn-warning" data-toggle="tooltip" title="Edit"><span class="fa fa-edit"></span></button>
+                            <button type="button" class="btnDelete btn btn-danger" data-toggle="tooltip" title="Delete"><span class="fa fa-trash"></span></button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btnFeedback btn @(item.Has_Feedback ? "btn-success" : "btn-warning")" data-active="false"><span class="fa @(item.Has_Feedback ? "fa-check" : "fa-exclamation")"></span></button>
+                        }
+                        <span class="spanHasFeedback" style="display:none;">@(item.Has_Feedback ? "Sudah Feedback" : "Belum Feedback")</span>
+                    }
+                    else if (currURL.Contains("KOC"))
+                    {
+                        <button type="button" data-room="KOC" data-logged="@(currUserID)" data-lockedby="@(item.KOCBy != null?item.KOCBy:0)" class="btnLock btn btn-@(item.KOCBy != null?"warning":"success")"><i class="fa fa-@(item.KOCBy != null? "lock" : "unlock")"></i></button>
+                    }
+                    else if (currURL.Contains("SC"))
+                    {
+                        <button type="button" data-room="SC" data-logged="@(currUserID)" data-lockedby="@(item.SCBy != null ? item.SCBy : 0)" class="btnLock btn btn-@(item.SCBy != null?"warning":"success")"><i class="fa fa-@(item.SCBy != null? "lock" : "unlock")"></i></button>
+                    }
+                    else if (currURL.Contains("Admin") || currURL.Contains("Report"))
+                    {
+                        if (item.Reward < 5000)
+                        {
+                            <button class="btn btn-danger" data-id="@(item.ID)" title="Tidak Reward(Hanya Dapat Point)"><i class="fa fa-times fa-2x"></i></button>
+                            <span style="display:none;">Tidak Reward</span>
+                        }
+                        else
+                        {
+                            if (item.hasRewarded)
+                            {
+                                <button id="btnRewarded" class="btnRewarded btn btn-success" data-id="@(item.ID)" title="Sudah Reward"><i class="fa fa-money-bill fa-2x"></i></button>
+                                <span class="spanRewarded" style="display:none;">Sudah Reward</span>
+                            }
+                            else
+                            {
+                                <button id="btnRewarded" class="btnRewarded btn btn-warning" data-id="@(item.ID)" title="Belum Reward">
+                                    <span class="fa-stack">
+                                        <i class="fas fa-money-bill fa-stack-1x"></i>
+                                        <i class="fa fa-ban fa-stack-2x text-danger"></i>
+                                    </span>
+                                </button>
+                                <span class="spanRewarded" style="display:none;">Belum Reward</span>
+                            }
+                        }
+                    }
+                    else if (currURL.Contains("PI"))
+                    {
+                        if (item.hasImplement)
+                        {
+                            <button id="btnImplemented" class="btnImplemented btn btn-success" data-id="@(item.ID)" title="Sudah Implement" data-toggle="modal" data-target="#PIModal">
+                                <i class="fa fa-check"></i>
+                            </button>
+                            <span class="spanImplement" style="display:none;">Sudah Implement</span>
+                        }
+                        else
+                        {
+
+                            <button id="btnImplemented" class="btnImplemented btn btn-warning" data-id="@(item.ID)" title="Belum Implement" data-toggle="modal" data-target="#PIModal">
+                                <i class="fa fa-ban text-danger"></i>
+                            </button>
+                            <span class="spanImplement" style="display:none;">Belum Implement</span>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (currURL.Contains("OCD"))
+{
+    <div id="OCDModal" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <!-- Modal content-->
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add New Data</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="formOCD" action="@Url.Action("Add", "OCD", new { area = "Kaizen" })" class="form-horizontal" method="post" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div id="divFormOCD">
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#flScan" required>Scan File :</label>
+                                <div class="col-9">
+                                    <input id="flScan" type="file" name="iScan" accept="application/pdf" required />
+                                    <input id="hfCurrDataID" name="iDataID" type="hidden" />
+                                </div>
+                            </div>
+                            <div class="form-group row ocdRegNo">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#txtRegNo">Reg. No. :</label>
+                                <div class="col-9">
+                                    <input id="txtRegNo" name="iRegNo" type="text" class="form-control" placeholder="Registration Number" />
+                                    <input id="hfOldRegNo" name="iOldRegNo" type="hidden" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#selImpType">Jenis Perbaikan :</label>
+                                <div class="col-9">
+                                    <select id="selImpType" name="iImpType" class="form-control" required>
+                                        <option value="">-Pilih Perbaikan-</option>
+                                        <option value="Perbaikan Produktifitas">Perbaikan Produktifitas</option>
+                                        <option value="Perbaikan Kualitas">Perbaikan Kualitas</option>
+                                        <option value="Perbaikan K3 & Sumber Daya">Perbaikan K3 & Sumber Daya</option>
+                                        <option value="Perbaikan 5S & Lingkungan">Perbaikan 5S & Lingkungan</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#selNIK">Pengusul Ide :</label>
+                                <div class="col-9">
+                                    <select id="selNIK" name="iNIK" class="select2" style="width:100%;" required>
+                                        <option value="">-Select Employee-</option>
+                                        @foreach (var item in ViewBag.userList)
+                                        {
+                                            <option data-divID="@(item.DivisionID)" data-postID="@(item.PositionID)" data-divName="@(item.DivisionName)" data-deptName="@(item.DeptName)" data-sectionName="@(item.SectionName)" data-subSectionName="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#spanDivision">Division :</label>
+                                <div class="col-9">
+                                    <span id="spanDivision">-</span>
+                                    <input id="hfDivision" type="hidden" name="iDivision" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#spanDept">Dept :</label>
+                                <div class="col-9">
+                                    <span id="spanDept">-</span>
+                                    <input id="hfDept" type="hidden" name="iDept" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#spanSection">Section :</label>
+                                <div class="col-9">
+                                    <span id="spanSection">-</span>
+                                    <input id="hfSection" type="hidden" name="iSection" />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#spanSubSection">Sub Section :</label>
+                                <div class="col-9">
+                                    <span id="spanSubSection">-</span>
+                                    <input id="hfSubSection" type="hidden" name="iSubSection" />
+                                </div>
+                            </div>
+                            <div class="form-group row lineLeader" style="display:none;">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#selNIK">Line Leader :</label>
+                                <div class="col-9">
+                                    <select id="selLineLeader" name="iLineLeader" class="select2" style="width:100%;">
+                                        <option value="">-Select Line Leader-</option>
+                                        @foreach (var item in ViewBag.userList)
+                                        {
+                                            <option data-dept="@(item.DeptName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#txtDate">Tanggal Input :</label>
+                                <div class="col-9">
+                                    <input id="txtDate" type="text" name="iDate" class="form-control" style="width:125px" placeholder="Input Date" required readonly />
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#txtTitle">Judul Kaizen :</label>
+                                <div class="col-9">
+                                    <div class="col-9" style="padding-left:0px;">
+                                        <textarea id="txtTitle" name="iTitle" rows="2" cols="20" class="form-control" placeholder="Judul Kaizen" required></textarea>
+                                    </div>
+                                    <div class="col-3 text-right font-weight-bold">
+                                        <a id="showSameResult" href="#" data-toggle="modal" data-target="#titleSearchModal"></a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#selArea">Area Perbaikan :</label>
+                                <div class="col-9">
+                                    <select id="selArea" name="iArea" class="form-control" required>
+                                        <option value="">-Pilih Area-</option>
+                                        <option value="Office (Finance, HC, HSE, Sales / Marketing, FOS, PE, QA, dll)">Office (Finance, HC, HSE, Sales / Marketing, FOS, PE, QA, dll)</option>
+                                        <option value="Fasilitas Umum (Lahan Parkir, Kebun, Jalan, Toilet, Smoking Area, dll)">Fasilitas Umum (Lahan Parkir, Kebun, Jalan, Toilet, Smoking Area, dll)</option>
+                                        <option value="Gudang (Material, Finished Goods, Spare Parts, dll)">Gudang (Material, Finished Goods, Spare Parts, dll)</option>
+                                        <option value="Utility (CF, CM, WT, Plating, Plug Cap, dll)">Utility (CF, CM, WT, Plating, Plug Cap, dll)</option>
+                                        <option value="Laboratorium">Laboratorium</option>
+                                        <option value="Workshop">Workshop</option>
+                                        <option value="Waste Treatment (WWT, Scrap, TPS, dll)">Waste Treatment (WWT, Scrap, TPS, dll)</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                    <textarea id="txtAreaOther" name="iAreaOther" class="form-control" rows="2" cols="20" placeholder="Area Lainnya" style="display:none;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="divScoreOCD" style="display:none;">
+                            @if (currUserID == "798.06.18" || currUserID == "759.09.16")
+                            {
+                                <input id="hfAllowNotScoring" name="iAllowNotScoring" type="hidden" value="true" />
+                            }
+                            @foreach (var item in ViewBag.OCDList)
+                            {
+                                Int32 childID = item.ID;
+                                var childRow = db.Kaizen_Score_Categories_Sub.Where(x => x.catID == childID).ToList();
+                                <div class="form-group row" data-catID="@(item.ID)">
+                                    <label class="control-label col-3 text-right font-weight-bold" for="#rbOCDScore">@(item.Name)</label>
+                                    <div class="col-9">
+                                        @foreach (var subItem in childRow)
+                                        {
+                                            <div class="radio">
+                                                <label><input type="radio" class="rbOCDScore" data-subcatID="@(subItem.ID)" data-score="@(subItem.Score)" name="@("iOCDScore" + i )" value="@(subItem.ID + "||" + subItem.Score)" required>@(subItem.Question + " : ")<span style='font-weight:bold;'>@("(" + subItem.Score + ")")</span></label>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                                i++;
+                            }
+                            @*<div class="divCostBenefit">
+                                <table class="table table-bordered">
+                                    <thead><tr><th colspan="4" class="bg-dark text-light">Cost Benefit Analysis</th></tr></thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="bg-light">1. Biaya yang dikeluarkan dalam pembuatan kaizen</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Biaya Bahan dan Material</td>
+                                            <td><input type="text" class="form-control" /></td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Biaya Tenaga kerja atau jasa</td>
+                                            <td><input type="text" class="form-control" /></td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Lainnya</td>
+                                            <td><input type="text" class="form-control" /></td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" class="text-right">Total biaya pembuatan</td>
+                                            <td><label class="lblTotalCost">Rp.</label></td>
+                                        </tr>
+
+                                        <tr>
+                                            <td colspan="4" class="bg-light">2. Keuntungan yang didapatkan dari pembuatan kaizen</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Area Improvement</td>
+                                            <td colspan="3">
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="iBenefitArea" id="rbBenefitArea" value="MetalShell" required>
+                                                    <label class="form-check-label" for="rbBenefitArea">
+                                                        MetalShell
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="iBenefitArea" id="rbBenefitArea" value="Insulator" required>
+                                                    <label class="form-check-label" for="rbBenefitArea">
+                                                        Insulator
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="iBenefitArea" id="rbBenefitArea" value="Busi" required>
+                                                    <label class="form-check-label" for="rbBenefitArea">
+                                                        Busi
+                                                    </label>
+                                                </div>
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input" type="radio" name="iBenefitArea" id="rbBenefitArea" value="PlugCap" required>
+                                                    <label class="form-check-label" for="rbBenefitArea">
+                                                        PlugCap
+                                                    </label>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Periode Improvement</td>
+                                            <td colspan="3" class="text-left">
+                                                <input type="text" class="form-control d-inline-block" style="width:65px;" />
+                                                <label class="d-inline-block">Bulan</label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Peningkatan Quantity Produksi</td>
+                                            <td class="text-left">
+                                                <input type="text" class="form-control d-inline-block" style="width:65px;" />
+                                                <label class="d-inline-block">Pcs/Hari</label>
+                                            </td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Penurunan Waktu Proses</td>
+                                            <td class="text-left">
+                                                <input type="text" class="form-control d-inline-block" style="width:65px;" />
+                                                <label class="d-inline-block">Menit/Hari</label>
+                                            </td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Lainnya (sebutkan)</td>
+                                            <td class="text-left">
+                                                <input type="text" class="form-control d-inline-block" />
+                                            </td>
+                                            <td><i>Wajib diisi, jika tidak ada biaya bisa diisi "0"</i></td>
+                                            <td><input type="text" class="form-control" placeholder="Rp." /></td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" class="text-right">Total keuntungan yang didapatkan dari pembuatan Kaizen</td>
+                                            <td><label class="lblTotalBenefit">Rp.</label></td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-right">BENEFIT KAIZEN 2-1</td>
+                                            <td><label class="lblTotalCostBenefit">Rp.</label></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>*@
+                            <div class="form-group row">
+                                <label class="control-label col-3 text-right font-weight-bold" for="#txtScore" required>OCD Score : </label>
+                                <div class="col-3 text-right font-weight-bold">
+                                    <input type="text" id="txtScore" name="iScore" value="0" />
+                                </div>
+                                <div class="col-6 row" id="divReward" style="display:none;">
+                                    <label class="control-label col-3 text-right font-weight-bold" for="#txtReward" required>Reward : </label>
+                                    <div class="col-9">
+                                        <input type="text" id="txtReward" name="iReward" value="0" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnDataOCDPrev" type="button" class="btn btn-primary" style="display:none;"><i class="fa fa-angle-double-left"></i> Prev</button>
+                        <button id="btnDataOCDNext" type="button" class="btn btn-primary">Next <i class="fa fa-angle-double-right"></i></button>
+                        <button id="btnDataSubmit" type="submit" class="btn btn-primary" style="display:none;">Submit</button>
+                        <button type="reset" class="btn btn-primary" data-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+else if (currURL.Contains("PI"))
+{
+    <div id="PIModal" class="modal fade" role="dialog">
+        <div class="modal-dialog modal-lg">
+            <!-- Modal content-->
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Implement</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="formPI" action="@Url.Action("Implement", "PI", new { area = "Kaizen" })" class="form-horizontal" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="iPIImplementID" id="hfPIImplementID" value="" />
+                    <div class="modal-body">
+                        <div class="container-fluid">
+                            <div class="form-group row">
+                                <label class="control-label font-weight-bold col-sm-2">Status :</label>
+                                <div class="col-sm-10">
+                                    <div class="form-check-inline">
+                                        <label class="form-check-label">
+                                            <input type="radio" class="form-check-input rbPIImplemented" name="iPIImplemented" value="0">Belum Implement
+                                        </label>
+                                    </div>
+                                    <div class="form-check-inline">
+                                        <label class="form-check-label">
+                                            <input type="radio" class="form-check-input rbPIImplemented" name="iPIImplemented" value="1">Sudah Implement
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="divImplementWrap" style="display:none;">
+                                <div class="form-group row">
+                                    <textarea id="txtPIImplement" name="iPIImplement" class="txtTinyMCE" rows="7" cols="20"></textarea>
+                                    <input name="image" type="file" id="flTinyMCE" onchange="" style="display:none;">
+                                </div>
+                                <div class="form-group row">
+                                    <label class="control-label font-weight-bold col-sm-2">Implementor :</label>
+                                    <div class="col-sm-10">
+                                        <select data-placeholder="-Select Implementor-" name="iPIImplementor[]" id="selPIImplementor" class="select2" multiple>
+                                            @foreach (var item in ViewBag.userList)
+                                            {
+                                                <option data-divID="@(item.DivisionID)" data-postID="@(item.PositionID)" data-divName="@(item.DivisionName)" data-deptName="@(item.DeptName)" data-sectionName="@(item.SectionName)" data-subSectionName="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="btnDataPISubmit" type="submit" class="btn btn-primary">Submit</button>
+                        <button type="reset" class="btn btn-primary" data-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@Html.Partial("../Shared/TitleSearch")
+@Html.Partial("../Shared/OCDScore")
+@Html.Partial("../Shared/KOCScore")
+@Html.Partial("../Shared/SCScore")
+@Html.Partial("../Shared/Reward")
+

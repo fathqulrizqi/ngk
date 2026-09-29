@@ -1,0 +1,151 @@
+﻿
+@{
+    ViewBag.Title = "MemberList";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    div.loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(16, 16, 16, 0.5);
+        z-index: 1000;
+    }
+</style>
+
+@section scriptHead{
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            var _currData;
+            var _len = 0;
+            var _start = 0;
+            var _totalLen = 0;
+            var _total = 0;
+            var _page = 1;
+            $(".dtFrom").datepicker({ dateFormat: "yy-mm-dd", onSelect: function () { var selDate = $(this).datepicker("getDate"); $(".dtTo").datepicker("option", "minDate", selDate); } });
+            $(".dtTo").datepicker({ dateFormat: "yy-mm-dd", onSelect: function () { var selDate = $(this).datepicker("getDate"); $(".dtFrom").datepicker("option", "maxDate", selDate); } });
+
+            $(".btnGetData").click(function () {
+                if ($(".dtFrom").val().length > 0 && $(".dtTo").val().length > 0) {
+                    $(".upload-wrap").fadeIn();
+                    _len = 0;
+                    _start = 0;
+                    _totalLen = 0;
+                    _total = 0;
+                    _page = 1;
+                    $(".uploadProgress").removeClass("bg-success");
+                    $(".uploadingInfo").text("Uploading...Please Wait..");
+                    getData(_page);
+                } else {
+                    alert("Please Input Date!!");
+                }
+            });
+
+            function getData(_page) {
+                $.ajax({
+                    url: "https://api.gift.id/v1/m-integration/insight/membership/list",
+                    method: "POST",
+                    dataType: 'json',
+                    tryCount: 0,
+                    tryLimit: 3,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        "Authorization": "Basic " + btoa("9Z1rmDcfutDsE37q5uFNfZG9E" + ":" + "vRlkclV61mCpXLClhI3w2XnmnQESO7GPIBIetavJzbFadjl5nU"),
+                    },
+                    data: JSON.stringify({
+                        "page": _page,
+                        "perPage": 1000,
+                        "customerRegisteredStart": $(".dtFrom").val(),
+                        "customerRegisteredEnd": $(".dtTo").val()
+                    })
+                    , success: function (data) {
+                        _currData = data.data;
+                        _len = _currData.length;
+                        _totalLen += _currData.length;
+                        _start = 0;
+                        if (_len > 0) {
+                            uploadData(data.data[_start]);
+                            $(".uploadProgress").attr("aria-valuemax", _totalLen);
+                            $(".uploadProgress").removeClass("bg-success");
+                            $(".uploadingInfo").text("Uploading...Please Wait..");
+                        } else {
+                            completed = " Completed!"
+                            $(".uploadProgress").addClass("bg-success");
+                            $(".uploadingInfo").text("Completed!!");
+                        }
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+
+            function uploadData(_data) {
+                if (_start < _len) {
+                    $.ajax({
+                        url: "/NGKBusi/WebService/TADA/UploadMemberData",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            uploadData: JSON.stringify(_data),
+                        }, success: function (data) {
+                            _start++; _total++;
+                            var completed = ""
+                            //-1 because excel setting => HDR=No
+                            if ((_start) == (_len)) {
+                                _page++;
+                                console.log(_page);
+                                getData(_page);
+                            }
+                            //-1 because excel setting => HDR=No
+                            $(".uploadProgress").text((_total) + " of " + (_totalLen) + completed);
+                            $(".uploadProgress").attr("aria-valuenow", (_total));
+                            $(".uploadProgress").css("width", Math.round(((_total) / (_totalLen)) * 100) + "%");
+                            uploadData(_currData[_start]);
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+}
+
+<h2>MemberList</h2>
+<hr />
+<div class="form-group row">
+    <label class="col-2 font-weight-bold">Date:</label>
+    <div class="col-5">
+        <input type="text" class="form-control dtFrom" placeholder="Date From" />
+    </div>
+    <div class="col-5">
+        <input type="text" class="form-control dtTo" placeholder="Date To" />
+    </div>
+</div>
+
+<div class="form-group row">
+    <div class="col-12">
+        <button type="button" class="btn btn-primary btnGetData form-control">Get Memberlist Data</button>
+    </div>
+</div>
+
+<hr />
+<div class="upload-wrap" style="display:none;">
+    <h3 class="uploadingInfo">Uploading...Please Wait..</h3>
+    <div class="progress">
+        <div class="uploadProgress progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100">0</div>
+    </div>
+    <hr />
+</div>

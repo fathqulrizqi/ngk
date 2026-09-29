@@ -1,0 +1,386 @@
+@using NGKBusi.Areas.HC.Models
+@using Microsoft.AspNet.Identity
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var incident = (HC_BCP_Incident)ViewBag.Incident;
+    var photos = (List<HC_BCP_Incident_Photo>)ViewBag.Photos;
+    var reporterName = (string)ViewBag.ReporterName;
+
+    // Optional Severity Mapping (for legacy/historical records)
+    string sVal = (incident.Severity ?? "").Trim();
+    string severityLabel = "";
+    string severityClass = "";
+
+    if (sVal == "Critical" || sVal == "4") {
+        severityLabel = "CRITICAL";
+        severityClass = "bg-rose-100 text-rose-700 border-rose-200";
+    } else if (sVal == "High" || sVal == "3") {
+        severityLabel = "HIGH";
+        severityClass = "bg-orange-100 text-orange-700 border-orange-200";
+    } else if (sVal == "Medium" || sVal == "2") {
+        severityLabel = "MEDIUM";
+        severityClass = "bg-amber-100 text-amber-700 border-amber-200";
+    } else if (sVal == "Low" || sVal == "1") {
+        severityLabel = "LOW";
+        severityClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
+    }
+
+    // Authorization: Check if current user is the creator
+    string curNik = User.Identity.GetUserId() ?? User.Identity.Name;
+    if (!string.IsNullOrEmpty(curNik) && curNik.Contains("\\")) { curNik = curNik.Split('\\').Last(); }
+    curNik = (curNik ?? "").Trim().ToLower();
+
+    string creatorNik = incident.Created_By ?? "";
+    if (creatorNik.Contains("\\")) { creatorNik = creatorNik.Split('\\').Last(); }
+    creatorNik = creatorNik.Trim().ToLower();
+
+    bool isCreator = curNik == creatorNik;
+}
+
+<!-- Use Tailwind via CDN for enhanced styling -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        corePlugins: { preflight: false },
+        theme: {
+            extend: {
+                colors: { 
+                    ngk: {
+                        primary: '#007581',
+                        primaryLight: '#e0f3f5',
+                        primaryDark: '#00555e',
+                        accent: '#eeb500',
+                        accentLight: '#fdf7e6'
+                    }
+                }
+            }
+        }
+    }
+</script>
+
+<div class="container-fluid py-4 px-md-5">
+
+    <!-- Header & Breadcrumb (Premium Styling) -->
+    <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end">
+        <div>
+            <div class="flex items-center gap-2 text-sm text-slate-500 mb-2 font-medium">
+                <a href="@Url.Action("Dashboard", "BCP")" class="hover:text-ngk-primary transition-colors">BCP Dashboard</a>
+                <span>/</span>
+                <span class="text-ngk-primary font-semibold">Incident Detail</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">@incident.Title</h1>
+                <span class="px-3 py-1 bg-teal-50 text-teal-800 border border-teal-200 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5">
+                    <i class="fas fa-tag text-[10px] text-teal-600"></i> @(incident.Category ?? "Incident")
+                </span>
+                @if (!string.IsNullOrEmpty(severityLabel))
+                {
+                    <span class="px-3 py-1 @severityClass text-xs font-bold rounded-lg shadow-sm border">@severityLabel</span>
+                }
+            </div>
+            <p class="text-slate-500 mt-1 text-sm"><i class="fas fa-hashtag mr-1"></i> ID: <strong>@incident.IncidentNo</strong> &nbsp;|&nbsp; Category: <strong class="text-slate-700">@(incident.Category ?? "Facility Failure")</strong> &nbsp;|&nbsp; Reporter: <strong>@reporterName</strong></p>
+        </div>
+        <div class="mt-4 md:mt-0 flex flex-wrap gap-3">
+            @if (incident.Status == 2)
+            {
+                <a href="@Url.Action("AssessmentFill", "BCP", new { id = incident.IncidentNo })" class="bg-emerald-600 border-0 text-white px-6 py-2.5 rounded-xl text-sm font-black shadow-lg hover:bg-emerald-700 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                    <i class="fas fa-clipboard-check text-base"></i>
+                    <span>FILL ASSESSMENT</span>
+                </a>
+            }
+            @if (incident.Status >= 2)
+            {
+                if (ViewBag.CanReview == true)
+                {
+                    <a href="@Url.Action("AssessmentReview", "BCP", new { id = incident.IncidentNo })" class="bg-blue-600 border-0 text-white px-6 py-2.5 rounded-xl text-sm font-black shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2">
+                        <i class="fas fa-user-check text-base"></i>
+                        <span>OPEN MANAGEMENT REVIEW</span>
+                    </a>
+                }
+            }
+            @if (new[] { 5, 6,7, 8 }.Contains(incident.Status))
+            {
+                <a href="@Url.Action("Activate", "BCP", new { id = incident.IncidentNo })" class="bg-rose-600 border-0 text-white px-6 py-2.5 rounded-xl text-sm font-black shadow-lg hover:bg-rose-700 transition-all flex items-center gap-2">
+                    <i class="fas fa-power-off text-base"></i>
+                    <span>ACTIVATION DECISION</span>
+                </a>
+            }
+            <button class="bg-white border border-slate-300 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-colors">
+                <i class="fas fa-print mr-2"></i> Print
+            </button>
+        </div>
+    </div>
+
+    <!-- Workflow Progress Bar -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 overflow-hidden relative">
+        <div class="absolute top-1/2 left-10 right-10 h-1 bg-slate-100 -translate-y-1/2 z-0 hidden md:block"></div>
+        @{
+            string progressWidth = "w-0";
+            if (incident.Status >= 2) { progressWidth = "w-1/3"; }
+            if (incident.Status >= 5) { progressWidth = "w-2/3"; }
+            if (incident.Status >= 8) { progressWidth = "w-full"; }
+        }
+        <div class="absolute top-1/2 left-10 @progressWidth h-1 bg-ngk-primary -translate-y-1/2 z-0 hidden md:block transition-all duration-500"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row justify-between items-center text-center gap-4">
+            
+            <!-- Step 1: Reported -->
+            <div class="flex flex-col items-center group">
+                <div class="w-10 h-10 rounded-full bg-ngk-primary text-white flex items-center justify-center font-bold text-sm mb-2 shadow-lg ring-4 ring-white">
+                    <i class="fas fa-check"></i>
+                </div>
+                <span class="text-xs font-bold text-slate-800 uppercase tracking-wide">Reported</span>
+            </div>
+            
+            <!-- Step 2: Assessment & Review -->
+            <div class="flex flex-col items-center">
+                @{
+                    string step2Class = "bg-slate-100 border-2 border-slate-300 text-slate-500";
+                    if (incident.Status >= 2 && incident.Status < 5) { step2Class = "bg-white border-4 border-ngk-primary text-ngk-primary animate-pulse shadow-lg"; }
+                    else if (incident.Status >= 5) { step2Class = "bg-ngk-primary text-white shadow-lg"; }
+                }
+                <div class="w-10 h-10 rounded-full @step2Class flex items-center justify-center font-bold text-sm mb-2 relative">
+                    @if (incident.Status >= 5) { <i class="fas fa-check"></i> } else { <span>2</span> }
+                    @if (incident.Status >= 2 && incident.Status < 5) { <span class="absolute w-full h-full rounded-full bg-ngk-primary/20 animate-ping"></span> }
+                </div>
+                <span class="text-xs font-bold @(incident.Status >= 2 ? "text-ngk-primary" : "text-slate-500") uppercase tracking-wide">Assessment & Review</span>
+            </div>
+
+            <!-- Step 3: Decision -->
+            <div class="flex flex-col items-center">
+                @{
+                    string step3Class = "bg-slate-100 border-2 border-slate-300 text-slate-500";
+                    if (incident.Status == 5) { step3Class = "bg-white border-4 border-ngk-primary text-ngk-primary animate-pulse shadow-lg"; }
+                    else if (incident.Status >= 6) { step3Class = "bg-ngk-primary text-white shadow-lg"; }
+                }
+                <div class="w-10 h-10 rounded-full @step3Class flex items-center justify-center font-bold text-sm mb-2">
+                    @if (incident.Status >= 6) { <i class="fas fa-check"></i> } else { <span>3</span> }
+                </div>
+                <span class="text-xs font-bold @(incident.Status >= 5 ? "text-slate-800" : "text-slate-500") uppercase tracking-wide">Decision</span>
+            </div>
+
+            <!-- Step 4: Resolved -->
+            <div class="flex flex-col items-center">
+                <div class="w-10 h-10 rounded-full @(incident.Status >= 8 ? "bg-ngk-primary text-white shadow-lg" : "bg-slate-100 border-2 border-slate-300 text-slate-500") flex items-center justify-center font-bold text-sm mb-2">
+                    @if (incident.Status >= 8) { <i class="fas fa-check"></i> } else { <span>4</span> }
+                </div>
+                <span class="text-xs font-bold @(incident.Status >= 8 ? "text-slate-800" : "text-slate-500") uppercase tracking-wide">Resolved</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Layout -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Narrative and Photo Evidence -->
+        <div class="xl:col-span-2 space-y-8">
+            
+            <!-- Headline Quote Banner -->
+            <div class="border-l-4 border-ngk-accent bg-gradient-to-r from-ngk-accentLight to-white p-6 rounded-r-2xl shadow-sm">
+                <i class="fas fa-quote-left text-ngk-accent/30 text-3xl float-left mr-4"></i>
+                <p class="text-lg font-bold text-slate-800 leading-snug italic">"@incident.Title"</p>
+                <div class="mt-2 text-xs font-bold uppercase tracking-wider text-slate-500">Incident Initial Tagline</div>
+            </div>
+
+            <!-- Detailed Narrative -->
+            <div class="bg-white border border-slate-200 shadow-sm p-6 sm:p-8 rounded-2xl">
+                <h3 class="font-extrabold text-slate-800 uppercase text-sm tracking-widest flex items-center mb-4 border-b border-slate-100 pb-3">
+                    <i class="fas fa-file-alt text-ngk-primary mr-3 text-lg"></i> Detailed Narrative Findings
+                </h3>
+                <div class="prose prose-sm text-slate-600 leading-relaxed max-w-none">
+                    @if (!string.IsNullOrEmpty(incident.Description)) {
+                        foreach (var line in incident.Description.Split('\n')) {
+                            <p class="mb-3">@line</p>
+                        }
+                    } else {
+                        <p class="italic text-slate-400">No detailed narrative recorded in database.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Visual Documentation -->
+            <div class="bg-white border border-slate-200 shadow-sm p-6 sm:p-8 rounded-2xl">
+                <h3 class="font-extrabold text-slate-800 uppercase text-sm tracking-widest flex items-center mb-4 border-b border-slate-100 pb-3">
+                    <i class="fas fa-camera-retro text-ngk-primary mr-3 text-lg"></i> Visual Evidence
+                </h3>
+                
+                @if (photos != null && photos.Any()) {
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        @foreach (var photo in photos) {
+                            <div class="group relative rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                                <img src="@Url.Content(photo.FilePath)" alt="Incident Photo" class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                                    <p class="text-white text-[0.65rem] font-bold">@photo.FileName</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                } else {
+                    <div class="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                         <i class="fas fa-images text-slate-300 text-4xl mb-3"></i>
+                         <p class="text-slate-400 text-sm">No photo documentation found for this incident record.</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Structured Impact Breakdown -->
+        <div class="xl:col-span-1 space-y-6">
+            
+            <div class="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
+                <div class="bg-ngk-primary text-white py-3 px-5">
+                    <h6 class="font-extrabold uppercase text-xs tracking-widest m-0 flex items-center"><i class="fas fa-layer-group mr-2 text-ngk-primaryLight"></i> Impact Breakdown</h6>
+                </div>
+                
+                <div class="p-6 divide-y divide-slate-100">
+                    
+                    <!-- Infrastructure -->
+                    <div class="pb-5">
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 mr-3">
+                                <i class="fas fa-tools text-sm"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 text-sm uppercase">Infrastructure Impact</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed pl-11">
+                            @(incident.InfrastructureImpact ?? "Critical infrastructure affected. Systems including ERP and internal plant networking are currently compromised.")
+                        </p>
+                    </div>
+
+                    <!-- Personnel -->
+                    <div class="py-5">
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mr-3">
+                                <i class="fas fa-users text-sm"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 text-sm uppercase">Personnel Status</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed pl-11">
+                            @(incident.PersonnelStatus ?? "All personnel accounted for. Safety protocols initiated. Production operations on hold pending IT assessment.")
+                        </p>
+                    </div>
+
+                    <!-- Immediate Actions -->
+                    <div class="pt-5">
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 mr-3">
+                                <i class="fas fa-clipboard-check text-sm"></i>
+                            </div>
+                            <h4 class="font-bold text-slate-800 text-sm uppercase">Immediate Actions</h4>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed pl-11 mb-3">
+                            @(incident.ImmediateActions ?? "Incident area cordoned off. Emergency response teams notified. Committee assessments in progress.")
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Committee Assessment Monitor (Integrated Part) -->
+            @{
+                var areaStatus = (IEnumerable<BCPAreaStatus>)ViewBag.AreaStatus;
+                int total = areaStatus != null ? areaStatus.Count() : 0;
+                int assessed = areaStatus != null ? areaStatus.Count(x => x.IsAssessed) : 0;
+                int percent = total > 0 ? (assessed * 100 / total) : 0;
+            }
+            <div class="bg-white border border-slate-200 shadow-sm rounded-2xl p-6">
+                <div class="mb-4">
+                    <div class="flex justify-between items-end mb-2">
+                        <h6 class="font-extrabold text-slate-800 uppercase text-[0.7rem] tracking-widest flex items-center m-0">
+                            <i class="fas fa-users text-ngk-primary mr-2"></i> Committee Status
+                        </h6>
+                        <span class="text-[0.7rem] font-black text-emerald-600">@percent%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-2">
+                        <div class="bg-emerald-500 h-2 rounded-full transition-all duration-700 shadow-sm" style="width: @percent%"></div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                    
+                    @if (areaStatus != null && areaStatus.Any())
+                    {
+                        foreach (var area in areaStatus)
+                        {
+                            <div class="flex items-center justify-between p-3 rounded-xl @(area.IsSource ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-transparent") border transition-all">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg @(area.IsAssessed ? "bg-emerald-100 text-emerald-600" : "bg-slate-200 text-slate-400") flex items-center justify-center text-sm shadow-sm">
+                                        <i class="fas @(area.IsSource ? "fa-fire-flame-curved" : (area.IsAssessed ? "fa-check-double" : "fa-map-location-dot"))"></i>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-xs font-black text-slate-800 m-0">@area.AreaName</p>
+                                            @if(area.IsSource) {
+                                                <span class="text-[9px] font-black bg-amber-500 text-white px-1 rounded">SOURCE</span>
+                                            }
+                                        </div>
+                                        <p class="text-[10px] text-slate-500 m-0">
+                                            @if(area.IsAssessed) {
+                                                <span><i class="fas fa-user-edit mr-1"></i> @area.AssessorName</span>
+                                            } else {
+                                                <span class="italic text-slate-400">Awaiting assessment...</span>
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    @if (area.IsAssessed) {
+                                        <div class="text-right">
+                                            <div class="text-[10px] font-black text-emerald-600">@area.Score.ToString("0.00")</div>
+                                            <div class="text-[8px] font-bold text-slate-400 uppercase">Impact</div>
+                                        </div>
+                                    } else {
+                                        <span class="w-2 h-2 rounded-full bg-slate-300 block animate-pulse"></span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-center text-xs text-slate-400 italic py-4">No areas found.</p>
+                    }
+                </div>
+                
+                <div class="mt-5 pt-4 border-t border-slate-100">
+                    <p class="text-[0.65rem] text-slate-400 italic">
+                        <i class="fas fa-info-circle mr-1"></i> Progress is monitored in real-time by the BCP Committee.
+                    </p>
+                </div>
+            </div>
+
+            <style>
+                .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+            </style>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/Scripts/BCP/bcp.js"></script>
+    <script>
+        function closeAssessment(id) {
+            Swal.fire({
+                title: 'Close Assessment Phase?',
+                text: "All current assessments will be locked and sent to Sr. Managers for review.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#007581',
+                confirmButtonText: 'Yes, Start Review'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("CloseAssessment", "BCP")', { IncidentID: id }, function(res) {
+                        if (res.status === 'success') {
+                            Swal.fire('Locked!', res.message, 'success').then(() => location.reload());
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+}

@@ -1,0 +1,317 @@
+﻿@{
+    ViewBag.Title = "Medical Claims";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="~/Scripts/DataTables/datatables.min.css" rel="stylesheet" />
+    <style type="text/css">
+        .divMedicalClaimForm {
+            border-top: 4px solid #ffd700 !important;
+        }
+        .unsaved-warning {
+            display: none;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+            .divMedicalClaimForm .btn-primary, .divMedicalDataList .btn-primary {
+                background-color: #008080;
+                border-color: #008080;
+            }
+
+                .divMedicalClaimForm .btn-primary:hover, .divMedicalDataList .btn-primary:hover {
+                    background-color: #006666;
+                    border-color: #006666;
+                }
+
+            .divMedicalClaimForm legend, .divMedicalDataList legend {
+                color: #006666;
+            }
+            /**/
+            .divMedicalClaimForm table.dataTable thead tr th, .divMedicalDataList table.dataTable thead tr th {
+                background-color: #008080;
+                color: white;
+            }
+
+        .tblClaimLines tbody .txtClaimNIK,
+        .tblClaimDetails tbody .txtClaimPatient {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0 4px;
+            font-size: inherit;
+            color: inherit;
+            width: 100%;
+            height: 100%;
+        }
+
+            .tblClaimLines tbody .txtClaimNIK:focus,
+            .tblClaimDetails tbody .txtClaimPatient:focus {
+                outline: none;
+                background: #f9f9f9;
+            }
+
+        .tblClaimLines tbody tr:hover td, .tblMedicalDataList tbody tr:hover td {
+            cursor: pointer;
+            background-color: #ffbd46;
+        }
+
+        .fieldMedicalLines .dt-search, .fieldMedicalDetails .dt-search, .divMedicalDataList .dt-search {
+            display: none;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="~/Scripts/DataTables/datatables.min.js"></script>
+    <script src="~/Scripts/HC/Medical/Claim.js"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+}
+<div class="unsaved-warning" id="unsavedWarning">You have unsaved changes. Please submit/save the form.</div>
+<button class="btn btn-primary mb-2" id="btnNewClaim">New Medical Claim</button> 
+<div class="divMedicalClaimForm border shadow rounded p-2" style="display:none;">
+    <form id="formMedicalClaim">
+        <fieldset class="fieldMedicalHeader border rounded p-2">
+            <legend class="w-auto rounded p-1">Medical - Claim</legend>
+            <div class="form-group row">
+                <label for="txtInvoice" class="col-sm-2 col-form-label">Invoice</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="txtInvoice" name="iInvoice" required placeholder="Invoice Number">
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="selThirdParty" class="col-sm-2 col-form-label">ThirdParty</label>
+                <div class="col-sm-10">
+                    <select class="form-control select2" id="selThirdParty" name="iThirdParty" required>
+                        <option value="">-- Select ThirdParty --</option>
+                        @foreach (var dt in ViewBag.ThirdParty)
+                        {
+                            <option value="@(dt.ACCOUNTNUM + "|" + dt.Name)">@(dt.ACCOUNTNUM + " | " + dt.Name)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="txtHospitalClinic" class="col-sm-2 col-form-label">Hospital/Clinic</label>
+                <div class="col-sm-10">
+                    <input type="text" class="form-control" id="txtHospitalClinic" name="HospitalClinic" required placeholder="Hospital/Clinic">
+                </div>
+            </div>
+        </fieldset>
+        <fieldset class="fieldMedicalLines border rounded p-2 stripe">
+            <legend class="w-auto rounded p-1">Claim - Lines</legend>
+            <div class="dt-info"><i class="fas fa-info-circle"></i> Click the filled row to see the details.</div>
+            <table class="tblClaimLines table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Division</th>
+                        <th>Department</th>
+                        <th>Position</th>
+                        <th>CostName</th>
+                        <th>Total Deduction</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="7">
+                            <button type="button" class="btn btn-sm btn-primary" id="btnAddRow">Add Employee</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </fieldset>
+        <fieldset class="fieldMedicalDetails border rounded p-2 stripe fsClaimDetail overflow-auto" style="display:none;">
+            <legend class="w-auto rounded p-1">Line - Detail <span class="spanLegend"></span></legend>
+            <table class="tblClaimDetails w-100 table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Patient Name</th>
+                        <th>Beneficiary</th>
+                        <th>Treatment Category</th>
+                        <th>Sub-Category</th>
+                        <th>Diagnosa</th>
+                        <th>Start-End Date</th>
+                        <th>Invoice Amount</th>
+                        <th>Actual Amount</th>
+                        <th>Saving</th>
+                        <th>Deduction</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="11">
+                            <button type="button" class="btn btn-sm btn-primary" id="btnAddPatient">Add Patient</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </fieldset>
+        <fieldset class="fieldMedicalTotals border rounded p-2 stripe overflow-auto">
+            <legend class="w-auto rounded p-1">Claim Total<span class="spanLegend"></span></legend>
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="alert alert-info p-1">
+                        <small class="font-weight-bold d-block">Total Invoice Amount</small>
+                        <span id="lblTotalInvoice" class="h5 font-weight-bold">0</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning p-1">
+                        <small class="font-weight-bold d-block">Total Actual Amount</small>
+                        <span id="lblTotalActual" class="h5 font-weight-bold">0</span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-success p-1">
+                        <small class="font-weight-bold d-block">Total Saving</small>
+                        <span id="lblTotalSaving" class="h5 font-weight-bold">0</span>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+
+    <button type="button" class="btn btn-success mt-2 form-control" id="btnSubmitClaim">Submit Claim</button>
+</div>
+<hr />
+<div class="divMedicalDataList border shadow rounded p-2 mt-2">
+    <fieldset class="d-flex justify-content-between align-items-center mb-2">
+        <legend class="w-auto rounded p-1 m-0" style="font-size: 1.2em; color: #006666;">Medical Claims History</legend>
+        <div class="form-inline">
+            <label for="selFilterYear" class="mr-2 font-weight-bold">Filter Year:</label>
+            <select id="selFilterYear" class="form-control form-control-sm">
+                <option value="">All Years</option>
+                @for (var i = 2025; i <= DateTime.Now.Year; i++)
+                {
+                    <option value="@i">@i</option>
+                }
+            </select>
+        </div>                
+        <div class="dt-info"><i class="fas fa-info-circle"></i> Click the filled row to see the details.</div>
+
+    </fieldset>            
+    <table id="tblMedicalDataList" class="tblMedicalDataList table table-striped table-bordered w-100">
+        <thead>
+            <tr>
+                <th>Invoice Number</th>
+                <th>ThirdParty</th>
+                <th>Created Date</th>
+                <th>Total Employee</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade modalPatient" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form class="formPatient">
+                <div class="modal-header">
+                    <h5 class="modal-title">Patient Data</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="container-fluid">
+                        <input type="hidden" id="iDetailId" name="iDetailId" />
+                        <input type="hidden" id="iLineIndex" name="iLineIndex" />
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="iPatientName">Patient Name</label>
+                                <input type="text" class="form-control txtClaimPatient" id="iPatientName" name="iPatientName" placeholder="Patient full name" required />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="selBeneficiary">Beneficiary</label>
+                                <select class="form-control select2" id="selBeneficiary" name="iBeneficiary" required>
+                                    <option value="">-- Select Beneficiary --</option>
+                                    <option value="Employee">Employee</option>
+                                    <option value="Spouse">Spouse</option>
+                                    <option value="Child">Child</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="selTreatmentCategory">Treatment Category</label>
+                                <select class="form-control select2" id="selTreatmentCategory" name="iTreatmentCategory" required>
+                                    <option value="">-- Select Category --</option>
+                                    <option value="Inpatient">Inpatient</option>
+                                    <option value="Outpatient">Outpatient</option>
+                                    <option value="Dental Care">Dental Care</option>
+                                    <option value="Glasses Claim">Glasses Claim</option>
+                                    <option value="Obituary">Obituary</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="selSubCategory">Sub-Category</label>
+                                <select class="form-control select2" id="selSubCategory" name="iSubCategory">
+                                    <option value="">-- Select Sub-Category --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="txtDiagnosa">Diagnosa</label>
+                            <textarea class="form-control" id="txtDiagnosa" name="iDiagnosa" rows="2" placeholder="Enter diagnosis or notes"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label for="txtStartDate">Start Date</label>
+                                <input type="text" class="form-control dFrom" id="txtStartDate" name="iStartDate" placeholder="dd-mm-yyyy" autocomplete="off" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="txtEndDate">End Date</label>
+                                <input type="text" class="form-control dTo" id="txtEndDate" name="iEndDate" placeholder="dd-mm-yyyy" autocomplete="off" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label for="txtInvoiceAmount">Invoice Amount</label>
+                                <input type="text" class="form-control text-right txtNumeric" id="txtInvoiceAmount" name="iInvoiceAmount" placeholder="0" />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="txtActualAmount">Actual Amount</label>
+                                <input type="text" class="form-control text-right txtNumeric" id="txtActualAmount" name="iActualAmount" placeholder="0" />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="txtSaving">Saving</label>
+                                <input type="text" class="form-control text-right txtNumeric" id="txtSaving" name="iSaving" placeholder="0" readonly />
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label for="txtDeduction">Deduction</label>
+                                <input type="text" class="form-control text-right txtNumeric" id="txtDeduction" name="iDeduction" placeholder="0" />
+                            </div>
+                        </div>
+
+                        <small class="form-text text-muted">Fill the patient details and amounts. Savings will be computed automatically when app logic is applied.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

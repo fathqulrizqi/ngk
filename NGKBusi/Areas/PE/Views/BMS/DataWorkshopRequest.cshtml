@@ -1,0 +1,945 @@
+﻿@{
+    ViewBag.Title = "Workshop Request Management";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: { brand: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' } }
+            }
+        }
+    }
+</script>
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* ================= ATTACHMENT VIEWER ================= */
+    .attach-box {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr;
+        place-items: center;
+        place-content: center;
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        background-color: #f8fafc;
+        height: 260px;
+        transition: height .2s ease;
+    }
+
+        .attach-box > * {
+            grid-area: 1 / 1;
+        }
+
+    @@media (min-width: 640px) {
+        .attach-box {
+            height: 360px;
+        }
+    }
+
+    .attach-box.is-image {
+        background-color: #f1f5f9;
+    }
+
+    .attach-box.is-pdf {
+        height: 65vh;
+        min-height: 380px;
+        background-color: #334155;
+    }
+
+    @@media (max-width: 639px) {
+        .attach-box.is-pdf {
+            height: 58vh;
+            min-height: 320px;
+        }
+    }
+
+    .attach-box.is-full {
+        position: fixed;
+        inset: 0.75rem;
+        height: auto !important;
+        min-height: 0;
+        z-index: 60;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, .45);
+        border-color: #cbd5e1;
+    }
+
+    .attach-box iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        display: block;
+        align-self: stretch;
+        justify-self: stretch;
+    }
+
+    .attach-box img {
+        display: block;
+        margin: auto;
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        object-position: center center;
+    }
+</style>
+
+<div class="min-h-screen">
+    <div class="mx-auto max-w-screen-2xl">
+
+        <!-- HEADER & BREADCRUMB -->
+        <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-white drop-shadow-sm">Workshop Requests Management</h1>
+                <p class="mt-1 text-sm text-blue-100">Overview and management of repair or part fabrication tickets.</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button onclick="loadData()" class="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-gradient-to-r from-blue-600 to-cyan-400 opacity-90 hover:opacity-100 transition-opacity text-white px-4 py-2.5 flex items-center font-semibold shadow-sm">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+
+        <!-- STATS WIDGETS -->
+        <div class="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <!-- Card Total Requests -->
+            <div class="relative overflow-hidden rounded-2xl border border-slate-200 border-b-4 border-b-slate-500 bg-white p-6 shadow-xl shadow-blue-900/10 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-900/15">
+                <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-slate-400/20 blur-2xl"></div>
+                <div class="relative flex items-center justify-between">
+                    <p class="text-sm font-semibold text-slate-600">Total Requests</p>
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    </div>
+                </div>
+                <div class="relative mt-2 flex items-baseline gap-2">
+                    <p id="statTotal" class="text-3xl font-extrabold text-slate-800">0</p>
+                    <span class="text-xs font-medium text-slate-500">Tickets</span>
+                </div>
+            </div>
+
+            <!-- Card Pending -->
+            <div class="relative overflow-hidden rounded-2xl border border-blue-100 border-b-4 border-b-blue-500 bg-white p-6 shadow-xl shadow-blue-900/10 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-900/15">
+                <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-blue-400/20 blur-2xl"></div>
+                <div class="relative flex items-center justify-between">
+                    <p class="text-sm font-semibold text-slate-600">Pending</p>
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </div>
+                <div class="relative mt-2 flex items-baseline gap-2">
+                    <p id="statPending" class="text-3xl font-extrabold text-blue-700">0</p>
+                    <span class="text-xs font-medium text-blue-500">Tickets</span>
+                </div>
+            </div>
+
+            <!-- Card On Progress -->
+            <div class="relative overflow-hidden rounded-2xl border border-amber-100 border-b-4 border-b-amber-500 bg-white p-6 shadow-xl shadow-blue-900/10 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-900/15">
+                <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-amber-400/20 blur-2xl"></div>
+                <div class="relative flex items-center justify-between">
+                    <p class="text-sm font-semibold text-slate-600">In Progress</p>
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                </div>
+                <div class="relative mt-2 flex items-baseline gap-2">
+                    <p id="statOpen" class="text-3xl font-extrabold text-amber-700">0</p>
+                    <span class="text-xs font-medium text-amber-500">Tickets</span>
+                </div>
+            </div>
+
+            <!-- Card Completed -->
+            <div class="relative overflow-hidden rounded-2xl border border-emerald-100 border-b-4 border-b-emerald-500 bg-white p-6 shadow-xl shadow-blue-900/10 transition-all hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-900/15">
+                <div class="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-emerald-400/20 blur-2xl"></div>
+                <div class="relative flex items-center justify-between">
+                    <p class="text-sm font-semibold text-slate-600">Completed</p>
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                </div>
+                <div class="relative mt-2 flex items-baseline gap-2">
+                    <p id="statDone" class="text-3xl font-extrabold text-emerald-700">0</p>
+                    <span class="text-xs font-medium text-emerald-500">Tickets</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN DATA TABLE AREA -->
+        <div class="flex flex-col rounded-2xl border border-white/40 bg-white/95 backdrop-blur-md shadow-xl shadow-blue-900/10 overflow-hidden">
+            <!-- Toolbar -->
+            <div class="flex flex-col gap-4 border-b border-slate-200 p-6 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-wrap gap-2" id="filterChips">
+                    <button type="button" data-filter="All" class="chip rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">All Data</button>
+                    <button type="button" data-filter="Pending" class="chip rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-xs font-semibold text-brand-700 transition">Pending</button>
+                    <button type="button" data-filter="On Progress" class="chip rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">In Progress</button>
+                    <button type="button" data-filter="Done" class="chip rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">Completed</button>
+                </div>
+                <div class="relative w-full sm:w-72">
+                    <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Search ID, Title, or Requester..." class="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" />
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-left text-sm whitespace-nowrap" id="tableRequests">
+                    <thead class="bg-slate-50/50 text-slate-500 border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Date / ID</th>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Requester</th>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Request Detail</th>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Due Date</th>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 bg-white/50">
+                        <!-- Data inserted via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL FINISH TASK -->
+<div id="modalFinish" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-opacity">
+    <div class="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5">
+
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4">
+            <div class="flex items-center gap-3">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-900">Finish Task</h3>
+                    <p class="text-sm font-medium text-slate-500">Complete the data to close this ticket.</p>
+                </div>
+            </div>
+            <button type="button" class="rounded-xl p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 focus:outline-none" onclick="closeModal()">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="overflow-y-auto p-6 lg:p-8">
+            <form id="formFinishRequest" class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+                <input type="hidden" id="finish_form_id" />
+
+                <!-- Left Column: Upload Photo -->
+                <div class="flex flex-col lg:col-span-6">
+                    <label class="mb-3 block text-base font-semibold text-slate-800">Finished Result Photo <span class="text-rose-500">*</span></label>
+                    <div class="group relative flex flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 min-h-[300px] sm:min-h-[400px] text-center transition-colors hover:border-brand-300 hover:bg-brand-50/50">
+                        <div id="uploadPrompt" class="flex flex-col items-center p-6">
+                            <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-900/5 transition-transform group-hover:scale-110">
+                                <svg class="h-8 w-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                                </svg>
+                            </div>
+                            <p class="text-base font-semibold text-slate-700">Choose or drop a photo</p>
+                            <p class="mt-1 text-sm text-slate-500">Max 5MB (JPG, PNG)</p>
+                        </div>
+                        <div id="imagePreviewContainer" class="absolute inset-0 hidden bg-slate-100">
+                            <img id="imagePreview" src="" alt="Preview" class="h-full w-full object-cover" />
+                            <div class="absolute inset-0 flex items-center justify-center bg-slate-900/50 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                                <span class="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+                                    Change Photo
+                                </span>
+                            </div>
+                        </div>
+                        <input type="file" id="finish_image" accept="image/*" required class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0" />
+                    </div>
+                </div>
+
+                <!-- Right Column: Materials Section -->
+                <div class="flex flex-col rounded-2xl border border-slate-100 bg-slate-50/50 p-6 lg:col-span-6">
+                    <div class="mb-4 flex flex-col justify-between gap-3 border-b border-slate-200 pb-4 xl:flex-row xl:items-center">
+                        <div>
+                            <h4 class="text-base font-semibold text-slate-800">Used Materials <span class="text-slate-400 font-normal">(Optional)</span></h4>
+                            <p class="mt-1 text-sm text-slate-500">Select if the task deducts inventory stock.</p>
+                        </div>
+                        <button type="button" id="btnAddMaterial" class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-brand-600 shadow-sm transition hover:border-brand-200 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+
+                    <div id="materialContainer" class="flex-1 space-y-3 overflow-y-auto pr-1" style="max-height: 300px;">
+                        <div id="emptyMaterialState" class="flex flex-col items-center justify-center py-10 text-center">
+                            <svg class="mb-4 h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                            <p class="text-sm font-semibold text-slate-500">No materials used yet</p>
+                            <p class="mt-1 text-sm text-slate-400">This task will not deduct any stock if this area is empty.</p>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-6 py-4 lg:px-8">
+            <button type="button" onclick="closeModal()" class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Cancel
+            </button>
+            <button type="button" id="btnSubmitFinish" class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETAIL REQUEST -->
+<div id="modalDetail" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-opacity">
+    <div class="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/5">
+
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-4 sm:px-6">
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">Request Details <span id="detail_form_id_text" class="text-brand-600"></span></h3>
+                    <p class="mt-1 text-xs sm:text-sm font-medium text-slate-500">Review attachments & details before accepting.</p>
+                </div>
+            </div>
+            <button type="button" class="rounded-xl p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 focus:outline-none shrink-0" onclick="closeDetailModal()">
+                <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+
+                <!-- Left Column: Attachments -->
+                <div class="flex flex-col gap-6 lg:col-span-7">
+
+                    <!-- ============ REQUEST ATTACHMENT ============ -->
+                    <div>
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-semibold text-slate-800">Request Attachment</h4>
+                                <span id="badge_request" class="hidden rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">FILE</span>
+                            </div>
+                            <div id="tools_request" class="hidden items-center gap-1.5">
+                                <button type="button" onclick="toggleFullBox('request')" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5v4m0-4h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l-5-5m11 5v-4m0 4h-4m4 0l-5-5" /></svg>
+                                    <span id="fulltext_request">Expand</span>
+                                </button>
+                                <a id="open_request" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    New Tab
+                                </a>
+                            </div>
+                        </div>
+
+                        <div id="box_request" class="attach-box">
+                            <img id="img_request" src="" alt="Request Attachment" class="hidden p-2" />
+                            <iframe id="pdf_request" src="" class="hidden" title="Request Attachment"></iframe>
+
+                            <!-- Fallback if browser cannot render PDF inline -->
+                            <div id="fallback_request" class="hidden flex-col items-center gap-3 p-6 text-center">
+                                <svg class="h-10 w-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-100">PDF Document</p>
+                                    <p id="fname_request" class="mt-0.5 text-xs text-slate-300 break-all"></p>
+                                </div>
+                                <a id="fbopen_request" href="#" target="_blank" rel="noopener" class="rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm">Open Document</a>
+                            </div>
+
+                            <div id="no_img_request" class="flex flex-col items-center text-slate-400 p-6 text-center">
+                                <svg class="h-8 w-8 sm:h-10 sm:w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <span class="text-xs sm:text-sm font-medium">No attachment</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============ REFERENCE ATTACHMENT ============ -->
+                    <div>
+                        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-semibold text-slate-800">Reference Attachment</h4>
+                                <span id="badge_reference" class="hidden rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">FILE</span>
+                            </div>
+                            <div id="tools_reference" class="hidden items-center gap-1.5">
+                                <button type="button" onclick="toggleFullBox('reference')" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5v4m0-4h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l-5-5m11 5v-4m0 4h-4m4 0l-5-5" /></svg>
+                                    <span id="fulltext_reference">Expand</span>
+                                </button>
+                                <a id="open_reference" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                                    New Tab
+                                </a>
+                            </div>
+                        </div>
+
+                        <div id="box_reference" class="attach-box">
+                            <img id="img_reference" src="" alt="Reference Attachment" class="hidden p-2" />
+                            <iframe id="pdf_reference" src="" class="hidden" title="Reference Attachment"></iframe>
+
+                            <div id="fallback_reference" class="hidden flex-col items-center gap-3 p-6 text-center">
+                                <svg class="h-10 w-10 text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-slate-100">PDF Document</p>
+                                    <p id="fname_reference" class="mt-0.5 text-xs text-slate-300 break-all"></p>
+                                </div>
+                                <a id="fbopen_reference" href="#" target="_blank" rel="noopener" class="rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm">Open Document</a>
+                            </div>
+
+                            <div id="no_img_reference" class="flex flex-col items-center text-slate-400 p-6 text-center">
+                                <svg class="h-8 w-8 sm:h-10 sm:w-10 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                                <span class="text-xs sm:text-sm font-medium">No reference</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Details Text -->
+                <div class="flex flex-col lg:col-span-5">
+
+                    <div class="space-y-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:p-6 lg:sticky lg:top-0">
+                        <h4 class="mb-3 sm:mb-4 text-sm sm:text-base font-semibold text-slate-800 border-b border-slate-200 pb-2">Task Information</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Request Title</p>
+                                <p id="detail_title" class="mt-1 text-sm sm:text-base font-medium text-slate-900 break-words">-</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity (Qty)</p>
+                                <p id="detail_qty" class="mt-1 text-base sm:text-lg font-bold text-slate-900">-</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Requester</p>
+                                <p id="detail_requester" class="mt-1 text-xs sm:text-sm font-medium text-slate-900">-</p>
+                                <p id="detail_dept" class="text-[10px] sm:text-xs text-slate-500">-</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Request Type</p>
+                                <span id="detail_type" class="mt-1 inline-block rounded-md bg-white px-2 py-1 text-[10px] sm:text-xs font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200">-</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-200 pt-4">
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Request Date</p>
+                                <p id="detail_date" class="mt-1 text-xs sm:text-sm text-slate-700">-</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Due Date</p>
+                                <p id="detail_due" class="mt-1 text-xs sm:text-sm font-semibold text-rose-600">-</p>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-4">
+                            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Full Description</p>
+                            <p id="detail_desc" class="mt-1 text-xs sm:text-sm text-slate-700 whitespace-pre-wrap break-words break-all leading-relaxed">-</p>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-4">
+                            <p class="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400">Remarks / Notes</p>
+                            <p id="detail_remarks" class="mt-1 text-xs sm:text-sm text-slate-500 italic break-words break-all leading-relaxed">-</p>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="accept_form_id" />
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-3 border-t border-slate-100 bg-slate-50/80 px-4 py-4 sm:px-6 lg:px-8">
+            <button type="button" onclick="closeDetailModal()" class="w-full sm:w-auto rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Close
+            </button>
+            <button type="button" onclick="confirmAcceptTask()" class="w-full sm:w-auto inline-flex justify-center items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Accept Task
+            </button>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <!-- Added SweetAlert2 CDN -->
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+
+    <script>
+        var requestData = [];
+        var inventoryOptions = [];
+        var currentFilter = 'Pending';
+
+        // --- FIX PATH URL ---
+        var baseUrl = '@Url.Content("~")';
+        if (baseUrl.endsWith('/')) {
+            baseUrl = baseUrl.slice(0, -1);
+        }
+
+        function getValidUrl(path) {
+            if (!path) return '';
+            path = path.replace(/\\/g, '/');
+            if (path.startsWith('~/')) {
+                path = path.replace('~', baseUrl);
+            }
+            else if (!path.startsWith('http') && !path.startsWith('/')) {
+                path = baseUrl + '/' + path;
+            }
+            return path;
+        }
+
+        $(document).ready(function () {
+            loadData();
+            loadInventoryDropdown();
+
+            $('.chip').on('click', function () {
+                currentFilter = $(this).data('filter');
+                $('.chip').removeClass('border-brand-200 bg-brand-50 text-brand-700').addClass('border-slate-200 bg-white text-slate-600');
+                $(this).addClass('border-brand-200 bg-brand-50 text-brand-700').removeClass('border-slate-200 bg-white text-slate-600');
+                renderTable();
+            });
+
+            $('#searchInput').on('input', renderTable);
+            $('#btnAddMaterial').on('click', function () { addMaterialRow(); });
+
+            // ESC to exit full screen mode / close modal
+            $(document).on('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    if ($('.attach-box.is-full').length) {
+                        $('.attach-box').removeClass('is-full');
+                        $('#fulltext_request, #fulltext_reference').text('Expand');
+                    } else if ($('#modalDetail').hasClass('flex')) {
+                        closeDetailModal();
+                    }
+                }
+            });
+
+            // Submit Finish
+            $('#btnSubmitFinish').on('click', function () {
+                var formId = $('#finish_form_id').val();
+                var fileInput = $('#finish_image')[0].files[0];
+
+                if (!fileInput) {
+                    Swal.fire('Warning', 'Please attach the finished result photo!', 'warning');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('form_id', formId);
+                formData.append('finished_image', fileInput);
+
+                var validMaterial = true;
+                $('.material-row').each(function (index) {
+                    var invId = $(this).find('.inv-select').val();
+                    var qty = $(this).find('.inv-qty').val();
+
+                    if (invId && qty > 0) {
+                        formData.append('details[' + index + '].inventory_id', invId);
+                        formData.append('details[' + index + '].qty_used', qty);
+                    } else if (invId && qty <= 0) {
+                        validMaterial = false;
+                    }
+                });
+
+                if (!validMaterial) {
+                    Swal.fire('Warning', 'Material quantity cannot be 0 or empty if a material is selected.', 'warning');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'You want to finish this task? The selected material stock will be deducted immediately.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#10b981', // emerald-500
+                    cancelButtonColor: '#f43f5e', // rose-500
+                    confirmButtonText: 'Yes, finish it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("FinishWorkshopRequest", "BMS", new { area = "PE" })',
+                            type: 'POST',
+                            data: formData,
+                            processData: false,
+                            contentType: false,
+                            success: function (res) {
+                                if (res.success) {
+                                    Swal.fire('Success!', res.message, 'success');
+                                    closeModal();
+                                    loadData();
+                                } else {
+                                    Swal.fire('Error!', res.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                Swal.fire('Error!', 'An unexpected error occurred.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            $('#finish_image').on('change', function (e) {
+                var file = e.target.files[0];
+                if (file) {
+                    if (!file.type.match('image.*')) {
+                        Swal.fire('Error', 'Unsupported file format. Please upload an image.', 'error');
+                        resetImagePreview();
+                        return;
+                    }
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $('#imagePreview').attr('src', e.target.result);
+                        $('#uploadPrompt').addClass('hidden');
+                        $('#imagePreviewContainer').removeClass('hidden');
+                    }
+                    reader.readAsDataURL(file);
+                } else {
+                    resetImagePreview();
+                }
+            });
+        });
+
+        function resetImagePreview() {
+            $('#finish_image').val('');
+            $('#imagePreview').attr('src', '');
+            $('#uploadPrompt').removeClass('hidden');
+            $('#imagePreviewContainer').addClass('hidden');
+        }
+
+        function openFinishModal(id) {
+            $('#finish_form_id').val(id);
+            resetImagePreview();
+            $('#materialContainer').empty();
+            $('#emptyMaterialState').show();
+            $('#modalFinish').removeClass('hidden').addClass('flex');
+        }
+
+        function closeModal() {
+            $('#modalFinish').removeClass('flex').addClass('hidden');
+            $('.material-row').remove();
+            $('#emptyMaterialState').show();
+            resetImagePreview();
+        }
+
+        function loadData() {
+            $.get('@Url.Action("GetAllWorkshopRequests", "BMS", new { area = "PE" })', function (res) {
+                if (res.success) {
+                    requestData = res.data;
+                    updateStats();
+                    renderTable();
+                    checkUrlAndOpenModal();
+                }
+            });
+        }
+
+        function updateStats() {
+            var pending = 0, onProgress = 0, done = 0;
+            requestData.forEach(function (item) {
+                if (item.status === 'Pending') pending++;
+                else if (item.status === 'On Progress') onProgress++;
+                else if (item.status === 'Done') done++;
+            });
+
+            $('#statTotal').text(requestData.length);
+            $('#statPending').text(pending);
+            $('#statOpen').text(onProgress);
+            $('#statDone').text(done);
+        }
+
+        function loadInventoryDropdown() {
+            $.get('@Url.Action("GetAllInventoryListForDropdown", "BMS", new { area = "PE" })', function (res) {
+                if (res.success) inventoryOptions = res.data;
+            });
+        }
+
+        function renderTable() {
+            var q = $('#searchInput').val().toLowerCase();
+            var $tbody = $('#tableRequests tbody').empty();
+
+            var filtered = requestData.filter(function (x) {
+                if (currentFilter !== 'All' && x.status !== currentFilter) return false;
+                if (q) {
+                    var hay = (x.request + " " + x.department + " " + x.request_by_name + " " + (x.form_id || '')).toLowerCase();
+                    if (hay.indexOf(q) === -1) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                $tbody.append('<tr><td colspan="6" class="py-16 text-center text-sm text-slate-500">No data found.</td></tr>');
+                return;
+            }
+
+            filtered.forEach(function (item) {
+                var badgeCls = item.status === 'Pending' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' :
+                               item.status === 'On Progress' ? 'bg-amber-50 text-amber-700 ring-amber-600/20' :
+                               'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
+
+                var dotCls = item.status === 'Pending' ? 'bg-blue-500' :
+                             item.status === 'On Progress' ? 'bg-amber-500' :
+                             'bg-emerald-500';
+
+                var actionBtn = '';
+                if (item.status === 'Pending') {
+                    actionBtn = `<button onclick="openDetailModal(${item.form_id})" class="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition hover:bg-brand-100">
+                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                     </svg>
+                                     View Details
+                                  </button>`;
+                } else if (item.status === 'On Progress') {
+                    actionBtn = `<button onclick="openFinishModal(${item.form_id})" class="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Finish Task
+                                 </button>`;
+                } else {
+                    actionBtn = `<span class="text-xs text-slate-400 font-medium">Completed</span>`;
+                }
+
+                $tbody.append(`
+                    <tr class="transition hover:bg-slate-50/70">
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-slate-900">#${item.form_id || '-'}</p>
+                            <p class="text-xs text-slate-500">${item.create_at}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-slate-900">${item.request_by_name}</p>
+                            <p class="text-xs text-slate-500">${item.department}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-slate-900">${item.request}</p>
+                            <p class="text-xs text-slate-500">Type: ${item.request_type}</p>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                ${item.due_date}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${badgeCls}">
+                                <span class="h-1.5 w-1.5 rounded-full ${dotCls}"></span>
+                                ${item.status}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            ${actionBtn}
+                        </td>
+                    </tr>
+                `);
+            });
+        }
+
+        function confirmAcceptTask() {
+            var id = $('#accept_form_id').val();
+
+            $.post('@Url.Action("AcceptWorkshopRequest", "BMS", new { area = "PE" })', { form_id: id }, function (res) {
+                if (res.success) {
+                    Swal.fire('Success', 'Task accepted successfully.', 'success');
+                    closeDetailModal();
+                    loadData();
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            }).fail(function () {
+                Swal.fire('Error', 'An unexpected error occurred.', 'error');
+            });
+        }
+
+
+        function addMaterialRow() {
+            $('#emptyMaterialState').hide();
+
+            var optionsHtml = '<option value="">-- Select Material --</option>';
+            inventoryOptions.forEach(function (opt) {
+                optionsHtml += `<option value="${opt.id}">${opt.text} (Stock: ${opt.max_qty})</option>`;
+            });
+
+            var row = `
+            <div class="material-row flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition-all hover:border-brand-300">
+                <select class="inv-select flex-1 rounded-lg border-0 bg-transparent px-3 py-2 text-sm text-slate-700 outline-none ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-inset focus:ring-brand-500">
+                    ${optionsHtml}
+                </select>
+                <input type="number" min="1" placeholder="Qty" class="inv-qty w-24 rounded-lg border-0 bg-transparent px-3 py-2 text-sm text-slate-700 outline-none ring-1 ring-inset ring-slate-200 focus:ring-2 focus:ring-inset focus:ring-brand-500" />
+                <button type="button" class="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500" onclick="removeMaterialRow(this)">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>`;
+
+            $('#materialContainer').append(row);
+        }
+
+        function removeMaterialRow(btn) {
+            $(btn).parent().remove();
+            if ($('.material-row').length === 0) {$('#emptyMaterialState').show(); }
+        }
+
+        /* ==================================================================
+           ATTACHMENT VIEWER HELPERS
+           ================================================================== */
+
+        function isPdfFile(url) {
+            if (!url) return false;
+            return url.toLowerCase().split('?')[0].split('#')[0].endsWith('.pdf');
+        }
+
+        function getFileName(url) {
+            if (!url) return '';
+            var clean = url.split('?')[0].split('#')[0];
+            return decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1));
+        }
+
+        // iOS/Safari mobile often fails to render PDFs inside iframes -> use fallback
+        function isInlinePdfSupported() {
+            var ua = navigator.userAgent || '';
+            var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            var isAndroid = /Android/i.test(ua);
+            return !(isIOS || isAndroid);
+        }
+
+        /**
+         * Render an attachment area.
+         * kind : 'request' | 'reference'
+         * raw  : raw path from the server (can be empty)
+         */
+        function renderAttachment(kind, raw) {
+            var $box =$('#box_' + kind);
+            var $img =$('#img_' + kind);
+            var $pdf =$('#pdf_' + kind);
+            var $fallback =$('#fallback_' + kind);
+            var $empty =$('#no_img_' + kind);
+            var $badge =$('#badge_' + kind);
+            var $tools =$('#tools_' + kind);
+
+            // reset
+            $box.removeClass('is-pdf is-image is-full');$('#fulltext_' + kind).text('Expand');
+            $img.addClass('hidden').attr('src', '');$pdf.addClass('hidden').attr('src', '');
+            $fallback.addClass('hidden').removeClass('flex');$empty.addClass('hidden');
+            $badge.addClass('hidden');$tools.addClass('hidden').removeClass('flex');
+
+            if (!raw) {
+                $empty.removeClass('hidden');
+                return;
+            }
+
+            var url = getValidUrl(raw);
+            $('#open_' + kind).attr('href', url);
+            $('#fbopen_' + kind).attr('href', url);
+            $tools.removeClass('hidden').addClass('flex');
+
+            if (isPdfFile(url)) {
+                $badge.removeClass('hidden').text('PDF');$box.addClass('is-pdf');
+
+                if (isInlinePdfSupported()) {
+                    // viewer parameters: hide side panel & fit page width
+                    $pdf.removeClass('hidden').attr('src', url + '#toolbar=1&navpanes=0&scrollbar=1&view=FitH');
+                } else {
+                    $('#fname_' + kind).text(getFileName(url));
+                    $fallback.removeClass('hidden').addClass('flex');
+                }
+            } else {
+                $badge.removeClass('hidden').text('IMAGE');
+                $box.addClass('is-image');$img.removeClass('hidden').attr('src', url);
+            }
+        }
+
+        // Fullscreen mode / return to normal
+        function toggleFullBox(kind) {
+            var $box =$('#box_' + kind);
+            var willFull = !$box.hasClass('is-full');
+
+            // only one box can be fullscreen at a time
+            $('.attach-box').removeClass('is-full');$('#fulltext_request, #fulltext_reference').text('Expand');
+
+            if (willFull) {
+                $box.addClass('is-full');$('#fulltext_' + kind).text('Minimize');
+            }
+        }
+
+        function openDetailModal(id) {
+            var item = requestData.find(x => x.form_id === id);
+            if (!item) return;
+
+            $('#accept_form_id').val(item.form_id);
+            $('#detail_form_id_text').text('#' + item.form_id);
+            $('#detail_title').text(item.request || '-');
+            $('#detail_requester').text(item.request_by_name || '-');
+            $('#detail_dept').text(item.department || '-');
+            $('#detail_type').text(item.request_type || '-');
+            $('#detail_date').text(item.create_at || '-');
+            $('#detail_due').text(item.due_date || '-');
+            $('#detail_qty').text(item.request_qty || '-');
+            $('#detail_desc').text(item.request_desc || 'No detailed description provided.');
+            $('#detail_remarks').text(item.remarks || '-');
+
+            renderAttachment('request', item.request_image);
+            renderAttachment('reference', item.reference_image);
+
+            $('#modalDetail').removeClass('hidden').addClass('flex');
+        }
+
+        function closeDetailModal() {
+            $('.attach-box').removeClass('is-full');$('#fulltext_request, #fulltext_reference').text('Expand');
+            $('#pdf_request, #pdf_reference').attr('src', '');
+            $('#modalDetail').removeClass('flex').addClass('hidden');
+        }
+
+        function checkUrlAndOpenModal() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var referalId = urlParams.get('id');
+
+            if (referalId) {
+                var item = requestData.find(x => x.form_id == referalId);
+
+                if (item) {
+                    if (item.status === 'Pending') {
+                        openDetailModal(item.form_id);
+                    } else if (item.status === 'On Progress') {
+                        openFinishModal(item.form_id);
+                    } else {
+                    }
+
+                    var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                    window.history.replaceState({ path: newUrl }, '', newUrl);
+                }
+            }
+        }
+    </script>
+}

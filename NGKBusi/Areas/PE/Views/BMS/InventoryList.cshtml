@@ -1,0 +1,577 @@
+﻿@{
+    ViewBag.Title = "Inventory List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+
+<style>
+    body {
+        background-color: #f8fafc;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: #0f172a;
+    }
+
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    @@keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-up {
+        animation: fadeUp .35s ease both;
+    }
+
+    @@keyframes pop {
+        from {
+            opacity: 0;
+            transform: scale(.97) translateY(8px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .modal-pop {
+        animation: pop .2s ease both;
+    }
+
+    .skeleton {
+        background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+        background-size: 400% 100%;
+        animation: shimmer 1.4s ease infinite;
+    }
+
+    @@keyframes shimmer {
+        0% {
+            background-position: 100% 50%;
+        }
+
+        100% {
+            background-position: 0 50%;
+        }
+    }
+</style>
+
+<div class="min-h-screen pb-16">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+        <!-- ================= HEADER ================= -->
+        <div class="pt-2 pb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-widest text-blue-600 mb-1">Workshop</p>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">Inventory List</h1>
+            </div>
+
+            <div class="w-full lg:w-[380px]">
+                <div class="relative group">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                        <svg class="h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="searchInput" autocomplete="off" placeholder="Search item name or category..."
+                           class="block w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-11 pr-16 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all shadow-sm" />
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <button id="clearSearch" type="button" class="hidden h-6 w-6 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600" title="Clear">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                        <kbd id="searchHint" class="hidden sm:inline-block rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">/</kbd>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= STAT CARDS ================= -->
+        <div id="statRow" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500">Total Items</p>
+                        <p id="statTotal" class="text-2xl font-bold text-slate-900 leading-tight">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500">Available</p>
+                        <p id="statAvailable" class="text-2xl font-bold text-slate-900 leading-tight">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500">Low Stock <span class="text-slate-400">(&le; 5)</span></p>
+                        <p id="statLow" class="text-2xl font-bold text-slate-900 leading-tight">-</p>
+                    </div>
+                </div>
+            </div>
+            <div class="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
+                <div class="flex items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-slate-500">Out of Stock</p>
+                        <p id="statOut" class="text-2xl font-bold text-slate-900 leading-tight">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= TOOLBAR ================= -->
+        <div id="toolbar" class="sticky top-0 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-slate-50/85 backdrop-blur border-b border-slate-200 mb-8">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+                <!-- Category Chips -->
+                <div id="categoryChips" class="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 py-0.5"></div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    <!-- Stock Filter -->
+                    <div class="inline-flex rounded-xl bg-slate-200/60 p-1 text-xs font-semibold" id="stockFilter">
+                        <button data-stock="all" class="stock-btn rounded-lg px-3 py-1.5 transition">All</button>
+                        <button data-stock="available" class="stock-btn rounded-lg px-3 py-1.5 transition">Available</button>
+                        <button data-stock="out" class="stock-btn rounded-lg px-3 py-1.5 transition">Out of Stock</button>
+                    </div>
+
+                    <!-- Sort -->
+                    <select id="sortSelect" class="rounded-xl border border-slate-300 bg-white py-2 pl-3 pr-8 text-xs font-semibold text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-500/10">
+                        <option value="name-asc">Name A-Z</option>
+                        <option value="name-desc">Name Z-A</option>
+                        <option value="qty-desc">Highest Stock</option>
+                        <option value="qty-asc">Lowest Stock</option>
+                    </select>
+
+                    <!-- Toggle View -->
+                    <div class="hidden sm:inline-flex rounded-xl bg-slate-200/60 p-1" id="viewToggle">
+                        <button data-view="grid" title="Grid view" class="view-btn rounded-lg p-1.5 transition">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                        </button>
+                        <button data-view="list" title="List view" class="view-btn rounded-lg p-1.5 transition">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <p id="resultInfo" class="mt-2 text-xs text-slate-500"></p>
+        </div>
+
+        <!-- ================= CATALOG ================= -->
+        <div id="catalogContainer" class="space-y-12">
+            <!-- Skeleton Loading -->
+            <div id="loadingIndicator">
+                <div class="h-6 w-40 rounded skeleton mb-5"></div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden"><div class="aspect-square skeleton"></div><div class="p-4 space-y-2"><div class="h-3 w-4/5 rounded skeleton"></div><div class="h-3 w-1/3 rounded skeleton"></div></div></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden"><div class="aspect-square skeleton"></div><div class="p-4 space-y-2"><div class="h-3 w-4/5 rounded skeleton"></div><div class="h-3 w-1/3 rounded skeleton"></div></div></div>
+                    <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden"><div class="aspect-square skeleton"></div><div class="p-4 space-y-2"><div class="h-3 w-4/5 rounded skeleton"></div><div class="h-3 w-1/3 rounded skeleton"></div></div></div>
+                    <div class="hidden md:block rounded-2xl border border-slate-200 bg-white overflow-hidden"><div class="aspect-square skeleton"></div><div class="p-4 space-y-2"><div class="h-3 w-4/5 rounded skeleton"></div><div class="h-3 w-1/3 rounded skeleton"></div></div></div>
+                    <div class="hidden lg:block rounded-2xl border border-slate-200 bg-white overflow-hidden"><div class="aspect-square skeleton"></div><div class="p-4 space-y-2"><div class="h-3 w-4/5 rounded skeleton"></div><div class="h-3 w-1/3 rounded skeleton"></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= EMPTY STATE ================= -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-24 text-center">
+            <div class="h-24 w-24 rounded-full bg-slate-100 flex items-center justify-center mb-4 border border-slate-200">
+                <svg class="h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+            </div>
+            <h3 id="emptyTitle" class="text-lg font-bold text-slate-900">No items found</h3>
+            <p id="emptyDesc" class="mt-1 text-sm text-slate-500">Try using different keywords or filters.</p>
+            <button id="resetFilters" type="button" class="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition">Reset filters</button>
+        </div>
+
+        <!-- ================= ERROR STATE ================= -->
+        <div id="errorState" class="hidden flex-col items-center justify-center py-24 text-center">
+            <div class="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center mb-4 border border-red-100">
+                <svg class="h-10 w-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900">Failed to load data</h3>
+            <p class="mt-1 text-sm text-slate-500">An error occurred while fetching inventory data.</p>
+            <button id="retryBtn" type="button" class="mt-5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition">Try again</button>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL DETAIL ================= -->
+<div id="detailModal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+    <div id="modalBackdrop" class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"></div>
+    <div class="modal-pop relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <button id="modalClose" type="button" class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow hover:bg-white hover:text-slate-900 transition">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+        <div class="aspect-square w-full bg-slate-50">
+            <img id="modalImg" src="" alt="" class="h-full w-full object-contain" />
+        </div>
+        <div class="p-5">
+            <span id="modalCategory" class="inline-block rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500"></span>
+            <h3 id="modalName" class="mt-2 text-lg font-bold leading-snug text-slate-900"></h3>
+            <div class="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <span class="text-sm text-slate-500">Current stock</span>
+                <span id="modalQty" class="text-2xl font-bold"></span>
+            </div>
+            <div id="modalStatus" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ========= STATE =========
+        var allItems = [];
+        var state = {
+            keyword: '',
+            category: 'all',
+            stock: 'all',   // all | available | out
+            sort: 'name-asc',
+            view: 'grid'
+        };
+        var LOW_STOCK = 5;
+        var PLACEHOLDER = '@Url.Content("~/Content/Images/no-image.png")';
+
+        try { state.view = localStorage.getItem('inv_view') || 'grid'; } catch (e) { }
+
+        $(document).ready(function () {
+            loadCatalog();
+
+            var debounce;
+            $('#searchInput').on('input', function () {
+                var v = $(this).val();
+                $('#clearSearch').toggleClass('hidden', v === '').toggleClass('flex', v !== '');
+                $('#searchHint').toggleClass('hidden', v !== '');
+                clearTimeout(debounce);
+                debounce = setTimeout(function () { state.keyword = v.trim().toLowerCase(); render(); }, 150);
+            });
+
+            $('#clearSearch').on('click', function () {
+                $('#searchInput').val('').trigger('input').focus();
+            });
+
+            // Shortcut "/" for focusing search input
+            $(document).on('keydown', function (e) {
+                var tag = (document.activeElement || {}).tagName;
+                if (e.key === '/' && tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') {
+                    e.preventDefault();
+                    $('#searchInput').focus();
+                }
+                if (e.key === 'Escape') closeModal();
+            });
+
+            $('#categoryChips').on('click', '.chip', function () {
+                state.category = $(this).data('cat').toString();
+                render();
+            });
+
+            $('#stockFilter').on('click', '.stock-btn', function () {
+                state.stock = $(this).data('stock');
+                render();
+            });
+
+            $('#sortSelect').on('change', function () { state.sort = this.value; render(); });
+
+            $('#viewToggle').on('click', '.view-btn', function () {
+                state.view = $(this).data('view');
+                try { localStorage.setItem('inv_view', state.view); } catch (e) { }
+                render();
+            });
+
+            $('#resetFilters').on('click', function () {
+                state.keyword = ''; state.category = 'all'; state.stock = 'all';
+                $('#searchInput').val('').trigger('input');
+                render();
+            });
+
+            $('#retryBtn').on('click', function () { loadCatalog(); });
+
+            // Click card -> open detail
+            $('#catalogContainer').on('click', '.item-card', function () {
+                openModal(parseInt($(this).data('idx'), 10));
+            });
+            $('#modalBackdrop, #modalClose').on('click', closeModal);
+        });
+
+        // ========= DATA =========
+        function loadCatalog() {
+            $('#errorState').addClass('hidden').removeClass('flex');
+            $('#emptyState').addClass('hidden').removeClass('flex');
+            $('#toolbar, #statRow').addClass('opacity-60 pointer-events-none');
+
+            $.ajax({
+                url: '@Url.Action("GetInventory", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    $('#loadingIndicator').hide();
+                    $('#toolbar, #statRow').removeClass('opacity-60 pointer-events-none');
+
+                    if (res.success && res.data && res.data.length > 0) {
+                        allItems = $.map(res.data, function (item) {
+                            var cat = item.category && item.category !== '-' ? item.category : 'Others';
+                            var img = item.url_image && item.url_image !== 'null' && item.url_image !== '' ? item.url_image : '';
+                            return {
+                                name: item.name || '-',
+                                category: cat,
+                                image: img,
+                                qty: Number(item.Qty) || 0
+                            };
+                        });
+                        renderStats();
+                        render();
+                    } else {
+                        allItems = [];
+                        renderStats();
+                        showEmpty('No items available', 'The catalog is currently empty, please contact the administrator.', false);
+                        $('#catalogContainer').empty();
+                        $('#categoryChips').empty();
+                        $('#resultInfo').text('');
+                    }
+                },
+                error: function () {
+                    $('#loadingIndicator').hide();
+                    $('#catalogContainer').empty();
+                    $('#toolbar, #statRow').removeClass('opacity-60 pointer-events-none');
+                    $('#errorState').removeClass('hidden').addClass('flex');
+                }
+            });
+        }
+
+        function renderStats() {
+            var total = allItems.length, out = 0, low = 0;
+            $.each(allItems, function (i, it) {
+                if (it.qty <= 0) out++;
+                else if (it.qty <= LOW_STOCK) low++;
+            });
+            $('#statTotal').text(total);
+            $('#statAvailable').text(total - out);
+            $('#statLow').text(low);
+            $('#statOut').text(out);
+        }
+
+        // ========= RENDER =========
+        function render() {
+            if (!allItems.length) return;
+
+            renderChips();
+            syncControls();
+
+            // Filter
+            var list = $.grep(allItems, function (it) {
+                if (state.category !== 'all' && it.category !== state.category) return false;
+                if (state.stock === 'available' && it.qty <= 0) return false;
+                if (state.stock === 'out' && it.qty > 0) return false;
+                if (state.keyword && (it.name + ' ' + it.category).toLowerCase().indexOf(state.keyword) === -1) return false;
+                return true;
+            });
+
+            // Sort
+            list.sort(function (a, b) {
+                switch (state.sort) {
+                    case 'name-desc': return b.name.localeCompare(a.name);
+                    case 'qty-desc': return b.qty - a.qty || a.name.localeCompare(b.name);
+                    case 'qty-asc': return a.qty - b.qty || a.name.localeCompare(b.name);
+                    default: return a.name.localeCompare(b.name);
+                }
+            });
+
+            $('#resultInfo').text('Showing ' + list.length + ' of ' + allItems.length + ' items');
+
+            if (!list.length) {
+                $('#catalogContainer').empty();
+                showEmpty('No items found', 'Try using different keywords or filters.', true);
+                return;
+            }
+            $('#emptyState').addClass('hidden').removeClass('flex');
+
+            // Group by category
+            var grouped = {};
+            $.each(list, function (i, it) {
+                (grouped[it.category] = grouped[it.category] || []).push(it);
+            });
+            var cats = Object.keys(grouped).sort(function (a, b) {
+                if (a === 'Others') return 1;
+                if (b === 'Others') return -1;
+                return a.localeCompare(b);
+            });
+
+            var html = '';
+            $.each(cats, function (ci, cat) {
+                var items = grouped[cat];
+                html += '<section class="category-section fade-up">';
+                html += '<div class="mb-4 flex items-center gap-3">';
+                html += '<h2 class="text-lg font-bold text-slate-800">' + escapeHtml(cat) + '</h2>';
+                html += '<span class="rounded-full bg-slate-200/60 px-2.5 py-0.5 text-xs font-semibold text-slate-500">' + items.length + ' items</span>';
+                html += '<div class="h-px flex-1 bg-slate-200"></div>';
+                html += '</div>';
+
+                if (state.view === 'list') {
+                    html += '<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">';
+                    $.each(items, function (i, it) { html += listRow(it); });
+                    html += '</div>';
+                } else {
+                    html += '<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5">';
+                    $.each(items, function (i, it) { html += gridCard(it); });
+                    html += '</div>';
+                }
+                html += '</section>';
+            });
+
+            $('#catalogContainer').html(html);
+        }
+
+        function stockMeta(qty) {
+            if (qty <= 0) return { label: 'Out of Stock', dot: 'bg-red-500', badge: 'bg-red-50 text-red-700 ring-red-600/10', text: 'text-red-600' };
+            if (qty <= LOW_STOCK) return { label: 'Low Stock', dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 ring-amber-600/20', text: 'text-amber-600' };
+            return { label: 'Available', dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20', text: 'text-emerald-600' };
+        }
+
+        function itemIndex(it) { return allItems.indexOf(it); }
+
+        function gridCard(it) {
+            var m = stockMeta(it.qty);
+            var img = it.image || PLACEHOLDER;
+            var dim = it.qty <= 0 ? ' opacity-60 grayscale' : '';
+            var h = '';
+            h += '<div class="item-card group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg" data-idx="' + itemIndex(it) + '">';
+            h += '<div class="relative aspect-square w-full overflow-hidden border-b border-slate-100 bg-slate-50">';
+            h += '<img loading="lazy" src="' + escapeHtml(img) + '" alt="' + escapeHtml(it.name) + '" class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105' + dim + '" onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'" />';
+            h += '<span class="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-700 shadow-sm">';
+            h += '<span class="h-1.5 w-1.5 rounded-full ' + m.dot + '"></span>' + m.label + '</span>';
+            h += '</div>';
+            h += '<div class="flex flex-1 flex-col p-4">';
+            h += '<h3 class="mb-3 line-clamp-2 text-sm font-semibold leading-snug text-slate-800 transition-colors group-hover:text-blue-600">' + escapeHtml(it.name) + '</h3>';
+            h += '<div class="mt-auto flex items-baseline justify-between">';
+            h += '<span class="text-xs text-slate-400">Stock</span>';
+            h += '<span class="text-lg font-bold ' + m.text + '">' + it.qty + '</span>';
+            h += '</div></div></div>';
+            return h;
+        }
+
+        function listRow(it) {
+            var m = stockMeta(it.qty);
+            var img = it.image || PLACEHOLDER;
+            var h = '';
+            h += '<div class="item-card group flex cursor-pointer items-center gap-4 px-4 py-3 transition hover:bg-slate-50" data-idx="' + itemIndex(it) + '">';
+            h += '<img loading="lazy" src="' + escapeHtml(img) + '" alt="" class="h-12 w-12 shrink-0 rounded-xl border border-slate-200 bg-slate-50 object-cover" onerror="this.onerror=null;this.src=\'' + PLACEHOLDER + '\'" />';
+            h += '<div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold text-slate-800 group-hover:text-blue-600">' + escapeHtml(it.name) + '</p>';
+            h += '<p class="text-xs text-slate-400">' + escapeHtml(it.category) + '</p></div>';
+            h += '<span class="hidden sm:inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ring-1 ring-inset ' + m.badge + '">' + m.label + '</span>';
+            h += '<span class="w-12 text-right text-lg font-bold ' + m.text + '">' + it.qty + '</span>';
+            h += '</div>';
+            return h;
+        }
+
+        function renderChips() {
+            var counts = {};
+            $.each(allItems, function (i, it) { counts[it.category] = (counts[it.category] || 0) + 1; });
+            var cats = Object.keys(counts).sort(function (a, b) {
+                if (a === 'Others') return 1;
+                if (b === 'Others') return -1;
+                return a.localeCompare(b);
+            });
+
+            function chip(key, label, count) {
+                var active = state.category === key;
+                var cls = active
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50';
+                return '<button type="button" data-cat="' + escapeHtml(key) + '" class="chip shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ' + cls + '">' +
+                    escapeHtml(label) + ' <span class="' + (active ? 'text-slate-300' : 'text-slate-400') + '">' + count + '</span></button>';
+            }
+
+            var html = chip('all', 'All', allItems.length);
+            $.each(cats, function (i, c) { html += chip(c, c, counts[c]); });
+            $('#categoryChips').html(html);
+        }
+
+        function syncControls() {
+            $('.stock-btn').each(function () {
+                var on = $(this).data('stock') === state.stock;
+                $(this).toggleClass('bg-white text-slate-900 shadow-sm', on).toggleClass('text-slate-500 hover:text-slate-700', !on);
+            });
+            $('.view-btn').each(function () {
+                var on = $(this).data('view') === state.view;
+                $(this).toggleClass('bg-white text-slate-900 shadow-sm', on).toggleClass('text-slate-500 hover:text-slate-700', !on);
+            });
+            $('#sortSelect').val(state.sort);
+        }
+
+        function showEmpty(title, desc, showReset) {
+            $('#emptyTitle').text(title);
+            $('#emptyDesc').text(desc);
+            $('#resetFilters').toggleClass('hidden', !showReset);
+            $('#emptyState').removeClass('hidden').addClass('flex');
+        }
+
+        // ========= MODAL =========
+        function openModal(idx) {
+            var it = allItems[idx];
+            if (!it) return;
+            var m = stockMeta(it.qty);
+            $('#modalImg').attr('src', it.image || PLACEHOLDER).attr('alt', it.name)
+                .off('error').on('error', function () { this.onerror = null; this.src = PLACEHOLDER; });
+            $('#modalCategory').text(it.category);
+            $('#modalName').text(it.name);
+            $('#modalQty').text(it.qty).attr('class', 'text-2xl font-bold ' + m.text);
+            $('#modalStatus').html('<span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ' + m.badge + '"><span class="h-1.5 w-1.5 rounded-full ' + m.dot + '"></span>' + m.label + '</span>');
+            $('#detailModal').removeClass('hidden').addClass('flex');
+            $('body').addClass('overflow-hidden');
+        }
+
+        function closeModal() {
+            $('#detailModal').addClass('hidden').removeClass('flex');
+            $('body').removeClass('overflow-hidden');
+        }
+
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+}

@@ -1,0 +1,434 @@
+﻿@using NGKBusi.Areas.HC.Models
+@using NGKBusi.Models
+@{
+    ViewBag.Title = "Drafting Request List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // Casting Data
+    var listData = ViewBag.List as IEnumerable<HC_LegalPermit_DraftAgreementRequest>;
+    bool isAdmin = ViewBag.IsAdmin ?? false;
+
+    // Build map NIK -> Name for requestors to avoid DB calls per row
+    var createdByNiks = listData?.Select(x => x.CreatedBy).Where(n => !string.IsNullOrEmpty(n)).Distinct().ToList() ?? new List<string>();
+    var requestorMap = new System.Collections.Generic.Dictionary<string, string>(System.StringComparer.OrdinalIgnoreCase);
+    if (createdByNiks.Count > 0)
+    {
+        using (var dbCtx = new DefaultConnection())
+        {
+            var users = dbCtx.V_Users_Active.Where(u => createdByNiks.Contains(u.NIK)).ToList();
+            foreach (var u in users)
+            {
+                if (!requestorMap.ContainsKey(u.NIK))
+                {
+                    requestorMap[u.NIK] = u.Name;
+                }
+            }
+        }
+    }
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css">
+
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f4f6f9;
+    }
+
+    /* --- STATS CARDS --- */
+    .stat-card {
+        background: white;
+        border: none;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+    .stat-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .stat-text {
+        text-align: right;
+        flex-grow: 1;
+        margin-left: 15px;
+    }
+
+    .stat-label {
+        color: #8898aa;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #32325d;
+        line-height: 1.1;
+        display: block;
+    }
+
+    /* Warna Icon Stats */
+    .bg-soft-primary {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .bg-soft-warning {
+        background-color: #fff3e0;
+        color: #f57c00;
+    }
+
+    .bg-soft-success {
+        background-color: #e8f5e9;
+        color: #388e3c;
+    }
+
+    .bg-soft-info {
+        background-color: #e0f7fa;
+        color: #0097a7;
+    }
+
+    /* --- MAIN TABLE CARD --- */
+    .main-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        margin-top: 20px;
+        background: white;
+        margin-bottom: 50px;
+    }
+
+    .card-header-custom {
+        padding: 20px 25px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* --- DATATABLES STYLING --- */
+    thead input {
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-top: 5px;
+        font-weight: normal;
+    }
+
+    .table-modern thead th {
+        border-top: none;
+        border-bottom: 2px solid #f0f0f0;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #8898aa;
+        font-weight: 600;
+        padding: 15px 10px;
+    }
+
+    .table-modern tbody td {
+        vertical-align: middle;
+        padding: 15px 10px;
+        font-size: 0.95rem;
+        color: #333;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    /* Pagination Color Override */
+    .page-item.active .page-link {
+        background-color: #00747f !important;
+        border-color: #00747f !important;
+    }
+
+    /* Buttons */
+    .btn-custom-primary {
+        background-color: #00747f;
+        color: white;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-weight: 600;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 116, 127, 0.2);
+    }
+
+        .btn-custom-primary:hover {
+            background-color: #005f68;
+            color: white;
+            transform: translateY(-1px);
+        }
+</style>
+
+<div class="container-fluid py-4">
+
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-8">
+            <h3 class="font-weight-bold text-dark mb-1">Drafting Agreements</h3>
+            <p class="text-muted mb-0">Manage your agreement drafting Requests and submissions.</p>
+        </div>
+        <div class="col-md-4 text-right">
+            @if (!isAdmin)
+            {
+                <a href="@Url.Action("DraftingForm", "LegalPermit", new { area = "HC" })" class="btn btn-custom-primary shadow">
+                    <i class="fa fa-plus-circle mr-2"></i> Create New
+                </a>
+            }
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-primary"><i class="fa fa-folder-open"></i></div>
+                <div class="stat-text">
+                    <span class="stat-label">Total Drafting Request</span>
+                    <span class="stat-number">@(listData?.Count() ?? 0)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-warning"><i class="fa fa-pencil-alt"></i></div>
+                <div class="stat-text">
+                    <span class="stat-label">Draft Mode</span>
+                    <span class="stat-number">@(listData?.Count(x => x.Status == "Draft") ?? 0)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-info"><i class="fa fa-paper-plane"></i></div>
+                <div class="stat-text">
+                    <span class="stat-label">Submitted</span>
+                    <span class="stat-number">@(listData?.Count(x => x.Status == "Submitted" || x.Status == "Review") ?? 0)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="stat-card">
+                <div class="stat-icon bg-soft-success"><i class="fa fa-check-double"></i></div>
+                <div class="stat-text">
+                    <span class="stat-label">Completed</span>
+                    <span class="stat-number">@(listData?.Count(x => x.Status == "Approved" || x.Status == "Completed") ?? 0)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card main-card">
+        <div class="card-header-custom">
+            <h6 class="mb-0 font-weight-bold"><i class="fa fa-list mr-2 text-info"></i> Recent Requests</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive p-3">
+                <table id="tableDrafting" class="table table-modern table-hover mb-0 w-100">
+                    <thead>
+                        <tr>
+                            <th class="pl-3" style="width: 5%">No</th>
+                            <th>Req Date</th>
+                            <th>Requestor</th>
+                            <th>Ref No</th>
+                            <th>Company Name</th>
+                            <th>Project</th>
+                            <th class="text-right">Final Price (IDR)</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center" style="width: 120px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int no = 1; }
+                        @if (listData != null)
+                        {
+                            foreach (var item in listData)
+                            {
+                                var requestorDisplay = !string.IsNullOrEmpty(item.CreatedBy) && requestorMap.ContainsKey(item.CreatedBy)
+                                ? requestorMap[item.CreatedBy]
+                                : (item.CreatedBy ?? "-");
+
+                                <tr>
+                                    <td class="pl-3 text-center">@(no++)</td>
+                                    <td data-sort="@(item.RequestDate.HasValue ? item.RequestDate.Value.ToString("yyyyMMdd") : "")">
+                                        @(item.RequestDate.HasValue ? item.RequestDate.Value.ToString("dd MMM yyyy") : "-")
+                                    </td>
+                                    <td>@requestorDisplay</td>
+                                    <td>@item.RefQuotationNo</td>
+                                    <td>@item.SupplierName</td>
+                                    <td class="font-weight-bold text-dark">@item.ProjectName</td>
+                                    <td class="text-right font-weight-bold">
+                                        @string.Format("{0:N0}", item.FinalPrice)
+                                    </td>
+                                    <td class="text-center">
+                                        @if (item.Status == "Draft")
+                                        {<span class="badge badge-warning text-white px-3 py-2">DRAFT</span> }
+                                        else if (item.Status == "Submitted")
+                                        { <span class="badge badge-success px-3 py-2">SUBMITTED</span> }
+                                        else if (item.Status == "Approved")
+                                        { <span class="badge badge-primary px-3 py-2">Approved</span> }
+                                        else if (item.Status == "Completed")
+                                        { <span class="badge badge-info text-white px-3 py-2">COMPLETED</span> }
+                                        else if (item.Status == "Revision")
+                                        { <span class="badge badge-danger px-3 py-2">REVISION</span> }
+                                        else
+                                        { <span class="badge badge-secondary px-3 py-2">@item.Status</span>}
+                                    </td>
+                                    <td class="text-center pr-3">
+                                        @if (!isAdmin)
+                                        {
+                                            // USER LOGIC
+                                            if (item.Status == "Draft" || item.Status == "Revision") // Bisa Edit
+                                            {
+                                                <div class="btn-group shadow-sm">
+                                                    <a href="@Url.Action("EditDraftingForm", "LegalPermit", new { id = item.ID, area = "HC" })" class="btn btn-sm btn-light border" title="Edit">
+                                                        <i class="fa fa-edit text-warning"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-light border" onclick="deleteData(@item.ID)" title="Delete">
+                                                        <i class="fa fa-trash text-danger"></i>
+                                                    </button>
+                                                </div>
+                                            }
+                                            else if (item.Status == "Submitted" || item.Status == "Returned" || item.Status == "Review")
+                                            {
+                                                <span class="text-muted small font-italic"><i class="fa fa-lock mr-1"></i> In Progress</span>
+                                            }
+                                            else // Read Only (Submitted/Completed)
+                                            {
+                                                <a href="@Url.Action("ViewRequest", "LegalPermit", new { id = item.ID, area = "HC" })" class="btn btn-sm btn-secondary font-weight-bold" title="View Detail">
+                                                    <i class="fa fa-eye mr-1"></i> View
+                                                </a>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            // ADMIN LOGIC (Selalu View Detail)
+                                            <a href="@Url.Action("ViewRequest", "LegalPermit", new { id = item.ID, area = "HC" })" class="btn btn-sm btn-info font-weight-bold" title="Review">
+                                                <i class="fa fa-search mr-1"></i> Review
+                                            </a>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // --- ALERT LOGIC ---
+            var errorMsg = '@TempData["ErrorMessage"]';
+            var successMsg = '@TempData["SuccessMessage"]';
+
+            if (errorMsg) Swal.fire({ icon: 'error', title: 'Gagal', text: errorMsg });
+            if (successMsg) Swal.fire({ icon: 'success', title: 'Berhasil', text: successMsg, timer: 2000, showConfirmButton: false });
+
+            // --- DATATABLES CONFIG ---
+            // 1. Setup Header Filter
+            $('#tableDrafting thead tr').clone(true).addClass('filters').appendTo('#tableDrafting thead');
+
+            // 2. Init DataTable
+            var table = $('#tableDrafting').DataTable({
+                orderCellsTop: true,
+                fixedHeader: true,
+                order: [[ 1, 'desc' ]], // Default Sort by Date (Kolom Index 1)
+                pageLength: 10,
+                language: {
+                    search: "Global Search:",
+                    paginate: { next: '<i class="fa fa-angle-right"></i>', previous: '<i class="fa fa-angle-left"></i>' }
+                },
+                initComplete: function () {
+                    var api = this.api();
+
+                    // Loop Column Filter Logic
+                    api.columns().eq(0).each(function (colIdx) {
+                        var cell = $('.filters th').eq($(api.column(colIdx).header()).index());
+                        var title = $(cell).text();
+
+                        // Matikan filter di kolom: No (0), Price (5), Action (7)
+                        if (colIdx == 0 || colIdx == 5 || colIdx == 7) {
+                            $(cell).html('');
+                        } else {
+                            $(cell).html('<input type="text" placeholder="Filter..." />');
+                        }
+
+                        // Event Listener Input
+                        $('input', $('.filters th').eq($(api.column(colIdx).header()).index()))
+                            .off('keyup change')
+                            .on('keyup change', function (e) {
+                                e.stopPropagation();
+                                var regexr = '({search})';
+                                api.column(colIdx)
+                                    .search(this.value != '' ? regexr.replace('{search}', '(((' + this.value + ')))') : '', this.value != '', this.value == '')
+                                    .draw();
+                            });
+                    });
+                }
+            });
+        });
+
+        // --- DELETE FUNCTION ---
+        function deleteData(id) {
+            Swal.fire({
+                title: 'Hapus Draft?',
+                text: "Data yang dihapus tidak dapat dikembalikan!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '@Url.Action("DeleteAgreement", "LegalPermit", new { area = "HC" })',
+                        type: 'POST',
+                        data: { id: id },
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success').then(() => location.reload());
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Error', 'Gagal menghubungi server', 'error');
+                        }
+                    });
+                }
+            })
+        }
+    </script>
+}

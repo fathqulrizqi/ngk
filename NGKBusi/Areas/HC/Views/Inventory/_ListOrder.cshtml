@@ -1,0 +1,349 @@
+﻿@{
+    ViewBag.Title = "Order List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+@section cssHead {
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.3.0/css/dataTables.bootstrap5.css" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-x..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/45.0.0/ckeditor5.css" />
+    <style>
+        div.dt-length label {
+            margin-left: 0.5rem; /* jarak antara select dan label */
+        }
+
+        table {
+            border: none;
+        }
+
+        input[aria-controls="itemRequest"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+        select[aria-controls="itemRequest"] {
+            padding: 2px !important; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            outline: none;
+        }
+
+            select[aria-controls="itemRequest"]:focus {
+                border-color: #3b82f6; /* focus:border-blue-500 */
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* focus:ring */
+            }
+
+        .page-content {
+            padding-top: 0 !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 2rem;
+            border-color: #DEE2E6 !important;
+            padding: 0.25rem;
+            width: auto !important;
+            display: inline-block;
+        }
+
+        .select2-selection__rendered {
+            word-wrap: break-word !important;
+            text-overflow: inherit !important;
+            white-space: normal !important;
+        }
+
+        table.dataTable td,
+        table.dataTable th {
+            padding: 0.5rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+}
+
+@section scriptHead {
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.0/js/dataTables.bootstrap5.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+
+    <script>
+        function formatChild(orderItems) {
+            if (!orderItems || orderItems.length === 0) return '<i>No items</i>';
+
+            let table = `
+                <table class="table table-sm mb-0 table-bordered text-sm">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Qty</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+            orderItems.forEach(item => {
+                table += `
+                    <tr>
+                        <td>${item.Item_Order_Name}</td>
+                        <td>${item.Item_Order_Qty}</td>
+                        <td>${item.Item_Order_Unit}</td>
+                    </tr>`;
+            });
+
+            table += `</tbody></table>`;
+            return table;
+        }
+
+        $(document).ready(function () {
+            const table = $('#myTable').DataTable({
+                // Opsi baru yang ditambahkan
+                orderCellsTop: true,
+                // -----------
+                ajax: {
+                    url: '@Url.Action("GetAllOrderDetails", "Inventory", new { area = "HC" })',
+                    dataSrc: function (json) {
+                        if (json.success) {
+                            // Group by Order_No
+                            const grouped = {};
+                            json.data.forEach(x => {
+                                if (!grouped[x.Order_No]) grouped[x.Order_No] = [];
+                                grouped[x.Order_No].push(x);
+                            });
+
+                            // Flatten to one row per Order_No
+                            return Object.keys(grouped).map(key => {
+                                const first = grouped[key][0];
+                                return {
+                                    ...first,
+                                    Items: grouped[key] // save all items for child row
+                                };
+                            });
+                        }
+                        return [];
+                    }
+                },
+                columns: [
+                    {
+                        data: 'Timestamps',
+                        className: 'text-start',
+                        title: 'Date',
+                        type: 'date',
+                        render: {
+                            display: function (data) {
+                                if (!data) return '';
+                                const match = /\/Date\((\d+)\)\//.exec(data);
+                                if (!match) return '';
+                                return moment(parseInt(match[1])).format("DD MMM YYYY");
+                            },
+                            sort: function (data) {
+                                const match = /\/Date\((\d+)\)\//.exec(data);
+                                if (!match) return 0;
+                                return parseInt(match[1]);
+                            }
+                        }
+                    },
+                    { data: 'Order_No', title: 'Order No' },
+                    { data: 'Requestor_Name', title: 'Requestor' },
+                    { data: 'Requestor_Dept', title: 'Dept' },
+                    {
+                        data: 'Status',
+                        title: 'Status',
+                        render: function (data) {
+                            let badgeClass = 'secondary';
+                            switch (data) {
+                                case "Pending Prepare":
+                                    badgeClass = 'warning';
+                                    break;
+                                case "Pending Check":
+                                    badgeClass = 'info';
+                                    break;
+                                case "Pending Approve":
+                                    badgeClass = 'info';
+                                    break;
+                                case "Order Approved":
+                                    badgeClass = 'primary';
+                                    break;
+                                case "Dispatcher Confirmed":
+                                    badgeClass = 'dark';
+                                    break;
+                                case "Order Complete":
+                                    badgeClass = 'success';
+                                    break;
+                                case "Rejected by Approver":
+                                case "Rejected by Checker":
+                                    badgeClass = 'danger';
+                                    break;
+                                default:
+                                    badgeClass = 'secondary';
+                            }
+                            return `<span class="badge bg-${badgeClass}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: 'Order_No',
+                        title: 'Action',
+                        orderable: false, // Menambahkan ini agar kolom Action tidak bisa disortir
+                        render: function (data) {
+                            return `<button class="btn btn-sm btn-primary go-detail" data-orderno="${data}">
+                                <i class="fas fa-eye"></i> Detail
+                            </button>`;
+                        }
+                    }
+                ],
+                order: [[0, 'desc']],
+                initComplete: function () {
+                    const api = this.api();
+                    // Search listener untuk setiap input
+                    $('#myTable thead tr.search-row input').on('keyup change', function () {
+                        const colIndex = $(this).data('column');
+                        api.column(colIndex).search(this.value).draw();
+                    });
+
+                    // Matikan sorting saat klik baris search
+                    $('#myTable thead tr.search-row th').off('click');
+                },
+            });
+
+            $('#toggleStatusDiagram').on('click', function () {
+                $('#statusDiagram').toggleClass('hidden');
+            });
+
+            $('#myTable tbody').on('click', 'tr', function (e) {
+                if ($(e.target).closest('.go-detail').length) {
+                    // Jangan lakukan apapun jika tombol 'go-detail' yang diklik
+                    return;
+                }
+
+                const rowData = table.row(this).data();
+                if (rowData) {
+                    const orderNo = rowData.Order_No;
+                    const baseUrl = '@Url.Action("_DetailOrder", "Inventory", new { area = "HC" })';
+                    window.open(`${baseUrl}?orderNo=${encodeURIComponent(orderNo)}`, '_blank');
+                }
+            });
+
+            $(document).on('click', '.go-detail', function () {
+                const orderNo = $(this).data('orderno');
+                const baseUrl = '@Url.Action("_DetailOrder", "Inventory", new { area = "HC" })';
+                window.open(`${baseUrl}?orderNo=${encodeURIComponent(orderNo)}`, '_blank');
+            });
+
+            $(document).on('click', '#createInventory', function () {
+                const baseUrl = '@Url.Action("_CreateOrder", "Inventory", new { area = "HC" })';
+                window.location.href = baseUrl;
+            });
+
+        });
+    </script>
+}
+
+<div class="d-flex align-items-center rounded" style="color: #2C3E50;">
+    <span style="color: #F6AA04; font-weight: bold; font-size: 20px; margin: 20px;">|</span>
+    <h2 style="font-weight: bold; margin: 0; font-size: 20px">
+        Inventory Order
+    </h2>
+    <button id="createInventory" class="btn btn-primary ml-4" type="button">Create Inventory Order</button>
+</div>
+
+<div class="bg-white relative">
+    <!-- Header bar: STATUS INFO + button info -->
+    <div class="flex items-center gap-2 mb-4">
+        <p class="text-sm font-bold border-b-2 border-cyan-700">
+            STATUS INFO
+        </p>
+        <button id="toggleStatusDiagram" class="text-cyan-700 hover:text-cyan-900 focus:outline-none">
+            <i class="fa-solid fa-circle-info text-lg"></i>
+        </button>
+    </div>
+
+    <!-- Diagram Status (toggleable) -->
+    <div id="statusDiagram" class="mt-2 hidden">
+        <div class="flex flex-wrap items-start justify-center gap-3 text-xs font-bold">
+
+            <!-- 1. Pending Prepare -->
+            <div class="flex flex-col items-center">
+                <div class="bg-yellow-400 text-white px-3 py-1 rounded">Pending Prepare</div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-gray-500 mt-2"></i>
+
+            <!-- 2. Pending Check + Reject -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-cyan-400 text-white px-3 py-1 rounded">Pending Check</div>
+                <i class="fa-solid fa-arrow-down text-gray-500 text-xs"></i>
+                <div class="bg-red-500 text-white px-3 py-1 rounded">Rejected by Checker</div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-gray-500 mt-2"></i>
+
+            <!-- 3. Pending Approve + Reject -->
+            <div class="flex flex-col items-center gap-1">
+                <div class="bg-cyan-400 text-white px-3 py-1 rounded">Pending Approve</div>
+                <i class="fa-solid fa-arrow-down text-gray-500 text-xs"></i>
+                <div class="bg-red-500 text-white px-3 py-1 rounded">Rejected by Approver</div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-gray-500 mt-2"></i>
+
+            <!-- 4. Order Approve -->
+            <div class="flex flex-col items-center">
+                <div class="bg-blue-600 text-white px-3 py-1 rounded">Order Approve</div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-gray-500 mt-2"></i>
+
+            <!-- 5. Dispatcher Confirmed -->
+            <div class="flex flex-col items-center">
+                <div class="bg-neutral-800 text-white px-3 py-1 rounded">Dispatcher Confirmed</div>
+            </div>
+            <i class="fa-solid fa-chevron-right text-gray-500 mt-2"></i>
+
+            <!-- 6. Order Complete -->
+            <div class="flex flex-col items-center">
+                <div class="bg-green-600 text-white px-3 py-1 rounded">Order Complete</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-full mx-auto bg-white p-6 rounded-xl shadow-lg">
+    <div class="overflow-x-auto">
+        <table id="myTable" class="hover min-w-full text-sm text-left text-gray-500">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th scope="col" class="py-2 px-3">Date</th>
+                    <th scope="col" class="py-2 px-3">Order No</th>
+                    <th scope="col" class="py-2 px-3">Requestor</th>
+                    <th scope="col" class="py-2 px-3">Dept</th>
+                    <th scope="col" class="py-2 px-3">Status</th>
+                    <th scope="col" class="py-2 px-3">Action</th>
+                </tr>
+                <tr class="search-row">
+                    <th><input data-column="0" class="w-full p-2 border rounded" placeholder="Search Date" /></th>
+                    <th><input data-column="1" class="w-full p-2 border rounded" placeholder="Search Order No" /></th>
+                    <th><input data-column="2" class="w-full p-2 border rounded" placeholder="Search Requestor" /></th>
+                    <th><input data-column="3" class="w-full p-2 border rounded" placeholder="Search Dept" /></th>
+                    <th><input data-column="4" class="w-full p-2 border rounded" placeholder="Search Status" /></th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>

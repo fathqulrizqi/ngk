@@ -1,0 +1,900 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+    double? totalAllocation = 0.00;
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-math.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    @*<script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.widgets.js")"></script>*@
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+            $(".txtPRDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $("#txtTaxInvoiceDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $('.tablesorter-childRow td').hide();
+            $(".tblPRWPO").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    filter_excludeFilter: {
+                        // zero-based column index
+                        10: 'range'
+                    },
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+            $('.tablesorter').delegate('.toggle', 'click', function () {
+
+                $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+
+                return false;
+            });
+
+            var newRowIndex = 0;
+            $(".btnWithPOEdit,.btnWithPOCopy").click(function () {
+                var currID = $(this).data("id");
+                var currMode = $(this).data("mode");
+                var currCTR = $(this);
+                currCTR.LoadingOverlay("show");
+                $.ajax({
+                    url: "/NGKBusi/FA/PaymentRequest/WithPOEditData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iWithPOID: currID
+                    }, success: function (data) {
+                        $("#formWithPO").attr("action", currMode == "copy" ? $("#formWithPO").data("add") : $("#formWithPO").data("edit"));
+                        $(".divReceiveNumber").show();
+                        $("#txtRecNumber").val(data[0].Receive_Number);
+                        $("#hfWithPOID").val(currID);
+                        $("#selCurrency").val(data[0].Currency_Code);
+                        $("#selSection").val(data[0].Section_From_Code + "|" + data[0].Section_From_Name).change();
+                        $("#txtInvoiceNumber").val(data[0].Invoice_Number);
+                        $("#selVendor").val(data[0].Third_Party_Id + "|" + data[0].Third_Party_Name).change();
+                        $("#txtInvoiceAmount").val(accounting.formatNumber(data[0].Amount_of_Invoice, 2));
+                        $("#txtDescription").val(data[0].Description);
+                        $("#txtDueDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Due_Date.substr(6)))));
+                        $(".rbPaymentType[value='" + data[0].Payment_Type + "']").prop("checked", true).change();
+                        $(".rbPaymentMethod[value='" + data[0].Payment_Method + "']").prop("checked", true);
+                        $("#selVATRate").val(data[0].VAT).change();
+                        if (data[0].Tax_Date != null) {
+                            $("#txtTaxInvoiceDate").val($.datepicker.formatDate('mm/dd/yy', new Date(parseInt(data[0].Tax_Date.substr(6)))));
+                        } else {
+                            $("#txtTaxInvoiceDate").val("");
+                        }
+                        $("#txtTaxInvoiceNumber").val(data[0].Tax_Number);
+                        $("#txtTaxInvoiceNumber17Digit").val(data[0].Tax_Number_17);
+                        $("#tblDirectPayment tbody tr:not(:first)").remove();
+                        var subRow = $("#tblDirectPayment tbody tr:first()");
+                        var newRow = subRow.clone();
+
+                        $(data[0].PO_Sub).each(function (i, el) {
+                            newRowIndex++;
+                            var currRow = subRow;
+                            if (i != 0) {
+                                currRow = newRow.clone();
+                            }
+                            currRow.find("input").val("");
+                            currRow.find("textarea").val("");
+                            currRow.find(".select2-container").remove();
+                            currRow.find(".selSectionTo").val(el.Section_To_Code + "|" + el.Section_To_Name).change();
+                            currRow.find(".txtAllocationAmount").val(accounting.formatNumber(el.Allocation_Amount, 2));
+                            currRow.find(".txtAllocationAmountHolder").val(el.Allocation_Amount);
+                            currRow.find(".selProcate").val(el.Procate_Code + "|" + el.Procate_Name).change();
+                            currRow.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='ALL']").prop("disabled", false);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='" + el.Section_To_Code + "']").prop("disabled", false);
+                            currRow.find(".selBudgetNumber option[data-dept-to ='" + (el.Budget_Number == "UNB" ? "ALL" : el.Section_To_Code) + "'][value='" + el.Budget_Number + "|" + el.Budget_Desc.replace(/(['])/g, "\\$1") + "']").prop("selected", true);
+
+                            if (i != 0) {
+                                $("#tblDirectPayment tbody").append(currRow);
+                            }
+
+                            currRow.find(".selCOA").val(el.COA_Code + "|" + el.COA_Name).change();
+                            currRow.find(".select2").select2();
+                        });
+                        totalAlloc();
+                        $("#divWithPOForm").show("blind");
+                        $("html, body").animate({ scrollTop: 0 }, "slow");
+                        currCTR.LoadingOverlay("hide");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+
+            $(".btnWithPODelete").click(function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    var currTR = $(this).closest("tr");
+                    var currTRChild = $(this).closest("tr").nextUntil('tr:not(.tablesorter-childRow)');
+                    currTR.css("background-color", "orange");
+                    currTRChild.css("background-color", "orange");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/WithPODelete",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iWithPOID: $(this).data("id")
+                        }, success: function () {
+                            currTR.remove();
+                            currTRChild.remove();
+                            $(".tblPRWPO").trigger("refresh");
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTR.css("background-color", "initial");
+                            currTRChild.css("background-color", "initial");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+            $(".btnWithPOAdd").click(function () {
+                $("#formWithPO").attr("action", $("#formWithPO").data("add"));
+                $(".divReceiveNumber").hide();
+                $("#formWithPO")[0].reset();
+                $("#formWithPO").find(".select2").select2();
+                $("#tblDirectPayment tbody tr:not(:first)").remove();
+                var firstRow = $("#tblDirectPayment tbody tr:first()");
+                firstRow.find("input").val("");
+                firstRow.find("textarea").val("");
+                firstRow.find(".select2-container").remove();
+                firstRow.find(".select2").select2();
+                firstRow.find(".selAllocVATRate").hide();
+                firstRow.find(".selAllocVATRate").prop("required", false);
+                firstRow.find(".txtAllocTaxInvoiceDate").hide();
+                firstRow.find(".txtAllocTaxInvoiceNumber").hide();
+                firstRow.find(".txtAllocTaxInvoiceNumber17Digit").hide();
+                firstRow.find(".selAllocVATRate").attr("id", "selAllocVATRate" + (firstRow.index()));
+                firstRow.find(".txtAllocTaxInvoiceDate").attr("id", "txtAllocTaxInvoiceDate" + (firstRow.index()));
+                firstRow.find(".txtAllocTaxInvoiceNumber").attr("id", "txtAllocTaxInvoiceNumber" + (firstRow.index()));
+                firstRow.find(".txtAllocTaxInvoiceNumber17Digit").attr("id", "txtAllocTaxInvoiceNumber17Digit" + (firstRow.index()));
+                totalAlloc();
+                $("#selVATRate").change();
+                $("#divWithPOForm").show("blind");
+            });
+            $(".btnWPOCancel").click(function () {
+                $("#divWithPOForm").hide("blind");
+            });
+
+            $("#selVATRate").change(function () {
+                if ($(this).val() == "0") {
+                    $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").hide("blind");
+                    $("#txtTaxInvoiceNumber,#txtTaxInvoiceNumber17Digit,#txtTaxInvoiceDate").val("");
+                    //$("#txtTaxInvoiceNumber,#txtTaxInvoiceDate").prop("required", false);
+                } else {
+                    //$("#txtTaxInvoiceNumber,#txtTaxInvoiceDate").prop("required", true);
+                    $(".divTaxInvoiceNumber,.divTaxInvoiceNumber17Digit,.divTaxInvoiceDate").show("blind");
+                }
+            });
+            $(".btnWPOSubmit").click(function (e) {
+                var InvoiceAmount = accounting.unformat($("#txtInvoiceAmount").val()) || 0;
+                var TotalAllocation = accounting.unformat($("#tdTotalAllocation").text()) || 0;
+                var VAT = $("#selVATRate").val() != "" ? accounting.unformat($("#selVATRate").val()) : 0;
+                var VATAmount = VAT > 0 ? accounting.unformat((TotalAllocation / 100) * VAT, 10) : 0;
+                //if (parseFloat(InvoiceAmount, 10).toFixed(2) != parseFloat(parseFloat(TotalAllocation, 10) + parseFloat(VATAmount, 10), 10).toFixed(2) || parseFloat(InvoiceAmount, 10) != parseFloat(parseFloat(TotalAllocation, 10) + parseFloat(VATAmount, 10), 10)) {
+                if (parseFloat(InvoiceAmount, 10).toFixed(2) != parseFloat(parseFloat(TotalAllocation, 10) + parseFloat(VATAmount, 10), 10).toFixed(2)) {
+                    e.preventDefault();
+                    $(".spanInvoiceAmount").text("Rp. " + parseFloat(InvoiceAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanAllocation").text("Rp. " + parseFloat(TotalAllocation, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanVAT").text(VAT);
+                    $(".spanVATAmount").text("Rp. " + parseFloat(VATAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanGrandTotal").text("Rp. " + parseFloat(parseFloat(TotalAllocation.toFixed(2), 10) + parseFloat(VATAmount.toFixed(2), 10), 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $("#calculateModal").modal();
+                }
+            });
+
+            $("#btnDPAdd").click(function () {
+                newRowIndex++
+                var newRow = $("#tblDirectPayment tbody tr:first()").clone();
+                newRow.find("input").val("");
+                newRow.find(".select2-container").remove();
+                newRow.find(".select2").select2();
+                newRow.find(".selSectionTo").attr("id", "selSectionTo" + newRowIndex);
+                newRow.find(".txtAllocationAmount").attr("id", "txtAllocationAmount" + newRowIndex);
+                newRow.find(".txtAllocationAmountHolder").attr("id", "txtAllocationAmountHolder" + newRowIndex);
+                newRow.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                newRow.find(".selBudgetNumber").attr("id", "selBudgetNumber" + newRowIndex);
+                $("#tblDirectPayment tbody").append(newRow);
+            });
+            $(document).on("click", ".dpDelete", function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    $(this).closest("tr").remove();
+                    totalAlloc();
+                }
+            });
+            $(document).on("keyup", ".txtAllocationAmount", function () {
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+                $(this).parent().find(".txtAllocationAmountHolder").val(accounting.unformat(input));
+                totalAlloc();
+            });
+
+            function totalAlloc() {
+                var totalAllocation = 0;
+                $(".txtAllocationAmount").each(function () {
+                    totalAllocation += accounting.unformat($(this).val()) || 0;
+                });
+                $("#tdTotalAllocation").text(accounting.formatNumber(totalAllocation, 2));
+            }
+            $(".btnWithPOSign").click(function () {
+                if (confirm("Sign This Data ?")) {
+                    var currTD = $(this).closest("td");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/WithPOSign",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            "iWithPOID[]": $(this).data("id"),
+                            iApproval: $(this).data("approval"),
+                            iApprovalSub: $(this).data("approval_sub")
+                        }, success: function () {
+                            location.reload();
+                        }, error: function (xhr, textStatus, errorThrown) {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+            $(".thAllocationTotal").each(function () {
+                var currTable = $(this).closest("table");
+                var currTotal = 0;
+                $(".tdAllocation", currTable).each(function () {
+                    var value = accounting.unformat($(this).text());
+                    // add only if the value is number
+                    if (!isNaN(value) && value.length != 0) {
+                        currTotal += parseFloat(value);
+                    }
+                });
+                $(this).text(currTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            });
+
+            $(".btnWithPOReject").click(function () {
+                var currID = $(this).data("id");
+                $("#hfRejectID").val(currID);
+                $("#rejectModal").modal();
+            });
+            $(".btnWithPOReturn").click(function () {
+                var currID = $(this).data("id");
+                $("#hfReturnID").val(currID);
+                $("#returnModal").modal();
+            });
+            $("#txtInvoiceAmount").on("keyup", function (event) {
+                // When user select text in the document, also abort.
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+            });
+            $("#txtTaxInvoiceNumber").inputmask("999.999-99.99999999");
+            $("#selWPOFilterStatus,#selWPOFilterYear,#selWPOFilterLevel").change(function () {
+                $(".btnWPOFilter").click();
+            });
+            $(document).on("change", ".selSectionTo", function () {
+                var ctr = $(this);
+                var currTR = $(this).closest("tr");
+                currTR.find(".selBudgetNumber").val("");
+                currTR.find(".selBudgetNumber option[value !='']").prop("disabled", true);
+                currTR.find(".selBudgetNumber option[data-dept-to ='ALL']").prop("disabled", false);
+                currTR.find(".selBudgetNumber option[data-dept-to ='" + ctr.find(":selected").data("dept-code") + "']").prop("disabled", false);
+                currTR.find(".selBudgetNumber").select2();
+            });
+
+            $(document).on("change", ".selBudgetNumber", function () {
+                var coa = $(this).find(':selected').data("coa-code");
+                if ($(this).val() != "" || $(this).val() != "UNB|Unbudgeted" || $(this).val() != undefined) {
+                    $(this).closest("tr").find(".selCOA").val(coa).change();
+                }
+            });
+
+            $(".cbCheckSignAll").change(function () {
+                if ($(this).is(":checked") == true) {
+                    $(".cbCheckSign:visible").prop("checked", $(this).is(":checked"));
+                } else {
+                    $(".cbCheckSign").prop("checked", $(this).is(":checked"));
+                }
+                $(".cbCheckSign").change();
+            });
+            $(".cbCheckSign").change(function () {
+                if ($(".cbCheckSign:checked").length > 0) {
+                    $(".btnSignChecked").prop("disabled", false);
+                } else {
+                    $(".btnSignChecked").prop("disabled", true);
+                }
+            });
+        });
+    </script>
+
+    <style type="text/css">
+        #divDocumentHistory {
+            overflow: auto;
+        }
+
+        #documentTimeline {
+            width: 100%;
+            transition: all 1s;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: space-between;
+            list-style: none;
+        }
+
+            #documentTimeline li {
+                position: relative;
+                text-align: center;
+                flex-grow: 1;
+                flex-basis: 0;
+                padding: 0 5px;
+            }
+
+                #documentTimeline li:before {
+                    content: "";
+                    width: 10px;
+                    height: 10px;
+                    display: block;
+                    border-radius: 50%;
+                    background: blue;
+                    margin: 0 auto 5px auto;
+                }
+
+                #documentTimeline li:not(:last-child)::after {
+                    content: "";
+                    width: calc(100% - 14px);
+                    height: 2px;
+                    display: block;
+                    background: red;
+                    margin: 0;
+                    position: absolute;
+                    top: 4px;
+                    left: calc(50% + 7px);
+                }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+    </style>
+}
+
+<h2>
+    Payment Request With PO
+    @if (ViewBag.PayUserLevel <= 1)
+    {
+        <button class="btn btn-success btnWithPOAdd">Add New</button>
+    }
+</h2>
+<div class="divWPOFilter">
+    <form action="@Url.Action("WithPO", "PaymentRequest", new { area = "FA" })" method="post">
+        <select id="selWPOFilterYear" class="form-control" name="iWPOFilterYear">
+            @for (var i = 2020; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selWPOFilterStatus" class="form-control" name="iWPOFilterStatus">
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.PayUserLevelCheck).Count() > 1)
+        {
+            <select id="selWPOFilterLevel" class="form-control" name="iWPOFilterLevel">
+                @foreach (var data in ViewBag.PayUserLevelCheck)
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.PayUserLevel + "|" + ViewBag.PayUserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnWPOFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+<hr />
+@if (DateTime.Now.Day >= 20 && (DateTime.Now.Day <= ViewBag.closingDate.Closing_Date.Day || DateTime.Now.Month == 12))
+{
+    <h5 style="color:indianred">
+        Closing date : @( ViewBag.closingDate.Closing_Date.ToShortDateString() ) <br />
+        E-voucher yg disubmit & diapprove ke Finance setelah tanggal tersebut, otomatis tercatat dibulan berikutnya.
+    </h5>
+}
+@*<div id="divDocumentHistory">
+        <ul id="documentTimeline">
+            <li>
+            <div>
+                <span class="docTitle">Test</span>
+                </div>
+            </li>
+            <li><div>Test</div></li>
+            <li><div>Test</div></li>
+            <li><div>Test</div></li>
+            <li><div>Test</div></li>
+        </ul>
+    </div>*@
+
+@if (ViewBag.PayUserLevel <= 1)
+{
+    <div id="divWithPOForm" style="display:none;">
+        <form id="formWithPO" action="@Url.Action("WithPOAdd", "PaymentRequest", new { area = "FA" })" data-add="@Url.Action("WithPOAdd", "PaymentRequest", new { area = "FA" })" data-edit="@Url.Action("WithPOEdit", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+            <div class="form-group row" style="display:none;">
+                <label for="entryDate" class="control-label col-3 text-right font-weight-bold">Entry Date:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Entry Date" name="iEntryDate" id="txtEntryDate" value="@(DateTime.Now.ToShortDateString())" required>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Section From:</label>
+                <div class="col-9">
+                    <select id="selSection" name="iSection" class="form-control" required disabled>
+                        <option value="">-Section-</option>
+                        @foreach (var item in ViewBag.Section)
+                        {
+                            <option value="@(item.Section_Code + " |" + item.Section_Name)" @(item.Section_Code == ViewBag.PayUser.Section_ID ? "selected" : "")>@(item.Section_Code + " | " + item.Section_Name)</option>
+                        }
+                    </select>
+                    <select id="selSectionFrom" name="iSectionFrom" class="form-control" style="display:none;" required>
+                        <option value="">-Section-</option>
+                        @foreach (var item in ViewBag.Section)
+                        {
+                            <option value="@(item.Section_Code + " |" + item.Section_Name)" @(item.Section_Code == ViewBag.PayUser.Section_ID ? "selected" : "")>@(item.Section_Code + " | " + item.Section_Name)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="invoiceNumber" class="control-label col-3 text-right font-weight-bold">Invoice Number:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Invoice Number" name="iInvoiceNumber" id="txtInvoiceNumber" required>
+                    <input type="hidden" id="hfWithPOID" name="iWithPOID" value="" />
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Amount of Invoice:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control" placeholder="Amount of Invoice" name="iInvoiceAmount" id="txtInvoiceAmount" required>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Third Party:</label>
+                <div class="col-9">
+                    <select id="selVendor" name="iVendor" class="form-control select2" style="width:100%;" required>
+                        <option value="">-Third Party-</option>
+                        @foreach (var item in ViewBag.ThirdParty)
+                        {
+                            <option value="@(item.ACCOUNTNUM + "|" + item.Name)">@(item.ACCOUNTNUM + " | " + item.Name)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Currency:</label>
+                <div class="col-9">
+                    <select id="selCurrency" name="iCurrency" class="form-control" required>
+                        <option value="">-Currency-</option>
+                        @foreach (var item in ViewBag.Currency)
+                        {
+                            <option value="@(item.CURRENCY_CODE)">@(item.CURRENCY_CODE + " | " + item.TXT)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">Description:</label>
+                <div class="col-9">
+                    <textarea class="form-control" placeholder="Description" name="iDescription" id="txtDescription" maxlength="60" rows="2" required></textarea>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label for="DueDate" class="control-label col-3 text-right font-weight-bold">Due Date:</label>
+                <div class="col-9">
+                    <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Due Date" name="iEntryDueDate" id="txtDueDate" required>
+                </div>
+            </div>
+            <div class="form-group row divDirectPayment" style="overflow:auto;">
+                <div class="col-12">
+                    <table id="tblDirectPayment" class="table">
+                        <thead>
+                            <tr>
+                                <th>Section To</th>
+                                <th>Allocation Amount</th>
+                                <th>Budget Number</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <select name="iSectionTo[]" class="form-control select2 selSectionTo" style="width:100%" required>
+                                        <option value="">-Section-</option>
+                                        @foreach (var item in ViewBag.Section)
+                                        {
+                                            <option data-dept-code="@(item.Section_Code)" value="@(item.Section_Code + "|" + item.Section_Name)">@(item.Section_Code + " | " + item.Section_Name)</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control txtAllocationAmount" placeholder="Allocation Amount" required>
+                                    <input type="text" class="form-control d-none txtAllocationAmountHolder" placeholder="Allocation Amount" name="iAllocationAmount[]">
+                                </td>
+                                <td>
+                                    <select name="iBudgetNumber[]" class="form-control select2 selBudgetNumber" style="width:100%" required>
+                                        <option value="">-Bgt. Number-</option>
+                                        @foreach (var item in ViewBag.Budget)
+                                        {
+                                            <option data-dept-to="@(item.Section_To_Code)" data-coa-code="@(item.COA_Code + "|" + item.COA_Name)" disabled value="@(item.Budget_No + " |" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                        }
+                                        <option data-dept-to="ALL" disabled value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <a class="dpDelete" title="Delete" data-toggle="tooltip"><i class="fas fa-trash"></i></a>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>Total Allocation</td>
+                                <td id="tdTotalAllocation"></td>
+                                <td colspan="3"></td>
+                            </tr>
+                            <tr>
+                                <td colspan="5">
+                                    <button id="btnDPAdd" type="button" class="btn btn-sm btn-success form-control"><i class="fas fa-plus"></i></button>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="form-group row">
+                <label class="control-label col-3 text-right font-weight-bold">VAT Rate:</label>
+                <div class="col-9">
+                    <select id="selVATRate" name="iVATRate" class="form-control" required>
+                        <option value="0">NON VAT</option>
+                        <option value="1">VAT 1%</option>
+                        <option value="1.1">VAT 1.1%</option>
+                        <option value="1.2">VAT 1.2%</option>
+                        <option value="10">VAT 10%</option>
+                        <option value="11">VAT 11%</option>
+                        <option value="12">VAT 12%</option>
+                    </select>
+                    <div class="form-group row divTaxInvoiceDate mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Date:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Date" name="iTaxInvoiceDate" id="txtTaxInvoiceDate" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row divTaxInvoiceNumber mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Number" name="iTaxInvoiceNumber" id="txtTaxInvoiceNumber">
+                        </div>
+                    </div>
+                    <div class="form-group row divTaxInvoiceNumber17Digit mt-2" style="display:none;">
+                        <label class="control-label col-3 text-right font-weight-bold">Tax Invoice Number 17 Digit:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" placeholder="Tax Invoice Number 17 Digit" name="iTaxInvoiceNumber17Digit" id="txtTaxInvoiceNumber17Digit">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group row">
+                <div class="offset-3 col-3">
+                    <button type="button" class="btn btn-secondary form-control btnWPOCancel">Cancel</button>
+                </div>
+                <div class="col-6">
+                    <button type="submit" class="btn btn-primary form-control btnWPOSubmit">Submit</button>
+                </div>
+            </div>
+        </form>
+        <hr />
+    </div>
+}
+<table class="tblPRWPO table table-striped">
+    <thead>
+        <tr>
+            <th>
+                @if (ViewBag.currFilterStatus == "Open")
+                {
+                    <input type="checkbox" class="cbCheckSignAll" />
+                }
+                Receive Number
+            </th>
+            <th>Entry Date</th>
+            <th>Section From</th>
+            <th>Invoice Number</th>
+            <th>Third Party</th>
+            <th class="filter-select" data-placeholder="Select">Currency</th>
+            <th>Amount of Invoice</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Created By</th>
+            <th class="filter-select" data-placeholder="Select">Status</th>
+            <th class="filter-false sorter-false">
+                @if (ViewBag.currFilterStatus == "Open")
+                {
+                    <form id="formCheckSign" action="@Url.Action("WithPOSign", "PaymentRequest", new { area = "FA" })" method="post">
+                        <button type="submit" class="btnSignChecked btn btn-primary form-control" onclick="return confirm('Sign these data?')" disabled><i class="fas fa-file-signature"></i></button>
+                    </form>
+                }
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @{ var idx = 0;}
+        @foreach (var item in ViewBag.WPO)
+        {
+            idx++;
+            int itemID = item.id;
+            var subData = db.FA_Payment_Request_PO_Sub.Where(w => w.With_PO_ID == itemID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_PO_Sub.Where(w => w.With_PO_ID == itemID).ToList().Sum(s => s.Allocation_Amount);
+            <tr>
+                <td>
+                    @if (ViewBag.currFilterStatus == "Open")
+                    {
+                        <input id="@("cbCheckSign" + idx)" type="checkbox" form="formCheckSign" name="iWithPOID[]" class="cbCheckSign" value="@(item.id)" />
+                    }
+                        <a href="#" class="toggle">@(item.Receive_Number)</a>
+                    </td>
+                <td class="text-nowrap">@( item.Entry_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@( "(" + item.Section_From_Code + ") " + item.Section_From_Name)</td>
+                <td>@(item.Invoice_Number)</td>
+                <td>@( "(" + item.Third_Party_Id + ") " + item.Third_Party_Name)</td>
+                <td class="text-center">@(item.Currency_Code)</td>
+                <td class="text-right">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                <td>@(item.Description)</td>
+                <td class="text-nowrap">@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @(PaymentRequestController.ApprovalStatus(item.Approval, item.Approval_Sub, item.Is_Reject, item.Amount_of_Invoice))
+                </td>
+                <td class="text-nowrap text-center">
+                    @if (ViewBag.PayUserLevel <= 1 && item.Approval <= 1 && item.Is_Reject != true && item.Created_By == currUser.GetUserId())
+                    {
+                        <button class="btn btn-sm btn-warning btnWithPOEdit" data-toggle="tooltip" title="Edit" data-id="@(item.id)" data-mode="edit"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger btnWithPODelete" data-toggle="tooltip" title="Delete" data-id="@(item.id)"><i class="fas fa-trash"></i></button>
+                        <hr class="m-1" />
+                        <button class="btn btn-sm btn-primary btnWithPOSign" data-toggle="tooltip" title="Sign" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-signature"></i></button>
+
+                    }
+                    @if (item.Approval <= ViewBag.PayUserLevel && item.Approval_Sub <= ViewBag.PayUserLevelSub && item.Is_Reject != true)
+                    {
+                        if (item.Approval > 1)
+                        {
+                            <button class="btn btn-sm btn-primary btnWithPOSign" data-toggle="tooltip" title="Sign" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-signature"></i></button>
+                            <button class="btn btn-sm btn-warning btnWithPOReturn" data-toggle="tooltip" title="Return" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-undo"></i></button>
+                        }
+                        if (item.Approval > 1 && item.Approval < 4 && item.Approval_Sub < 1)
+                        {
+                            <button class="btn btn-sm btn-danger btnWithPOReject" data-toggle="tooltip" title="Reject" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-times"></i></button>
+                        }
+                    }
+                    @if (ViewBag.PayUserLevel <= 1)
+                    {
+                        <button class="btn btn-sm btn-light btnWithPOCopy" data-toggle="tooltip" title="Copy" data-id="@(item.id)" data-mode="copy"><i class="fas fa-copy"></i></button>
+                    }
+                </td>
+            </tr>
+
+            <tr class="tablesorter-childRow">
+                <td colspan="12">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>To Section</th>
+                                <th style="min-width:275px;">Allocation Amount</th>
+                                <th>Budget Number</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var itemSub in subData)
+                            {
+                                <tr>
+                                    <td>@("(" + itemSub.Section_To_Code + ")" + itemSub.Section_To_Name)</td>
+                                    <td class="tdAllocation text-right">@(itemSub.Allocation_Amount.ToString("N2"))</td>
+                                    <td>@("(" + itemSub.Budget_Number + ")" + itemSub.Budget_Desc)</td>
+                                </tr>
+                            }
+                            @if (item.VAT > 0)
+                            {
+                                <tr>
+                                    <td>@("(" + item.Tax_Number + item.Tax_Number_17 + ")VAT " + item.VAT + "%")</td>
+                                    <td class="tdAllocation text-right">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                                    <td>@("-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Total Allocation</th>
+                                <th class="thAllocationTotal text-right">0</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="12" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum gotoPage" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="modal fade" id="calculateModal" tabindex="-1" role="dialog" aria-labelledby="calculateModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Calculate Total</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h5>We're sorry, your <span style="color:red;">Total Amount</span> and <span style="color:red;">Amount of Invoice</span> is <span style="color:red;">not match!!</span></h5>
+                <br />
+                <label class="font-weight-bold">Allocation Amount: </label> <span class="spanAllocation">0</span><br />
+                <label class="font-weight-bold">VAT (<span class="spanVAT">0</span>%) : </label> <span class="spanVATAmount">0</span><br />
+                <hr />
+                <label class="font-weight-bold">Total Amount : </label> <span class="spanGrandTotal">0</span>
+                <hr />
+                <label class="font-weight-bold">Amount of Invoice : </label> <span class="spanInvoiceAmount">0</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1" role="dialog" aria-labelledby="rejectModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Reject</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("WithPOReject", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input type="hidden" id="hfRejectID" name="iRejectID" />
+                        <textarea id="txtRejectNote" name="iRejectNote" class="form-control" placeholder="Reject Note" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">Reject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Return</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("WithPOReturn", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input type="hidden" id="hfReturnID" name="iWithPOID" />
+                        <textarea id="txteturnReason" name="iReturnReason" class="form-control" placeholder="Return Reason" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning">Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

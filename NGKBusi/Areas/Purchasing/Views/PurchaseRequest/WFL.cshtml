@@ -1,0 +1,99 @@
+﻿
+@{
+    ViewBag.Title = "WFL";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+    </style>
+
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".tblWFLList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+                widgetOptions: {
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control', // select needs custom class names :(
+                        'form-control'
+                    ]
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+        });
+    </script>
+}
+<h2>WFL</h2>
+
+<table class="table table-bordered table-striped tblWFLList">
+    <thead>
+        <tr>
+            <th class="sorter-false filter-false" width="55"></th>
+            <th width="125">QuoNumber</th>
+            <th class="filter-select" data-placeholder="-Select-">Section</th>
+            <th class="filter-select" data-placeholder="-Select-">Item Group</th>
+            <th>Item Name</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.WFLList)
+        {
+            <tr>
+                <td class="text-center">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input cbCreateWFL">
+                    </div>
+                </td>
+                <td><a href="@Url.Action("PRequest", "PurchaseRequest", new { area = "Purchasing", ReqNumber = data.Headers.ReqNumber })">@(data.Headers.ReqNumber)</a></td>
+                <td>@data.Headers.Section</td>
+                <td>@data.Item_Group</td>
+                <td>@data.Item_Name</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="5" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>

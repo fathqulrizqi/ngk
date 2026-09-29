@@ -1,0 +1,164 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.QCC.Models;
+@using NGKBusi.Areas.QCC.Controllers;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Progress";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    DefaultConnection db = new DefaultConnection();
+    QCCConnection dbQCC = new QCCConnection();
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    var checkRole = db.Users_Menus_Roles.Where(w => w.userNIK == currUserID && w.menuID == 34).FirstOrDefault();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .btnStep:hover {
+            cursor: pointer;
+            opacity: .7;
+        }
+
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/QCC/Progress.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<table id="tbQCCProgress" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="14" class="sorter-false">
+                <h2 class="table-title sorter-false">Progress</h2>
+            </th>
+        </tr>
+        <tr>
+            <th rowspan="2" class="filter-select" data-placeholder="-Pilih Periode-">Periode</th>
+            <th rowspan="2">Group</th>
+            <th class="filter-select" data-placeholder="-Pilih Type-" rowspan="2">Type</th>
+            <th rowspan="2">Dept</th>
+            <th colspan="8" class="text-center">Step</th>
+            <th rowspan="2">Progress(%)</th>
+            <th rowspan="2">Step Ke-</th>
+        </tr>
+        <tr>
+            @for (var i = 1; i <= 8; i++)
+            {
+                <th class="filter-false text-center">@(i)</th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var dt in ViewBag.QCCList)
+        {
+            int currID = dt.ID;
+            int step = dbQCC.QCC_Progress.Where(w => w.List_ID == currID).Max(m => (int?)m.Step) ?? 0;
+            var members = dbQCC.QCC_List_Member.Where(w => w.List_ID == currID).ToList();
+            //add data attributes data-id, data-allowsubmit, data-step, data-leader, data-facilitator and add Reza Kurnia to access step submission
+            <tr data-id="@(dt.ID)" data-allowsubmit="@(currUserID == "867.02.23" || currUserID == dt.Leader || currUserID == dt.Facilitator || currUserID == dt.Created_By?"true":"false")" data-step="@(step)" data-leader="@(dt.Leader)" data-facilitator="@(dt.Facilitator)">
+                <td>@(dt.Period)</td>
+                <td><a href="@Url.Action("List","Data",new { area = "QCC",iPeriodFY = dt.Period_FY,iGroup = dt.Group })" target="_blank">@(dt.Group)</a></td>
+                <td>@(dt.Type)</td>
+                <td>
+                    @{
+                        var memberSection = members.Select(s => s.Section).Distinct().ToList();
+                    }
+                    <ul>
+                        @foreach (var member in memberSection)
+                        {
+                            <li>
+                                @(member)
+                            </li>
+                        }
+                    </ul>
+                </td>
+                <td class="text-center" data-step="1">@(dt.Step1 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="2">@(dt.Step2 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="3">@(dt.Step3 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="4">@(dt.Step4 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="5">@(dt.Step5 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="6">@(dt.Step6 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="7">@(dt.Step7 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td class="text-center" data-step="8">@(dt.Step8 == null ? Html.Raw("<i class='fa fa-circle btnStep' style='color:lightgrey;font-size:2.5em;'></i>") : Html.Raw("<i class='fa fa-check-circle btnStep' style='color:green;font-size:2.5em;'></i>"))</td>
+                <td>
+                    @(((double)step / 8) * 100 + "%")
+                </td>
+                <td class="text-center">
+                    @(step)
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="14">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="150">150</option>
+                        <option value="200">200</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+<div id="qccProgress" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form id="NSNewAppForm" action="@Url.Action("insertStep","Data",new { area = "QCC" })" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">QCC/QCP Step <span id="spanStep">1</span></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group row d-none rowProgressFile">
+                            <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Attachment</label>
+                            <div class="col-9">
+                                <input id="hfStep" name="iStep" type="hidden" value="0" />
+                                <input id="hfListID" name="iListID" type="hidden" value="0" />
+                                <input type="file" name="iFiles" multiple="multiple" class="fileProgress d-none" />
+                                <ul class="ulFiles pl-0"></ul>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtNote" class="col-3 text-right font-weight-bold text-right font-weight-bold">Note</label>
+                            <div class="col-9">
+                                <textarea type="text" id="txtNote" name="iNote" class="form-control" placeholder="Note" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnStepSubmit" type="submit" class="btn btn-default d-none">Save</button>
+                    <button id="btnStepCancel" type="button" class="btn btn-default d-none">Delete</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

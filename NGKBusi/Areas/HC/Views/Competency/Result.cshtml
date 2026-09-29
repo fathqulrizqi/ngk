@@ -1,0 +1,373 @@
+﻿@using Microsoft.AspNet.Identity;
+@using System.Security.Claims;
+
+@{
+    ViewBag.Title = "Competency Result";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var CRDataList = ViewBag.DataList;
+    var currData = ViewBag.CurrData;
+    var CRMemberList = ViewBag.MemberList;
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+
+    <link href="@Url.Content("~/Content/handsontable/handsontable.full.min.css")" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/HC/Competency/Result.css")" rel="stylesheet" />
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/handsontable/handsontable.full.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/handsontable/hyperformula.full.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/HC/Competency/Result.js")"></script>
+}
+
+@if (Request["TitleName"] == null && Request["GUID"] == null)
+{
+    var periodList = ViewBag.PeriodList as List<int>;
+    <h2>
+        Competency Result
+        <a href="@Url.Action("map", "Competency", new { area = "HC" })" class="btn btn-success">Go to Competency Map List</a>
+    </h2>
+    <hr />
+    <div class="form-group row">
+        <label class="col-form-label col-auto">Period:</label>
+        <div class="col-auto">
+            <select id="iCRPeriod" class="form-control">
+                @if (periodList != null)
+                {
+                    foreach (var y in periodList)
+                    {
+                        var label = "FY1" + y.ToString().Substring(2, 2);
+                        <option value="@y" selected="@(label == (string)ViewBag.Period)">@label</option>
+                    }
+                }
+            </select>
+        </div>
+    </div>
+    <table class="table table-bordered table-striped tblCRFormList">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>NIK</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="Select">Department</th>
+                <th class="filter-select" data-placeholder="Select">Section</th>
+                @*<th class="filter-select" data-placeholder="Select">Position</th>*@
+                <th class="filter-select" data-placeholder="Select">Job Title</th>
+                <th class="filter-select" data-placeholder="Select">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in CRDataList)
+            {
+                <tr>
+                    <td>@data.Period_FY</td>
+                    <td>
+                        <a href="@Url.Action("Result", "Competency", new { area = "HC",GUID = data.GUID })">
+                            @data.NIK
+                        </a>
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    @*<td>@data.PostName.Replace("(ACTING)", "").Trim()</td>*@
+                    <td>@data.TitleName.Trim()</td>
+                    <td>@*<span class="badge badge-@(PA.ApprovalStatus(data.Approval,data.Approval_Sub).Badge)">@(PA.ApprovalStatus(data.Approval, data.Approval_Sub).Stat)</span>*@</td>
+                </tr>
+            }
+            @foreach (var data in CRMemberList)
+            {
+                <tr>
+                    <td>@ViewBag.Period</td>
+                    <td>
+                        <a href="@Url.Action("Result", "Competency", new { area = "HC", addNew = "addNew", periodfy = ViewBag.Period, nik = data.NIK, name = data.Name, division = data.DivisionName, Department = data.DeptName, section = data.SectionName, CostName = data.CostName, TitleName = data.TitleName })">
+                            @data.NIK
+                        </a>
+                        @*@if (data.NIK == currUserID)
+                            {
+                                <a href="@Url.Action("Result", "Competency", new { area = "HC", addNew = "addNew", nik = data.NIK, name = data.Name, division = data.DivisionName, Department = data.DeptName, section = data.SectionName, CostName = data.CostName, position = data.PositionName })">
+                                    @data.NIK
+                                </a>
+                            }
+                            else
+                            {
+                                @data.NIK
+                            }*@
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    @*<td>@data.PositionName.Replace("(ACTING)", "").Trim()</td>*@
+                    <td>@data.TitleName.Trim()</td>
+                    <td><span class="badge badge-danger">Not-Submitted</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="8" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <div id="divKPIFormWrapper">
+        <table id="tblHeader" border="1" style="width:100%;">
+            <tr>
+                <td rowspan="4" class="text-center" style="width:235px">
+                    <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                </td>
+                <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h4>COMPETENCY RESULT</h4></td>
+                <td style="width:150px">No. Dok</td>
+                <td style="width:150px">PK-HRD-ALL-01/F3</td>
+            </tr>
+            <tr>
+                <td>Revisi</td>
+                <td>01</td>
+            </tr>
+            <tr>
+                <td>Tanggal</td>
+                <td>28 Juni 2023</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td>1 of 1</td>
+            </tr>
+        </table>
+        <div class="container-fluid">
+            <div class="row p-3">
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Periode: </label>
+                        <div class="col-10 lblPeriode">
+                            @(currData?.Period_FY ?? Request["periodfy"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Nama: </label>
+                        <div class="d-none lblNIK" data-nik="@(currData?.NIK ?? Request["NIK"])" data-periodfy="@(currData?.Period_FY ?? Request["periodfy"])">
+                        </div>
+                        <div class="col-10 lblName" data-name="@(currData?.Name ?? Request["Name"])">
+                            @(currData?.Name ?? Request["Name"])
+                        </div>
+                    </div>
+                    @*<div class="form-group row d-none">
+                        <label class="col-2 text-left">Post.: </label>
+                        <div class="col-10 lblPosition" data-position="@(currData?.PostName ?? Request["Position"])">
+                            @(currData?.PostName ?? Request["Position"])
+                        </div>
+                    </div>*@
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Title: </label>
+                        <div class="col-10 lblTitleName" data-titlename="@(currData?.TitleName ?? Request["TitleName"].Trim())">
+                            @(currData?.TitleName ?? Request["TitleName"].Trim())
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Div.: </label>
+                        <div class="col-10 lblDivision" data-division="@(currData?.DivName ?? Request["Division"])">
+                            @(currData?.DivName ?? Request["Division"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Dept.: </label>
+                        <div class="col-10 lblDepartment" data-department="@(currData?.DeptName ?? Request["Department"])">
+                            @(currData?.DeptName ?? Request["Department"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Sect.: </label>
+                        <div class="col-10 lblSection" data-section="@(currData?.SectionName ?? Request["Section"])">
+                            @(currData?.SectionName ?? Request["Section"])
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-left">Cost.: </label>
+                        <div class="col-10 lblCostName" data-costname="@(currData?.CostName ?? Request["CostName"])">
+                            @(currData?.CostName ?? Request["CostName"])
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <button type="button" class="btn btn-info btnCRSaveData">Save Data</button>
+                    <button type="button" class="btn btn-warning btnCRRefreshMap">Refresh Map</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="wrapperCompetencyResultA" class="mt-5 mb-5"><div id="divCompetencyResultA" class="divCompetencyResult" data-competency="A"></div></div>
+    <div id="scoreCompetencyResultA" class="container-fluid d-none">
+        <div class="row">
+            <div class="col-12">
+                <h3>A. Ukuran Penilaian Kompetensi Pengetahuan/ Score Decription of Knowledge Competency</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center">Nilai</th><th class="text-center">Ketentuan/Presentase (%)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="text-center">5</td><td class="text-center">91 - 100</td></tr>
+                        <tr><td class="text-center">4</td><td class="text-center">76 - 90</td></tr>
+                        <tr><td class="text-center">3</td><td class="text-center">56 - 75</td></tr>
+                        <tr><td class="text-center">2</td><td class="text-center">26 - 55</td></tr>
+                        <tr><td class="text-center">1</td><td class="text-center">00 - 25</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center" colspan="2">Range Nilai : (1-5)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>A. Sangat Baik</td><td class="text-center">4,51 - 5,00</td></tr>
+                        <tr><td>B. Baik</td><td class="text-center">3,76 - 4,50</td></tr>
+                        <tr><td>C. Cukup</td><td class="text-center">2,76 - 3,75</td></tr>
+                        <tr><td>D. Kurang</td><td class="text-center">1,26 - 2,75</td></tr>
+                        <tr><td>E. Sangat Kurang</td><td class="text-center">0,00 - 1,25</td></tr>
+                    </tbody>
+                </table>
+                <div class="row d-flex border border-1 competencyResult">
+                    <div class="col-4 competencyResultHeader border border-1 align-content-center text-center p-3">
+                        <h2>RESULT</h2>
+                    </div>
+                    <div class="col-8 competencyResultContent border border-1 align-content-center text-center p-3">
+                        <h4>KNOWLEDGE</h4>
+                        <hr />
+                        <p><h1 class="competencyResultA">E</h1></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="wrapperCompetencyResultB" class="mt-5 mb-5"><div id="divCompetencyResultB" class="divCompetencyResult" data-competency="B"></div></div>
+    <div id="scoreCompetencyResultB" class="container-fluid d-none">
+        <div class="row">
+            <div class="col-12">
+                <h3>B. Ukuran Penilaian Keterampilan Teknis/ Score Descrption of Technical Skill Competency</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center">Nilai</th><th class="text-center">Ketentuan</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="text-center">5</td><td>Paham prinsip dasar kompetensi terkait, dapat melaksanakan secara mandiri tanpa supervisi; dapat memberikan pelatihan mengenai kompetensi terkait, dan tersertifikasi (Internal dan/ atau eksternal)</td></tr>
+                        <tr><td class="text-center">4</td><td>Paham prinsip dasar kompetensi terkait, dapat melaksanakan secara mandiri tanpa supervisi; dapat memberikan pelatihan mengenai kompetensi terkait</td></tr>
+                        <tr><td class="text-center">3</td><td>Paham prinsip dasar kompetensi terkait, dapat melaksanakan secara mandiri tanpa supervisi</td></tr>
+                        <tr><td class="text-center">2</td><td>Paham prinsip dasar kompetensi terkait, dapat melaksanakan secara mandiri, namun perlu supervisi</td></tr>
+                        <tr><td class="text-center">1</td><td>Paham prinsip dasar kompetensi terkait</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center" colspan="2">Range Nilai : (1-5)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>A. Sangat Baik</td><td class="text-center">4,05 - 5,00</td></tr>
+                        <tr><td>B. Baik</td><td class="text-center">3,05 - 4,00</td></tr>
+                        <tr><td>C. Cukup</td><td class="text-center">2,05 - 3,00</td></tr>
+                        <tr><td>D. Kurang</td><td class="text-center">1,05 - 2,00</td></tr>
+                        <tr><td>E. Sangat Kurang</td><td class="text-center">0,00 - 1,00</td></tr>
+                    </tbody>
+                </table>
+                <div class="row d-flex border border-1 competencyResult">
+                    <div class="col-4 competencyResultHeader border border-1 align-content-center text-center p-3">
+                        <h2>RESULT</h2>
+                    </div>
+                    <div class="col-8 competencyResultContent border border-1 align-content-center text-center p-3">
+                        <h4>TECHNICAL SKILL</h4>
+                        <hr />
+                        <p><h1 class="competencyResultB">E</h1></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="wrapperCompetencyResultC" class="mt-5 mb-5"><div id="divCompetencyResultC" class="divCompetencyResult" data-competency="C"></div></div>
+    <div id="scoreCompetencyResultC" class="container-fluid d-none">
+        <div class="row">
+            <div class="col-12">
+                <h3>C. Ukuran Penilaian Kompetensi Perilaku/Score Description of Behavioral Competency</h3>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center">Nilai</th><th class="text-center">Ketentuan</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td class="text-center">5</td><td>Membangun sistem</td></tr>
+                        <tr><td class="text-center">4</td><td>Menciptakan situasi / memimpin / sumber informasi</td></tr>
+                        <tr><td class="text-center">3</td><td>Mengingatkan / mengajak orang lain</td></tr>
+                        <tr><td class="text-center">2</td><td>Mempraktekan untuk diri sendiri</td></tr>
+                        <tr><td class="text-center">1</td><td>Paham prinsip dasar</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col-6">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr><th class="text-center" colspan="2">Range Nilai : (1-5)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>A. Sangat Baik</td><td class="text-center">100%</td></tr>
+                        <tr><td>B. Baik</td><td class="text-center">80% - 99%</td></tr>
+                        <tr><td>C. Cukup</td><td class="text-center">60% - 79%</td></tr>
+                        <tr><td>D. Kurang</td><td class="text-center">30% - 59%</td></tr>
+                        <tr><td>E. Sangat Kurang</td><td class="text-center">0,00 - 29%</td></tr>
+                    </tbody>
+                </table>
+                <div class="row d-flex border border-1 competencyResult">
+                    <div class="col-4 competencyResultHeader border border-1 align-content-center text-center p-3">
+                        <h2>RESULT</h2>
+                    </div>
+                    <div class="col-8 competencyResultContent border border-1 align-content-center text-center p-3">
+                        <h4>BEHAVIOR</h4>
+                        <hr />
+                        <p><h1 class="competencyResultC">E</h1></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

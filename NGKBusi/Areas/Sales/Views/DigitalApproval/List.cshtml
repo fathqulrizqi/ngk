@@ -1,0 +1,607 @@
+﻿@using NGKBusi.Models;
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Areas.Sales.Controllers;
+@{
+    ViewBag.Title = "List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var DA = ViewContext.Controller as DigitalApprovalController;
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var reqNumber = Request["ReqNumber"];
+    var currUserID = _currUser.GetUserId();
+    var currUserFullName = _currUser.FindFirstValue("FullName");
+    var currData = ViewBag.CurrData;
+    var currDataList = ViewBag.CurrDataList;
+    var currApproval = ViewBag.CurrApproval;
+    var currUserLevel = ViewBag.UserLevel;
+    var currUserSection = ViewBag.CurrUserSection;
+    var currUserLevelSub = ViewBag.UserLevelSub;
+
+    var isAllowEdit = Request["addNew"] != null || currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub && currData?.Created_By == currUserID ? true : false;
+    var isAllowSign = currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub ? true : false;
+
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Scripts/comment/css/jquery-comments.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ifileDelete, .ifileView {
+            cursor: pointer;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+            .ulFiles li{
+                padding: 2px;
+            }
+        .tblPRLine, .trQTVendorDetail, .tblPRBudgetRemaining thead tr {
+            color: white;
+        }
+
+        #divPRLine {
+            overflow: auto !important;
+        }
+
+        .tblSign thead th, .tblAddEmployee thead th {
+            background-color: #1F4E78 !important;
+            color: white;
+        }
+
+        #pdfContainer {
+            display:none;
+            height: 920px;
+            margin: auto;
+        }
+
+        .pdf-preview {
+            width: 100%;
+            height: 900px;
+        }
+    </style>
+
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/comment/js/jquery-comments.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/PDFObject/pdfobject.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/PDFObject/pdf.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $(".tblDigitalApprovalList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                widgets: ["filter", "columns", "stickyHeaders"],
+                widgetOptions: {
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ]
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 10
+            });
+
+
+            $("#selDAFilterStatus,#selDAFilterYear,#selDAFilterLevel").change(function () {
+                $(".btnDAFilter").click();
+            });
+
+            $('.ulFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/Sales/DigitalApproval/deleteDAAttachment",
+                        data: {
+                            iID: currID
+                        },
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+            $('#DAComments').comments({
+                enableNavigation: false,
+                enablePinging: false,
+                enableAttachments: false,
+                enableUpvoting: false,
+                timeFormatter: function (time) {
+                    return moment(time).format("MMMM D, YYYY [at] HH:mm");
+                },
+                postComment: function (commentJSON, success, error) {
+                    console.log("postComment");
+                    commentJSON["ReqNumber"] = $("#hfReqNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";// Create form data and append all other fields but attachments
+
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON),function (index, key) {
+                        if (key != 'attachments') {
+                            var value = commentJSON[key];
+                            formData.append(key, value);
+                        }
+                    });
+
+                    var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                        return !attachment.id
+                    });
+                    $(attachmentsToBeCreated).each(function (index, attachment) {
+                        formData.append('attachments_to_be_created', attachment.file);
+                    });
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Sales/DigitalApproval/DigitalApprovalCommentAdd",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                putComment: function (commentJSON, success, error) {
+                    console.log("putComment");
+                    commentJSON["ReqNumber"] = $("#hfReqNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";
+
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON), function (index, key) {
+                        if (key != 'attachments') {
+                            var value = commentJSON[key];
+                            formData.append(key, value);
+                        }
+                    });
+
+                    var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                        return !attachment.id
+                    });
+                    $(attachmentsToBeCreated).each(function (index, attachment) {
+                        formData.append('attachments_to_be_created', attachment.file);
+                    });
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Sales/DigitalApproval/DigitalApprovalCommentEdit",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                deleteComment: function (commentJSON, success, error) {
+                    console.log("deleteComment");
+                    commentJSON["ReqNumber"] = $("#hfReqNumber").val();
+                    console.log(commentJSON);
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/Sales/DigitalApproval/DigitalApprovalCommentDelete",
+                        data: commentJSON,
+                        success: success,
+                        error: error
+                    });
+                }, getComments: function (success, error) {
+                    $.ajax({
+                        type: 'get',
+                        url: "/NGKBusi/Sales/DigitalApproval/DigitalApprovalCommentGet",
+                        contentType: 'multipart/form-data',
+                        data: {
+                            iReqNumber: $("#hfReqNumber").val(),
+                            iNIK: "@(currUserID)"
+                        },
+                        success: function (commentsArray) {
+                            success(commentsArray)
+                        },
+                        error: error
+                    });
+                }
+            });
+
+            $('.ulFiles').on('click', '.ifileView', function () {
+                var currCTR = $(this);
+                var currFileURL = currCTR.data("fileurl");
+                var pdfUrl = currFileURL;
+
+                if (currCTR.hasClass("btn-primary")) {
+                    $(".ifileView.btn-success").each(function () {
+                        $(this).removeClass("btn-success");
+                        $(this).addClass("btn-primary");
+                        $(this).text("View Document");
+                    });
+                    currCTR.text("Close Document");
+                    currCTR.removeClass("btn-primary");
+                    currCTR.addClass("btn-success");
+                    displayPDF(pdfUrl);
+                } else {
+                    currCTR.removeClass("btn-success");
+                    currCTR.addClass("btn-primary");
+                    currCTR.text("View Document");
+                    $('#pdfContainer').slideUp();
+                }
+            });
+
+    function displayPDF(pdfUrl) {
+        // Ambil elemen kontainer PDF
+        var container = $('#pdfContainer')[0];
+
+        var options = {
+            pdfOpenParams: {
+                view: "FitH"
+            },
+            forcePDFJS: true // Menggunakan PDF.js jika plugin Adobe Reader tidak tersedia
+        };
+
+        // Gunakan PDFObject untuk menampilkan PDF
+        let pdf_iframe = PDFObject.embed(pdfUrl, container, options, { scale: 1.5 });
+        pdf_iframe.addEventListener("load", function () {
+        });
+        $('#pdfContainer').slideDown();      
+
+    }
+
+            getAttachment();
+            function getAttachment() {
+                var reqNumber = $("#hfReqNumber").val();
+                var isAllowEdit = $("#hfisAllowEdit").val();
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/Sales/DigitalApproval/getDAAttachment",
+                    data: {
+                        iReqNumber: reqNumber
+                    },
+                    success: function (data) {
+                        console.log(data);
+                        var liFiles = "";
+                        $(".ulFiles").empty();
+                        $.each(data.files, function (k, v) {
+                            switch (v.ext.toLowerCase()) {
+                                case ".doc":
+                                case ".docm":
+                                case ".docx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Sales/DigitalApproval/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".xls":
+                                case ".xlsx":
+                                case ".xlsm":
+                                case ".csv":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Sales/DigitalApproval/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li>";
+                                    break;
+                                case ".pdf":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Sales/DigitalApproval/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i><button type='button' data-fileurl='" + window.location.origin + "/NGKbusi/files/Sales/DigitalApproval/" + reqNumber + "/" + v.filename + "' class='ifileView ml-2 btn btn-primary btn-sm'>View Document</button></li >";
+                                    break;
+                                case ".ppt":
+                                case ".pptx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Sales/DigitalApproval/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".jpg":
+                                case ".jpeg":
+                                case ".png":
+                                case ".gif":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/Purchasing/DigitalApproval/" + reqNumber + "/" + v.filename + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete fa fa-times ml-2'></i></li >";
+                                    break;
+                            }
+                        });
+                        $(".ulFiles").append(liFiles);
+                        if ($(".ulFiles li").length < 1) {
+                            liFiles = "<li style = 'list-style: none; '>-</li>";
+                            $(".ulFiles").append(liFiles);
+                        }
+                        if (!isAllowEdit) {
+                            $(".ifileDelete").hide();
+                        }
+
+                        $(".mdlAttachment").modal();
+                    }, error: function () {
+                        alert("Error Occurred, Please try again !");
+                    }
+                });
+            }
+        });
+    </script>
+}
+
+<h2>
+    
+    Digital Approval
+    @if (Request["addNew"] == null && Request["ReqNumber"] == null)
+    {
+        <a href="@Url.Action("List", "DigitalApproval", new { area = "Sales", addNew = "addNew" })" class="btn btn-primary">Add New</a>
+    }
+    else
+    {
+        <a href="@Url.Action("List", "DigitalApproval", new { area = "Sales" })" class="btn btn-success">Back to Approval List</a>
+    }
+
+    @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 0 && currData.Created_By == currUserID)
+    {
+        <form action="@Url.Action("FormDelete", "DigitalApproval", new { area = "Sales" })" method="post" class="d-inline-block">
+            <input type="hidden" name="iReqNumber" value="@(currData?.ReqNumber)" />
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure want to delete this Approval?')">Delete PR</button>
+        </form>
+    }
+</h2>
+
+<div class="divPRFilter @(Request["ReqNumber"] == null && Request["addNew"] == null ? "":"d-none")">
+    <form action="@Url.Action("List", "DigitalApproval", new { area = "Sales" })" method="post">
+        <select id="selDAFilterYear" class="form-control" name="iDAFilterYear">
+            <option value="">-Year-</option>
+            @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selDAFilterStatus" class="form-control" name="iDAFilterStatus">
+            <option value="">-Status-</option>
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.currUserLevels).Count() > 1)
+        {
+            <select id="selDAFilterLevel" class="form-control" name="iDAFilterLevel">
+                <option value="">-Level-</option>
+                @foreach (var data in ((IEnumerable<dynamic>)ViewBag.currUserLevels).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.UserLevel + "|" + ViewBag.UserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnDAFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+<input type="hidden" id="hfReqNumber" value="@(Request["ReqNumber"])" />
+<input type="hidden" id="hfisAllowEdit" value="@(isAllowEdit)" />
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <table class="table table-bordered table-striped tblDigitalApprovalList">
+        <thead>
+            <tr>
+                <th>ReqNumber</th>
+                <th>Date</th>
+                <th>Description</th>
+                <th class="filter-select filter-exact" data-placeholder="-Select-">Created By</th>
+                <th class="filter-select filter-exact" data-placeholder="-Select-">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in currDataList)
+            {
+                <tr>
+                    <td><a href="@Url.Action("List", "DigitalApproval", new { area = "Sales", ReqNumber = data.ReqNumber,iPRFilterLevel=currUserLevel + "|" + currUserLevelSub })" target="_blank">@(data.ReqNumber)</a></td>
+                    <td>@(data.Created_At.ToString("dd-MM-yyyy"))</td>
+                    <td>@(data.Description)</td>
+                    <td>@(data.Created_By + " | " + data?.Creator?.Name)</td>
+                    <td class="text-center">
+                        @if (!data.Is_Reject)
+                        {
+                            <span class="badge badge-info">@(DA.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub))</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-danger">Rejected</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="5" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <div class="container-fluid" style="overflow:auto;">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form action="@Url.Action((currData != null ? "FormEdit" : "FormAdd"), "DigitalApproval", new { area = "Sales" })" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="iReqNumber" value="@(currData?.ReqNumber)" />
+                            <input type="hidden" name="iSection" value="@(currData?.Section ?? currUserSection)" />
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Date:</label>
+                                <div class="col-sm-10">
+                                    <label>@(currData != null ? currData.Created_At.ToString("dd-MM-yyyy") : DateTime.Now.ToString("dd-MM-yyyy") )</label>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="selSection" class="col-sm-2 col-form-label">Description:</label>
+                                <div class="col-sm-10">
+                                    <textarea id="txtDescription" name="iDescription" placeholder="Description" class="form-control txtDescription" required @(isAllowEdit ? "" : "disabled")>@(currData?.Description)</textarea>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="txtDescription" class="col-sm-2 col-form-label">Attachment</label>
+                                <div class="col-sm-10">
+                                    @if (isAllowEdit)
+                                    {
+                                        <input type="file" name="iFiles" multiple="multiple" @(isAllowEdit ? "" : "disabled") />
+                                    }
+                                    <ul class="ulFiles pl-0"></ul>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <div class="col-sm-12">
+                                    @if (isAllowEdit)
+                                    {
+                                        <button type="submit" class="btn btnDASubmit btn-primary form-control" onclick="return confirm('Are you sure want to save this data?')">Save</button>
+                                    }
+                                </div>
+                            </div>
+                        </form>
+                        @if (Request["addNew"] == null)
+                        {
+
+                            <div class="form-group row">
+                                <div class="col-12">
+                                    <div id="pdfContainer"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-group row">
+                                <div class="col-12">
+                                    <div id="DAComments"></div>
+                                </div>
+                            </div>
+
+                            var currSignList = db.Approval_List.Where(w => w.Menu_Id == 137 && w.Document_Id == 1 && w.Reveral_ID == reqNumber && w.Is_Skip == false).Select(s => new { Title = s.Title, Header = s.Header, Label = s.Label, Levels = s.Levels, Levels_Sub = s.Levels_Sub }).Distinct().ToList().OrderByDescending(o => o.Levels).ThenByDescending(o => o.Levels_Sub);
+
+                            <table class="table table-bordered tblSign mt-3">
+                                <thead>
+                                    <tr>
+                                        @foreach (var dList in currSignList)
+                                        {
+                                            <th class="text-center">
+                                                @(dList.Label)
+                                            </th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        @foreach (var dList in currSignList)
+                                        {
+                                            <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                @if (currData != null && currData.Is_Reject == false && currData.Approval == dList.Levels && currData.Approval_Sub == dList.Levels_Sub && isAllowSign)
+                                                {
+                                                    <form id="formQuotationSign" action="@Url.Action("formSign", "DigitalApproval", new { area = "Sales" })" method="post">
+                                                        <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                        <input type="hidden" name="btnType" value="Sign" />
+                                                        <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this quotation ?');" name="btnType" value="Sign">Sign</button>
+                                                    </form>
+                                                    if (currData != null && (currData.Approval + currData.Approval_Sub != 1))
+                                                    {
+                                                        <hr />
+                                                        <form action="@Url.Action("formSign", "DigitalApproval", new { area = "Sales" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("formSign", "DigitalApproval", new { area = "Sales" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                        </form>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    string currReqNumber = currData.ReqNumber.ToString();
+                                                    var checkHistory = db.Approval_History.Where(w => w.Menu_Id == 40 && w.Document_Id == 2 && w.Reveral_ID == currReqNumber && w.Approval == dList.Levels && w.Approval_Sub == dList.Levels_Sub).FirstOrDefault();
+                                                    if (currData != null && (currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels)
+                                                    {
+                                                        if (checkHistory != null && checkHistory.IsReject == true)
+                                                        {
+                                                            <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", checkHistory?.Note } });
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                        }
+                                                    }
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                    <tr>
+                                        @foreach (var dList in currSignList)
+                                        {
+                                            <td class="text-center">
+                                                @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                                                {
+                                                    @(DA.ApprovalHistory(currData.ReqNumber, dList.Levels, dList.Levels_Sub, 1, 1));
+                                                }
+                                                else
+                                                {
+                                                    var getNextSignList = db.Approval_List.Where(w => w.Menu_Id == 137 && w.Document_Id == 2 && w.Reveral_ID == reqNumber && w.Levels == dList.Levels && w.Levels_Sub == dList.Levels_Sub && w.Is_Skip == false).ToList();
+                                                    var cnt = 0;
+                                                    var nextSignList = new List<string>();
+                                                    foreach (var dListNext in getNextSignList)
+                                                    {
+                                                        if (!nextSignList.Contains(dListNext?.Users?.Name))
+                                                        {
+                                                            @((cnt > 0 ? " / " : "") + dListNext?.Users?.Name)
+                                                            nextSignList.Add(dListNext?.Users?.Name);
+                                                            cnt++;
+                                                        }
+                                                    }
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                    <tr>
+                                        @foreach (var dList in currSignList)
+                                        {
+                                            <td class="text-center">
+                                                @if (currData != null && ((currData.Approval >= dList.Levels && currData.Approval_Sub > dList.Levels_Sub) || currData.Approval > dList.Levels))
+                                                {
+                                                    @(DA.ApprovalHistory(currData.ReqNumber, dList.Levels, dList.Levels_Sub, 2, 1));
+                                                }
+                                            </td>
+                                        }
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}

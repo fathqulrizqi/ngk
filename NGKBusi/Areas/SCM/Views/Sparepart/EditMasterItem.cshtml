@@ -1,0 +1,848 @@
+@{
+    ViewBag.Title = "EditMasterItem";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        a {
+            color: #369;
+        }
+
+        .box {
+            width: 485px;
+            float: left;
+        }
+
+        .note {
+            width: 500px;
+            margin: 50px auto;
+            font-size: 1.1em;
+            color: #333;
+            text-align: justify;
+        }
+
+        #drop-area {
+            position: relative;
+            border: 2px solid #ccc;
+            width: 300px;
+            height: 280px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+            #drop-area .controll-panel {
+                position: absolute;
+                bottom: 0;
+                right: 0;
+            }
+
+                #drop-area .controll-panel .item {
+                    display: inline-block;
+                    padding: 10px;
+                    cursor: pointer;
+                    background-color: #23232360;
+                }
+
+                    #drop-area .controll-panel .item i {
+                        color: #fff;
+                    }
+
+            #drop-area label {
+                margin-bottom: 0;
+                height: 100%;
+                width: 100%;
+                display: block;
+            }
+
+            #drop-area .uploadIcon {
+                border: none;
+                height: 100%;
+            }
+
+                #drop-area .uploadIcon i {
+                    margin: 0 auto;
+                    display: block;
+                    width: 60px;
+                    position: relative;
+                    top: 45%;
+                }
+
+            #drop-area.highlight {
+                border-color: purple;
+            }
+
+        .my-form {
+            margin-bottom: 10px;
+        }
+
+        #gallery {
+            height: 100%;
+        }
+
+            #gallery img {
+                vertical-align: middle;
+                width: 100%;
+            }
+
+        .button {
+            display: inline-block;
+            padding: 10px;
+            background: #ccc;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+            .button:hover {
+                background: #ddd;
+            }
+
+        #fileElem {
+            display: none;
+        }
+
+        #sendForm {
+            width: 100%;
+        }
+
+            #sendForm .areapaste input {
+                padding-left: 10px;
+                width: 320px;
+                height: 35px;
+                font-size: 16px;
+            }
+
+        #details_img {
+            padding: 20px;
+            float: left;
+            width: 630px;
+        }
+
+            #details_img .list .item {
+                margin-bottom: 10px;
+            }
+
+                #details_img .list .item .attr {
+                    width: 120px;
+                }
+
+                #details_img .list .item .attr,
+                #details_img .list .item .data {
+                    display: inline-block;
+                }
+
+        #container-image .container {
+            width: 200px;
+            display: inline-block;
+        }
+
+        input[type=radio] {
+            width: 30px;
+            height: 30px;
+        }
+
+        .form-check-input {
+            position: relative;
+            margin-top: .3rem;
+            margin-left: -1.25rem;
+        }
+
+        .form-check-label {
+            margin-bottom: 0;
+            position: absolute;
+            top: 25%;
+        }
+    </style>
+}
+
+<div class="row">
+    <div class="col-sm-12">
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab" aria-controls="home" aria-selected="true">Edit Item</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="profile-tab" data-toggle="tab" href="#tabRack" role="tab" aria-controls="profile" aria-selected="false">Rack</a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                <div class="col-12 mt-2">
+                    <div class="card">
+                        <div class="card-header bg-primary">
+                            <a href="@Url.Action("index", "Sparepart", new { area = "SCM" })" data-tooltip="Previous Pagge" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                                <i class="fa fa-arrow-left"></i>
+                            </a>
+                            Edit Item Master
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title"> </h5>
+                            <form action="@Url.Action("EditMasterItem", "Sparepart", new { area = "SCM" })" id="formEditItem" name="formEditItem" enctype="multipart/form-data" method="post">
+                                <input type="hidden" name="userRequest" value="" />
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="selItem">ITEMID</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.ITEMID" readonly />
+                                        <input type="hidden" name="ITEMID" value="@ViewBag.SparepartDetail.ITEMID" />
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="selItem">Item Category</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.ProCateName" readonly />
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Item Name</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.ProductName" readonly>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Item Group</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.ItemGroup" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Item Description</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.ItemDescription" readonly>
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Stock Available</label>
+                                        <input type="text" class="form-control" value="@ViewBag.SparepartDetail.Stock" readonly>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Minimum Quantity</label>
+                                        <input type="number" class="form-control" name="MinQty" min="1" value="@ViewBag.SparepartDetail.MinQty" />
+                                    </div>
+                                    <div class="form-group col-md-6">
+                                        <label for="txtQuantity">Maximum Quantity</label>
+                                        <input type="number" class="form-control" value="@ViewBag.SparepartDetail.MaxQty" name="MaxQty" min="1" />
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-md-3 p4">
+                                        <label for="txtQuantity">Lifetime</label>
+                                        <input type="number" class="form-control mr-2" name="Lifetime" min="0" value="@ViewBag.SparepartDetail.Lifetime" style="width:70%" />
+                                    </div>
+                                    <div class="col-md-3 col-sm-12 p-1">
+                                        <div class="form-group border border-secondary rounded rounded-4 p-2">
+                                            <label for="txtQuantity"><span class="f4"><strong>Kanri / Non Kanri</strong></span></label>
+                                            <div class="form-check">
+                                                <input class="form-check-input mr-2" type="radio" name="IsKanri" id="Kanri" value="1" @(ViewBag.SparepartDetail.IsKanri == 1 ? "checked" : "")>
+                                                <label class="form-check-label" for="Kanri">Kanri</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input  mr-2" type="radio" name="IsKanri" id="NonKanri" value="0" @(ViewBag.SparepartDetail.IsKanri == 0 ? "checked" : "")>
+                                                <label class="form-check-label" for="NonKanri">Non Kanri</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-12 p-1">
+                                        <div class="form-group border-secondary border p-2 rounded rounded-3">
+                                            <label for="txtQuantity"><span class="f4"><strong>Local / Import</strong></span></label>
+                                            <div class="form-check">
+                                                <input class="form-check-input mr-2" type="radio" name="IsLocalPart" value="1" id="LocalPart" @(ViewBag.SparepartDetail.IsLocalPart == 1 ? "checked" : "")>
+                                                <label class="form-check-label" for="LocalPart">Local Part</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input mr-2" type="radio" name="IsLocalPart" value="0" id="ImportPart" @(ViewBag.SparepartDetail.IsLocalPart == 0 ? "checked" : "")>
+                                                <label class="form-check-label" for="ImportPart">Import Part</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-12 p-1">
+                                        <div class="form-group border-secondary border p-2 rounded rounded-4">
+                                            <label for="txtQuantity"><span class="f4"><strong>Fast / Slow Moving</strong></span></label>
+                                            <div class="form-check">
+                                                <input class="form-check-input  mr-2" type="radio" name="IsFastMoving" value="1" id="FastMoving" @(ViewBag.SparepartDetail.IsFastMoving == 1 ? "checked" : "")>
+                                                <label class="form-check-label" for="FastMoving">Fast Moving</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input  mr-2" type="radio" name="IsFastMoving" value="0" id="SlowMoving" @(ViewBag.SparepartDetail.IsFastMoving == 0 ? "checked" : "")>
+                                                <label class="form-check-label" for="SlowMoving">Slow Moving</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group col-md-6">
+                                        <div class="panel panel-default">
+                                            <div class="panel-body">
+                                                <div id="drop-area" class="highlight" style="height:100%">
+                                                    <label for="fileElem">
+                                                        <input type="file" accept="image/*" name="ImageFile" id="fileElem" onchange="handleFiles(this.files)">
+                                                        <div class="uploadIcon" style="display:none">
+                                                            <i class="fa fa-upload fa-4x" aria-hidden="true"></i>
+                                                        </div>
+                                                        <div id="gallery">
+                                                            <a href="#" class="imageItem"><img src="@Url.Content("~/Files/SCM/Sparepart/Images/" + ViewBag.SparepartDetail.Image)" style="display:block" /></a>
+                                                        </div>
+                                                    </label>
+                                                    <div class="controll-panel">
+                                                        <div class="item">
+                                                            <div id="delete-image"><i class="fa fa-trash" aria-hidden="true"></i></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="areapaste">
+                                                    <input placeholder="press ctrl + v to paste image" id="text" type="text">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary" id="btnUpdateItem">Update</button>
+                            @{
+                                if (ViewBag.SparepartDetail.IsActive == 0)
+                                {
+                                    <button type="button" id="ActivateSparepart" class="btn btn-success Activation">Activate</button>
+                                }
+                                else
+                                {
+                                    <button type="button" id="DeactivateSparepart" class="btn btn-danger Activation">Deactivate</button>
+                                }
+                            }
+                            <a href="@Url.Action("index", "Sparepart", new { area = "SCM" })" class="btn btn-dark">Back</a>
+                        </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade show" id="tabRack" role="tabpanel" aria-labelledby="home-tab">
+                <div class="col-12 mt-2">
+                    <div class="card">
+                        <div class="card-header bg-info">
+                            <a href="@Url.Action("index", "Sparepart", new { area = "SCM" })" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                                <i class="fa fa-arrow-left"></i>
+                            </a>
+                            Rack
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title"> Add Rack </h5>
+                            <div class="row">
+                                <div class="col-12">
+                                    <form id="formAddRack">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <label>Cupboard</label>
+                                                <select id="ddlCupboard" class="form-control">
+                                                    <option value="">-- Select Cupboard --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label>Rack</label>
+                                                <select id="ddlRack" class="form-control" disabled>
+                                                    <option value="">-- Select Rack --</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label>Box</label>
+                                                <select id="ddlBox" class="form-control" disabled>
+                                                    <option value="">-- Select Box --</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <hr />
+                            <h5 class="card-title mt-4">Rack List</h5>
+                            <div class="row">
+                                <div class="col-12">
+                                    <table id="rackTable" class="table table-sm table-striped table-bordered w-100">
+                                        <thead>
+                                            <tr>
+                                                <th>No</th>
+                                                <th>Rack Name</th>
+                                                <th>Rack Location</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="EditRackModal" class="modal fade">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="@Url.Action("EditRack", "Sparepart", new { area = "SCM" })" id="FormUpdateRack" name="FormUpdateRack">
+                <div class="modal-header">
+                    <h4 class="modal-title">Edit Item Quantity</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="RackName">Rack Name</label>
+                        <input name="RackName" type="text" class="form-control" required="required" />
+                    </div>
+                    <div class="form-group">
+                        <label for="">Rack Description</label>
+                        <input name="RackLocation" type="text" class="form-control" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                    <input type="Submit" class="btn btn-info" value="Save" id="BtnUpdateRack" />
+                    <input type="hidden" id="RackId" name="RackId" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade bd-example-modal-lg" id="imagemodal" tabindex="-1" aria-labelledby="my-modalLabel" aria-hidden="true" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+            </div>
+            <div class="modal-body">
+                <img src="" id="imagepreview" style="width: 750px; height: auto">
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scriptHead {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://unpkg.com/bootstrap-table@1.22.1/dist/bootstrap-table.min.js"></script>
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+
+    <script>
+    const cupboardList = @Html.Raw(Json.Encode(ViewBag.CupboardList));
+    const rackList = @Html.Raw(Json.Encode(ViewBag.RackList));
+    const boxList = @Html.Raw(Json.Encode(ViewBag.BoxList));
+    var itemId = "@ViewBag.SparepartDetail.ITEMID";
+
+    // -------------------------------------------------------------
+    // VARIABEL GLOBAL DRAG & DROP
+    // -------------------------------------------------------------
+    var dropArea;
+    var fileElem;
+    var gallery;
+
+    $(document).ready(function () {
+        // --- INISIALISASI ELEMENT DRAG & DROP SETELAH DOM READY ---
+        dropArea = document.getElementById("drop-area");
+        fileElem = document.getElementById('fileElem');
+        gallery = document.getElementById('gallery');
+
+        if (dropArea) {
+            // Prevent default drag behaviors
+            ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+                document.body.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // Highlight drop area when item is dragged over it
+            ;['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            ;['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            dropArea.addEventListener('DOMNodeInserted', function () {
+                $('.uploadIcon').css('display', 'none');
+                if ($('#gallery').children().length > 1) {
+                    $('#gallery').children().first().remove();
+                }
+            });
+
+            // Handle dropped files
+            dropArea.addEventListener('drop', handleDrop, false);
+        } else {
+            console.warn('Error: Element dropArea tidak ditemukan di halaman ini!');
+        }
+
+        // --- PASTE EVENT LISTENER ---
+        var input = document.querySelector("#text");
+        if (input) {
+            input.addEventListener("paste", function (event) {
+                var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+                for (index in items) {
+                    var item = items[index];
+                    if (item.kind === 'file') {
+                        var blob = item.getAsFile();
+                        var reader = new FileReader();
+                        reader.onload = function (event) {
+                            let img = document.createElement('img')
+                            img.src = event.target.result
+                            document.getElementById('gallery').appendChild(img);
+                            setDataForImage(blob);
+                        };
+                        reader.readAsDataURL(blob);
+                    }
+                }
+            });
+        }
+
+
+        // --- LOGIKA TAB RACK & DATATABLES ---
+        $('a[data-toggle="tab"][href="#tabRack"]').on('shown.bs.tab', function () {
+            initRackChain();
+        });
+
+        $('#ddlCupboard').on('change', function () {
+            const cupBoardID = $(this).val();
+            const $rack = $('#ddlRack');
+            const $box = $('#ddlBox');
+
+            $rack.empty();
+            $box.empty().prop('disabled', true);
+
+            if (!cupBoardID) {
+                $rack.prop('disabled', true);
+                return;
+            }
+
+            let options = '<option value="">-- Select Rack --</option>';
+            rackList.filter(r => r.cupBoardID === cupBoardID).forEach(r => {
+                options += `<option value="${r.RackID}">${r.RackName}</option>`;
+            });
+
+            $rack.html(options).prop('disabled', false).trigger('change');
+        });
+
+        $('#ddlRack').on('change', function () {
+            const rackID = $(this).val();
+            const $box = $('#ddlBox');
+
+            if (!rackID) {
+                $box.prop('disabled', true);
+                return;
+            }
+
+            let options = '<option value="">-- Select Box --</option>';
+            boxList.filter(b => b.RackID === rackID).forEach(b => {
+                options += `<option value="${b.RackBoxID}">${b.RackBoxName}</option>`;
+            });
+
+            $box.html(options).prop('disabled', false);
+        });
+
+        $('#rackTable').DataTable({
+            processing: true,
+            serverSide: false,
+            ajax: {
+                url: "@Url.Action("GetRackLocationById", "Sparepart", new { area = "SCM" })",
+                type: 'GET',
+                data: function () {
+                    return { ITEMID: itemId };
+                },
+                dataSrc: function (res) {
+                    if (!res.success) {
+                        Swal.fire('Error', res.message, 'error');
+                        return [];
+                    }
+                    return res.data;
+                }
+            },
+            columns: [
+                { data: null, render: function (data, type, row, meta) { return meta.row + 1; } },
+                { data: 'RackBoxName' },
+                { data: 'RackBoxID' },
+                {
+                    data: null,
+                    orderable: false,
+                    render: function (data) {
+                        return `
+                        <button class="btn btn-sm btn-danger delete-btn"
+                                data-itemid="${data.ITEMID}"
+                                data-id="${data.ID}"
+                                data-rackid="${data.RackBoxID}">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    `;
+                    }
+                }
+            ],
+            order: [[1, 'asc']]
+        });
+
+        // SAVE RACK
+        $('#formAddRack').on('submit', function (e) {
+            e.preventDefault();
+            var rackId = $('#ddlBox').val();
+            $.ajax({
+                url: '@Url.Action("SaveRackLocation", "Sparepart", new { area = "SCM" })',
+                type: 'POST',
+                data: { ITEMID: itemId, RackID: rackId },
+                success: function (res) {
+                    if (res.success) {
+                        Swal.fire('Success', res.message, 'success').then(() => { location.reload(); });
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Server error', 'error');
+                }
+            });
+        });
+
+        // DELETE RACK
+        $('#rackTable').on('click', '.delete-btn', function () {
+            const id = $(this).data('id');
+            Swal.fire({
+                title: 'Delete rack?',
+                text: 'This action cannot be undone',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete'
+            }).then(result => {
+                if (!result.isConfirmed) return;
+                $.post('@Url.Action("DeleteRackLocation", "Sparepart", new { area = "SCM" })', { id })
+                    .done(res => {
+                        if (res.success) {
+                            Swal.fire('Success', res.message, 'success');
+                            $('#rackTable').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    });
+            });
+        });
+
+        // ACTION BUTTONS
+        $(document).on('click', '.imageItem', function (e) {
+            var a = $(this).find('img').attr('src')
+            $('#imagepreview').attr('src', a);
+            $('#imagemodal').modal('show');
+        });
+
+        var formValidateUpdateRack = $("form[name='FormUpdateRack']").validate({
+            rules: { RackName: { required: true } },
+            messages: { RackName: { required: "Please enter Rack Name" } },
+            submitHandler: function (form) {
+                $.ajax({
+                    url: $('#FormUpdateRack').attr('action'),
+                    type: "POST",
+                    cache: false,
+                    data: $('#FormUpdateRack').serialize(),
+                    dataType: 'json',
+                    success: function (json) {
+                        if (json.status == 1) {
+                            toastr.options.positionClass = 'toast-bottom-right';
+                            toastr.success(json.msg);
+                            $('#EditRackModal').modal('toggle');
+                            $('#table').bootstrapTable('refresh');
+                        } else {
+                            toastr.options.positionClass = 'toast-bottom-left';
+                            toastr.error(json.msg);
+                        }
+                    }
+                });
+            }
+        });
+
+        // FIXED: Variabel yang dipanggil sebelumnya 'validateUpdateQuantity', sekarang memakai 'formValidateUpdateRack'
+        $('#BtnUpdateRack').click(function () {
+            formValidateUpdateRack.form();
+        });
+
+        $('#formEditItem').on('submit', (function (e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            $.ajax({
+                type: 'POST',
+                url: $(this).attr('action'),
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                success: function (json) {
+                    toastr.options.positionClass = 'toast-bottom-right';
+                    toastr.success(json.msg);
+                },
+                error: function (data) {
+                    console.log("error", data);
+                }
+            });
+        }));
+
+        var deleteImageBtn = $('#delete-image');
+        deleteImageBtn.click(function () {
+            $('#gallery').children().first().remove();
+            $('.uploadIcon').css('display', 'block');
+            dropArea.style.height = '400px';
+        });
+
+        $(document).on('click', '#ActivateSparepart, #DeactivateSparepart', function (e) {
+            e.preventDefault();
+            var itemid = "@ViewBag.SparepartDetail.ITEMID";
+            var link =  "@Url.Action("UpdateActivation", "Sparepart", new { area = "SCM" })";
+            if ($(this).attr('id') == 'ActivateSparepart') {
+                Activation(itemid, "Activate", link);
+            }
+            if ($(this).attr('id') == 'DeactivateSparepart') {
+                Activation(itemid, "Deactivate", link);
+            }
+        });
+
+    }); // END OF $(document).ready()
+
+    // -------------------------------------------------------------
+    // FUNGSI-FUNGSI LUAR (GLOBAL) SESUAI KODE ASLI ANDA
+    // -------------------------------------------------------------
+
+    function initRackChain() {
+        if ($.fn.select2 && $('#ddlCupboard').hasClass("select2-hidden-accessible")) {
+            $('#ddlCupboard, #ddlRack, #ddlBox').select2('destroy');
+        }
+        loadCupboard();
+        $('#ddlCupboard').select2({ placeholder: '-- Select Cupboard --', width: '100%' });
+        $('#ddlRack').select2({ placeholder: '-- Select Rack --', width: '100%' });
+        $('#ddlBox').select2({ placeholder: '-- Select Box --', width: '100%' });
+    }
+
+    function loadCupboard() {
+        let options = '<option value="">-- Select Cupboard --</option>';
+        cupboardList.forEach(c => {
+            options += `<option value="${c.cupBoardID}">${c.cupBoardName}</option>`;
+        });
+        $('#ddlCupboard').html(options);
+        $('#ddlRack').html('<option value="">-- Select Rack --</option>').prop('disabled', true);
+        $('#ddlBox').html('<option value="">-- Select Box --</option>').prop('disabled', true);
+    }
+
+    // FUNGSI DRAG AND DROP ASLI
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function highlight(e) {
+        if(dropArea) dropArea.classList.add('highlight');
+    }
+
+    function unhighlight(e) {
+        if(dropArea) dropArea.classList.remove('active'); // Sesuai kode asli Anda
+    }
+
+    function handleDrop(e) {
+        var dt = e.dataTransfer;
+        var files = dt.files;
+        handleFiles(files);
+    }
+
+    function handleFiles(files) {
+        files = [...files];
+        files.forEach(previewFile);
+    }
+
+    function previewFile(file) {
+        var reader = new FileReader();
+        reader.onloadend = function () {
+            if(dropArea) dropArea.style.height = '100%';
+            let img = document.createElement('img');
+            img.src = reader.result;
+            if(gallery) gallery.appendChild(img);
+            setDataForImage(file);
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function readURL(input) {
+        if (input.files && input.files[0]) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                $('#image_upload_preview').attr('src', e.target.result);
+                setDataForImage(input.files[0]);
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function setDataForImage(file) {
+        var nameImage = $('#nameImage');
+        var sizeImage = $('#sizeImage');
+        var typeImage = $('#typeImage');
+        var timemodifiImage = $('#timemodifiImage');
+        var datemodifiImage = $('#datemodifiImage');
+        console.log('file', file);
+        nameImage.text(file.name);
+        sizeImage.text(file.size);
+        typeImage.text(file.type);
+        timemodifiImage.text(file.lastModified);
+        datemodifiImage.text(file.lastModifiedDate);
+    }
+
+    function dataURLtoFile(dataurl, filename) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new File([u8arr], filename, { type: mime });
+    }
+
+        function Activation(id, action, Link) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: action + " This Item ?",
+                icon: "warning", // SweetAlert2 menggunakan 'icon' bukan 'type'
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "Yes, " + action + " it!",
+                cancelButtonText: "Cancel"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { ITEMID: id, action: action },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                Swal.fire({
+                                    title: action + " !",
+                                    text: "Update Success.",
+                                    icon: "success"
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire(action + "!", "Update Failed.", "error");
+                            }
+                        },
+                        error: function () {
+                            Swal.fire(action + "!", Link, "error");
+                        }
+                    })
+                } else {
+                    Swal.fire("Cancelled", "Update Cancelled", "error");
+                }
+            });
+        }
+    </script>
+}

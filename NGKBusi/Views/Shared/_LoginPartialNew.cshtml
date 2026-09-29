@@ -1,0 +1,88 @@
+@using Microsoft.AspNet.Identity
+@using System.Security.Claims;
+@using NGKBusi.Models;
+@model Users
+
+
+@if (Request.IsAuthenticated)
+{
+    DefaultConnection db = new DefaultConnection();
+    var currUser = ((ClaimsIdentity)User.Identity).GetUserId();
+    var CurrUser = db.V_Users_Active.Where(w => w.NIK == currUser).FirstOrDefault();
+    var FavoriteMenu = db.V_User_Menu_Favorites.Where(w => w.UserName == CurrUser.NIK).ToList();
+
+    using (Html.BeginForm("LogOut", "User", FormMethod.Post, new { id = "logoutForm", @class = "navbar-right" }))
+    {
+        @Html.AntiForgeryToken()
+
+<div class="sidebar-header px-2 py-3 d-flex align-items-center border-top border-bottom" style="border-color: rgba(255, 255, 255, 0.1) !important;">
+
+    <div style="position: relative; flex-shrink: 0; margin: 0 20px 0 0; width: 48px; height: 48px;">
+
+        <div style="width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+            <img class="imagezoom"
+                 style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background-color: #334155;"
+                 src="@("http://192.168.1.250/Pics/employee/" + User.Identity.GetUserId() + ".jpg")"
+                 onerror="this.onerror=null;this.src='@Url.Content("~/Content/Images/user.jpg")';"
+                 alt="User picture" />
+        </div>
+
+        <span style="position: absolute; border-radius: 50%; width: 14px; height: 14px; background-color: #4ade80; top: 1px; right: -2px; border: 2px solid #2b2b2b; z-index: 10;">
+        </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; justify-content: center; min-width: 0; word-wrap: break-word;">
+
+        <span>
+            <strong style="color: #ffffff; font-weight: bold; display: block; font-size: 13px; line-height: 1.25;">
+                @(((ClaimsIdentity)User.Identity).FindFirst("fullName").Value)
+            </strong>
+        </span>
+
+        <span style="display: block; margin-top: 2px; font-size: 10px; color: #94a3b8; line-height: 1.2;">
+            NIK: @currUser
+        </span>
+
+        <span style="text-transform: uppercase; display: block; margin-top: 4px; font-size: 10px; color: #94a3b8; letter-spacing: 0.05em; line-height: 1;">
+            @(((ClaimsIdentity)User.Identity).FindFirst("dept").Value)
+        </span>
+
+    </div>
+</div>
+        <div id='imagezoommodal'>
+            <span class='imagezoomclose'><i class="fas fa-times"></i></span>
+            <img id='imagezoomimg' />
+        </div>
+        <div class="sidebar-menu">
+            <ul>
+                <li class="sidebar-dropdown favoriteMenu">
+                    <a class="urlParent" href="#">
+                        <i class="fas fa-heart"></i>
+                        <span>Favorite Menu</span>
+                    </a>
+                    <div class="sidebar-submenu favoriteMenu" style="display: none;">
+                        <ul>
+                            @foreach (var item in FavoriteMenu)
+                            {
+                                <li class="navSubChild" id="Index">
+                                    <a href="@Url.Action(@item.action, @item.controller, new { area = @item.area })" target="" style="width:70%; float:left" class="url animsition-link col-lg-11">
+                                        <span>@item.name </span>
+                                    </a>
+                                    <a href="#" style="width:30%" class="btnFavorite removeFromFavoriteList" data-id="@item.IdMenu" id="@item.IdMenu"><i class="fa fa-star favIcon" style="display:block;"></i></a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    }
+}
+@*else
+    {
+        <div class="sidebar-search">
+            <div>
+                <a href="/NGKBusi/User/Login" class="btn btn-light form-control">Login Page</a>
+            </div>
+        </div>
+    }*@

@@ -1,0 +1,1055 @@
+﻿@{
+    ViewBag.Title = "Form Catatan Audit";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string deptName = ViewBag.DeptName ?? "Memuat...";
+    string tanggalAudit = ViewBag.TanggalAudit ?? DateTime.Now.ToString("dd-MMMM-yyyy");
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+<style>
+    /* Styling Dasar Layout */
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+    }
+
+    .doc-border {
+        border-color: #0c359e;
+    }
+
+    /* Style Stampel Web */
+    .stamp-circle {
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        border: 2.5px solid;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(-12deg);
+        opacity: 0.85;
+        user-select: none;
+        pointer-events: none;
+        position: relative;
+        margin: 0 auto;
+    }
+
+        .stamp-circle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 50%;
+            border: 1px solid;
+        }
+
+        .stamp-circle .stamp-text {
+            font-size: 0.6rem;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stamp-circle .stamp-date {
+            font-size: 0.45rem;
+            font-weight: 800;
+            border-top: 1px solid;
+            padding-top: 2px;
+            width: 80%;
+            text-align: center;
+        }
+
+    .stamp-approved-circle {
+        color: #059669;
+        border-color: #059669;
+    }
+
+        .stamp-approved-circle::before, .stamp-approved-circle .stamp-date {
+            border-color: #059669;
+        }
+
+    .stamp-rejected-circle {
+        color: #dc2626;
+        border-color: #dc2626;
+    }
+
+        .stamp-rejected-circle::before, .stamp-rejected-circle .stamp-date {
+            border-color: #dc2626;
+        }
+
+    /* LAYOUT SCREEN TAB CONTENT */
+    .tab-content {
+        display: none;
+    }
+
+        .tab-content.active {
+            display: block;
+        }
+
+    .screen-only-doc {
+        max-width: 1120px;
+        margin: 0 auto 2.5rem auto;
+        background-color: white;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        padding: 2rem;
+    }
+
+    /* PRINT TABLE STYLING */
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+        .print-table td, .print-table th {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            vertical-align: middle;
+            font-size: 11px;
+        }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-left {
+        text-align: left;
+    }
+
+    .font-semibold {
+        font-weight: bold;
+    }
+
+    .text-medium {
+        font-size: 15px;
+    }
+
+    .text-small {
+        font-size: 11px;
+    }
+
+    .no-border-right {
+        border-right: none !important;
+    }
+
+    .no-border-left {
+        border-left: none !important;
+    }
+
+    .no-border-x {
+        border-left: none !important;
+        border-right: none !important;
+    }
+
+    .td-dashed-y {
+        border-top: 1px dashed #000 !important;
+        border-bottom: 1px dashed #000 !important;
+    }
+
+    /* Styling Print (PDF/Hardcopy) */
+    @@media screen {
+        #printAllContainer {
+            display: none !important;
+        }
+    }
+
+    @@media print {
+        body {
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0;
+            padding: 0;
+        }
+
+        .no-print, .screen-only-doc, #tabsContainer {
+            display: none !important;
+        }
+
+        #printAllContainer {
+            display: block !important;
+        }
+
+        .a4-landscape-page {
+            width: 297mm;
+            height: 210mm; /* Kunci kertas pas A4 */
+            margin: 0 auto;
+            padding: 10mm;
+            box-sizing: border-box;
+            background: white;
+            page-break-after: always;
+            overflow: hidden; /* Mencegah browser pecah tabel otomatis */
+        }
+
+            .a4-landscape-page:last-child {
+                page-break-after: auto;
+            }
+
+        @@page {
+            size: A4 landscape;
+            margin: 0;
+        }
+    }
+</style>
+
+<div class="max-w-6xl mx-auto px-4 py-4 no-print flex justify-between items-center">
+    <a href="javascript:history.back()" class="inline-flex items-center text-white hover:text-blue-100 text-sm font-semibold transition-all hover:-translate-x-1 drop-shadow-sm">
+        <i class="bi bi-arrow-left mr-1.5"></i> Back
+    </a>
+
+    <div class="flex items-center gap-2">
+        @if (ViewBag.IsAdministrator != null && (bool)ViewBag.IsAdministrator)
+        {
+            <button type="button" onclick="openReminderModal()" class="shrink-0 bg-amber-500 text-white px-4 py-2.5 rounded-lg shadow-md font-bold hover:bg-amber-600 transition flex items-center gap-2 text-sm cursor-pointer">
+                <svg class="w-5 h-5 animate-pulse-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                Send Reminder
+            </button>
+        }
+        <button onclick="printReport()" class="group flex items-center bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2 rounded-md shadow hover:shadow-md transition-all duration-150 active:scale-95">
+            <i class="bi bi-file-earmark-pdf mr-2 text-base transition-transform duration-150 group-hover:scale-110"></i>
+            Print PDF
+        </button>
+
+        <button onclick="exportExcel()" class="group flex items-center bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2 rounded-md shadow hover:shadow-md transition-all duration-150 active:scale-95">
+            <i class="bi bi-file-earmark-excel mr-2 text-base transition-transform duration-150 group-hover:scale-110"></i>
+            Export Excel
+        </button>
+    </div>
+</div>
+<div class="max-w-6xl mx-auto mb-4 no-print">
+    <div id="tabsContainer" class="flex gap-3 overflow-x-auto py-2 px-1"></div>
+
+</div>
+
+<div id="formsContainer" class="w-full pb-10 relative min-h-[500px] no-print">
+    <div id="loadingOverlay" class="absolute inset-0 z-50 flex flex-col justify-start items-center pt-20 no-print">
+        <div class="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-lg flex flex-col items-center">
+            <i class="bi bi-arrow-repeat animate-spin text-4xl text-blue-800 mb-2"></i>
+            <span class="font-bold text-slate-600">Menyusun Dokumen...</span>
+        </div>
+    </div>
+</div>
+
+<div id="printAllContainer"></div>
+
+<div id="reminderModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center no-print transition-opacity">
+
+    <!-- Modal Card (Sesuai dengan tema elegant-section) -->
+    <div class="bg-white rounded shadow-2xl w-full max-w-md transform transition-all overflow-hidden flex flex-col max-h-[90vh] border border-gray-200">
+
+        <!-- Modal Header -->
+        <div class="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-sm font-bold text-teal-800 uppercase tracking-wide">Send Reminder</h3>
+                <p class="text-[11px] text-gray-500 mt-0.5">Select recipients and add an optional message.</p>
+            </div>
+            <button type="button" onclick="closeReminderModal()" class="text-gray-400 hover:text-red-600 transition cursor-pointer p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-3 overflow-y-auto flex-1 space-y-4">
+
+            <!-- Checkbox List User -->
+            <div>
+                <label class="block text-[13px] font-bold text-gray-800 mb-2">Pilih Penerima :</label>
+
+                <!-- Kotak Scrollable -->
+                <div class="max-h-48 overflow-y-auto border border-gray-200 rounded bg-white p-2 space-y-3 shadow-inner">
+
+                    <!-- Looping List Auditee -->
+                    @if (ViewBag.ListAuditee != null)
+                    {
+                        <div>
+                            <div class="text-[10px] font-bold text-gray-500 mb-1 px-1 uppercase border-b border-gray-100 pb-1">Auditee</div>
+                            <div class="space-y-0.5">
+                                @foreach (var auditee in ViewBag.ListAuditee)
+                                {
+                                    <label class="flex items-center p-2 hover:bg-teal-50 rounded cursor-pointer transition">
+                                        <input type="checkbox" name="reminderUsers" value="@auditee.Email" class="w-3.5 h-3.5 accent-teal-600 cursor-pointer">
+                                        <div class="ml-2 flex flex-col leading-tight">
+                                            <span class="text-[13px] font-semibold text-gray-800">@auditee.Name</span>
+                                            <span class="text-[10px] text-gray-500">NIK: @auditee.NIK</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Looping List Auditor -->
+                    @if (ViewBag.ListAuditor != null)
+                    {
+                        <div>
+                            <div class="text-[10px] font-bold text-gray-500 mb-1 px-1 uppercase border-b border-gray-100 pb-1 mt-2">Auditor</div>
+                            <div class="space-y-0.5">
+                                @foreach (var auditor in ViewBag.ListAuditor)
+                                {
+                                    <label class="flex items-center p-2 hover:bg-teal-50 rounded cursor-pointer transition">
+                                        <input type="checkbox" name="reminderUsers" value="@auditor.Email" class="w-3.5 h-3.5 accent-teal-600 cursor-pointer">
+                                        <div class="ml-2 flex flex-col leading-tight">
+                                            <span class="text-[13px] font-semibold text-gray-800">@auditor.Name</span>
+                                            <span class="text-[10px] text-gray-500">NIK: @auditor.NIK</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Input Pesan Tambahan -->
+            <div>
+                <label for="reminderMessage" class="block text-[13px] font-bold text-gray-800 mb-2">Message :</label>
+                <textarea id="reminderMessage" rows="3" placeholder="Type your reminder message here..." class="w-full text-[13px] border border-gray-300 rounded bg-transparent p-2.5 outline-none focus:border-teal-600 transition text-gray-800 resize-none shadow-sm"></textarea>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-2 py-2 border-t border-gray-200 flex justify-end gap-2">
+            <button type="button" onclick="closeReminderModal()" class="text-xs px-5 py-2 font-bold bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition cursor-pointer shadow-sm">Cancel</button>
+            <button type="button" onclick="processReminder('Catatan Audit', '@ViewBag.AuditNotesId')" class="text-xs px-5 py-2 font-bold bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition shadow-md flex items-center gap-1.5 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Reminder
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const deptName = '@Html.Raw(deptName)';
+    const tanggalAudit = '@Html.Raw(tanggalAudit)';
+
+    let currentUserName = "";
+    const urlParams = new URLSearchParams(window.location.search);
+    const globalStakeholderId = urlParams.get('id');
+
+    const eligibleAuditorCats = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.EligibleAuditorCategories ?? new List<string>()));
+    const eligibleAuditeeCats = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.EligibleAuditeeCategories ?? new List<string>()));
+
+    $(document).ready(function() {
+        const auditType = urlParams.get('type') || 'ALL';
+
+        if (globalStakeholderId) {
+            $.ajax({
+                url: '@Url.Action("GetCatatanAuditData", "EAudit")',
+                type: 'GET',
+                data: { stakeholderId: globalStakeholderId, type: auditType },
+                success: function(res) {
+                    if (res.success) {
+                        currentUserName = res.currentUserName || "User";
+                        renderForms(res.data, res.guides, res.generalNotes, auditType, res.auditStandards);
+
+                        if(res.existingApprovals) {
+                            res.existingApprovals.forEach(app => {
+                                let match = app.category_recap.match(/\(([^)]+)\)/);
+                                if(match && match[1]) {
+                                    let category = match[1];
+                                    renderExistingVerificationStamp(category, app.recap_sign_role, app.recap_sign_status, app.recap_sign_date, app.recap_sign_by_name);
+                                }
+                            });
+                        }
+                    } else {
+                        showEmptyState("Gagal memuat data: " + res.message);
+                    }
+                },
+                error: function() { showEmptyState("Koneksi ke server terputus."); },
+                complete: function() { $('#loadingOverlay').fadeOut(); }
+            });
+        } else {
+            showEmptyState("ID Stakeholder tidak ditemukan di URL.");
+            $('#loadingOverlay').fadeOut();
+        }
+    });
+
+    function showEmptyState(msg) {
+        $('#tabsContainer').empty();
+        $('#formsContainer').html(`<div class="text-center p-10 font-bold text-rose-500 bg-white rounded-xl shadow max-w-2xl mx-auto">${msg}</div>`);
+    }
+
+    function renderAuditStandardsDynamic(kriteriaText, standards) {
+        if (!standards || standards.length === 0) {
+            return kriteriaText.split(' / ').map(part => `<span class="line-through opacity-60 text-gray-400">${part.trim()}</span>`).join(' / ');
+        }
+        const parts = kriteriaText.split(' / ').map(s => s.trim());
+        const result = parts.map(part => {
+            const isMatch = standards.some(std => part.toLowerCase().includes(std.toLowerCase()));
+            return isMatch ? `<span class="font-bold text-gray-900">${part}</span>` : `<span class="line-through opacity-60 text-gray-400">${part}</span>`;
+        });
+        return result.join(' / ');
+    }
+
+    function renderAuditStandardsPrint(kriteriaText, standards) {
+        if (!standards || standards.length === 0) {
+            return kriteriaText.split(' / ').map(part => `<span style="text-decoration: line-through; color: #888;">${part.trim()}</span>`).join(' / ');
+        }
+        const parts = kriteriaText.split(' / ').map(s => s.trim());
+        const result = parts.map(part => {
+            const isMatch = standards.some(std => part.toLowerCase().includes(std.toLowerCase()));
+            return isMatch ? `<span class="font-semibold" style="color: #000;">${part}</span>` : `<span style="text-decoration: line-through; color: #888;">${part}</span>`;
+        });
+        return result.join(' / ');
+    }
+
+    // ============================================
+    // PENGATURAN HALAMAN PRINT (PAGINATION CERDAS)
+    // ============================================
+    function paginatePrintRows(printRowsArr, printHeaderHtml, printFooterRowsHtml) {
+        // PERBAIKAN 1: Limit dinaikkan agar mengisi ruang kosong kertas A4 yang sebenarnya (190mm ≈ ~700px)
+        const CONTENT_HEIGHT_LIMIT = 650;
+
+        const $stage = $('<div>').css({ position: 'absolute', visibility: 'hidden', left: '-99999px', top: 0, width: '277mm' }).appendTo('body');
+
+        const $testWrapper = $(`<table class="print-table"><colgroup><col span="62" style="width: 1.61%;" /></colgroup><thead>${printHeaderHtml}</thead></table>`).appendTo($stage);
+        const headerHeight = $testWrapper.outerHeight(true) || 0;
+        $testWrapper.remove();
+
+        const $testFooter = $(`<table class="print-table"><colgroup><col span="62" style="width: 1.61%;" /></colgroup><tbody>${printFooterRowsHtml}</tbody></table>`).appendTo($stage);
+        const footerHeight = $testFooter.outerHeight(true) || 0;
+        $testFooter.remove();
+
+        const $rowTbl = $(`<table class="print-table"><colgroup><col span="62" style="width: 1.61%;" /></colgroup><tbody></tbody></table>`).appendTo($stage);
+        const $tbody = $rowTbl.find('tbody');
+
+        const rowHeights = printRowsArr.map(html => {
+            $tbody.html(html);
+            return $tbody.find('tr').outerHeight(true) || 0;
+        });
+        $rowTbl.remove();
+        $stage.remove();
+
+        const pages = [];
+        let current = { start: 0, count: 0, height: headerHeight };
+
+        // PERBAIKAN 2: Data row tidak lagi dipaksa pindah page hanya karena memikirkan ukuran Footer
+        for (let i = 0; i < rowHeights.length; i++) {
+            const h = rowHeights[i];
+
+            // Evaluasi kemuatan baris murni hanya berdasarkan LIMIT halamannya saja
+            if (current.count > 0 && (current.height + h) > CONTENT_HEIGHT_LIMIT) {
+                pages.push(current);
+                current = { start: i, count: 0, height: headerHeight };
+            }
+            current.height += h;
+            current.count++;
+        }
+        if (current.count > 0) pages.push(current);
+
+        // Footer diatur terpisah. Bila halaman terakhir sisa limitnya tidak muat dipasang footer,
+        // Buatkan satu page (lembar) kosong baru khusus hanya untuk mencetak Header dan Footer (Note) saja.
+        const lastPage = pages[pages.length - 1];
+        if (lastPage.height + footerHeight > CONTENT_HEIGHT_LIMIT) {
+            pages.push({ start: printRowsArr.length, count: 0, height: headerHeight });
+        }
+
+        return pages;
+    }
+
+    function buildPrintHeaderHtml(category, pageNum, totalPages) {
+        return `
+            <tr class="font-semibold">
+                <td colspan="8" rowspan="4" class="text-center" style="padding: 2px;">
+                    <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Logo" style="max-height: 40px; max-width: 100%; object-fit: contain;" />
+                </td>
+                <td rowspan="2" colspan="42" class="text-center text-medium">FORMULIR INTEGRASI</td>
+                <td colspan="4" class="text-small">No. Dok</td>
+                <td colspan="8" class="text-small text-center">PMLK3-MR-09/L3</td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="4" class="text-small">Revisi</td>
+                <td colspan="8" class="text-small text-center">03</td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="42" rowspan="2" class="text-center text-medium">CATATAN AUDIT (${category.toUpperCase()})</td>
+                <td colspan="4" class="text-small">Tanggal</td>
+                <td colspan="8" class="text-small text-center">20-May-2026</td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="4" class="text-small">Halaman</td>
+                <td colspan="8" class="text-small text-center">${pageNum} / ${totalPages}</td>
+            </tr>
+            <tr class="font-semibold bg-gray-50 text-small">
+                <td colspan="2" class="text-center">No.</td>
+                <td colspan="6" class="text-center">Klausul</td>
+                <td colspan="20" class="text-center">Pertanyaan</td>
+                <td colspan="34" class="text-center">CATATAN AUDIT</td>
+            </tr>
+        `;
+    }
+
+    function buildPrintMetaRowsHtml(category, kriteriaHtml, guidesArr, auditorName, auditeeName) {
+        const isSys = category === 'System' ? '■' : '□';
+        const isPro = category === 'Process' ? '■' : '□';
+        const isPrd = category === 'Product' ? '■' : '□';
+
+        const isChecked = (name) => guidesArr.includes(name) ? '■' : '□';
+        const defaultGuides = ['Customer Claim', 'Rejection', 'PQCC', 'CSR', 'Temuan audit', 'FMEA', 'Klausul ISO'];
+        const otherGuides = guidesArr.filter(g => !defaultGuides.includes(g));
+        const isLainChecked = otherGuides.length > 0 ? '■' : '□';
+        const textLain = otherGuides.length > 0 ? otherGuides.join(', ') : '........................';
+
+        const trimName = (n) => n && n !== '-' ? n.split(' ').slice(0, 2).join(' ') : '-';
+
+        return `
+            <tr class="font-semibold">
+                <td colspan="12" class="no-border-right td-dashed-y text-small">Tanggal Audit</td>
+                <td class="no-border-x text-center td-dashed-y text-small">:</td>
+                <td colspan="30" class="no-border-left td-dashed-y text-small">${tanggalAudit}</td>
+                <td colspan="10" class="text-center bg-gray-50">Auditor</td>
+                <td colspan="9" class="text-center bg-gray-50">Auditee</td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="12" class="no-border-right td-dashed-y text-small">Dept/Proses</td>
+                <td class="no-border-x text-center td-dashed-y text-small">:</td>
+                <td colspan="30" class="no-border-left td-dashed-y text-small">${deptName}</td>
+                <td colspan="10" rowspan="3" class="text-center align-bottom" style="height:55px; padding: 2px;">
+                    <div id="print-stamp-auditor-${category}" style="margin: 0 auto; min-height:40px;"></div>
+                </td>
+                <td colspan="9" rowspan="3" class="text-center align-bottom" style="height:55px; padding: 2px;">
+                    <div id="print-stamp-auditee-${category}" style="margin: 0 auto; min-height:40px;"></div>
+                </td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="12" class="no-border-right td-dashed-y text-small">Kriteria Audit</td>
+                <td class="no-border-x text-center td-dashed-y text-small">:</td>
+                <td colspan="30" class="no-border-left td-dashed-y text-small">${kriteriaHtml} *)</td>
+            </tr>
+            <tr class="font-semibold">
+                <td colspan="12" class="no-border-right td-dashed-y text-small">Jenis Audit</td>
+                <td class="no-border-x text-center td-dashed-y text-small">:</td>
+                <td colspan="30" class="no-border-left td-dashed-y text-small">${isSys} Sistem / ${isPro} Proses / ${isPrd} Produk</td>
+            </tr>
+            <tr class="font-semibold text-small">
+                <td colspan="43" style="border-right: none; border-bottom: none;" class="td-dashed-y"></td>
+                <td colspan="10" class="text-center" id="print-name-auditor-${category}">${trimName(auditorName)}</td>
+                <td colspan="9" class="text-center" id="print-name-auditee-${category}">${trimName(auditeeName)}</td>
+            </tr>
+
+            <tr class="font-semibold text-small">
+                <td colspan="62" style="border-bottom: none; padding-top: 15px;">Historical problem / panduan audit</td>
+            </tr>
+            <tr class="font-semibold text-small">
+                <td class="text-center" style="border-top: none; border-bottom: none; border-right: none;">${isChecked('Customer Claim')}</td>
+                <td colspan="9" style="border: none;">Customer Claim</td>
+                <td class="text-center" style="border: none;">${isChecked('Rejection')}</td>
+                <td colspan="6" style="border: none;">Rejection</td>
+                <td class="text-center" style="border: none;">${isChecked('PQCC')}</td>
+                <td colspan="7" style="border: none;">PQCC</td>
+                <td class="text-center" style="border: none;">${isChecked('CSR')}</td>
+                <td colspan="36" style="border-top: none; border-bottom: none; border-left: none;">CSR</td>
+            </tr>
+            <tr class="font-semibold text-small">
+                <td class="text-center" style="border-top: none; border-right: none;">${isChecked('Temuan audit')}</td>
+                <td colspan="9" style="border-top: none; border-left: none; border-right: none;">Temuan audit</td>
+                <td class="text-center" style="border-top: none; border-left: none; border-right: none;">${isChecked('FMEA')}</td>
+                <td colspan="6" style="border-top: none; border-left: none; border-right: none;">FMEA</td>
+                <td class="text-center" style="border-top: none; border-left: none; border-right: none;">${isChecked('Klausul ISO')}</td>
+                <td colspan="7" style="border-top: none; border-left: none; border-right: none;">Klausul ISO</td>
+                <td class="text-center" style="border-top: none; border-left: none; border-right: none;">${isLainChecked}</td>
+                <td colspan="36" style="border-top: none; border-left: none;">Lain-lain: ${textLain}</td>
+            </tr>
+        `;
+    }
+
+    function renderForms(data, guidesData, notesData, requestedType, standardsData) {
+        const tabsContainer = $('#tabsContainer');
+        const formsContainer = $('#formsContainer');
+        const printAllContainer = $('#printAllContainer');
+
+        tabsContainer.empty();
+        formsContainer.empty();
+        printAllContainer.empty();
+
+        const groupedData = {}; const groupedGuides = {}; const groupedNotes = {};
+        if(data) data.forEach(item => {
+            const cat = item.CategoryAudit && item.CategoryAudit !== "-" ? item.CategoryAudit : 'System';
+            if (!groupedData[cat]) groupedData[cat] = []; groupedData[cat].push(item);
+        });
+        if(guidesData) guidesData.forEach(g => {
+            const cat = g.CategoryAudit || 'System';
+            if (!groupedGuides[cat]) groupedGuides[cat] = []; groupedGuides[cat].push(g.GuideName);
+        });
+        if(notesData) notesData.forEach(n => {
+            const cat = n.CategoryAudit || 'System';
+            if (!groupedNotes[cat]) groupedNotes[cat] = []; groupedNotes[cat].push(n.Note);
+        });
+
+        const allCategories = new Set([...Object.keys(groupedData)]);
+        if (allCategories.size === 0) allCategories.add('System');
+
+        let tabsHtml = '';
+        let formsHtml = '';
+        let printAllHtmlCombined = '';
+
+        const categoriesToRender = requestedType === 'ALL' ? Array.from(allCategories) : [requestedType];
+        const kriteriaString = 'ISO 9001 : 2015 / IATF 16949 : 2016 / ISO 14001 : 2015 / ISO 45001 : 2018';
+
+        categoriesToRender.forEach((category, index) => {
+            const isActive = index === 0;
+            if(isActive) globalActiveTab = category;
+
+            const items = groupedData[category] || [];
+            const guides = groupedGuides[category] || [];
+            const generalNotes = groupedNotes[category] || [];
+
+            tabsHtml += `
+                <button onclick="switchTab('${category}')" id="tab-btn-${category}" class="tab-btn px-6 py-2 font-bold text-sm rounded-full transition-all duration-300 whitespace-nowrap border ${isActive ? 'bg-white text-blue-700 border-white shadow-md scale-105' : 'bg-white/20 text-white border-white/30 hover:bg-white/30 backdrop-blur-md'}">
+                    <i class="bi bi-file-earmark-text mr-1.5"></i> ${category}
+                </button>
+            `;
+
+            const isSys = category === 'System' ? 'checked' : '';
+            const isPro = category === 'Process' ? 'checked' : '';
+            const isPrd = category === 'Product' ? 'checked' : '';
+
+            const defaultGuides = ['Customer Claim', 'Rejection', 'PQCC', 'CSR', 'Temuan audit', 'FMEA', 'Klausul ISO'];
+            const isChecked = (name) => guides.includes(name) ? 'checked' : '';
+            const otherGuides = guides.filter(g => !defaultGuides.includes(g));
+            const isLainChecked = otherGuides.length > 0 ? 'checked' : '';
+            const textLain = otherGuides.length > 0 ? otherGuides.join(', ') : '........................';
+
+            let screenRowsHtml = '';
+            let printRowsArr = [];
+
+            const kriteriaHtmlScreen = renderAuditStandardsDynamic(kriteriaString, standardsData);
+            const kriteriaHtmlPrint = renderAuditStandardsPrint(kriteriaString, standardsData);
+
+            printRowsArr.push(buildPrintMetaRowsHtml(category, kriteriaHtmlPrint, guides, "-", "-"));
+
+            if (items.length === 0) {
+                screenRowsHtml = `<tr class="relative z-10 border-b-[1.5px] doc-border"><td colspan="4" class="p-8 text-center text-slate-500 italic">Tidak ada catatan temuan untuk kategori ini.</td></tr>`;
+                printRowsArr.push(`<tr><td colspan="62" class="text-center text-small font-semibold">Tidak ada catatan temuan.</td></tr>`);
+            } else {
+                items.forEach((item, idx) => {
+                    let detailHtml = ''; let printDetailHtml = '';
+                    if (item.Problem) {
+                        detailHtml += `<div class="mb-2"><span class="font-bold">Problem (Masalah):</span><br>${item.Problem}</div>`;
+                        printDetailHtml += `<b>Problem:</b> ${item.Problem}<br>`;
+                    }
+                    if (item.Location) {
+                        detailHtml += `<div class="mb-2"><span class="font-bold">Location (Lokasi):</span> ${item.Location}</div>`;
+                        printDetailHtml += `<b>Lokasi:</b> ${item.Location}<br>`;
+                    }
+                    if (item.Object) {
+                        detailHtml += `<div class="mb-2"><span class="font-bold">Object (Objek):</span> ${item.Object}</div>`;
+                        printDetailHtml += `<b>Objek:</b> ${item.Object}<br>`;
+                    }
+                    if (item.Reference) {
+                        detailHtml += `<div class="mb-2"><span class="font-bold">Reference (Referensi / Klausul):</span><br>${item.Reference}</div>`;
+                        printDetailHtml += `<b>Ref:</b> ${item.Reference}<br>`;
+                    }
+                    if (item.Note) {
+                        detailHtml += `<div class="mt-2 text-blue-800"><span class="font-bold italic">Detail:</span><br>${item.Note}</div>`;
+                        printDetailHtml += `<b>Detail:</b> ${item.Note}`;
+                    }
+
+                    screenRowsHtml += `
+                        <tr class="relative z-10 border-b-[1.5px] doc-border break-inside-avoid">
+                            <td class="border-r-[1.5px] doc-border p-2 text-center align-top">${idx + 1}</td>
+                            <td class="border-r-[1.5px] doc-border p-2 text-center align-top font-bold">${item.Clausul}</td>
+                            <td class="border-r-[1.5px] doc-border p-2 align-top text-justify">${item.Pertanyaan}</td>
+                            <td class="p-3 align-top text-justify">${detailHtml || '-'}</td>
+                        </tr>
+                    `;
+
+                    printRowsArr.push(`
+                        <tr>
+                            <td colspan="2" class="text-center align-top text-small">${idx + 1}</td>
+                            <td colspan="6" class="text-center align-top font-semibold text-small">${item.Clausul}</td>
+                            <td colspan="20" class="text-left align-top text-small">${item.Pertanyaan}</td>
+                            <td colspan="34" class="text-left align-top text-small">${printDetailHtml || '-'}</td>
+                        </tr>
+                    `);
+                });
+            }
+
+            let notesTextHtml = '';
+            let printFooterRowsHtml = '';
+
+            if (generalNotes && generalNotes.length > 0) {
+                notesTextHtml = `<div class="mb-2"><span class="font-bold italic">Kesimpulan:</span><br>${generalNotes.join('<br>')}</div>`;
+                printFooterRowsHtml += `
+                    <tr>
+                        <td colspan="62" class="text-left text-small align-top" style="padding: 10px;">
+                            <div style="font-weight: bold; font-style: italic; margin-bottom: 4px;">Kesimpulan:</div>
+                            <div>${generalNotes.join('<br>')}</div>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            printFooterRowsHtml += `
+                <tr>
+                    <td colspan="62" class="text-left text-small align-top" style="padding: 10px;">
+                        <div style="margin-bottom: 4px;">*) Coret yang tidak diperlukan</div>
+                        <div style="font-weight: bold; font-style: italic;">Note :</div>
+                        <ol style="padding-left: 16px; margin: 0; list-style-type: decimal;">
+                            <li>Beri tanda check list (√) pada jenis audit yang dilakukan ( Sistem & Proses ), sebagai bukti sudah dilakukan audit sistem & proses</li>
+                            <li>Isi & lengkapi kolom yang tertera pada kolom jenis audit untuk produk ( Type, Lot No & Q'ty ), sebagai bukti sudah dilakukan audit produk</li>
+                            <li>Beri tanda check list (√) pada historical problem, sebagai bukti bahwa sudah dilakukan audit internal berdasarkan item-item yang ada pada historical problem</li>
+                        </ol>
+                    </td>
+                </tr>
+            `;
+
+            let screenFooterHtml = `
+                <div class="p-3 text-[10px] border-t-[1.5px] doc-border bg-slate-50/50">
+                    ${notesTextHtml ? notesTextHtml + '<hr class="my-2 border-slate-300 doc-border">' : ''}
+                    <div class="mb-1">*) Coret yang tidak diperlukan</div>
+                    <div class="font-bold italic">Note :</div>
+                    <ol class="list-decimal pl-4 space-y-0 m-0">
+                        <li>Beri tanda check list (√) pada jenis audit yang dilakukan ( Sistem & Proses ), sebagai bukti sudah dilakukan audit sistem & proses</li>
+                        <li>Isi & lengkapi kolom yang tertera pada kolom jenis audit untuk produk ( Type, Lot No & Q'ty ), sebagai bukti sudah dilakukan audit produk</li>
+                        <li>Beri tanda check list (√) pada historical problem, sebagai bukti bahwa sudah dilakukan audit internal berdasarkan item-item yang ada pada historical problem</li>
+                    </ol>
+                </div>
+            `;
+
+            const canSignAuditor = eligibleAuditorCats.includes(category);
+            const canSignAsAuditee = eligibleAuditeeCats.includes(category);
+            const roleKeyA = "auditor"; const roleKeyE = "auditee";
+
+            const ttdAuditorScreen = canSignAuditor
+                ? `<div class="no-print absolute top-2 flex flex-col gap-1.5 w-[90%] z-10 action-btns-${category}-${roleKeyA}">
+                       <button type="button" onclick="executeSign('${category}', 'Auditor', 'Approved', this)" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                       <button type="button" onclick="executeSign('${category}', 'Auditor', 'Rejected', this)" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                   </div>
+                   <div class="h-[80px] w-full flex items-end justify-center" id="stamp-container-${roleKeyA}-${category}"></div>`
+                : `<div class="h-[80px] w-full flex items-end justify-center" id="stamp-container-${roleKeyA}-${category}"></div>`;
+
+            const ttdAuditeeScreen = canSignAsAuditee
+                ? `<div class="no-print absolute top-2 flex flex-col gap-1.5 w-[90%] z-10 action-btns-${category}-${roleKeyE}">
+                       <button type="button" onclick="executeSign('${category}', 'Auditee', 'Approved', this)" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                       <button type="button" onclick="executeSign('${category}', 'Auditee', 'Rejected', this)" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                   </div>
+                   <div class="h-[80px] w-full flex items-end justify-center" id="stamp-container-${roleKeyE}-${category}"></div>`
+                : `<div class="h-[80px] w-full flex items-end justify-center" id="stamp-container-${roleKeyE}-${category}"></div>`;
+
+            const dummyHeader = buildPrintHeaderHtml(category, 1, 1);
+            const pages = paginatePrintRows(printRowsArr, dummyHeader, printFooterRowsHtml);
+
+            pages.forEach((pg, pIdx) => {
+                const pageNum = pIdx + 1;
+                const isLastPage = pageNum === pages.length;
+                const rowsBlock = printRowsArr.slice(pg.start, pg.start + pg.count).join('');
+
+                printAllHtmlCombined += `
+                    <div class="a4-landscape-page">
+                        <table class="print-table">
+                            <colgroup><col span="62" style="width: 1.61%;" /></colgroup>
+                            <thead>
+                                ${buildPrintHeaderHtml(category, pageNum, pages.length)}
+                            </thead>
+                            <tbody>
+                                ${rowsBlock}
+                                ${isLastPage ? printFooterRowsHtml : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+
+            formsHtml += `
+                <div id="tab-content-${category}" class="tab-content ${isActive ? 'active' : ''}">
+                    <div class="screen-only-doc">
+                        <div class="border-[1.5px] doc-border flex flex-col">
+                            <div class="flex border-b-[1.5px] doc-border">
+                                <div class="w-[15%] border-r-[1.5px] doc-border flex justify-center items-center p-2">
+                                    <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Niterra-Logo" style="max-width: 100%; object-fit: contain;" />
+                                </div>
+                                <div class="w-[60%] border-r-[1.5px] doc-border flex flex-col">
+                                    <div class="flex-1 flex items-center justify-center border-b-[1.5px] doc-border font-semibold text-sm tracking-wide">FORMULIR INTEGRASI</div>
+                                    <div class="flex-1 flex items-center justify-center font-bold text-base tracking-wide uppercase">CATATAN AUDIT</div>
+                                </div>
+                                <div class="w-[25%] flex flex-col text-xs">
+                                    <div class="flex border-b-[1.5px] doc-border"><div class="w-1/3 border-r-[1.5px] doc-border p-1.5">No. Dok</div><div class="w-2/3 p-1.5 font-medium">PMLK3-MR-09/L3</div></div>
+                                    <div class="flex border-b-[1.5px] doc-border"><div class="w-1/3 border-r-[1.5px] doc-border p-1.5">Revisi</div><div class="w-2/3 p-1.5 font-medium">03</div></div>
+                                    <div class="flex border-b-[1.5px] doc-border"><div class="w-1/3 border-r-[1.5px] doc-border p-1.5">Tanggal</div><div class="w-2/3 p-1.5 font-medium">20-May-26</div></div>
+                                    <div class="flex"><div class="w-1/3 border-r-[1.5px] doc-border p-1.5">Halaman</div><div class="w-2/3 p-1.5 font-medium text-center">1/1</div></div>
+                                </div>
+                            </div>
+                            <div class="flex border-b-[1.5px] doc-border">
+                                <div class="w-[75%] border-r-[1.5px] doc-border p-2 flex flex-col gap-1.5">
+                                    <div class="flex"><div class="w-[120px]">Tanggal Audit</div><div class="w-4">:</div><div class="flex-1 font-medium">${tanggalAudit}</div></div>
+                                    <div class="flex"><div class="w-[120px]">Dept / Proses</div><div class="w-4">:</div><div class="flex-1 font-medium">${deptName}</div></div>
+                                    <div class="flex"><div class="w-[120px]">Kriteria audit</div><div class="w-4">:</div><div class="flex-1 font-medium">${kriteriaHtmlScreen} *)</div></div>
+                                    <div class="flex items-center"><div class="w-[120px]">Jenis Audit</div><div class="w-4">:</div>
+                                        <div class="flex-1 flex gap-4 font-bold italic">
+                                            <label class="pointer-events-none ${isSys ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isSys} class="mr-1 accent-blue-800" tabindex="-1"> Sistem</label> /
+                                            <label class="pointer-events-none ${isPro ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isPro} class="mr-1 accent-blue-800" tabindex="-1"> Proses</label> /
+                                            <label class="pointer-events-none ${isPrd ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isPrd} class="mr-1 accent-blue-800" tabindex="-1"> Produk</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-[25%] flex flex-col">
+                                    <div class="flex text-center border-b-[1.5px] doc-border">
+                                        <div class="w-1/2 border-r-[1.5px] doc-border p-1 bg-gray-50">Auditor</div>
+                                        <div class="w-1/2 p-1 bg-gray-50">Auditee</div>
+                                    </div>
+                                    <div class="flex flex-1 relative min-h-[100px]">
+                                        <div class="w-1/2 border-r-[1.5px] doc-border relative flex flex-col justify-end items-center pb-1">
+                                            ${ttdAuditorScreen}
+                                            <div class="text-[10px] text-center px-1 break-words font-medium z-10" id="name-lbl-auditor-${category}">-</div>
+                                        </div>
+                                        <div class="w-1/2 relative flex flex-col justify-end items-center pb-1">
+                                            ${ttdAuditeeScreen}
+                                            <div class="text-[10px] text-center px-1 break-words font-medium z-10" id="name-lbl-auditee-${category}">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border-b-[1.5px] doc-border p-2">
+                                <div class="font-bold italic mb-1.5">Historical problem / panduan audit</div>
+                                <div class="flex flex-wrap gap-x-6 gap-y-2 text-xs font-bold italic">
+                                    <label class="pointer-events-none ${isChecked('Customer Claim') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('Customer Claim')} class="mr-1 accent-blue-800"> Customer Claim</label>
+                                    <label class="pointer-events-none ${isChecked('Rejection') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('Rejection')} class="mr-1 accent-blue-800"> Rejection</label>
+                                    <label class="pointer-events-none ${isChecked('PQCC') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('PQCC')} class="mr-1 accent-blue-800"> PQCC</label>
+                                    <label class="pointer-events-none ${isChecked('CSR') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('CSR')} class="mr-1 accent-blue-800"> CSR</label>
+                                    <label class="pointer-events-none ${isChecked('Temuan audit') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('Temuan audit')} class="mr-1 accent-blue-800"> Temuan audit</label>
+                                    <label class="pointer-events-none ${isChecked('FMEA') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('FMEA')} class="mr-1 accent-blue-800"> FMEA</label>
+                                    <label class="pointer-events-none ${isChecked('Klausul ISO') ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isChecked('Klausul ISO')} class="mr-1 accent-blue-800"> Klausul ISO</label>
+                                    <label class="pointer-events-none ${isLainChecked ? 'text-gray-900' : 'text-gray-400 line-through opacity-60'}"><input type="checkbox" ${isLainChecked} class="mr-1 accent-blue-800"> Lain-lain: ${textLain}</label>
+                                </div>
+                            </div>
+                            <table class="w-full text-left border-collapse">
+                                <thead class="text-center">
+                                    <tr class="border-b-[1.5px] doc-border bg-slate-50/50">
+                                        <th class="w-[5%] border-r-[1.5px] doc-border p-2 font-normal">No.</th>
+                                        <th class="w-[15%] border-r-[1.5px] doc-border p-2 font-normal">Klausul</th>
+                                        <th class="w-[30%] border-r-[1.5px] doc-border p-2 font-normal">Pertanyaan</th>
+                                        <th class="w-[50%] p-2 font-normal">CATATAN AUDIT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${screenRowsHtml}</tbody>
+                            </table>
+                            ${screenFooterHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        tabsContainer.html(tabsHtml);
+        formsContainer.html(formsHtml);
+
+        printAllContainer.html(printAllHtmlCombined);
+    }
+
+    function switchTab(category) {
+        $('.tab-content').removeClass('active');
+        $('.tab-btn').removeClass('bg-white text-blue-700 border-white shadow-md scale-105').addClass('bg-white/20 text-white border-white/30 backdrop-blur-md');
+        $(`#tab-content-${category}`).addClass('active');
+        $(`#tab-btn-${category}`).removeClass('bg-white/20 text-white border-white/30 backdrop-blur-md').addClass('bg-white text-blue-700 border-white shadow-md scale-105');
+        globalActiveTab = category;
+    }
+
+    function executeSign(category, role, status, btnElement) {
+        const isApprove = status === 'Approved';
+        Swal.fire({
+            title: isApprove ? `Approve Form ${category}?` : `Reject Form ${category}?`,
+            text: `Anda akan menandatangani sebagai ${role} dengan status ${status.toUpperCase()}.`,
+            icon: isApprove ? 'question' : 'warning',
+            showCancelButton: true,
+            confirmButtonColor: isApprove ? '#10b981' : '#e11d48',
+            confirmButtonText: isApprove ? 'Ya, Approve' : 'Ya, Reject'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const payload = {
+                    audit_event_stakeholder_id: globalStakeholderId,
+                    category_recap: `Catatan Audit (${category})`,
+                    recap_sign_role: role,
+                    recap_sign_status: status
+                };
+
+                $.ajax({
+                    url: '@Url.Action("UpsertApprovalRecapAudit", "EAudit")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function(res) {
+                        if (res.success) {
+                            $(btnElement).parent().hide();
+                            const dateObj = new Date();
+                            const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+                            const htmlCap = isApprove
+                                ? `<div class="stamp-circle stamp-approved-circle"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`
+                                : `<div class="stamp-circle stamp-rejected-circle"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+
+                            $(`#stamp-container-${role.toLowerCase()}-${category}`).html(htmlCap);
+                            $(`#name-lbl-${role.toLowerCase()}-${category}`).text(currentUserName).addClass("font-bold text-slate-900");
+
+                            $(`#print-stamp-${role.toLowerCase()}-${category}`).html(htmlCap);
+                            $(`#print-name-${role.toLowerCase()}-${category}`).text(currentUserName);
+
+                            Swal.fire({ title: 'Berhasil!', icon: 'success', timer: 1500, showConfirmButton: false });
+                        } else {
+                            Swal.fire('Gagal', res.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function renderExistingVerificationStamp(category, role, status, dateStr, signerName) {
+        if (!status) return;
+        const roleKey = role.toLowerCase();
+        $(`.action-btns-${category}-${roleKey}`).hide();
+
+        let dateObj = new Date();
+        if (dateStr) {
+            let timestamp = parseInt(dateStr.replace(/\/Date\((\d+)\)\//, '$1'));
+            if (!isNaN(timestamp)) dateObj = new Date(timestamp);
+        }
+        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+        const htmlCap = status.toLowerCase() === 'approved'
+            ? `<div class="stamp-circle stamp-approved-circle"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`
+            : `<div class="stamp-circle stamp-rejected-circle"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+
+        $(`#stamp-container-${roleKey}-${category}`).html(htmlCap);
+        $(`#name-lbl-${roleKey}-${category}`).text(signerName).addClass("font-bold text-slate-900");
+
+        $(`#print-stamp-${roleKey}-${category}`).html(htmlCap);
+        $(`#print-name-${roleKey}-${category}`).text(signerName);
+    }
+
+    function printReport() {
+        $('#printAllContainer').printThis({
+            importCSS: true,
+            importStyle: true,
+            printContainer: true,
+            pageTitle: "Form Catatan Audit",
+            removeInline: false
+        });
+    }
+
+    function exportExcel() {
+        if (!globalStakeholderId) {
+            Swal.fire('Error', 'ID Stakeholder tidak ditemukan di URL.', 'error');
+            return;
+        }
+
+        $('#loadingOverlay').fadeIn();
+        window.location.href = '@Url.Action("ExportExcelCatatanAudit", "EAudit")' + '?id=' + globalStakeholderId;
+
+        setTimeout(() => {
+            $('#loadingOverlay').fadeOut();
+        }, 1500);
+    }
+    function openReminderModal() {
+    const modal = document.getElementById('reminderModal');
+    modal.classList.remove('hidden');
+}
+
+function closeReminderModal() {
+    const modal = document.getElementById('reminderModal');
+    modal.classList.add('hidden');
+
+    // Reset form saat ditutup
+    document.getElementById('reminderMessage').value = "";
+    const checkboxes = document.querySelectorAll('input[name="reminderUsers"]');
+    checkboxes.forEach(cb => cb.checked = false);
+}
+
+function processReminder(jenisReminder, docId) {
+    // 1. Tutup modal terlebih dahulu agar layar fokus ke loading alert
+    
+
+    // 2. Ambil semua checkbox yang dicentang
+    const selectedCheckboxes = document.querySelectorAll('input[name="reminderUsers"]:checked');
+    const selectedEmails = Array.from(selectedCheckboxes).map(cb => cb.value);
+    const message = document.getElementById('reminderMessage').value;
+
+    // 3. Validasi: pastikan user sudah dipilih minimal 1
+    if (selectedEmails.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Penerima Kosong',
+            text: 'Silakan pilih minimal satu penerima (Auditee atau Auditor).',
+            confirmButtonColor: '#0f766e'
+        }).then(() => {
+            // Buka kembali modal jika validasi gagal
+            openReminderModal();
+        });
+        return;
+    }
+
+    closeReminderModal();
+    // 4. Tampilkan loading (menunggu respon server)
+    Swal.fire({
+        title: 'Mengirim Reminder...',
+        text: 'Mohon tunggu sebentar, email sedang dikirim.',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    // 5. Setup data (payload) yang akan dikirim ke Controller
+    const payload = {
+        emails: selectedEmails,
+        message: message,
+        id: docId,
+        jenisReminder: jenisReminder
+    };
+
+    // 6. Eksekusi AJAX ke Backend (Menggunakan Razor Url.Action)
+    $.ajax({
+        url: '@Url.Action("SendReminderEmail", "EAudit")', // URL Dinamis Razor
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload),
+        success: function (response) {
+            if (response.status === "success") {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: response.message,
+                    confirmButtonColor: '#0f766e'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: response.message,
+                    confirmButtonColor: '#dc2626'
+                });
+            }
+        },
+        error: function () {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error Koneksi',
+                text: 'Terjadi kesalahan saat menghubungi server untuk mengirim email.',
+                confirmButtonColor: '#dc2626'
+            });
+        }
+    });
+}
+</script>

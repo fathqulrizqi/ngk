@@ -1,0 +1,248 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "List";
+    ViewBag.SideMenuHeader = "Service Request";
+    var currUser = (ClaimsIdentity)User.Identity;
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/IT/ServiceRequest.css?v=" + DateTime.Now.TimeOfDay)" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-reflow.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/IT/ServiceRequest.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartial")
+}
+<!-- Modal -->
+<div id="srModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form action="@Url.Action("insertList","ServiceRequest",new { area = "IT" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add Service Request</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label for="selUserName" class="col-form-label col-3 text-right font-weight-bold">Name</label>
+                        <div class="col-9">
+                            <select id="selUserName" class="form-control @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "select2")" name="iUserID" data-placeholder="Pilih UserName" required>
+                                @foreach (var item in ViewBag.Users)
+                                {
+                                    <option value="@(item.NIK)" @( item.NIK == currUser.GetUserId() ? "selected" : "" )>@(item.Name)</option>
+                                }
+                            </select>
+                            <span id="spanUserName" class="@(currUser.FindFirst("deptID").Value == "07" ? "d-none": "")">@(currUser.Name)</span>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-form-label col-3 text-right font-weight-bold">Section</label>
+                        <div class="col-9">
+                            <span id="issuedSection">@(currUser.FindFirst("Dept").Value)</span>
+                            <input id="hfSectionID" type="hidden" name="iSectionID" value="@(currUser.FindFirst("deptID").Value)" />
+                        </div>
+                    </div>
+                    <div class="form-group row @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "")">
+                        <label class="col-form-label col-3 text-right font-weight-bold">Report Via</label>
+                        <div class="col-9">
+                            <div class="radio">
+                                @foreach (var item in ViewBag.ReportVia)
+                                {
+                                    <label><input class="rbVia" type="radio" name="iVia" value="@(item.id)" required @( currUser.FindFirst("deptID").Value != "07" ? (item.id == 4 ? "checked" : "") : "" )>@(item.Name)</label>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-form-label col-3 text-right font-weight-bold">Detail Problem</label>
+                        <div class="col-9">
+                            <textarea id="txtDetail" name="iDetail" class="form-control" rows="5" placeholder="Sampaikan Detail Permasalahan" required></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "")">
+                        <label class="col-form-label col-3 text-right font-weight-bold">Category</label>
+                        <div class="col-9">
+                            <div class="radio">
+                                @foreach (var item in ViewBag.Categories)
+                                {
+                                    <label><input class="rbCat" type="radio" name="iCategory" value="@(item.id)" @(currUser.FindFirst("deptID").Value != "07" ? "": "required")>@(item.Name)</label>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-form-label col-3 text-right font-weight-bold">IT Member</label>
+                        <div class="col-9">
+                            <select id="selITStaff" class="select2 form-control" name="iITStaff[]" data-placeholder="Pilih Member" multiple required>
+                                @foreach (var item in ViewBag.IT_Staff)
+                                {
+                                    <option value="@(item.NIK)">@(item.Name.Trim())</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "")">
+                        <label class="col-form-label col-3 text-right font-weight-bold">Action</label>
+                        <div class="col-9">
+                            <textarea id="txtAction" name="iAction" class="form-control" rows="5" placeholder="Detail Action Dari IT"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "")">
+                        <label class="col-form-label col-3 text-right font-weight-bold">JobStart</label>
+                        <div class="col-9 row">
+                            <div class="col-6">
+                                <input type="text" id="txtJobStartDate" name="iJobStartDate" class="form-control" rows="5" placeholder="Job Start Date" />
+                            </div>
+                            <div class="col-6">
+                                <input type="text" id="txtJobStartTime" name="iJobStartTime" class="form-control" rows="5" placeholder="Job Start Time" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group row @(currUser.FindFirst("deptID").Value != "07" ? "d-none": "")">
+                        <label class="col-form-label col-3 text-right font-weight-bold">JobEnd</label>
+                        <div class="col-9 row">
+                            <div class="col-6">
+                                <input type="text" id="txtJobEndDate" name="iJobEndDate" class="form-control" rows="5" placeholder="Job End Date" />
+                            </div>
+                            <div class="col-6">
+                                <input type="text" id="txtJobEndTime" name="iJobEndTime" class="form-control" rows="5" placeholder="Job End Time" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnSRSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button id="btnSREdit" type="button" class="btn btn-default">Edit</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<table id="srListTable" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="11" class="sorter-false">
+                <h2 class="table-title">Service Request List<img class="pointer" src="@Url.Content("~/Content/Images/add-white.png")" width="55" height="55" data-toggle="modal" data-target="#srModal" /></h2>
+            </th>
+        </tr>
+        <tr>
+            <th>Issued Date</th>
+            <th>Issued By</th>
+            <th class="filter-select" data-placeholder="Select Category">Category</th>
+            <th>Detail</th>
+            <th>IT Remark</th>
+            <th class="filter-select" data-placeholder="Select Member">Action By</th>
+            <th>Action Start</th>
+            <th>Action End</th>
+            <th>Rate</th>
+            <th class="filter-select" data-placeholder="Select Status">Status</th>
+            <th class="sorter-false filter-false"></th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="11">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+
+        @foreach (var item in ViewBag.SRList)
+        {
+            <tr data-issuedby="@(item.IssuedBy)" data-userlogin="@(currUser.GetUserId())">
+                <td>@(item.IssuedDate.ToString("dd-MMM-yyyy"))</td>
+                <td>@(item.UsersIssuedFor.Name)</td>
+                <td>@(item.CategoryID == null ? "" : item.IT_Service_Request_Categories.Name)</td>
+                <td>@(item.Detail)</td>
+                <td>@(item.Action)</td>
+                <td data-actionbyid="@(item.ActionBy)">@(item.UsersActionBy?.Name)</td>
+                <td>
+                    <span class="srJobstart">@(item.JobStart != null ? item.JobStart.ToString("dd-MMM-yyyy HH:mm") : "")</span><br />
+                    <span class="srStart fa fa-edit" style="@(currUser.FindFirst("deptID").Value == "07" && (item.JobStart == null || item.StatusID == 2 || item.StatusID == 4) ?"":"display:none;")">Start</span>
+                    <span class="srHold fa fa-edit" style="@(currUser.FindFirst("deptID").Value == "07" && (item.JobStart != null || item.StatusID == 3) && item.StatusID != 4 && item.StatusID != 5?"":"display:none;")">Hold</span>
+                </td>
+                <td>
+                    <span class="srJobend">@(item.JobEnd != null ? item.JobEnd.ToString("dd-MMM-yyyy HH:mm") : "")</span>
+                    <span class="srDone fa fa-edit" style="display:inline-block; @(item.JobStart != null && (currUser.GetUserId() == item.IssuedFor || currUser.FindFirst("deptID").Value == "07") && item.StatusID != 5 ?"":"display:none;")" data-toggle="modal" data-target="#srDoneModal">Done</span>
+                </td>
+                <td class="rateColumn text-nowrap">
+                    <span class="srRate d-none">@(item.Rate)</span>
+                    <input id="hfData" type="hidden" data-rate="@(item.Rate)" data-ratedate="@(item.RateDate == null ? DateTime.Now.ToString("yyyyMMdd") : item.RateDate.ToString("yyyyMMdd"))" data-requserid="@(item.IssuedFor)" data-requsername="@(item.UsersIssuedFor.Name)"
+                           data-loggeduserid="@(currUser.GetUserId())" data-loggedsectionid="@(currUser.FindFirst("deptID").Value)" data-id="@(item.id)" data-section="@(item.Departments?.Name)" data-sectionid="@(item.DeptID)"
+                           data-categoryid="@(item.CategoryID)" data-reportid="@(item.ReportID)" data-statusid="@(item.StatusID)" data-comment="@(item.Comment)" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srRate" data-rate="1" data-disabled="@(item.StatusID > 1?"false":"true")" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srRate" data-rate="2" data-disabled="@(item.StatusID > 1?"false":"true")" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srRate" data-rate="3" data-disabled="@(item.StatusID > 1?"false":"true")" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srRate" data-rate="4" data-disabled="@(item.StatusID > 1?"false":"true")" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srRate" data-rate="5" data-disabled="@(item.StatusID > 1?"false":"true")" />
+                </td>
+                <td>@(item.IT_Service_Request_Status.Name)</td>
+                <td class="text-left">
+                    @if (item.JobStart == null && (currUser.GetUserId() == item.IssuedFor || currUser.GetUserId() == item.IssuedBy) || (currUser.GetUserId() == item.ActionBy))
+                    {
+                        <span class="srEdit fa fa-edit">Edit</span><br />
+                        <span class="srCancel fa fa-ban" style="@(item.StatusID == 1 && currUser.GetUserId() == item.IssuedFor || currUser.FindFirst("deptID").Value == "07" ? "display:none;" :"")">Cancel</span>
+                        <span class="srContinue fa fa-repeat" style="@(item.StatusID != 1 && currUser.GetUserId() == item.IssuedFor || currUser.FindFirst("deptID").Value == "07" ? "display:none;" :"")">ReSend</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="srDoneModal" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-sm">
+        <!-- Modal content-->
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Comments & Rate</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <textarea id="txtComment" rows="4" class="form-control" placeholder="Insert Your Comments" required></textarea>
+                <br />
+                <input id="hfDoneRate" type="hidden" required />
+                <div id="srRateWrap" style="display:inline-block;padding:5px;">
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srDoneRate" data-rate="1" data-disabled="false" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srDoneRate" data-rate="2" data-disabled="false" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srDoneRate" data-rate="3" data-disabled="false" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srDoneRate" data-rate="4" data-disabled="false" />
+                    <img src="@Url.Content("~/Content/Images/grey-star.png")" class="rateStar srDoneRate" data-rate="5" data-disabled="false" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btnDone" type="button" class="btn btn-default">Submit</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

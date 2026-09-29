@@ -1,0 +1,1654 @@
+﻿@model NGKBusi.Areas.Purchasing.Models.Purchasing_BAST
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    bool isCreate = (Model == null || Model.id == 0);
+    ViewBag.Title = isCreate ? "Create BAST" : "Detail BAST";
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.32/dist/sweetalert2.min.css" rel="stylesheet">
+    <link href="@Url.Content("~/Scripts/comment/css/jquery-comments.css")" rel="stylesheet" type="text/css" />
+
+    <style>
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+            min-height: 100vh;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+
+        /* Select2 Tailwind Override */
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.5rem !important;
+            padding: 0.25rem 0.5rem !important;
+            outline: none !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px !important;
+            right: 8px !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 28px !important;
+            color: #374151 !important;
+        }
+
+        .select2-container--disabled .select2-selection--single {
+            background-color: #f9fafb !important;
+            cursor: not-allowed !important;
+        }
+
+        .select2-results__option {
+            white-space: normal !important;
+            word-wrap: break-word;
+        }
+
+        /* 2. Membuat kotak Select2 bisa membesar ke bawah menyesuaikan teks yang di-wrap */
+        .select2-container .select2-selection--single {
+            height: auto !important;
+            min-height: 42px; /* Sesuaikan dengan tinggi input lainnya */
+            display: flex;
+            align-items: center;
+        }
+
+            /* 3. Membuat teks yang terpilih (yang tampil di kotak) menjadi wrap */
+            .select2-container .select2-selection--single .select2-selection__rendered {
+                white-space: normal !important;
+                word-wrap: break-word;
+                line-height: normal !important;
+                padding-top: 8px;
+                padding-bottom: 8px;
+            }
+    </style>
+}
+
+<div class="px-4 py-6 max-w-7xl mx-auto relative">
+
+    @if (!isCreate)
+    {
+    <!-- Floating Bar: Unsaved Changes Indicator -->
+    <div id="unsavedChangesBar" class="hidden sticky top-4 z-50 mb-6 bg-amber-500 text-white px-6 py-3.5 rounded-xl shadow-xl border border-amber-400 flex items-center justify-between transition-all duration-300">
+        <div class="flex items-center space-x-3">
+            <i class="fas fa-exclamation-circle text-xl animate-pulse"></i>
+            <div>
+                <p class="font-bold text-sm">You have unsaved changes</p>
+                <p class="text-xs text-amber-100">Don't forget to save your changes before leaving this page.</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button type="button" id="btnResetChanges" class="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg transition-colors">
+                Discard
+            </button>
+            <button type="button" id="btnTriggerSave" class="px-5 py-1.5 bg-white text-amber-600 hover:bg-amber-50 text-xs font-bold rounded-lg shadow transition-colors flex items-center">
+                <i class="fas fa-save mr-1.5"></i> Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Breadcrumb -->
+    <nav class="flex mb-4 text-gray-200 text-sm font-medium space-x-2 items-center" aria-label="Breadcrumb">
+        <a href="@Url.Action("Index", "BAST", new { area = "Purchasing" })" class="hover:text-white transition-colors flex items-center">
+            <i class="fas fa-list-alt mr-1.5"></i> BAST List
+        </a>
+        <span class="text-gray-300">/</span>
+        <span class="text-yellow-300 font-semibold truncate">@Model.bast_number</span>
+    </nav>
+
+    <!-- Header -->
+    <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+            <h2 class="text-2xl text-gray-50 font-bold">BAST Detail: @Model.bast_number</h2>
+        </div>
+        <div>
+            <span class="px-4 py-1.5 rounded-full text-sm font-semibold bg-gray-100 text-gray-700 border border-gray-300">
+                Status: @Model.status
+            </span>
+        </div>
+    </div>
+    }
+    else
+    {
+    <!-- Header: Create Mode -->
+    <div class="mb-6 flex items-center space-x-3">
+        <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+        <h2 class="text-2xl text-gray-50 font-bold">Create New BAST</h2>
+    </div>
+    }
+
+    <!-- Main Form Container -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+        <form id="formBAST" enctype="multipart/form-data" class="p-6">
+            @Html.AntiForgeryToken()
+            <input type="hidden" id="id" name="id" value="@Model.id" />
+            @if (!isCreate)
+            {
+            <input type="hidden" id="bast_number" name="bast_number" value="@Model.bast_number" />
+            }
+
+            <!-- Section 1: BAST Information -->
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b"><i class="fas fa-info-circle mr-2 text-orange-500"></i> BAST Information</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Title -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Title <span class="text-red-500">*</span></label>
+                    <input type="text" placeholder="Input Title" id="title" name="title" value="@Model.title" class="@(isCreate ? "" : "track-change ")w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors" @(isCreate ? "" : "required") />
+                </div>
+
+                <!-- Due Date -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                    <input type="date" id="due_date" name="due_date" value="@(Model.due_date.HasValue ? Model.due_date.Value.ToString("yyyy-MM-dd") : "")" class="@(isCreate ? "" : "track-change ")w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors" @(isCreate ? "" : "required") />
+                </div>
+
+                <!-- Vendor Dropdown -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+                    <select id="vendor_id" name="vendor_id" class="@(isCreate ? "" : "track-change ")w-full select2-input">
+                        <option value="">-- Select a Vendor --</option>
+                        @if (ViewBag.vendorList != null)
+                        {
+                            foreach (var data in ViewBag.vendorList)
+                            {
+                                bool isSelected = (data.ACCOUNTNUM == Model.vendor_id);
+                                <option value="@data.ACCOUNTNUM" data-name="@data.Name" @(isSelected ? "selected=\"selected\"" : "")>
+                                    @(data.ACCOUNTNUM + " | " + data.Name)
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <!-- WO Dropdown -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Working Number Reference</label>
+                    <select id="wo_id" name="wo_id" class="@(isCreate ? "" : "track-change ")w-full select2-input">
+                        <option value="">-- Select Working Order Number --</option>
+                        @if (ViewBag.woNumberList != null)
+                        {
+                            foreach (var data in ViewBag.woNumberList)
+                            {
+                                bool isSelected = (data.Number == Model.wo_number);
+                                <option value="@data.Number" data-desc="@data.Subject" @(isSelected ? "selected=\"selected\"" : "")>
+                                    @(data.Number + " | " + data.Subject)
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="description" placeholder="Input Description" name="description" rows="4" class="@(isCreate ? "" : "track-change ")w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors" @(isCreate ? "" : "required")>@Model.description</textarea>
+                </div>
+
+                <!-- Budget Dropdown (Full Width) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Budget</label>
+                    <select id="budget_id" name="budget_id" class="@(isCreate ? "" : "track-change ")w-full select2-input">
+                        <option value="">-- Select a Budget --</option>
+                        @if (ViewBag.budgetList != null)
+                        {
+                            foreach (var data in ViewBag.budgetList)
+                            {
+                                bool isSelected = (data.Budget_No == Model.budget_no);
+                                <option value="@data.Budget_No" data-name="@data.COA_Name" data-section="@data.Section_To_Name" @(isSelected ? "selected=\"selected\"" : "")>
+                                    @(data.Budget_No + " | " + data.COA_Name + " | " + data.Section_To_Name)
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+            </div>
+
+            @if (!isCreate)
+            {
+            <!-- Section 2: Files Before Approval -->
+            <button type="button" class="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-700 mb-4 pb-2 border-b hover:text-blue-600 transition-colors focus:outline-none toggle-section" data-target="#sectionBeforeContent" data-icon="#iconBefore">
+                <span><i class="fas fa-file-pdf mr-2 text-blue-500"></i> Original BAST Files (Before)</span>
+                <i id="iconBefore" class="fas fa-chevron-up transition-transform duration-300"></i>
+            </button>
+
+            <div id="sectionBeforeContent" class="mb-8 origin-top">
+                <div class="mb-4 input-file-area">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add New PDF Files</label>
+                    <input type="file" id="bastFiles" name="files" multiple accept="application/pdf" class="track-change block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition-all cursor-pointer border border-gray-200 rounded-lg p-1" />
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[800px] border border-gray-200 rounded-lg bg-gray-50 p-2">
+                    <div class="lg:col-span-1 bg-white border border-gray-200 rounded-lg p-3 flex flex-col h-full">
+                        <h4 class="text-sm font-semibold text-gray-600 mb-3">Attachment Files</h4>
+                        <div id="existingFileListContainer" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                            <div class="text-center text-gray-400 text-sm mt-10">
+                                <i class="fas fa-spinner fa-spin text-3xl mb-2"></i>
+                                <p>Loading files...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg h-full overflow-hidden relative">
+                        <div id="existingPreviewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                            <i class="fas fa-eye text-4xl mb-3"></i>
+                            <p class="text-sm">Select a file to preview</p>
+                        </div>
+                        <iframe id="existingPdfPreviewFrame" class="w-full h-full hidden rounded-lg border-0"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Upload After Approval -->
+            <button type="button" id="btnToggleAfter" disabled class="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-400 mb-4 pb-2 border-b cursor-not-allowed transition-colors focus:outline-none toggle-section" data-target="#sectionAfterContent" data-icon="#iconAfter">
+                <span><i id="iconUploadHeader" class="fas fa-upload mr-2 text-gray-400"></i> Upload Signed BAST (After Approval)</span>
+                <i id="iconAfter" class="fas fa-chevron-down transition-transform duration-300"></i>
+            </button>
+
+            <div id="sectionAfterContent" class="hidden origin-top">
+                <div class="mb-4 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg flex items-start text-sm shadow-sm">
+                    <i class="fas fa-info-circle mt-0.5 mr-3 text-blue-500 text-lg"></i>
+                    <div>
+                        <p class="font-semibold">Upload Information</p>
+                        <p class="text-blue-600 text-xs mt-0.5">The <strong>Creator</strong> is responsible for uploading the final signed BAST document in this section.</p>
+                    </div>
+                </div>
+                <div id="uploadSignedFileContainer" class="mb-4">
+                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Add Signed PDF Files</label>
+                    <input type="file" id="bastAfterFiles" name="after_files" multiple accept="application/pdf" class="track-change block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 transition-all cursor-pointer border border-gray-200 rounded-lg p-1" />
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[800px] border border-gray-200 rounded-lg bg-gray-50 p-2">
+                    <div class="lg:col-span-1 bg-white border border-gray-200 rounded-lg p-3 flex flex-col h-full">
+                        <h4 class="text-sm font-semibold text-gray-600 mb-3">Attachment Files</h4>
+                        <div id="afterFileListContainer" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                            <div class="text-center text-gray-400 text-sm mt-10">
+                                <i class="fas fa-file-upload text-3xl mb-2"></i>
+                                <p>No signed files selected</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg h-full overflow-hidden relative">
+                        <div id="afterPreviewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                            <i class="fas fa-eye text-4xl mb-3"></i>
+                            <p class="text-sm">Select a file to preview</p>
+                        </div>
+                        <iframe id="afterPdfPreviewFrame" class="w-full h-full hidden rounded-lg border-0"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Approval Status Board -->
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b mt-8"><i class="fas fa-file-signature mr-2 text-indigo-500"></i> Approval Status</h3>
+
+            <!-- Routing Dropdowns (Disembunyikan saat Locked) -->
+        <div id="routingSection" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Final Approver</label>
+                <select id="final_approver_id" name="final_approver_id" class="track-change w-full select2-user">
+                    <option value="">-- Select Final Approver --</option>
+                    @if (ViewBag.userList != null)
+                    {
+                        foreach (var user in ViewBag.userList)
+                        {
+                            <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Approver</label>
+                <select id="approver_id" name="approver_id" class="track-change w-full select2-user">
+                    <option value="">-- Select Approver --</option>
+                    @if (ViewBag.userList != null)
+                    {
+                        foreach (var user in ViewBag.userList)
+                        {
+                            <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Checker</label>
+                <select id="checker_id" name="checker_id" class="track-change w-full select2-user">
+                    <option value="">-- Select Checker --</option>
+                    @if (ViewBag.userList != null)
+                    {
+                        foreach (var user in ViewBag.userList)
+                        {
+                            <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Creator</label>
+                <input type="text" id="creator_name" name="creator_name" value="@Model.creator_name" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 outline-none" />
+                <input type="hidden" id="creator_nik" name="creator_nik" value="@Model.creator_nik" />
+            </div>
+        </div>
+
+            <!-- Visual Sign Board -->
+        <div id="approvalGridContainer" class="grid grid-cols-1 md:grid-cols-4 border border-gray-300 rounded-lg overflow-hidden mb-8 shadow-sm">
+            <div class="p-6 text-center text-gray-500 col-span-4">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Loading approval routes...</p>
+            </div>
+        </div>
+
+            <button type="submit" class="hidden"></button>
+            }
+            else
+            {
+            <!-- ============ CREATE MODE: Simple File Upload ============ -->
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b"><i class="fas fa-file-pdf mr-2 text-orange-500"></i> Attachments (PDF only)</h3>
+
+            <div class="mb-4">
+                <input type="file" id="bastFiles" name="files" multiple accept="application/pdf" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100 transition-all cursor-pointer border border-gray-200 rounded-lg p-1" />
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[500px] border border-gray-200 rounded-lg bg-gray-50 p-2 mb-8">
+                <div class="lg:col-span-1 bg-white border border-gray-200 rounded-lg p-3 flex flex-col h-full">
+                    <h4 class="text-sm font-semibold text-gray-600 mb-3">Selected Files</h4>
+                    <div id="fileListContainer" class="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                        <div class="text-center text-gray-400 text-sm mt-10">
+                            <i class="fas fa-file-upload text-3xl mb-2"></i>
+                            <p>No files selected yet</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white border border-gray-200 rounded-lg h-full overflow-hidden relative">
+                    <div id="previewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                        <i class="fas fa-eye text-4xl mb-3"></i>
+                        <p class="text-sm">Select a file from the list to preview</p>
+                    </div>
+                    <iframe id="pdfPreviewFrame" class="w-full h-full hidden rounded-lg border-0"></iframe>
+                </div>
+            </div>
+
+            <!-- ============ CREATE MODE: Approval Routing ============ -->
+            <h3 class="text-lg font-semibold text-gray-700 mb-4 pb-2 border-b"><i class="fas fa-signature mr-2 text-orange-500"></i> Approval Routing</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <!-- Final Approver -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Final Approver</label>
+                    <select id="final_approver_id" name="final_approver_id" class="w-full select2-user">
+                        <option value="">-- Select Final Approver --</option>
+                        @if (ViewBag.userList != null)
+                        {
+                            foreach (var user in ViewBag.userList)
+                            {
+                                <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Approver</label>
+                    <select id="approver_id" name="approver_id" class="w-full select2-user">
+                        <option value="">-- Select Approver --</option>
+                        @if (ViewBag.userList != null)
+                        {
+                            foreach (var user in ViewBag.userList)
+                            {
+                                <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Checker</label>
+                    <select id="checker_id" name="checker_id" class="w-full select2-user">
+                        <option value="">-- Select Checker --</option>
+                        @if (ViewBag.userList != null)
+                        {
+                            foreach (var user in ViewBag.userList)
+                            {
+                                <option value="@user.NIK" data-name="@user.Name">@(user.NIK + " | " + user.Name)</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Creator</label>
+                    <input type="text" id="creator_name" name="creator_name" value="@ViewBag.currUserName" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 outline-none" />
+                    <input type="hidden" id="creator_nik" name="creator_nik" value="@((ViewBag.currUserId ?? "").ToString().Split(',')[0].Trim())" />
+                </div>
+            </div>
+
+            <!-- ============ CREATE MODE: Buttons ============ -->
+            <div class="mt-8 flex justify-end space-x-3">
+                <a href="@Url.Action("Index", "BAST", new { area = "Purchasing" })" class="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" id="btnSubmit" class="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-yellow-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-600 font-medium shadow-md transition-all transform hover:scale-105">
+                    <i class="fas fa-save mr-2"></i> Save BAST
+                </button>
+            </div>
+            }
+        </form>
+    </div>
+
+    @if (!isCreate)
+    {
+    <!-- Comments Section -->
+    <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden mt-6 p-6">
+        <div class="flex items-center mb-4 pb-2 border-b border-gray-200">
+            <i class="fa-regular fa-comments text-blue-500 text-xl mr-2"></i>
+            <h2 class="text-lg font-semibold text-gray-700">Comments</h2>
+        </div>
+        <div id="BASTComments" class="min-h-[80px]">
+            <div class="text-center text-gray-400 text-sm py-10">
+                <i class="fa-regular fa-comment-dots text-3xl mb-2"></i>
+                <p>Loading comments...</p>
+            </div>
+        </div>
+    </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.4/jquery.textcomplete.min.js"></script>
+    <script src="@Url.Content("~/Scripts/comment/js/jquery-comments.min.js?v=1")"></script>
+
+    <script>
+        $(document).ready(function () {
+            const isCreate = $('#id').val() === '0';
+            const bastNumber = isCreate ? '' : $('#bast_number').val();
+            let initialFormData = {};
+            let isUnlocked = false;
+            let currentBastStatus = '';
+
+            const Toast = Swal.mixin({
+                toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true
+            });
+
+            // Accordion Toggle
+            $('.toggle-section').on('click', function () {
+                const target = $(this).data('target');
+                const icon = $(this).data('icon');
+                $(target).slideToggle(300);
+                $(icon).toggleClass('rotate-180');
+            });
+
+            // Select2 Init
+            $('#vendor_id, #budget_id, .select2-user, #wo_id').select2({ width: '100%' });
+
+            // ========== MODE BRANCHING ==========
+            if (isCreate) {
+                // ====== CREATE MODE ======
+                // File preview
+                let selectedFiles = [];
+
+                $('#bastFiles').on('change', function (e) {
+                    selectedFiles = Array.from(e.target.files).filter(file => file.type === "application/pdf");
+                    renderCreateFileList();
+                });
+
+                function renderCreateFileList() {
+                    const container = $('#fileListContainer');
+                    container.empty();
+
+                    if (selectedFiles.length === 0) {
+                        container.html(`
+                            <div class="text-center text-gray-400 text-sm mt-10">
+                                <i class="fas fa-file-upload text-3xl mb-2"></i>
+                                <p>No valid PDF files selected</p>
+                            </div>`);
+                        $('#pdfPreviewFrame').addClass('hidden').attr('src', '');
+                        $('#previewPlaceholder').removeClass('hidden');
+                        return;
+                    }
+
+                    selectedFiles.forEach((file, index) => {
+                        const fileItem = $(`
+                            <div class="cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-orange-50 hover:border-orange-300 transition-colors duration-200 flex items-center justify-between group file-item">
+                                <div class="flex items-center flex-1 overflow-hidden">
+                                    <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                                    <div class="overflow-hidden flex-1">
+                                        <p class="text-sm font-medium text-gray-700 truncate group-hover:text-orange-700" title="${file.name}">${file.name}</p>
+                                        <p class="text-xs text-gray-400">${formatBytes(file.size)}</p>
+                                    </div>
+                                </div>
+                                <button type="button" class="remove-btn text-gray-400 hover:text-red-600 p-2 ml-2 rounded-md hover:bg-red-50 transition-colors" title="Remove file">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>`);
+
+                        fileItem.find('.file-item').addBack().on('click', function (e) {
+                            if (!$(e.target).closest('.remove-btn').length) {
+                                $('.file-item').removeClass('bg-orange-100 border-orange-500');
+                                $(this).addClass('bg-orange-100 border-orange-500');
+                                $('#pdfPreviewFrame').attr('src', URL.createObjectURL(file)).removeClass('hidden');
+                                $('#previewPlaceholder').addClass('hidden');
+                            }
+                        });
+
+                        fileItem.find('.remove-btn').on('click', function (e) {
+                            e.stopPropagation();
+                            selectedFiles.splice(index, 1);
+                            updateCreateFileInput();
+                            renderCreateFileList();
+                        });
+
+                        container.append(fileItem);
+                    });
+
+                    if (selectedFiles.length > 0) {
+                        container.find('.file-item').first().trigger('click');
+                    }
+                }
+
+                function updateCreateFileInput() {
+                    const dt = new DataTransfer();
+                    selectedFiles.forEach(f => dt.items.add(f));
+                    $('#bastFiles')[0].files = dt.files;
+                }
+
+                function formatBytes(bytes, decimals = 2) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const dm = decimals < 0 ? 0 : decimals;
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + ['Bytes', 'KB', 'MB', 'GB'][i];
+                }
+
+                // Form submit (Create mode)
+                $('#formBAST').on('submit', function (e) {
+                    e.preventDefault();
+
+                    var titleVal = $.trim($('#title').val());
+                    if (titleVal.length < 5) {
+                        Toast.fire({ icon: 'warning', title: 'Title is required and must be at least 5 characters long!' });
+                        $('#title').focus();
+                        return false;
+                    }
+
+                    var $btnSubmit = $('#btnSubmit');
+                    $btnSubmit.html('<i class="fas fa-spinner fa-spin mr-2"></i> Submitting...').prop('disabled', true);
+
+                    var formData = new FormData(this);
+
+                    var rawCreatorNik = $('#creator_nik').val() || "";
+                    var cleanCreatorNik = Array.from(new Set(rawCreatorNik.split(',').map(s => s.trim()).filter(Boolean))).join(',');
+                    formData.set('creator_nik', cleanCreatorNik);
+
+                    var dueDateVal = $('#due_date').val();
+                    if (!dueDateVal) {
+                        var today = new Date().toISOString().split('T')[0];
+                        formData.set('due_date', today);
+                    }
+
+                    formData.append('vendor_name', $('#vendor_id').find(':selected').attr('data-name') || "");
+                    formData.append('budget_no', $('#budget_id').val() || "");
+                    formData.append('budget_name', $('#budget_id').find(':selected').attr('data-name') || "");
+                    formData.append('section_name', $('#budget_id').find(':selected').attr('data-section') || "");
+                    formData.append('wo_number', $('#wo_id').val() || "");
+                    formData.append('wo_desc', $('#wo_id').find(':selected').attr('data-desc') || "");
+                    formData.set('checker_id', $('#checker_id').val() || "");
+                    formData.append('checker_name', $('#checker_id').find(':selected').attr('data-name') || "");
+                    formData.set('approver_id', $('#approver_id').val() || "");
+                    formData.append('approver_name', $('#approver_id').find(':selected').attr('data-name') || "");
+                    formData.set('final_approver_id', $('#final_approver_id').val() || "");
+                    formData.set('final_approver_name', $('#final_approver_id').find(':selected').attr('data-name') || "");                    $.ajax({
+                        url: '@Url.Action("SaveBAST", "BAST", new { area = "Purchasing" })',
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function (response) {
+                            if (response.success) {
+                                Toast.fire({ icon: 'success', title: response.message }).then(() => {
+                                    window.location.href = '@Url.Action("Index", "BAST", new { area = "Purchasing" })';
+                                });
+                            } else {
+                                Toast.fire({ icon: 'error', title: response.message });
+                                $btnSubmit.html('<i class="fas fa-save mr-2"></i> Submit BAST').prop('disabled', false);
+                            }
+                        },
+                        error: function () {
+                            Toast.fire({ icon: 'error', title: 'Server connection error.' });
+                            $btnSubmit.html('<i class="fas fa-save mr-2"></i> Submit BAST').prop('disabled', false);
+                        }
+                    });
+                });
+            } else {
+                // ====== DETAIL MODE ======
+                const activeUserLogin = String('@(ViewBag.currUserId ?? "")').split(',')[0].trim().toLowerCase();
+                const docCreatorNik = $('#creator_nik').val().trim().toLowerCase();
+
+                if (activeUserLogin !== docCreatorNik) {
+                    // Sembunyikan container input file jika bukan creator
+                    $('#uploadSignedFileContainer').addClass('hidden');
+                }
+                function lockForm() {
+                    // 1. Kunci input text biasa
+                    $('#title, #due_date, #description').prop('readonly', true).addClass('bg-gray-50 text-gray-600').removeClass('bg-white');
+
+                    const selectsToLock = ['vendor_id', 'budget_id', 'wo_id', 'checker_id', 'approver_id', 'final_approver_id'];
+
+                    selectsToLock.forEach(function (id) {
+                        let $select = $('#' + id);
+
+                        $select.prop('disabled', true);
+
+                        let selectedText = $select.find(':selected').text().trim();
+                        if (!selectedText || selectedText.includes('-- Select')) {
+                            selectedText = '-';
+                        }
+
+                        $select.next('.select2-container').hide();
+
+                        if ($('#readonly_' + id).length === 0) {
+                            $select.after(`<div id="readonly_${id}" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 break-words" style="min-height: 42px;">${selectedText}</div>`);
+                        }
+                    });
+
+                    $('.input-file-area').addClass('hidden');
+                    $('#routingSection').addClass('hidden');
+                }
+
+            // ==========================================
+            // 1. FETCH BAST DATA DETAILS
+            // ==========================================
+            $.ajax({
+                url: '@Url.Action("GetBASTByNumber", "BAST", new { area = "Purchasing" })',
+                type: 'GET',
+                data: { bast_number: bastNumber },
+                success: function (response) {
+                    if (response.success && response.data) {
+                        const bastStatus = (response.data.status || "").toLowerCase();
+                        currentBastStatus = (response.data.status || "").toLowerCase();
+                        // Form HANYA UNLOCKED jika statusnya "created"
+                        isUnlocked = (bastStatus === 'created');
+
+                        if (currentBastStatus === 'fully approved') {
+                            const btnToggle = $('#btnToggleAfter');
+                            btnToggle.prop('disabled', false)
+                                .removeClass('text-gray-400 cursor-not-allowed')
+                                .addClass('text-gray-700 hover:text-green-600 cursor-pointer');
+                            $('#iconUploadHeader').removeClass('text-gray-400').addClass('text-green-500');
+                        }
+
+                        if (!isUnlocked) {
+                            lockForm();
+                        } else {
+                            $('#routingSection').removeClass('hidden');
+                        }
+
+                        if (currentBastStatus === 'fully approved') {
+                            const btnToggle = $('#btnToggleAfter');
+                            btnToggle.prop('disabled', false)
+                                .removeClass('text-gray-400 cursor-not-allowed')
+                                .addClass('text-gray-700 hover:text-green-600 cursor-pointer');
+                            $('#iconUploadHeader').removeClass('text-gray-400').addClass('text-green-500');
+                        }
+
+                        if (response.data.files) {
+                            renderExistingFiles(response.data.files.filter(f => f.status === 'before'));
+                            renderAfterFiles(response.data.files.filter(f => f.status === 'after'));
+                        }
+                        if (response.data.approvals) {
+                            renderApprovalBoard(response.data.approvals, response.data);
+                            var checker = response.data.approvals.find(a => a.Title && a.Title.toLowerCase() === 'checker');
+                            var approver = response.data.approvals.find(a => a.Title && a.Title.toLowerCase() === 'approver');
+                            var finalApprover = response.data.approvals.find(a => a.Title && a.Title.toLowerCase() === 'final approver');
+
+                            if (checker) $('#checker_id').val(checker.User_NIK).trigger('change.select2');
+                            if (approver) $('#approver_id').val(approver.User_NIK).trigger('change.select2');
+                            if (finalApprover) $('#final_approver_id').val(finalApprover.User_NIK).trigger('change.select2');
+                        }
+
+                        saveInitialFormState();
+                    }
+                }
+            });
+
+            // ==========================================
+            // 2. UNSAVED CHANGES DETECTION
+            // ==========================================
+            function saveInitialFormState() {
+                initialFormData = {
+                    title: $('#title').val(),
+                    due_date: $('#due_date').val(),
+                    description: $('#description').val(),
+                    vendor_id: $('#vendor_id').val(),
+                    wo_id: $('#wo_id').val(),
+                    budget_id: $('#budget_id').val(),
+                    checker_id: $('#checker_id').val(),
+                    approver_id: $('#approver_id').val(),
+                    final_approver_id: $('#final_approver_id').val()
+                };
+            }
+
+            function checkFormChanges() {
+                const creatorNik = $('#creator_nik').val().trim().toLowerCase();
+
+                if (currentLoggedInUser !== creatorNik) {
+                    $('#unsavedChangesBar').addClass('hidden');
+                    return;
+                }
+
+                let isDifferent = false;
+
+                if (isUnlocked) {
+                    const currentData = {
+                        title: $('#title').val(),
+                        due_date: $('#due_date').val(),
+                        description: $('#description').val(),
+                        vendor_id: $('#vendor_id').val(),
+                        wo_id: $('#wo_id').val(),
+                        budget_id: $('#budget_id').val(),
+                        checker_id: $('#checker_id').val(),
+                        approver_id: $('#approver_id').val(),
+                        final_approver_id: $('#final_approver_id').val()
+                    };
+
+                    const hasNewFiles = $('#bastFiles')[0].files.length > 0;
+                    isDifferent = hasNewFiles;
+
+                    for (let key in initialFormData) {
+                        if (initialFormData[key] !== currentData[key]) {
+                            isDifferent = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Jika Fully Approved, abaikan field utama, namun deteksi perubahan khusus input file After Approval
+                if (currentBastStatus === 'fully approved') {
+                    const hasNewAfterFiles = $('#bastAfterFiles')[0].files.length > 0;
+                    if (hasNewAfterFiles) isDifferent = true;
+                }
+
+                // Tampilkan / Sembunyikan Bar Save
+                if (isDifferent) {
+                    $('#unsavedChangesBar').removeClass('hidden');
+                } else {
+                    $('#unsavedChangesBar').addClass('hidden');
+                }
+            }
+
+            $('.track-change').on('input change', function () {
+                checkFormChanges();
+            });
+
+            // ==========================================
+            // PREVIEW NEW SELECTED "AFTER" FILES
+            // ==========================================
+            $('#bastAfterFiles').on('change', function(e) {
+                const files = Array.from(e.target.files).filter(file => file.type === "application/pdf");
+                const container = $('#afterFileListContainer');
+
+                // Hilangkan teks icon upload jika ada
+                container.find('div.text-center').remove();
+
+                // Hapus list file "New" yang sebelumnya jika user memilih ulang
+                container.find('.new-after-file-item').remove();
+
+                files.forEach((file) => {
+                    const fileUrl = URL.createObjectURL(file);
+
+                    const item = $(`
+                        <div class="cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors flex items-center new-after-file-item mt-2">
+                            <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                            <div class="flex-1 overflow-hidden">
+                                <p class="text-sm font-medium text-gray-700 truncate" title="${file.name}">${file.name}</p>
+                                <span class="text-[10px] bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded font-bold mt-1 inline-block">New File</span>
+                            </div>
+                        </div>`);
+
+                    item.on('click', function () {
+                        // Reset style file lain
+                        $('.existing-after-file-item, .new-after-file-item').removeClass('bg-blue-100 border-blue-500');
+                        // Set style aktif (Biru)
+                        $(this).addClass('bg-blue-100 border-blue-500');
+
+                        // Tampilkan PDF dan Sembunyikan Placeholder Mata
+                        $('#afterPdfPreviewFrame').attr('src', fileUrl).removeClass('hidden');
+                        $('#afterPreviewPlaceholder').addClass('hidden');
+                    });
+
+                    container.append(item);
+                });
+
+                if(files.length > 0) {
+                    // Auto klik file pertama
+                    container.find('.new-after-file-item').first().trigger('click');
+                } else {
+                    // Jika file dikosongkan/batal, munculkan kembali placeholder mata
+                    $('#afterPdfPreviewFrame').addClass('hidden').attr('src', '');
+                    $('#afterPreviewPlaceholder').removeClass('hidden');
+                }
+            });
+
+            function renderAfterFiles(files) {
+                const container = $('#afterFileListContainer');
+                container.empty();
+
+                if (files.length === 0) {
+                    container.html(`
+                        <div class="text-center text-gray-400 text-sm mt-10">
+                            <i class="fas fa-file-upload text-3xl mb-2"></i>
+                            <p>No signed files attached yet.</p>
+                        </div>`);
+                    return;
+                }
+
+                files.forEach(file => {
+                    const fileUrl = '@Url.Content("~/Content/BAST_Files/")' + file.file_name;
+                    const item = $(`
+                        <div class="cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-green-50 transition-colors flex items-center existing-after-file-item mb-2">
+                            <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                            <p class="text-sm font-medium text-gray-700 truncate flex-1" title="${file.file_name}">${file.file_name}</p>
+                        </div>`);
+
+                    item.on('click', function () {
+                        // Hapus class aktif dari semua file di after section (termasuk yg baru diupload kalau ada)
+                        $('.existing-after-file-item, .new-after-file-item').removeClass('bg-green-100 border-green-500 bg-blue-100 border-blue-500');
+
+                        // Tambahkan class aktif ke file yg diklik
+                        $(this).addClass('bg-green-100 border-green-500');
+
+                        // Tampilkan Iframe
+                        $('#afterPdfPreviewFrame').attr('src', fileUrl).removeClass('hidden');
+
+                        // SEMBUNYIKAN PLACEHOLDER MATA
+                        $('#afterPreviewPlaceholder').addClass('hidden');
+                    });
+
+                    container.append(item);
+                });
+
+                // BARIS TAMBAHAN: Auto klik file pertama ketika data dirender dari database
+                if (files.length > 0) {
+                    container.find('.existing-after-file-item').first().trigger('click');
+                }
+            }
+
+            $('#btnResetChanges').on('click', function () {
+                $('#title').val(initialFormData.title);
+                $('#due_date').val(initialFormData.due_date);
+                $('#description').val(initialFormData.description);
+                $('#vendor_id').val(initialFormData.vendor_id).trigger('change.select2');
+                $('#budget_id').val(initialFormData.budget_id).trigger('change.select2');
+                $('#wo_id').val(initialFormData.wo_id).trigger('change.select2');
+                $('#checker_id').val(initialFormData.checker_id).trigger('change.select2');
+                $('#approver_id').val(initialFormData.approver_id).trigger('change.select2');
+                $('#final_approver_id').val(initialFormData.final_approver_id).trigger('change.select2');
+                $('#bastFiles').val('');
+
+                $('#unsavedChangesBar').addClass('hidden');
+            });
+
+            $('#btnTriggerSave').on('click', function () {
+                $('#formBAST').submit();
+            });
+
+            // ==========================================
+            // 3. RENDER APPROVAL BOARD & FILES
+            // ==========================================
+            let rawLoggedInUser = '@(ViewBag.currUserId ?? "")'.trim();
+            if (!rawLoggedInUser) {
+                rawLoggedInUser = $('#creator_nik').val() ? $('#creator_nik').val().trim() : '';
+            }
+            const currentLoggedInUser = String(rawLoggedInUser).trim().toLowerCase();
+
+                function renderApprovalBoard(approvals, bastData) {
+                    const container = $('#approvalGridContainer');
+                    container.empty();
+
+                    // Sort descending: Approver tertinggi di kiri, Creator di kanan
+                    approvals.sort((a, b) => b.Levels_Sub - a.Levels_Sub);
+
+                    const activeApproverNik = String(bastData.active_approver_nik || '').trim().toLowerCase();
+                    const activeApproverRole = String(bastData.active_approver_role || '').trim().toLowerCase();
+
+                    // Pastikan dpt NIK creator dari response data
+                    const docCreatorNik = String(bastData.creator_nik || '').trim().toLowerCase();
+
+                    // Cek apakah user yang sedang login adalah Creator dokumen BAST ini
+                    const isUserCreator = (currentLoggedInUser === docCreatorNik);
+
+                    approvals.forEach((appr, index) => {
+                        let borderRight = (index !== approvals.length - 1) ? 'md:border-r border-gray-300' : '';
+                        let noteHtml = appr.Note ? `<p class="text-xs mt-2 italic text-center w-full break-words line-clamp-2 px-1 text-gray-500">"${appr.Note}"</p>` : '';
+
+                        const signBadge = `
+            <div class="flex flex-col items-center justify-center text-green-600">
+                <i class="fa-solid fa-circle-check text-4xl mb-2 shadow-sm rounded-full"></i>
+                <span class="font-bold text-sm uppercase tracking-wide">Signed</span>
+            </div>`;
+
+                        const returnBadge = `
+            <div class="flex flex-col items-center justify-center text-orange-500">
+                <i class="fa-solid fa-arrow-rotate-left text-4xl mb-2 shadow-sm rounded-full"></i>
+                <span class="font-bold text-sm uppercase tracking-wide">Returned</span>
+                ${noteHtml}
+            </div>`;
+
+                        const rejectBadge = `
+            <div class="flex flex-col items-center justify-center text-red-600">
+                <i class="fa-solid fa-circle-xmark text-4xl mb-2 shadow-sm rounded-full"></i>
+                <span class="font-bold text-sm uppercase tracking-wide">Rejected</span>
+                ${noteHtml}
+            </div>`;
+
+                        const cardTitle = String(appr.Title || '').trim().toLowerCase();
+                        const isCreatorCard = cardTitle === 'creator' || appr.Levels_Sub === 0;
+
+                        const cardNiks = String(appr.User_NIK || '')
+                            .split(',')
+                            .map(n => n.trim().toLowerCase())
+                            .filter(n => n !== '');
+
+                        const isCardActiveTurn = cardNiks.some(nik => activeApproverNik.includes(nik) || nik.includes(activeApproverNik)) ||
+                            (cardTitle === activeApproverRole);
+
+                        const isCurrentMatchingUser = cardNiks.some(nik => currentLoggedInUser.includes(nik) || nik.includes(currentLoggedInUser));
+
+                        const isTurnToApprove = isCardActiveTurn && isCurrentMatchingUser;
+
+                        let reminderBtnHtml = '';
+                        if (isUserCreator && !isCreatorCard) {
+                            reminderBtnHtml = `
+                <button type="button" class="btn-send-reminder mt-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg shadow transition-all flex items-center justify-center" data-target-nik="${appr.User_NIK}" data-target-role="${appr.Title}">
+                    <i class="fas fa-paper-plane mr-1.5"></i> Send Reminder
+                </button>`;
+                        }
+
+                        const waitingBadge = `
+            <div class="flex flex-col items-center justify-center text-gray-400">
+                <i class="fas fa-clock text-3xl mb-1.5 text-gray-300"></i>
+                <span class="font-semibold text-xs uppercase tracking-wide text-gray-400">Waiting</span>
+                ${reminderBtnHtml}
+            </div>`;
+
+                        // TOMBOL ACTION APPROVE / SIGN
+                        const activeActionButtons = isCreatorCard ? `
+            <button type="button" class="btn-action w-full py-2 bg-green-500 text-white rounded shadow-md text-sm font-bold hover:bg-green-600 transition-colors flex justify-center items-center" data-action="Approve" data-role="${appr.Title}">
+                <i class="fa-solid fa-circle-check mr-2"></i> Sign
+            </button>` : `
+            <div class="flex flex-col space-y-2 w-full">
+                <button type="button" class="btn-action w-full py-2 bg-green-500 text-white rounded shadow-md text-sm font-bold hover:bg-green-600 transition-colors flex justify-center items-center" data-action="Approve" data-role="${appr.Title}"><i class="fa-solid fa-circle-check mr-1.5"></i> Sign</button>
+            </div>`;
+
+                        let displayBadge = isTurnToApprove ? activeActionButtons : waitingBadge;
+
+                        // OVERRIDE TAMPILAN BERDASARKAN STATUS DB
+                        let dbStatus = String(appr.Status || "").toLowerCase();
+
+                        if (dbStatus === "sign" || dbStatus === "signed" || dbStatus === "approved") {
+                            displayBadge = signBadge;
+                        } else if (dbStatus === "return" || dbStatus === "returned" || appr.IsRevise === true) {
+                            displayBadge = returnBadge;
+                        } else if (dbStatus === "reject" || dbStatus === "rejected" || appr.IsReject === true) {
+                            displayBadge = rejectBadge;
+                        }
+
+                        let dateDisplay = appr.Approved_Date ? `${appr.Approved_Date}` : '&nbsp;';
+
+                        const html = `
+            <div class="flex flex-col border-b md:border-b-0 border-gray-300 ${borderRight} bg-white">
+                <div class="border-b border-gray-300 p-2 text-xs font-semibold text-gray-500 text-center h-8 flex items-center justify-center">${dateDisplay}</div>
+                <div class="border-b border-gray-300 p-3 text-center text-sm font-bold text-gray-700 uppercase tracking-wider">${appr.Title}</div>
+                <div class="border-b border-gray-300 p-6 flex flex-col items-center justify-center h-[160px] bg-white">${displayBadge}</div>
+                <div class="p-3 text-center text-sm font-semibold text-gray-700 uppercase bg-gray-50">${appr.Header || cardNiks[0]}</div>
+            </div>`;
+
+                        container.append(html);
+                    });
+                }
+
+            $('#bastFiles').on('change', function (e) {
+                const files = Array.from(e.target.files).filter(file => file.type === "application/pdf");
+                const container = $('#existingFileListContainer');
+
+                // Hapus text default/loading jika ada
+                container.find('div.text-center, p.text-center').remove();
+
+                // Hapus list file "New" yang sebelumnya jika user memilih ulang file
+                container.find('.new-before-file-item').remove();
+
+                files.forEach((file) => {
+                    const fileUrl = URL.createObjectURL(file);
+
+                    const item = $(`
+            <div class="cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors flex items-center new-before-file-item mt-2">
+                <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                <div class="flex-1 overflow-hidden">
+                    <p class="text-sm font-medium text-gray-700 truncate" title="${file.name}">${file.name}</p>
+                    <span class="text-[10px] bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded font-bold mt-1 inline-block">New File</span>
+                </div>
+            </div>`);
+
+                    item.on('click', function () {
+                        // Reset style aktif file lain
+                        $('.existing-file-item, .new-before-file-item').removeClass('bg-blue-100 border-blue-500');
+                        // Set style aktif ke file ini
+                        $(this).addClass('bg-blue-100 border-blue-500');
+
+                        // Tampilkan PDF dan Sembunyikan Placeholder Mata
+                        $('#existingPdfPreviewFrame').attr('src', fileUrl).removeClass('hidden');
+                        $('#existingPreviewPlaceholder').addClass('hidden');
+                    });
+
+                    container.append(item);
+                });
+
+                if (files.length > 0) {
+                    // Auto klik file pertama agar langsung muncul di preview iframe
+                    container.find('.new-before-file-item').first().trigger('click');
+                } else {
+                    // Jika file dikosongkan (batal) dan tidak ada file dari DB, kembalikan ke placeholder
+                    if (container.find('.existing-file-item').length === 0) {
+                        $('#existingPdfPreviewFrame').addClass('hidden').attr('src', '');
+                        $('#existingPreviewPlaceholder').removeClass('hidden');
+                    }
+                }
+            });
+
+            function renderExistingFiles(files) {
+                const container = $('#existingFileListContainer');
+                container.empty();
+
+                if (files.length === 0) {
+                    container.html('<p class="text-center text-sm text-gray-500 mt-5">No files attached.</p>');
+                    return;
+                }
+
+                files.forEach(file => {
+                    const fileUrl = '@Url.Content("~/Content/BAST_Files/")' + file.file_name;
+                    const item = $(`
+                        <div class="cursor-pointer p-3 border border-gray-200 rounded-lg hover:bg-blue-50 transition-colors flex items-center existing-file-item mb-2">
+                            <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                            <p class="text-sm font-medium text-gray-700 truncate flex-1" title="${file.file_name}">${file.file_name}</p>
+                        </div>`);
+
+                    item.on('click', function () {
+                        $('.existing-file-item, .new-before-file-item').removeClass('bg-blue-100 border-blue-500');
+                        $(this).addClass('bg-blue-100 border-blue-500');
+
+                        $('#existingPdfPreviewFrame').attr('src', fileUrl).removeClass('hidden');
+                        $('#existingPreviewPlaceholder').addClass('hidden');
+                    });
+
+                    container.append(item);
+                });
+
+                // BARIS TAMBAHAN: Auto klik file pertama ketika data dirender dari database
+                if (files.length > 0) {
+                    container.find('.existing-file-item').first().trigger('click');
+                }
+            }
+            // ==========================================
+            // 4. AJAX FORM SUBMIT (SAVE BAST)
+            // ==========================================
+            $('#formBAST').on('submit', function (e) {
+                e.preventDefault();
+
+                var $btn = $('#btnTriggerSave');
+                $btn.html('<i class="fas fa-spinner fa-spin mr-1.5"></i> Saving...').prop('disabled', true);
+
+                var formData = new FormData(this);
+
+                function getAttrValue(elementId, attrName) {
+                    var el = $('#' + elementId);
+                    if (el.is('select')) {
+                        return el.find(':selected').attr(attrName) || "";
+                    }
+                    return el.attr(attrName) || el.val() || "";
+                }
+
+                formData.set('vendor_id', $('#vendor_id').val() || "");
+                formData.set('budget_id', $('#budget_id').val() || "");
+                formData.set('checker_id', $('#checker_id').val() || "");
+                formData.set('approver_id', $('#approver_id').val() || "");
+
+                formData.set('vendor_name', getAttrValue('vendor_id', 'data-name'));
+                formData.set('budget_no', $('#budget_id').val() || "");
+                formData.set('budget_name', getAttrValue('budget_id', 'data-name'));
+                formData.set('section_name', getAttrValue('budget_id', 'data-section'));
+                formData.set('checker_name', getAttrValue('checker_id', 'data-name'));
+                formData.set('approver_name', getAttrValue('approver_id', 'data-name'));
+                formData.set('final_approver_id', $('#final_approver_id').val() || "");
+                formData.set('final_approver_name', getAttrValue('final_approver_id', 'data-name'));
+                formData.append('wo_number', $('#wo_id').val() || "");
+                formData.append('wo_desc', $('#wo_id').find(':selected').attr('data-desc') || "");
+
+                $.ajax({
+                    url: '@Url.Action("SaveBAST", "BAST", new { area = "Purchasing" })',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function (response) {
+                        if (response.success) {
+                            Toast.fire({ icon: 'success', title: response.message }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            Toast.fire({ icon: 'error', title: response.message });
+                            $btn.html('<i class="fas fa-save mr-1.5"></i> Save Changes').prop('disabled', false);
+                        }
+                    },
+                    error: function () {
+                        Toast.fire({ icon: 'error', title: 'Server connection error.' });
+                        $btn.html('<i class="fas fa-save mr-1.5"></i> Save Changes').prop('disabled', false);
+                    }
+                });
+            });
+
+            // ==========================================
+            // 5. APPROVAL BUTTON ACTION
+            // ==========================================
+            $(document).on('click', '.btn-action', function () {
+                var actionType = $(this).data('action');
+                var bastNum = $('#bast_number').val();
+                var currentRole = $(this).data('role');
+
+                if (actionType === 'Approve') {
+                    // 1. Cek Field yang Kosong
+                    const requiredFields = [
+                        { id: 'title', name: 'Title' },
+                        { id: 'due_date', name: 'Due Date' },
+                        { id: 'description', name: 'Description' },
+                        { id: 'vendor_id', name: 'Vendor' },
+                        { id: 'wo_id', name: 'Working Order' },
+                        { id: 'budget_id', name: 'Budget' },
+                        { id: 'checker_id', name: 'Checker' },
+                        { id: 'approver_id', name: 'Approver' },
+                        { id: 'final_approver_id', name: 'Final Approver' }
+                    ];
+
+                    let emptyFields = [];
+                    requiredFields.forEach(field => {
+                        let val = $('#' + field.id).val();
+                        if (!val || val.trim() === '') {
+                            emptyFields.push(field.name);
+                        }
+                    });
+
+                    let hasExistingFile = $('.existing-file-item').length > 0;
+                    let hasNewFile = $('#bastFiles')[0] && $('#bastFiles')[0].files.length > 0;
+
+                    if (!hasExistingFile && !hasNewFile) {
+                        emptyFields.push('Original BAST Files (Before)');
+                    }
+
+                    if (emptyFields.length > 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Incomplete Data',
+                            html: 'Please fill in the following required fields before signing:<br><br><b class="text-red-500">' + emptyFields.join('<br>') + '</b>',
+                            confirmButtonColor: '#f97316'
+                        });
+                        return; // Hentikan proses jika ada yang kosong
+                    }
+
+                    // 2. Cek apakah ada perubahan yang belum di-save
+                    if (!$('#unsavedChangesBar').hasClass('hidden')) {
+
+                        // Ambil NIK Creator dari form dan jadikan huruf kecil (untuk disamakan formatnya)
+                        var creatorNik = $('#creator_nik').val().trim().toLowerCase();
+
+                        // Cek apakah user yang login SAMA dengan creator
+                        if (currentLoggedInUser === creatorNik) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Unsaved Changes',
+                                text: 'You have unsaved changes. Please click "Save Changes" at the top before signing.',
+                                confirmButtonColor: '#f59e0b'
+                            });
+                            return; // Hentikan proses minta user save dulu
+                        }
+                        else {
+                            // Jika yang melakukan perubahan BUKAN Creator (misal Approver tidak sengaja mengubah data / menambah file)
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Unsaved Changes Detected',
+                                text: 'You have unsaved changes. Please click "Save Changes" at the top first, or click "Discard" if you do not intend to modify the data.',
+                                confirmButtonColor: '#ef4444'
+                            });
+                            return; // Tetap hentikan proses agar data tidak bablas
+                        }
+                    }
+                }
+
+                var inputOptions = {};
+                if (actionType === 'Return' || actionType === 'Reject') {
+                    inputOptions = {
+                        input: 'textarea',
+                        inputPlaceholder: 'Type your note/reason here...',
+                        inputValidator: (value) => {
+                            if (!value) {
+                                return 'You need to write a reason!';
+                            }
+                        }
+                    };
+                }
+
+                Swal.fire({
+                    title: `Are you sure to ${actionType}?`,
+                    text: "You won't be able to revert this action!",
+                    icon: actionType === 'Reject' ? 'error' : actionType === 'Return' ? 'warning' : 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: actionType === 'Reject' ? '#ef4444' : actionType === 'Return' ? '#f97316' : '#3b82f6',
+                    confirmButtonText: `Yes, ${actionType} it!`,
+                    ...inputOptions
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        var userNote = result.value || "";
+
+                        var formData = new FormData();
+                        formData.append('bast_number', bastNum);
+                        formData.append('actionType', actionType);
+                        formData.append('note', userNote);
+                        formData.append('currentRole', currentRole || "");
+
+                        $.ajax({
+                            url: '@Url.Action("SubmitApproval", "BAST", new { area = "Purchasing" })',
+                            type: 'POST',
+                            data: formData,
+                            contentType: false,
+                            processData: false,
+                            success: function (response) {
+                                if (response.success) {
+                                    Swal.fire('Success!', response.message, 'success').then(() => {
+                                        window.location.reload();
+                                    });
+                                } else {
+                                    Swal.fire('Error!', response.message, 'error');
+                                }
+                            },
+                            error: function () {
+                                Swal.fire('Error!', 'Server connection failed.', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+
+            // ==========================================
+// 6. SEND REMINDER BUTTON ACTION
+// ==========================================
+$(document).on('click', '.btn-send-reminder', function () {
+    var $btn = $(this);
+    var bastNum = $('#bast_number').val();
+    var targetRole = $btn.data('target-role');
+    var targetNik = $btn.data('target-nik');
+
+    Swal.fire({
+        title: 'Send Reminder?',
+        text: `Do you want to send a reminder email to ${targetRole}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fas fa-paper-plane mr-1"></i> Yes, Send Reminder!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Sending...');
+
+            $.ajax({
+                url: '@Url.Action("SendReminderEmail", "BAST", new { area = "Purchasing" })',
+                type: 'POST',
+                data: {
+                    bast_number: bastNum,
+                    target_nik: targetNik
+                },
+                success: function (response) {
+                    if (response.success) {
+                        Toast.fire({
+                            icon: 'success',
+                            title: response.message || 'Reminder sent successfully!'
+                        });
+                    } else {
+                        Toast.fire({
+                            icon: 'error',
+                            title: response.message || 'Failed to send reminder.'
+                        });
+                    }
+                    $btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1.5"></i> Send Reminder');
+                },
+                error: function () {
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Server connection error.'
+                    });
+                    $btn.prop('disabled', false).html('<i class="fas fa-paper-plane mr-1.5"></i> Send Reminder');
+                }
+            });
+        }
+    });
+});
+
+            // ==========================================
+            // COMMENTS (jquery-comments)
+            // ==========================================
+(function() {
+                if (!bastNumber) return;
+
+                const currentUserNik = String('@(ViewBag.currUserId ?? "")'.trim() || $('#creator_nik').val() || '');
+                const currentUserName = String('@(ViewBag.currUserName ?? "")'.trim() || $('#creator_name').val() || '');
+
+                $('#BASTComments').comments({
+                    enableDeleting: true,
+                    enableNavigation: false,
+                    enablePinging: true,
+                    enableAttachments: true,
+                    enableUpvoting: false,
+                    enableEditing: true,
+
+                    searchUsers: function (term, success, error) {
+                        $.ajax({
+                            url: '@Url.Action("GetCommentUsers", "BAST", new { area = "Purchasing" })',
+                            data: { bast_number: bastNumber },
+                            type: 'GET',
+                            success: function (response) {
+                                if (response.success) {
+                                    const filtered = response.data.filter(u =>
+                                        u.fullname.toLowerCase().includes(term.toLowerCase())
+                                    );
+                                    success(filtered);
+                                } else {
+                                    success([]);
+                                }
+                            },
+                            error: error
+                        });
+                    },
+
+                    getUsers: function (success, error) {
+                        $.ajax({
+                            url: '@Url.Action("GetCommentUsers", "BAST", new { area = "Purchasing" })',
+                            data: { bast_number: bastNumber },
+                            type: 'GET',
+                            success: function (response) {
+                                if (response.success) success(response.data);
+                                else success([]);
+                            },
+                            error: error
+                        });
+                    },
+
+                    postComment: function (commentJSON, success, error) {
+                        delete commentJSON.fullname;
+                        commentJSON["creator"] = currentUserNik;
+                        commentJSON["fullName"] = currentUserName;
+
+                        // Ambil Title BAST dari field input #title
+                        const bastTitle = $('#title').val() || "";
+
+                        const formDataSave = new FormData();
+                        formDataSave.append('bast_number', bastNumber);
+                        formDataSave.append('bast_title', bastTitle); // Kirim BAST Title
+
+                        let hasInvalidFile = false;
+
+                        $.each(Object.keys(commentJSON), function (index, key) {
+                            const value = commentJSON[key];
+                            if (key === 'pings') {
+                                formDataSave.append(key, JSON.stringify(value));
+                            } else if (key !== 'attachments') {
+                                formDataSave.append(key, value);
+                            } else {
+                                if (Array.isArray(value)) {
+                                    $.each(value, function (i, attachment) {
+                                        if (attachment.file) {
+                                            if (attachment.file.type !== 'application/pdf') {
+                                                hasInvalidFile = true;
+                                                return false;
+                                            }
+                                            formDataSave.append('files', attachment.file);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+
+                        if (hasInvalidFile) {
+                            Toast.fire({
+                                icon: "error",
+                                title: "Attachments must be PDF files!"
+                            });
+                            error("File validation failed.");
+                            return;
+                        }
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '@Url.Action("SaveComment", "BAST", new { area = "Purchasing" })',
+                            data: formDataSave,
+                            contentType: false,
+                            processData: false,
+                            success: function (response) {
+                                if (response.success && response.data) {
+                                    let attachments = response.data.attachments || [];
+                                    let mappedAttachments = attachments.map(function (a) {
+                                        return {
+                                            id: a.id,
+                                            file: a.file,
+                                            mimeType: a.mimeType,
+                                            url: a.url
+                                        };
+                                    });
+
+                                    Toast.fire({
+                                        icon: "success",
+                                        title: "Comment posted"
+                                    });
+
+                                    success({
+                                        id: response.data.id,
+                                        parent: response.data.parent,
+                                        created: response.data.created,
+                                        modified: response.data.modified,
+                                        content: response.data.content,
+                                        attachments: mappedAttachments,
+                                        pings: response.data.pings || {},
+                                        creator: response.data.creator,
+                                        fullname: response.data.fullname,
+                                        created_by_current_user: true
+                                    });
+                                } else {
+                                    Toast.fire({
+                                        icon: "error",
+                                        title: "Failed to save comment."
+                                    });
+                                    if (typeof error === 'function') error("Failed to save comment.");
+                                }
+                            },
+                            error: function () {
+                                Toast.fire({
+                                    icon: "error",
+                                    title: "Server error."
+                                });
+                                if (typeof error === 'function') error("Server error.");
+                            }
+                        });
+                    },
+
+                    getComments: function (success, error) {
+                        $.ajax({
+                            type: 'GET',
+                            url: '@Url.Action("GetComments", "BAST", new { area = "Purchasing" })',
+                            data: { bast_number: bastNumber },
+                            success: function (response) {
+                                if (response.success) success(response.data);
+                                else success([]);
+                            },
+                            error: error
+                        });
+                    },
+
+                    putComment: function (commentJSON, success, error) {
+                        if (!commentJSON.content || commentJSON.content.trim() === "") {
+                            Toast.fire({
+                                icon: "warning",
+                                title: "Please write a comment before saving."
+                            });
+                            if (typeof error === 'function') error("Empty comment.");
+                            return;
+                        }
+
+                        // Ambil Title BAST dari field input #title
+                        const bastTitle = $('#title').val() || "";
+
+                        const formDataUpdate = new FormData();
+                        formDataUpdate.append('bast_number', bastNumber);
+                        formDataUpdate.append('bast_title', bastTitle); // Kirim BAST Title
+                        formDataUpdate.append('id', commentJSON.id);
+                        formDataUpdate.append('creator', commentJSON.creator || currentUserNik);
+
+                        $.each(Object.keys(commentJSON), function (index, key) {
+                            if (key === 'id' || key === 'creator' || key === 'bast_number' || key === 'bast_title') return;
+
+                            const value = commentJSON[key];
+                            if (key === 'pings') {
+                                formDataUpdate.append(key, JSON.stringify(value));
+                            } else if (key === 'attachments') {
+                                if (Array.isArray(value)) {
+                                    var existingFileNames = [];
+                                    $.each(value, function (i, att) {
+                                        if (att.file && typeof att.file === 'string') {
+                                            existingFileNames.push(att.file);
+                                        }
+                                    });
+                                    formDataUpdate.append('existingFiles', JSON.stringify(existingFileNames));
+                                }
+                            } else {
+                                formDataUpdate.append(key, value);
+                            }
+                        });
+
+                        const fileInput = commentJSON._attachments || commentJSON.attachments;
+                        if (Array.isArray(fileInput)) {
+                            $.each(fileInput, function (i, attachment) {
+                                if (attachment.file) {
+                                    formDataUpdate.append('files', attachment.file);
+                                }
+                            });
+                        }
+
+                        $.ajax({
+                            type: 'POST',
+                            url: '@Url.Action("UpdateComment", "BAST", new { area = "Purchasing" })',
+                            data: formDataUpdate,
+                            contentType: false,
+                            processData: false,
+                            success: function (response) {
+                                if (response.success && response.data) {
+                                    Toast.fire({
+                                        icon: "success",
+                                        title: "Comment updated"
+                                    });
+                                    success(response.data);
+                                } else {
+                                    Toast.fire({
+                                        icon: "error",
+                                        title: response.message || "Failed to update comment."
+                                    });
+                                    if (typeof error === 'function') error(response.message);
+                                }
+                            },
+                            error: function () {
+                                Toast.fire({
+                                    icon: "error",
+                                    title: "Server error."
+                                });
+                                if (typeof error === 'function') error("Server error.");
+                            }
+                        });
+                    },
+
+                    deleteComment: function (commentJSON, success, error) {
+                        const commentIdToDelete = commentJSON.id;
+
+                        Swal.fire({
+                            title: "Are you sure?",
+                            text: "You won't be able to revert this comment!",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#ef4444",
+                            cancelButtonColor: "#6b7280",
+                            confirmButtonText: "Yes, delete it!"
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $.ajax({
+                                    type: 'POST',
+                                    url: '@Url.Action("DeleteComment", "BAST", new { area = "Purchasing" })',
+                                    data: {
+                                        commentId: commentIdToDelete,
+                                        bast_number: bastNumber
+                                    },
+                                    success: function (response) {
+                                        if (response.success) {
+                                            if (typeof success === 'function') success(commentIdToDelete);
+                                            Toast.fire({
+                                                icon: "success",
+                                                title: "Comment deleted"
+                                            });
+                                        } else {
+                                            Toast.fire({
+                                                icon: "error",
+                                                title: response.message || "Failed to delete comment."
+                                            });
+                                            if (typeof error === 'function') error(response.message);
+                                        }
+                                    },
+                                    error: function () {
+                                        Toast.fire({
+                                            icon: "error",
+                                            title: "Server error."
+                                        });
+                                        if (typeof error === 'function') error("Server error.");
+                                    }
+                                });
+                            } else {
+                                if (typeof error === 'function') error("Cancelled by user.");
+                            }
+                        });
+                    }
+                });
+            })();
+            } // end else (detail mode)
+
+        });
+    </script>
+}

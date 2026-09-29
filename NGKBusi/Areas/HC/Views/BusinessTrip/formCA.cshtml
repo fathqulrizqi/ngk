@@ -1,0 +1,1005 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.HC.Models;
+@using NGKBusi.Areas.HC.Controllers
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using FluentDateTime;
+@using NGKBusi.Areas.FA.Controllers;
+
+@{
+    ViewBag.Title = "Business Trip - Cash Advance";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    BusinessTripConnection bt = new BusinessTripConnection();
+    DefaultConnection db = new DefaultConnection();
+    var BT = ViewContext.Controller as BusinessTripController;
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    var currData = ViewBag.BusinessTrip;
+    var currDataList = ViewBag.BusinessTripList;
+    var currDetailList = ViewBag.BusinessTripDetailList;
+    var currApproval = ViewBag.CurrApproval;
+    int currReqID = currData != null ? currData.ID : 0;
+    string currNIK = Request["NIK"];
+    string currReqNumber = Request["ReqNumber"];
+    var currDataDetail = bt.HC_Business_Trip_CA.Where(w => w.Request_ID == currReqID && w.NIK == currNIK).FirstOrDefault();
+    var currRequest = bt.HC_Business_Trip_Request.Where(w => w.Req_Number == currReqNumber).FirstOrDefault();
+    var currTotalNights = (currRequest != null ? (int)(new DateTime(currRequest.Date_To.Value.Year, currRequest.Date_To.Value.Month, currRequest.Date_To.Value.Day) - new DateTime(currRequest.Date_From.Value.Year, currRequest.Date_From.Value.Month, currRequest.Date_From.Value.Day)).Days : 0);
+    var currTotalDays = currTotalNights + 1;
+    //var currCurrency = currRequest != null && currRequest.Destination_Type.Contains("Overseas") ? "USD" : "IDR";
+    var currCurrency = "IDR";
+
+    var isAllowEdit = currRequest?.Approval == currApproval?.Levels && currRequest?.Approval_Sub == currApproval?.Levels_Sub && currRequest?.NIK == currUserID ? true : false;
+
+    var currHalfDays = currRequest != null ? (Math.Abs(currRequest.Date_From.Value.Hour) >= 16 ? 1 : 0) + (Math.Abs(currRequest.Date_To.Value.Hour) < 16 ? 1 : 0) : 0;
+    var currFullDays = currTotalDays - currHalfDays;
+
+    BusinessTripController.StandardAmount standardAmount = BusinessTripController.getStandardAmount(currDataDetail?.Position, currRequest?.Destination_Type);
+    string[] methodArray = currData?.Travel_Method?.Split(new[] { "," }, StringSplitOptions.None);
+    string[] needArray = currData?.Travel_Need?.Split(new[] { "," }, StringSplitOptions.None);
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .tblCADetail td {
+            position: relative;
+        }
+
+        form label {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .tblCADetail td input, .tblCADetail td textarea {
+            position: absolute;
+            display: block;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .tdReqAmount input[type='text'], .tdSettlementAmount input[type='text'], .tdGrandTotalExchangeRate input[type='text'] {
+            text-align: right;
+        }
+
+        .tdReqDays input[type='text'] {
+            text-align: center;
+        }
+
+        .tblCASchedule th, .tblCADetail thead th, .tblCABudget thead th {
+            background-color: #00757f !important;
+            color: white;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblCADetail tbody th, .tblCABudget tbody th {
+            color: black;
+            text-align: right;
+            vertical-align: top;
+        }
+
+        .tblCABudget tbody th {
+            background-color: #0094a1 !important;
+        }
+
+        .tblCADetail tbody .thItems {
+            color: black;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .tdTotal, .tdDetailTotal, .txtAmount, .txtDays {
+            text-align: right;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .trGrandTotal {
+            background-color: #f8b500;
+            text-align: right;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+
+        .trBlackTop th, .trBlackTop td {
+            border-top-color: black !important;
+            border-top-width: 2px !important;
+        }
+
+        .trBlackBottom th, .trBlackBottom td {
+            border-bottom-color: black !important;
+            border-bottom-width: 2px !important;
+        }
+
+        .trHotel .thMainItems {
+            background-color: rgb(0, 117, 127) !important;
+        }
+
+        .trHotel .thItems {
+            background-color: rgba(0, 117, 127,.5) !important;
+        }
+
+        .trMeals .thMainItems {
+            background-color: rgb(0, 147, 139) !important;
+        }
+
+        .trMeals .thItems {
+            background-color: rgba(0, 147, 139,.5) !important;
+        }
+
+        .trDaily .thMainItems {
+            background-color: rgb(58, 176, 140) !important;
+        }
+
+        .trDaily .thItems {
+            background-color: rgba(58, 176, 140,.5) !important;
+        }
+
+        .trTransport .thMainItems {
+            background-color: rgb(115, 204, 132) !important;
+        }
+
+        .trTransport .thItems {
+            background-color: rgba(115, 204, 132,.5) !important;
+        }
+
+        .trMiscellanous .thMainItems {
+            background-color: rgb(178, 228, 120) !important;
+        }
+
+        .trMiscellanous .thItems {
+            background-color: rgba(178, 228, 120, .5) !important;
+        }
+
+        @@media print {
+            .divCA, .tblSign {
+                font-size: 1.7em !important;
+            }
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/printThis/printThis.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var currMoneySymbol = $("#hfCurrSymbol").val();
+            var currTrigger = $("#hfCurrTrigger").val();
+            var currPrecision = $("#hfCurrPrecision").val();
+            $(document).on(currTrigger, ".tdReqAmount input[type='text']", function () {
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                var getDays = $(this).closest("tr").find(".tdReqDays input[type='text']").val() || 0;
+                $(this).closest("tr").find(".tdCAAmount").text(accounting.formatMoney(accounting.unformat($this.val()) * getDays, currMoneySymbol, currPrecision));
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+                //$(this).parent().find(".txtAllocationAmountHolder").val(accounting.unformat(input));
+                totalAlloc();
+            });
+            $(document).on(currTrigger, ".tdReqDays input[type='text']", function () {
+                var $this = $(this);
+                var getAmount = $(this).closest("tr").find(".tdReqAmount input[type='text']").val() || 0;
+                $(this).closest("tr").find(".tdCAAmount").text(accounting.formatMoney(accounting.unformat(getAmount) * $this.val(), currMoneySymbol, currPrecision));
+                totalAlloc();
+            });
+
+
+            $("#selBTFilterStatus,#selBTFilterYear,#selBTFilterLevel").change(function () {
+                $(".btnBTFilter").click();
+            });
+
+            function totalAlloc() {
+                var totalAllocation = 0;
+                $(".tdCAAmount").each(function () {
+                    totalAllocation += accounting.unformat($(this).text()) || 0;
+                });
+                $(".tdCAAmountTotal").text(accounting.formatMoney(totalAllocation, currMoneySymbol, currPrecision));
+            }
+
+            $("#selLevel").change(function () {
+                var currVal = $(this).val();
+                $.ajax({
+                    url: "/NGKBusi/HC/CashAdvance/getStandardAmount",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        level: currVal,
+                    }, success: function (data) {
+                        $(".trHotel .tdReqAmount input[type='text']").val(accounting.formatMoney(data.hotel, currMoneySymbol, currPrecision)).trigger(currTrigger);
+                        $(".trDaily .tdReqAmount input[type='text']").val(accounting.formatMoney(data.daily, currMoneySymbol, currPrecision)).trigger(currTrigger);
+                        $(".trMealsLunch .tdReqAmount input[type='text']").val(accounting.formatMoney(data.meals, currMoneySymbol, currPrecision)).trigger(currTrigger);
+                        // currCTR.LoadingOverlay("hide");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        //currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            $(".txtAmount").each(function () {
+                //$(this).val(accounting.formatMoney($(this).val(),currMoneySymbol));
+            });
+            $(".tdTotal,.tdDetailTotal").each(function () {
+                $(this).text(accounting.formatMoney($(this).text(), currMoneySymbol, currPrecision));
+            });
+            $(document).on(currTrigger, ".txtAmount,.txtDays", function () {
+                if ($(this).hasClass("txtDays")) {
+                    $(this).val(accounting.formatNumber($(this).val()));
+                } else {
+                    $(this).val(accounting.formatMoney(accounting.unformat($(this).val()), currMoneySymbol, currPrecision));
+                }
+                var currTR = $(this).closest("tr");
+                var amount = accounting.unformat(currTR.find(".txtAmount").val()) || 0;
+                var totalAmount = 0;
+                var days = currTR.find(".txtDays").val() || 0;
+                currTR.find(".txtDetailTotal").val(amount * days);
+                currTR.find(".tdDetailTotal").text(accounting.formatMoney(amount * days, currMoneySymbol, currPrecision));
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).each(function () {
+                    totalAmount += parseFloat($(this).find(".txtDetailTotal").val()) || 0;
+                });
+                var grandTotalAmount = 0;
+                $(this).closest("tbody").find(".txtDetailTotal").each(function () {
+                    grandTotalAmount += parseFloat($(this).val()) || 0
+                });
+                $('.tdGrandTotal').text(accounting.formatMoney(grandTotalAmount, currMoneySymbol, currPrecision));
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).find(".txtTotal").val(totalAmount);
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).find(".tdTotal").text(accounting.formatMoney(totalAmount, currMoneySymbol, currPrecision));
+                calculateExchangeRate();
+            });
+            $(".txtAmount,.txtDays").trigger(currTrigger); //To Trigger blur Function
+            $(".btnCASave").click(function () {
+                $(".txtAmount,.txtExchangeRate").each(function () {
+                    $(this).val(accounting.unformat($(this).val()));
+                });
+            });
+            $(".divCA input").click(function () {
+                $(this).select();
+            });
+            $(".btnPrint").click(function () {
+                $(".divBTCashAdvance").printThis({
+                    importCSS: true,
+                    importStyle: true,
+                    printContainer: true
+                });
+            });
+            if ($(".hfIsAllowEdit").val() == "False") {
+                $("input").prop("disabled", true);
+            }
+
+            $(".tblCARequestList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ], filter_defaultFilter: {
+                        // "{query} - a single or double quote signals an exact filter search
+                        6: '"{q}',
+                        7: '"{q}'
+                    }
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: '10'
+            });
+
+            $(document).on("keydown", "form", function (event) {
+                return event.key != "Enter";
+            });
+            $(document).on("keydown", "input[type='text']", function (event) {
+                if (event.key == "Enter") {
+                    $(this).trigger(currTrigger);
+                }
+            });
+
+            $(document).on("blur", ".tdGrandTotalExchangeRate input[type='text']", function () {
+                var currExchangeRate = accounting.unformat($(this).val());
+                $(this).val(accounting.formatMoney(currExchangeRate, "Rp"));
+                calculateExchangeRate();
+            });
+            $(".tdGrandTotalExchangeRate input[type='text']").blur();
+            function calculateExchangeRate() {
+                var currExchangeRate = accounting.unformat($(".tdGrandTotalExchangeRate input[type='text']").val());
+                var currTotal = accounting.unformat($(".tdGrandTotal").text());
+                var currExchange = accounting.formatMoney(currExchangeRate * currTotal, "Rp");
+                $(".tdGrandTotalExchange").text(currExchange);
+            }
+        });
+    </script>
+}
+<h2>
+    Business Trip - Cash Advance
+
+    @if (Request["ReqNumber"] != null)
+    {
+        <a href="@Url.Action("formCA", "BusinessTrip", new { area = "HC" })" class="btn btn-success">Back to CA List</a><a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC", ReqNumber = Request["ReqNumber"] })" class="btn btn-primary ml-2">Go to Request Form</a>
+        if (Request["NIK"] != null)
+        {
+            <button type="button" class="btn btn-warning btnPrint"><i class="fas fa-print"></i></button>
+            if (currRequest != null && currRequest.Approval == 4 && (currUserID == "629.01.13" || currUserID == "884.07.26"))
+            {
+                <a href="@Url.Action("NonPO", "PaymentRequest", new { area = "FA", addNew = "addNew", invNumber = Request["ReqNumber"] + "-" + currDataDetail.NIK, NIK = currDataDetail.NIK, currency = currCurrency, amountOfInvoice = (currDataDetail.Hotel_Total + currDataDetail.Meals_Total + currDataDetail.Daily_Total + currDataDetail.Transport_Total + currDataDetail.Misc_Total) * (currDataDetail?.Exchange_Rate ?? 1), paymentType = "Pre-Payment", dueDate = DateTime.Now.AddBusinessDays(5).ToString("MM/dd/yyyy"), description = DateTime.Now.ToString("yyMM_") + "Cash Advance_" + currRequest.Destination + "_" + currRequest.Date_From?.ToString("dd MMM-") + currRequest?.Date_To?.ToString("dd MMM yyyy_") + currDataDetail.Name.Split(' ')[0] })" target="_blank" class="btn btn-warning ml-2" onclick="return confirm('Are you sure want to create E-Voucher?')">Generate E-Voucher</a>
+            }
+        }
+    }
+</h2>
+<hr />
+
+<div class="divBTFilter @(Request["addNew"] == null ? "":"d-none")">
+    <form action="@Url.Action("formCA", "BusinessTrip", new { area = "HC" })" method="post">
+        <select id="selBTFilterYear" class="form-control" name="iBTFilterYear">
+            <option value="">-Year-</option>
+            @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selBTFilterStatus" class="form-control" name="iBTFilterStatus">
+            <option value="">-Status-</option>
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.PayUserLevelCheck).Count() > 1)
+        {
+            <select id="selBTFilterLevel" class="form-control" name="iBTFilterLevel">
+                @foreach (var data in ((IEnumerable<dynamic>)ViewBag.PayUserLevelCheck).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.PayUserLevel + "|" + ViewBag.PayUserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnBTFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+
+@if (Request["ReqNumber"] == null || Request["NIK"] == null)
+{
+    <table class="table table-bordered tblCARequestList">
+        <thead>
+            <tr>
+                <th data-value="@Request["ReqNumber"]">Req Number</th>
+                <th>NIK</th>
+                <th>Date</th>
+                <th>Date-Remaining</th>
+                <th>Destination</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="Select">Dept</th>
+                <th class="filter-select" data-placeholder="Select">E-Voucher</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in currDetailList)
+            {
+                string invoiceNumber = data.HC_Business_Trip_Request.Req_Number + "-" + data.NIK;
+                var Status = db.FA_Payment_Request_Non_PO.Where(w => w.Invoice_Number == invoiceNumber && w.Payment_Type == "Pre-Payment").FirstOrDefault();
+                var dayRemaining = (data.HC_Business_Trip_Request.Date_From - DateTime.Now).Days;
+                <tr>
+                    <td>@(data.HC_Business_Trip_Request.Req_Number)</td>
+                    <td><a href="@(Url.Action("formCA", "BusinessTrip", new { area = "HC", ReqNumber = data.HC_Business_Trip_Request.Req_Number, NIK = data.NIK }))">@(data.NIK)</a></td>
+                    <td>@(data.HC_Business_Trip_Request.Date_From.ToString("dd-MM-yyyy"))</td>
+                    <td>@(dayRemaining > 0 ? dayRemaining + " Days" : "Departured")</td>
+                    <td>@(data.HC_Business_Trip_Request.Destination)</td>
+                    <td>@(data.Name)</td>
+                    <td>@(data.Department)</td>
+                    <td><span class="badge badge-@(Status != null ? "info":"warning")">@(Status != null ? PaymentRequestController.ApprovalStatus(Status.Approval, Status.Approval_Sub, Status.Is_Reject, Status.Amount_of_Invoice) : "Not Created")</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="8" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    if (currDataDetail == null)
+    {
+        <h2>Data Tidak Ada, Mohon pastikan data ini sudah di save</h2>
+    }
+    else
+    {
+        <hr />
+        <div class="card border-secondary shadow-sm divBTCashAdvance">
+            <div class="card-body">
+                <table id="tblHeader" border="1" style="width:100%;">
+                    <tr>
+                        <td rowspan="4" class="text-center" style="width:235px">
+                            <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                        </td>
+                        <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h3>TUNJANGAN PERJALANAN DINAS</h3><h4>BUSINESS TRIP ALLOWANCE</h4></td>
+                        <td style="width:150px">No. Dok</td>
+                        <td style="width:150px">PK-GA-ALL-22/F2</td>
+                    </tr>
+                    <tr>
+                        <td>Revisi</td>
+                        <td>01</td>
+                    </tr>
+                    <tr>
+                        <td>Tanggal</td>
+                        <td>1 Agustus 2017</td>
+                    </tr>
+                    <tr>
+                        <td>Halaman</td>
+                        <td>1 of 1</td>
+                    </tr>
+                </table>
+
+                <form action="@Url.Action((currDataDetail != null ? "CAEdit" : "CAAdd"), "BusinessTrip", new { area = "HC" })" method="post">
+                    <div class="container-fluid mt-5 divCA">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="form-group row">
+                                    <label for="lblNp" class="col-3">No :</label>
+                                    <div class="col-9">
+                                        <a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC", ReqNumber = currData?.Req_Number })" target="_blank">@(currData?.Req_Number)</a>
+                                        <input type="hidden" id="hfCurrDetailID" name="iCurrDetailID" value="@(currDataDetail.ID)" />
+                                        <input type="hidden" id="hfCurrReqNumber" name="iCurrReqNumber" value="@(currData.Req_Number)" />
+                                        <input type="hidden" id="hfCurrNIK" name="iCurrNIK" value="@(currDataDetail.NIK)" />
+                                        <input type="hidden" id="hfCurrSymbol" name="iCurrSymbol" value="@(currData.Destination_Type == "Overseas Route A (Asean)" || currData.Destination_Type == "Overseas Route B (Outside Asean)" ? "$" : "Rp")" />
+                                        <input type="hidden" id="hfCurrTrigger" name="iCurrTrigger" value="@(currRequest?.Destination_Type?.Contains("Overseas") == true ? "blur" : "keyup")" />
+                                        <input type="hidden" id="hfCurrPrecision" name="iCurrPrecision" value="@(currRequest?.Destination_Type?.Contains("Overseas") == true ? 2 : 0)" />
+                                        <input type="hidden" class="hfIsAllowEdit" name="iAllowEdit" value="@(isAllowEdit.ToString())" />
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="lblName" class="col-3">Name :</label>
+                                    <div class="col-9">
+                                        @(currDataDetail?.Name)
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="lblNIK" class="col-3">Emp.ID :</label>
+                                    <div class="col-9">
+                                        @(currDataDetail?.NIK)
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="lblTransportBy" class="col-3">Transport By :</label>
+                                    <div class="col-9">
+                                        @(currData?.Travel_Method_By)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="form-group row">
+                                    <label for="lblDept" class="col-3">Dept/Sect :</label>
+                                    <div class="col-9">
+                                        @(currDataDetail?.Department)
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="lblPosition" class="col-3">Position :</label>
+                                    <div class="col-9">
+                                        @(currDataDetail?.Position)
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="lblPosition" class="col-3">Request Date :</label>
+                                    <div class="col-9">
+                                        @(currData?.Created_At.ToString("dd-MMM-yyyy"))
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <table class="table table-bordered tblCASchedule">
+                            <tbody>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>No of Days</th>
+                                    <th>Destination (City)</th>
+                                </tr>
+                                <tr>
+                                    <td class="text-center">
+                                        @(currData?.Date_From?.ToString("dd-MMM-yyyy (HH:mm)") + " to " + currData?.Date_To?.ToString("dd-MMM-yyyy (HH:mm)"))
+                                    </td>
+                                    <td class="text-center">
+                                        @(currTotalDays + " Days")
+                                    </td>
+                                    <td class="text-center">
+                                        @(currData?.Destination)
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2">Activity</th>
+                                    <th>Company to be visited</th>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" class="text-center">
+                                        @(currData?.Purpose)
+                                    </td>
+                                    <td class="text-center">
+                                        @(currData?.Visited_To)
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-bordered tblCADetail">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" colspan="2">Detail of Expenses</th>
+                                    <th colspan="3">CA Request</th>
+                                    <th colspan="2">Amount CA</th>
+                                </tr>
+                                <tr>
+                                    <th>Amount</th>
+                                    <th>X</th>
+                                    <th>Days/Qty</th>
+                                    <th>Detail Total</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @*Hotel !===================================================*@
+                                @{
+                                    var detailHotel = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataDetail.ID && w.NIK == currDataDetail.NIK && w.Item_Type == "Hotel").ToList();
+                                }
+                                <tr class="trHotel trBlackTop trBlackBottom">
+                                    <th class="align-middle thMainItems">Hotel</th>
+                                    <th class="thItems">
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Amount ?? (currRequest.Travel_Need.Contains("Hotel") ? standardAmount.Hotel:0))" />
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Hotel" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Hotel" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Total ?? 0)" />
+                                        <input type="hidden" name="iHotelTotal" class="form-control txtTotal" value="@(currDataDetail?.Hotel_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Hotel") ? (detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Days ?? currTotalNights):0))" /></td>
+                                    <td class="tdDetailTotal">@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                    <td class="tdTotal">@(currDataDetail?.Hotel_Total ?? 0)</td>
+                                </tr>
+
+                                @*Hotel ===================================================!*@
+                                @*Meal !===================================================*@
+                                @{
+                                    var detailMeals = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataDetail.ID && w.NIK == currDataDetail.NIK && w.Item_Type == "Meal Allowance").ToList();
+                                }
+                                <tr class="trMeals trBlackTop">
+                                    <th class="thMainItems" rowspan="3">Meal Allowance</th>
+                                    <th class="thItems">
+                                        Breakfast
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Breakfast" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Total ?? 0)" />
+                                        <input type="hidden" name="iMealsTotal" class="form-control txtTotal" value="@(currDataDetail?.Meals_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Days ?? 0)" /></td>
+                                    <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                    <td rowspan="3" class="tdTotal">@(currDataDetail?.Meals_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trMeals">
+                                    <th class="thItems">
+                                        Lunch
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Lunch" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Amount ?? standardAmount.Meals)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Days ?? (currTotalDays - (currRequest?.Date_To?.Hour < 10 ? 1 : 0)))" /></td>
+                                    <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trMeals trBlackBottom">
+                                    <th class="thItems">
+                                        Dinner
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control" value="Dinner" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Amount ?? standardAmount.Meals)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Days ?? (currTotalDays - (currRequest?.Date_To?.Hour <= 16 ? 1 : 0)))" /></td>
+                                    <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                @*Meal ===================================================!*@
+                                @*Daily !===================================================*@
+                                @{
+                                    var detailDaily = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataDetail.ID && w.NIK == currDataDetail.NIK && w.Item_Type == "Daily Allowance").ToList();
+                                }
+                                <tr class="trDaily trBlackTop">
+                                    <th class="thMainItems" rowspan="2">Daily Allowance</th>
+                                    <th class="thItems">
+                                        Full Day
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Daily Allowance" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Full Day" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Amount ?? standardAmount.Daily)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Total ?? 0)" />
+                                        <input type="hidden" name="iDailyTotal" class="form-control txtTotal" value="@(currDataDetail?.Daily_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Days ?? currFullDays)" /></td>
+                                    <td class="tdDetailTotal">@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                    <td rowspan="2" class="tdTotal">@(currDataDetail?.Daily_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trDaily trBlackBottom">
+                                    <th class="thItems">
+                                        Half Day
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Daily Allowance" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Half Day" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Amount ?? standardAmount.Daily / 2)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Days ?? currHalfDays)" /></td>
+                                    <td class="tdDetailTotal">@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                @*Daily ===================================================!*@
+                                @*Transportation !===================================================*@
+                                @{
+                                    var detailTransport = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataDetail.ID && w.NIK == currDataDetail.NIK && w.Item_Type == "Transportation").ToList();
+                                }
+                                <tr class="trTransport trBlackTop">
+                                    <th class="thMainItems" rowspan="4">Transportation</th>
+                                    <th class="thItems">
+                                        Rent Car
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Rent Car" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Total ?? 0)" />
+                                        <input type="hidden" name="iTransportTotal" class="form-control txtTotal" value="@(currDataDetail?.Transport_Total)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(currRequest.Travel_Need.Contains("Rent Car") ? (detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Days ?? currTotalDays) : 0 )" /></td>
+                                    <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                    <td rowspan="4" class="tdTotal">@(currDataDetail?.Transport_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trTransport">
+                                    <th class="thItems">
+                                        Gasoline
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Gasoline" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                    <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trTransport">
+                                    <th class="thItems">
+                                        Tol
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Tol" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                    <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trTransport trBlackBottom">
+                                    <th class="thItems">
+                                        Parking
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Parking" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                    <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                @*Transportation ===================================================!*@
+                                @*Miscellanous !===================================================*@
+                                @{
+                                    var detailMisc = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataDetail.ID && w.NIK == currDataDetail.NIK && w.Item_Type == "Miscellanous (Lain-Lain)").ToList();
+                                }
+                                <tr class="trMiscellanous trBlackTop">
+                                    <th class="thMainItems" rowspan="4">Miscellanous (Lain-Lain)</th>
+                                    <th class="thItems">
+                                        Entertainment
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Entertainment" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Total ?? 0)" />
+                                        <input type="hidden" name="iMiscellanousTotal" class="form-control txtTotal" value="@(currDataDetail?.Misc_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Entertainment") ? (detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Days ?? 1):1))" /></td>
+                                    <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                    <td rowspan="4" class="tdTotal">@(currDataDetail?.Misc_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trMiscellanous @(currTotalDays >= 6 ? "":"d-none")">
+                                    <th class="thItems">
+                                        Laundry
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Laundry" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Amount ?? (currTotalDays >= 6 ? (currRequest.Destination_Type == "Overseas Route A (Asean)" || currRequest.Destination_Type == "Overseas Route B (Outside Asean)" ? 5 : 50000) : 0))" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Total ?? (currTotalDays >= 6 ? (currRequest.Destination_Type == "Overseas Route A (Asean)" || currRequest.Destination_Type == "Overseas Route B (Outside Asean)" ? 5 : 50000) * (currTotalDays - 5) : 0))" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Laundry") ? (currTotalDays >= 6 ? (detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Days ?? currTotalDays - 5) : 0) : currTotalDays - 5))" /></td>
+                                    <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Total ?? (currTotalDays >= 6 ? (currRequest.Destination_Type == "Overseas Route A (Asean)" || currRequest.Destination_Type == "Overseas Route B (Outside Asean)" ? 5 : 50000) * (currTotalDays - 5) : 0))</td>
+                                </tr>
+                                <tr class="trMiscellanous">
+                                    <th class="thItems">
+                                        Baggage
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Baggage" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Baggage") ? (detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Days ?? 0):0))" /></td>
+                                    <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                <tr class="trMiscellanous trBlackBottom">
+                                    <th class="thItems">
+                                        Emergency
+                                        <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                        <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Emergency" />
+                                    </th>
+                                    <td>
+                                        <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                        <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Total ?? 0)" />
+                                    </td>
+                                    <td class="text-center">X</td>
+                                    <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Emergency") ? (detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Days ?? 0):0))" /></td>
+                                    <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                </tr>
+                                @*Miscellanous ===================================================!*@
+                            </tbody>
+                            <tfoot>
+                                <tr class="trGrandTotal trBlackTop">
+                                    <th colspan="6" class="thItems">
+                                        TOTAL
+                                    </th>
+                                    <td class="tdGrandTotal">0</td>
+                                </tr>
+                                <tr class="trGrandTotal @(currRequest.Destination_Type.IndexOf("Overseas") > -1 ? "" : "d-none")">
+                                    <th colspan="5" class="thItems">
+                                        Exchange Rate
+                                    </th>
+                                    <td class="tdGrandTotalExchangeRate"><input type="text" name="iExchangeRate" class="form-control txtExchangeRate" placeholder="Exchange Rate" value="@(currDataDetail?.Exchange_Rate ?? 1)" /></td>
+                                    <td class="tdGrandTotalExchange">0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <table class="table table-bordered tblCABudget">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;"></th>
+                                    <th>Budget Number</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="@(currRequest.Travel_Need.Contains("Hotel") ? "":"d-none")">
+                                    <th>Hotel</th>
+                                    <td>
+                                        <select name="iBudgetNumberHotel" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Hotel") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Hotel_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-021" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Hotel_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Daily Allowance</th>
+                                    <td>
+                                        <select name="iBudgetNumberDaily" class="form-control select2 selBudgetNumber" style="width:100%" @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Daily_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-019" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Daily_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Meals</th>
+                                    <td>
+                                        <select name="iBudgetNumberMeals" class="form-control select2 selBudgetNumber" style="width:100%" @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Meals_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-022" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Meals_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="@(currRequest.Travel_Method.Contains("Airplane") ? "":"d-none")">
+                                    <th>Flight</th>
+                                    <td>
+                                        <select name="iBudgetNumberFlight" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Airplane") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Flight_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-018" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Flight_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="@(currRequest.Travel_Need.Contains("Rent Car") ? "":"d-none")">
+                                    <th>Rent Car</th>
+                                    <td>
+                                        <select name="iBudgetNumberRentCar" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Rent Car") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.RentCar_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-023" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.RentCar_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="@(currRequest.Travel_Need.Contains("Entertainment") ? "":"d-none")">
+                                    <th>Entertainment</th>
+                                    <td>
+                                        <select name="iBudgetNumberEntertainment" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Entertainment") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Entertaintment_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-029" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Entertaintment_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                @*<tr class="@(currNIK == currRequest.NIK  && currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">*@
+                                <tr class="@(currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">
+                                    <th>Gasoline</th>
+                                    <td>
+                                        @*<select name="iBudgetNumberGasoline" class="form-control select2 selBudgetNumber" style="width:100%" @(currNIK == currRequest.NIK && currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "")>*@
+                                        <select name="iBudgetNumberGasoline" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Gasoline_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-020" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Gasoline_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                @*<tr class="@(currNIK == currRequest.NIK  && currRequest.Travel_Method.Contains("Tol") ? "":"d-none")">*@
+                                <tr class="@(currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">
+                                    <th>Toll & Parking</th>
+                                    <td>
+                                        @*<select name="iBudgetNumberToll" class="form-control select2 selBudgetNumber" style="width:100%" @(currNIK == currRequest.NIK && currRequest.Travel_Method.Contains("Tol") ? "required" : "")>*@
+                                        <select name="iBudgetNumberToll" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Toll_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-025" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Toll_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="@(currRequest.Travel_Need.Contains("Baggage") ? "":"d-none")">
+                                    <th>Baggage</th>
+                                    <td>
+                                        <select name="iBudgetNumberBaggage" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Baggage") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Baggage_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-026" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Baggage_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr class="@(currRequest.Travel_Need.Contains("Taxi") ? "":"d-none")">
+                                    <th>Taxi</th>
+                                    <td>
+                                        <select name="iBudgetNumberTaxi" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Taxi") ? "required" : "") @(isAllowEdit ? "" : "disabled")>
+                                            <option value="">-Budget Number-</option>
+                                            @foreach (var item in ViewBag.Budget)
+                                            {
+                                                <option data-dept-to="@(item.Section_To_Code)" @(currDataDetail?.Taxi_Budget == item.Budget_No ? "selected" : (currDataDetail?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataDetail.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-024" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                            }
+                                            <option data-dept-to="ALL" @(currDataDetail?.Taxi_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="form-group row @(isAllowEdit ? "" : "d-none")">
+                            <div class="col-12">
+                                <button type="submit" class="btn btnCASave @(currDataDetail != null ? "btn-warning" : "btn-primary") form-control" onclick="return confirm('Are you sure want to @(currDataDetail != null ? "save": "submit") this data?');">@(currDataDetail != null ? "Save" : "Submit")</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+}

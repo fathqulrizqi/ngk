@@ -1,0 +1,1917 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.HC.Models;
+@using NGKBusi.Areas.HC.Controllers;
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using System.Linq;
+@{
+    ViewBag.Title = "Business Trip - Request Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = _currUser.GetUserId();
+    var currUser = ViewBag.CurrUser;
+    var currUserFullName = _currUser.FindFirstValue("FullName");
+    HC_Business_Trip_Request currData = ViewBag.BusinessTrip;
+    var currDataList = ViewBag.BusinessTripList;
+    var currApproval = ViewBag.CurrApproval;
+    BusinessTripConnection bt = new BusinessTripConnection();
+    DefaultConnection db = new DefaultConnection();
+    var BT = ViewContext.Controller as BusinessTripController;
+    var isAllowEdit = Request["addNew"] != null || currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub && currData?.NIK == currUserID && currData.isReject != true ? true : false;
+    var isAllowSign = currData?.Approval == currApproval?.Levels && currData?.Approval_Sub == currApproval?.Levels_Sub && currData.isReject != true ? true : false;
+    if (isAllowSign == false && currData != null)
+    {
+        var checkSign = db.Approval_Master.Where(w => w.User_NIK == currUserID && w.Menu_Id == 75 && w.Document_Id == 1 && w.Levels == currData.Approval && w.Levels_Sub == currData.Approval_Sub && w.Dept_Code == currData.Cost_ID).FirstOrDefault();
+        isAllowSign = checkSign != null && currData.isReject != true ? true : false;
+    }
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Scripts/comment/css/jquery-comments.css")" rel="stylesheet" type="text/css" />
+    <style>
+        form {
+            font-size: 1.2em !important;
+        }
+
+        .tblSign thead th, .tblAddEmployee thead th {
+            background-color: #1F4E78 !important;
+            color: white;
+        }
+
+        /*Cash Advance*/
+        .tblCADetail td {
+            position: relative;
+        }
+
+        form label {
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .tblCADetail td input, .tblCADetail td textarea {
+            position: absolute;
+            display: block;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .tdReqAmount input[type='text'], .tdSettlementAmount input[type='text'], .tdGrandTotalExchangeRate input[type='text'] {
+            text-align: right;
+        }
+
+        .tdReqDays input[type='text'] {
+            text-align: center;
+        }
+
+        .tblCASchedule th, .tblCADetail thead th, .tblCABudget thead th {
+            background-color: #00757f !important;
+            color: white;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblCADetail tbody th, .tblCABudget tbody th {
+            color: black;
+            text-align: right;
+            vertical-align: top;
+        }
+
+        .tblCABudget tbody th {
+            background-color: #0094a1 !important;
+        }
+
+        .tblCADetail tbody .thItems {
+            color: black;
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .tdTotal, .tdDetailTotal, .txtAmount, .txtDays {
+            text-align: right;
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .trGrandTotal {
+            background-color: #f8b500 !important;
+            text-align: right;
+        }
+
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+
+        .iReject:hover {
+            opacity: .7;
+        }
+
+        .trBlackTop th, .trBlackTop td {
+            border-top-color: black !important;
+            border-top-width: 2px !important;
+        }
+
+        .trBlackBottom th, .trBlackBottom td {
+            border-bottom-color: black !important;
+            border-bottom-width: 2px !important;
+        }
+
+
+        .trHotel .thMainItems {
+            background-color: rgb(0, 117, 127) !important;
+        }
+
+        .trHotel .thItems {
+            background-color: rgba(0, 117, 127,.5) !important;
+        }
+
+        .trMeals .thMainItems {
+            background-color: rgb(0, 147, 139) !important;
+        }
+
+        .trMeals .thItems {
+            background-color: rgba(0, 147, 139,.5) !important;
+        }
+
+        .trDaily .thMainItems {
+            background-color: rgb(58, 176, 140) !important;
+        }
+
+        .trDaily .thItems {
+            background-color: rgba(58, 176, 140,.5) !important;
+        }
+
+        .trTransport .thMainItems {
+            background-color: rgb(115, 204, 132) !important;
+        }
+
+        .trTransport .thItems {
+            background-color: rgba(115, 204, 132,.5) !important;
+        }
+
+        .trMiscellanous .thMainItems {
+            background-color: rgb(178, 228, 120) !important;
+        }
+
+        .trMiscellanous .thItems {
+            background-color: rgba(178, 228, 120, .5) !important;
+        }
+
+        @@media print {
+            .divBusinessTripWrapper form, .divCA, .tblSign {
+                font-size: 1.7em !important;
+            }
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/printThis/printThis.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/comment/js/jquery-comments.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            var currMoneySymbol = $("#hfCurrSymbol").val();
+            var currTrigger = $("#hfCurrTrigger").val();
+            var currPrecision = $("#hfCurrPrecision").val();
+            $(document).on("change", ".selAddEmployee", function () {
+                var currCTR = $(this);
+                var selText = currCTR.find(':selected').text();
+                var selName = currCTR.find(':selected').data("name");
+                var selDept = currCTR.find(':selected').data("dept");
+                var selSect = currCTR.find(':selected').data("sect");
+                var selPos = currCTR.find(':selected').data("pos");
+                var tr = currCTR.closest("tr");
+
+                $.ajax({
+                    url: "/NGKBusi/HC/BusinessTrip/checkSettlement",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iNIK: currCTR.val()
+                    }, success: function (data) {
+                        if (data.length >= 3) {
+                            $(this).closest("td").find("input[type='hidden']").val("");
+                            alert("Mohon Maaf, Karyawan '" + selText + "' belum menyelesaikan " + data.length + " settlement, Mohon selesaikan terlebih dahulu.");
+
+                            tr.find(".selAddEmployee").val("").change();
+                            tr.find("input").val("");
+                            tr.find(".tdLabel").text("");
+                            tr.find(".select2-container").remove();
+                            tr.find(".selAddEmployee").select2();
+                        } else {
+                            currCTR.closest("td").find("input[type='hidden']").val("");
+                            currCTR.closest("td").find(".hfName").val(selName);
+                            currCTR.closest("td").find(".hfDept").val(selDept);
+                            currCTR.closest("td").find(".hfSect").val(selSect);
+                            currCTR.closest("td").find(".hfPos").val(selPos);
+
+                            currCTR.closest("tr").find(".tdDept").text(selDept);
+                            currCTR.closest("tr").find(".tdSect").text(selSect);
+                            currCTR.closest("tr").find(".tdPos").text(selPos);
+                        }
+                        // currCTR.LoadingOverlay("hide");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        //currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+
+                $(this).closest("td").find("input[type='hidden']").val("");
+                $(this).closest("td").find(".hfName").val(selName);
+                $(this).closest("td").find(".hfDept").val(selDept);
+                $(this).closest("td").find(".hfSect").val(selSect);
+                $(this).closest("td").find(".hfPos").val(selPos);
+
+                $(this).closest("tr").find(".tdDept").text(selDept);
+                $(this).closest("tr").find(".tdSect").text(selSect);
+                $(this).closest("tr").find(".tdPos").text(selPos);
+            });
+
+            $("#txtMethodOther").keyup(function () {
+                var currCB = $(this).closest("div").find(".cbMethod");
+                if ($(this).val().length > 0) {
+                    currCB.prop("checked", true);
+                    currCB.val("Other|" + $(this).val());
+                } else {
+                    currCB.prop("checked", false);
+                    currCB.val("Other|" + $(this).val());
+                }
+            });
+
+
+            $(".cbMethod").change(function () {
+                if ($(this).not(":checked")) {
+                    $("#txtMethodOther").val("");
+                    $(this).val("Other|" + $("#txtMethodOther").val());
+                }
+            });
+            $(".btnAddEmployee").click(function () {
+                var blankTD = $(".tblAddEmployee tbody tr:first").clone();
+                blankTD.find(".selAddEmployee").val("").change();
+                blankTD.find(".selAddEmployee").css("width", "100%");
+                blankTD.find("input").val("");
+                blankTD.find(".tdLabel").text("");
+                blankTD.find(".select2-container").remove();
+                blankTD.find(".selAddEmployee").select2();
+                $(".tblAddEmployee tbody").append(blankTD);
+            });
+            $(document).on("click", ".btnEmployeeDelete", function () {
+                var tr = $(this).closest("tr");
+                if ($(".tblAddEmployee tbody tr").length == 1) {
+                    tr.find(".selAddEmployee").val("").change();
+                    tr.find("input").val("");
+                    tr.find(".tdLabel").text("");
+                    tr.find(".select2-container").remove();
+                    tr.find(".selAddEmployee").select2();
+                } else {
+                    tr.remove();
+                }
+            });
+
+            //CA Function==============================================================================
+            $(document).on("keyup", ".tdReqAmount input[type='text']", function () {
+                var selection = window.getSelection().toString();
+                if (selection !== '') {
+                    return;
+                }
+                // When the arrow keys are pressed, abort.
+                if ($.inArray(event.keyCode, [38, 40, 37, 39, 188, 190]) !== -1) {
+                    return;
+                }
+                var $this = $(this);
+                var getDays = $(this).closest("tr").find(".tdReqDays input[type='text']").val() || 0;
+                $(this).closest("tr").find(".tdCAAmount").text(accounting.formatMoney(accounting.unformat($this.val()) * getDays, currMoneySymbol, currPrecision));
+                // Get the value.
+                var input = $this.val().replace(/(?!\.)\D/g, "").replace(/(?<=\..*)\./g, "").replace(/(?<=\.\d\d).*/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                $this.val(input);
+                //$(this).parent().find(".txtAllocationAmountHolder").val(accounting.unformat(input));
+                totalAlloc();
+            });
+            $(document).on("keyup", ".tdReqDays input[type='text']", function () {
+                var $this = $(this);
+                var getAmount = $(this).closest("tr").find(".tdReqAmount input[type='text']").val() || 0;
+                $(this).closest("tr").find(".tdCAAmount").text(accounting.formatMoney(accounting.unformat(getAmount) * $this.val(), currMoneySymbol, currPrecision));
+                totalAlloc();
+            });
+
+            function totalAlloc() {
+                var totalAllocation = 0;
+                $(".tdCAAmount").each(function () {
+                    totalAllocation += accounting.unformat($(this).text()) || 0;
+                });
+                $(".tdCAAmountTotal").text(accounting.formatMoney(totalAllocation, currMoneySymbol, 0));
+            }
+
+            $("#selLevel").change(function () {
+                var currVal = $(this).val();
+                $.ajax({
+                    url: "/NGKBusi/HC/CashAdvance/getStandardAmount",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        level: currVal
+                    }, success: function (data) {
+                        $(".trHotel .tdReqAmount input[type='text']").val(accounting.formatMoney(data.hotel, currMoneySymbol, currPrecision)).keyup();
+                        $(".trDaily .tdReqAmount input[type='text']").val(accounting.formatMoney(data.daily, currMoneySymbol, currPrecision)).keyup();
+                        $(".trMealsLunch .tdReqAmount input[type='text']").val(accounting.formatMoney(data.meals, currMoneySymbol, currPrecision)).keyup();
+                        // currCTR.LoadingOverlay("hide");
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        //currCTR.LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            });
+            $(".txtAmount").each(function () {
+                //$(this).val(accounting.formatNumber($(this).val()));
+            });
+            $(".tdTotal,.tdDetailTotal").each(function () {
+                $(this).text(accounting.formatMoney($(this).text(), currMoneySymbol, currPrecision));
+            });
+            $(".txtAmount,.txtDays").keyup(function () {
+                if ($(this).hasClass("txtDays")) {
+                    $(this).val(accounting.formatNumber($(this).val()));
+                } else {
+                    $(this).val(accounting.formatMoney(accounting.unformat($(this).val()), currMoneySymbol, currPrecision));
+                }
+                var currTR = $(this).closest("tr");
+                var amount = accounting.unformat(currTR.find(".txtAmount").val()) || 0;
+                var totalAmount = 0;
+                var days = currTR.find(".txtDays").val() || 0;
+                currTR.find(".txtDetailTotal").val(amount * days);
+                currTR.find(".tdDetailTotal").text(accounting.formatMoney(amount * days, currMoneySymbol, currPrecision));
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).each(function () {
+                    totalAmount += parseFloat($(this).find(".txtDetailTotal").val()) || 0;
+                });
+                var grandTotalAmount = 0;
+                $(this).closest("tbody").find(".txtDetailTotal").each(function () {
+                    grandTotalAmount += parseFloat($(this).val()) || 0
+                });
+                $(this).closest(".divCAData").find('.tdGrandTotal').text(accounting.formatMoney(grandTotalAmount, currMoneySymbol, currPrecision));
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).find(".txtTotal").val(totalAmount);
+                $(this).closest("tbody").find("." + currTR.attr("class").split(' ')[0]).find(".tdTotal").text(accounting.formatMoney(totalAmount, currMoneySymbol, currPrecision));
+                calculateExchangeRate($(this));
+            });
+            $(".txtAmount,.txtDays").keyup(); //To Trigger Keyup Function
+            $(".btnCASave").click(function () {
+                $(".txtAmount").each(function () {
+                    $(this).val(accounting.unformat($(this).val()));
+                });
+            });
+            $(".divCA input").click(function () {
+                $(this).select();
+            });
+            $(".divCAData input,.divCAData select").prop("disabled", true);
+
+
+            var reqNumber = $(".hfReqNumber").val();
+            var isAllowEdit = $(".hfIsAllowEdit").val() == "False" ? false : true;
+
+            $.ajax({
+                type: "POST",
+                url: "/NGKBusi/HC/BusinessTrip/getRequestAttachment",
+                data: {
+                    iReqNumber: reqNumber
+                },
+                success: function (data) {
+                    var liFiles = "";
+                    $(".ulFiles").empty();
+                    $.each(data.files, function (k, v) {
+                        switch (v.ext) {
+                            case ".doc":
+                            case ".docx":
+                                liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/BusinessTrip/Request/" + reqNumber + "/" + encodeURIComponent(v.filename) + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                break;
+                            case ".xls":
+                            case ".xlsx":
+                            case ".xlsm":
+                            case ".csv":
+                                liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/BusinessTrip/Request/" + reqNumber + "/" + encodeURIComponent(v.filename) + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li>";
+                                break;
+                            case ".pdf":
+                                liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/BusinessTrip/Request/" + reqNumber + "/" + encodeURIComponent(v.filename) + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                break;
+                            case ".ppt":
+                            case ".pptx":
+                                liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/BusinessTrip/Request/" + reqNumber + "/" + encodeURIComponent(v.filename) + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                break;
+                            case ".jpg":
+                            case ".jpeg":
+                            case ".png":
+                            case ".gif":
+                                liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/BusinessTrip/Request/" + reqNumber + "/" + encodeURIComponent(v.filename) + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                break;
+                        }
+                    });
+                    $(".ulFiles").append(liFiles);
+                    if ($(".ulFiles li").length < 1) {
+                        liFiles = "<li style = 'list-style: none; '>-</li>";
+                        $(".ulFiles").append(liFiles);
+                    }
+                }, error: function () {
+                    alert("Error Occurred, Please try again !");
+                }
+            });
+
+            $('.ulFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/HC/BusinessTrip/deleteRequestAttachment",
+                        data: {
+                            iID: currID
+                        },
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            $(".btnPrint").click(function () {
+                $(".divBusinessTrip").printThis({
+                    importCSS: true,
+                    importStyle: true,
+                    printContainer: true
+                });
+            });
+
+            $("#selBTFilterStatus,#selBTFilterYear,#selBTFilterLevel").change(function () {
+                $(".btnBTFilter").click();
+            });
+
+            $(".tblRequestList").tablesorter({
+                theme: "bootstrap",
+                widthFixed: true,
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    columns: ["primary", "secondary", "tertiary"],
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ], filter_defaultFilter: {
+                        // "{query} - a single or double quote signals an exact filter search
+                        3: '"{q}',
+                        5: '"{q}',
+                        6: '"{q}'
+                    }
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 'all'
+            });
+
+
+            checkboxRequired($(":checkbox[name='iMethod[]']"));
+            checkboxRequired($(":checkbox[name='iNeeds[]']"));
+            function checkboxRequired(ctr) {
+                var requiredCheckboxes = ctr;
+                var checked = Array.from(ctr).filter(
+                    ctr => ctr.checked
+                );
+                if (checked.length > 0) {
+                    requiredCheckboxes.removeAttr('required');
+                }
+                requiredCheckboxes.change(function () {
+                    if (requiredCheckboxes.is(':checked')) {
+                        requiredCheckboxes.removeAttr('required');
+                    } else {
+                        requiredCheckboxes.attr('required', 'required');
+                    }
+                });
+            }
+
+            $(".formFirstSign").submit(function (e) {
+                var currCAList = $(".hfCACheck").val();
+                if (currCAList.length > 1) {
+                    alert("You still have unsaved CA : " + currCAList + " please save those CA first then try again.");
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            $(document).on("blur", ".tdGrandTotalExchangeRate input[type='text']", function () {
+                var currExchangeRate = accounting.unformat($(this).val());
+                $(this).val(accounting.formatMoney(currExchangeRate, "Rp"));
+                calculateExchangeRate($(this));
+            });
+            $(".tdGrandTotalExchangeRate input[type='text']").blur();
+            function calculateExchangeRate(e) {
+                var currExchangeRate = accounting.unformat(e.closest(".divCAData").find(".tdGrandTotalExchangeRate input[type='text']").val());
+                var currTotal = accounting.unformat(e.closest(".divCAData").find(".tdGrandTotal").text());
+                var currExchange = accounting.formatMoney(currExchangeRate * currTotal, "Rp");
+                e.closest(".divCAData").find(".tdGrandTotalExchange").text(currExchange);
+            }
+
+            $('#QTComments').comments({
+                enableNavigation: false,
+                enablePinging: false,
+                enableAttachments: false,
+                enableUpvoting: false,
+                timeFormatter: function (time) {
+                    return moment(time).format("MMMM D, YYYY [at] HH:mm");
+                },
+                postComment: function (commentJSON, success, error) {
+                    console.log("postComment");
+                    commentJSON["ReqNumber"] = $("#hfCurrReqNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";// Create form data and append all other fields but attachments
+
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON),function (index, key) {
+                        if (key != 'attachments') {
+                            var value = commentJSON[key];
+                            formData.append(key, value);
+                        }
+                    });
+
+                    var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                        return !attachment.id
+                    });
+                    $(attachmentsToBeCreated).each(function (index, attachment) {
+                        formData.append('attachments_to_be_created', attachment.file);
+                    });
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/HC/BusinessTrip/RequestCommentAdd",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                putComment: function (commentJSON, success, error) {
+                    console.log("putComment");
+                    commentJSON["ReqNumber"] = $("#hfCurrReqNumber").val();
+                    commentJSON["fullname"] = "@(currUserFullName)";
+                    commentJSON["nik"] = "@(currUserID)";
+
+                    var formData = new FormData();
+                    $.each(Object.keys(commentJSON), function (index, key) {
+                        if (key != 'attachments') {
+                            var value = commentJSON[key];
+                            formData.append(key, value);
+                        }
+                    });
+
+                    var attachmentsToBeCreated = commentJSON.attachments.filter(function (attachment) {
+                        return !attachment.id
+                    });
+                    $(attachmentsToBeCreated).each(function (index, attachment) {
+                        formData.append('attachments_to_be_created', attachment.file);
+                    });
+
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/HC/BusinessTrip/RequestCommentEdit",
+                        data: formData,
+                        cache: false,
+                        contentType: false,
+                        processData: false,
+                        success: function (comment) {
+                            success(comment)
+                        },
+                        error: error
+                    });
+                    console.log(commentJSON);
+                },
+                deleteComment: function (commentJSON, success, error) {
+                    console.log("deleteComment");
+                    commentJSON["ReqNumber"] = $("#hfCurrReqNumber").val();
+                    console.log(commentJSON);
+                    $.ajax({
+                        type: 'post',
+                        url: "/NGKBusi/HC/BusinessTrip/RequestCommentDelete",
+                        data: commentJSON,
+                        success: success,
+                        error: error
+                    });
+                }, getComments: function (success, error) {
+                    $.ajax({
+                        type: 'get',
+                        url: "/NGKBusi/HC/BusinessTrip/RequestCommentGet",
+                        contentType: 'multipart/form-data',
+                        data: {
+                            iReqNumber: $("#hfCurrReqNumber").val(),
+                            iNIK: "@(currUserID)"
+                        },
+                        success: function (commentsArray) {
+                            success(commentsArray)
+                        },
+                        error: error
+                    });
+                }
+            });
+        });
+    </script>
+}
+
+<h2>
+    Business Trip - Request
+    @if (Request["addNew"] == null && Request["ReqNumber"] == null)
+    {
+        <a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC", addNew = "addNew" })" class="btn btn-success">Add New</a>
+    }
+    else
+    {
+        <a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC" })" class="btn btn-success">Back to Request List</a>
+        if (currData != null && (currData.Approval <= 1))
+        {
+            <a href="@Url.Action("formCA", "BusinessTrip", new { area = "HC", ReqNumber = Request["ReqNumber"] })" class="btn btn-primary ml-2">Cash Advance List</a>
+        }
+    }
+    @if (Request["ReqNumber"] != null)
+    {
+        <button type="button" class="btn btn-warning btnPrint"><i class="fas fa-print"></i></button>
+    }
+    @if (currData != null && (currData.Approval == 1 && currData.Approval_Sub == 0) && currData.NIK == currUserID)
+    {
+        <form action="@Url.Action("requestDelete", "BusinessTrip", new { area = "HC" })" method="post" style="display:inline-block;">
+            <input type="hidden" name="iReqNumber" value="@(currData.Req_Number)" />
+            <button type="submit" class="btn btn-danger btnDelete" onclick="return confirm('Are you sure want to delete this Request, CA & Settlement Data?')"><i class="fas fa-trash"></i></button>
+        </form>
+    }
+</h2>
+<div class="divBTFilter @(Request["ReqNumber"] == null && Request["addNew"] == null ? "":"d-none")">
+    <form action="@Url.Action("formRequest", "BusinessTrip", new { area = "HC" })" method="post">
+        <select id="selBTFilterYear" class="form-control" name="iBTFilterYear">
+            <option value="">-Year-</option>
+            @for (var i = 2023; i <= (DateTime.Now.Month == 12 ? DateTime.Now.AddYears(1).Year : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @(ViewBag.currFilterYear == i.ToString() ? "Selected" : "")>@(i)</option>
+            }
+        </select>
+        <select id="selBTFilterStatus" class="form-control" name="iBTFilterStatus">
+            <option value="">-Status-</option>
+            <option value="All" @(ViewBag.currFilterStatus == "All" ? "Selected" : "")>All</option>
+            <option value="Signed" @(ViewBag.currFilterStatus == "Signed" ? "Selected" : "")>Signed</option>
+            <option value="Open" @(ViewBag.currFilterStatus == "Open" ? "Selected" : "")>Open</option>
+        </select>
+        @if (((IEnumerable<dynamic>)ViewBag.PayUserLevelCheck).Count() > 1)
+        {
+            <select id="selBTFilterLevel" class="form-control" name="iBTFilterLevel">
+                @foreach (var data in ((IEnumerable<dynamic>)ViewBag.PayUserLevelCheck).Select(s => new { Levels = s.Levels, Levels_Sub = s.Levels_Sub, Title = s.Title }).Distinct())
+                {
+                    <option value="@(data.Levels + "|" + data.Levels_Sub)" @(data.Levels + "|" + data.Levels_Sub == ViewBag.PayUserLevel + "|" + ViewBag.PayUserLevelSub ? "Selected" : "")>@(data.Title)</option>
+                }
+            </select>
+        }
+        <button type="submit" class="btnBTFilter" style="display:none;">Submit</button>
+    </form>
+</div>
+<hr />
+@if (Request["addNew"] == null && Request["ReqNumber"] == null)
+{
+    <table class="table table-bordered table-striped tblRequestList">
+        <thead>
+            <tr>
+                <th>Req_Number</th>
+                <th>Date</th>
+                <th>Destination</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="Select">Dept</th>
+                <th class="filter-select" data-placeholder="Select">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in currDataList)
+            {
+                <tr>
+                    <td><a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC", ReqNumber = data.Req_Number, iBTFilterLevel = currApproval.Levels + "|" + currApproval.Levels_Sub })">@(data.Req_Number)</a></td>
+                    <td>@(data.Date_From.ToString("dd-MM-yyyy"))</td>
+                    <td>@(data.Destination)</td>
+                    <td>@(data.Name)</td>
+                    <td>@(data.Department)</td>
+                    <td class="text-center"><span class="badge badge-@(BT.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub,3,1,data.isReject))">@(BT.ApprovalStatus((int)data.Approval, (int)data.Approval_Sub, 1, 1, data.isReject))</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="6" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <div id="accordion">
+        <div class="card">
+            <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" data-toggle="collapse" data-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                        Business Trip Form
+                    </button>
+                </h5>
+            </div>
+
+            <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordion">
+                <div class="card-body">
+                    <div class="card border-secondary shadow-sm divBusinessTrip">
+                        <div class="card-body">
+                            <div class="divBusinessTripWrapper">
+                                <table id="tblHeader" border="1" style="width:100%;">
+                                    <tr>
+                                        <td rowspan="4" class="text-center" style="width:235px">
+                                            <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                                        </td>
+                                        <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h3>SURAT PENGAJUAN PERJALANAN DINAS</h3><h4>Business Trip Request</h4></td>
+                                        <td style="width:150px">No. Dok</td>
+                                        <td style="width:150px">PK-GA-ALL-22/F1</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Revisi</td>
+                                        <td>01</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tanggal</td>
+                                        <td>1 Agustus 2017</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Halaman</td>
+                                        <td>1 of 1</td>
+                                    </tr>
+                                </table>
+
+                                <form action="@Url.Action((currData != null ? "RequestEdit" : "RequestAdd"), "BusinessTrip", new { area = "HC" })" method="post" enctype="multipart/form-data">
+                                    <div class="container divBusinessTripWrapperDetail">
+                                        <div class="form-group row">
+                                            <div class="col-12 text-center">
+
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <div class="divBasicInformation col-6">
+                                                <b>NIK :</b> @(currData?.NIK ?? currUser?.NIK) <br />
+                                                <b>Name :</b> @(currData?.Name ?? currUser?.Name)
+                                                <input type="hidden" class="hfNIK" name="_iAddNIK[]" value="@(currData?.NIK ?? currUser?.NIK)" />
+                                                <input type="hidden" class="hfName" name="_iAddName[]" value="@(currData?.Name ?? currUser?.Name)" />
+                                                <input type="hidden" class="hfCostID" name="_iCostID[]" value="@(currData?.Cost_ID ?? currApproval?.Dept_Code)" />
+                                                <input type="hidden" class="hfCostName" name="_iCostName[]" value="@(currData?.Cost_Name ??currApproval?.Dept_Name)" />
+                                                <input type="hidden" class="hfReqNumber" name="iReqNumber" value="@(Request["ReqNumber"])" />
+                                                <input type="hidden" id="hfCurrSymbol" name="iCurrSymbol" value="@(currData?.Destination_Type == "Overseas Route A (Asean)" || currData?.Destination_Type == "Overseas Route B (Outside Asean)" ? "$" : "Rp")" />
+                                                <input type="hidden" id="hfCurrTrigger" name="iCurrTrigger" value="@(currData?.Destination_Type?.Contains("Overseas") == true ? "blur" : "keyup")" />
+                                                <input type="hidden" id="hfCurrPrecision" name="iCurrPrecision" value="@(currData?.Destination_Type?.Contains("Overseas") == true ? 2 : 0)" />
+                                                <input type="hidden" class="hfIsAllowEdit" name="iAllowEdit" value="@(isAllowEdit.ToString())" />
+                                                <input type="hidden" class="hfCACheck" name="iCACheck" value="@(ViewBag.CACheck != null ? string.Join(", ", ViewBag.CACheck) :"")" />
+                                            </div>
+                                            <div class="divBasicInformation col-6">
+                                                <b>Department :</b> @(currData?.Department ?? currUser.DeptName)<br />
+                                                <b>Section :</b> @(currData?.Section ?? currUser.SectionName)<br />
+                                                <b>Position :</b> @(currData?.Position ?? currUser.TitleName)
+                                                <input type="hidden" class="hfDept" name="_iAddDept[]" value="@(currData?.Department ?? currUser.DeptName)" />
+                                                <input type="hidden" class="hfSect" name="_iAddSect[]" value="@(currData?.Section ?? currUser.SectionName)" />
+                                                <input type="hidden" class="hfPos" name="_iAddPos[]" value="@(currData?.Position ?? currUser.TitleName)" />
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Trip Destination : City/Country</label>
+                                            <div class="col-9">
+                                                <input type="text" class="form-control" name="iDestination" placeholder="Destination" value="@(currData?.Destination)" @(isAllowEdit ? "" : "disabled") />
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Dates of the trip :</label>
+                                            <div class="col-9 row">
+                                                <div class="col-5"><input type="text" class="form-control dFrom" name="iDateFrom" placeholder="From" autocomplete="off" value="@(currData?.Date_From?.ToString("dd-MM-yyyy"))" @(isAllowEdit ? "" : "disabled") /></div>
+                                                <div class="col-2 text-center">To</div>
+                                                <div class="col-5"><input type="text" class="form-control dTo" name="iDateTo" placeholder="To" autocomplete="off" value="@(currData?.Date_To?.ToString("dd-MM-yyyy"))" @(isAllowEdit ? "" : "disabled") /></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Times of the trip :</label>
+                                            <div class="col-9 row">
+                                                <div class="col-5"><input type="text" class="form-control jqTime" name="iTimeFrom" placeholder="From" autocomplete="off" value="@(currData?.Date_From?.ToString("HH:mm"))" @(isAllowEdit ? "" : "disabled") /></div>
+                                                <div class="col-2 text-center">To</div>
+                                                <div class="col-5"><input type="text" class="form-control jqTime" name="iTimeTo" placeholder="To" autocomplete="off" value="@(currData?.Date_To?.ToString("HH:mm"))" @(isAllowEdit ? "" : "disabled") /></div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Occasion/Purpose</label>
+                                            <div class="col-9">
+                                                <input type="text" class="form-control" name="iPurpose" placeholder="Purpose" value="@(currData?.Purpose)" @(isAllowEdit ? "" : "disabled") />
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Company to be visited</label>
+                                            <div class="col-9">
+                                                <input type="text" class="form-control" name="iVisitTo" placeholder="Visit To" value="@(currData?.Visited_To)" @(isAllowEdit ? "" : "disabled") />
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Destination</label>
+                                            <div class="col-9">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="iDestinationType" id="rbDestination1" value="Domestic (Jabodetabek)" @(currData?.Destination_Type == "Domestic (Jabodetabek)" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                    <label class="form-check-label" for="rbDestination1">
+                                                        Domestic (Jabodetabek)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="iDestinationType" id="rbDestination2" value="Domestic (Outside Jabodetabek)" @(currData?.Destination_Type == "Domestic (Outside Jabodetabek)" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                    <label class="form-check-label" for="rbDestination2">
+                                                        Domestic (Outside Jabodetabek)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="iDestinationType" id="rbDestination3" value="Domestic (East Region)" @(currData?.Destination_Type == "Domestic (East Region)" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                    <label class="form-check-label" for="rbDestination3">
+                                                        Domestic (East Region)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="iDestinationType" id="rbDestination4" value="Overseas Route A (Asean)" @(currData?.Destination_Type == "Overseas Route A (Asean)" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                    <label class="form-check-label" for="rbDestination4">
+                                                        Overseas Route A (Asean)
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="radio" name="iDestinationType" id="rbDestination5" value="Overseas Route B (Outside Asean)" @(currData?.Destination_Type == "Overseas Route B (Outside Asean)" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                    <label class="form-check-label" for="rbDestination5">
+                                                        Overseas Route B (Outside Asean)
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label for="selPeriod" class="col-3 text-right font-weight-bold text-right font-weight-bold">Attachment</label>
+                                            <div class="col-9">
+                                                <input type="file" name="iFiles" multiple="multiple" class="@(isAllowEdit ? "":"d-none")" />
+                                                <ul class="ulFiles pl-0">-</ul>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label>The following person are also taking part of the trip:</label>
+                                            <table class="table table-bordered tblAddEmployee">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Employee</th>
+                                                        <th>Dept</th>
+                                                        <th>Section</th>
+                                                        <th>Position</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @if (currData != null && currData.HC_Business_Trip_CA.Count > 0)
+                                                    {
+                                                        foreach (var data in currData.HC_Business_Trip_CA)
+                                                        {
+                                                            <tr>
+                                                                <td style="width:325px;">
+                                                                    @if (isAllowEdit)
+                                                                    {
+                                                                        <select class="form-control selAddEmployee select2" name="iAddNIK[]" @(isAllowEdit ? "" : "disabled")>
+                                                                            <option value="" data-name="" data-dept="" data-sect="" data-pos="">-Employee-</option>
+                                                                            @foreach (var item in ViewBag.UserList)
+                                                                            {
+                                                                                <option value="@(item.NIK)" data-name="@(item.Name)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-pos="@(item.TitleName)" @(data.NIK == item.NIK ? "selected" : "")>@(item.NIK + " - " + item.Name)</option>
+                                                                            }
+                                                                        </select>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span>@(data.NIK + " - " + data.Name)</span>
+                                                                    }
+                                                                    <input type="hidden" class="hfName" name="iAddName[]" value="@(data?.Name)" />
+                                                                    <input type="hidden" class="hfDept" name="iAddDept[]" value="@(data?.Department)" />
+                                                                    <input type="hidden" class="hfSect" name="iAddSect[]" value="@(data?.Section)" />
+                                                                    <input type="hidden" class="hfPos" name="iAddPos[]" value="@(data?.Position)" />
+                                                                </td>
+                                                                <td class="tdDept tdLabel">@(data?.Department)</td>
+                                                                <td class="tdSect tdLabel">@(data?.Section)</td>
+                                                                <td class="tdPos tdLabel">@(data?.Position)</td>
+                                                                <td class="tdDelete text-center"><button type="button" class="btn btn-sm btn-danger btnEmployeeDelete @(isAllowEdit ? "":"d-none")" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button></td>
+                                                            </tr>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        for (var i = 0; i <= 2; i++)
+                                                        {
+                                                            <tr>
+                                                                <td style="width:325px;">
+                                                                    <select class="form-control selAddEmployee select2" name="iAddNIK[]" @(isAllowEdit ? "" : "disabled")>
+                                                                        <option value="" data-name="" data-dept="" data-sect="" data-pos="">-Employee-</option>
+                                                                        @foreach (var item in ViewBag.UserList)
+                                                                        {
+                                                                            <option value="@(item.NIK)" data-name="@(item.Name)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-pos="@(item.TitleName)">@(item.NIK + " - " + item.Name)</option>
+                                                                        }
+                                                                    </select>
+                                                                    <input type="hidden" class="hfName" name="iAddName[]" value="" />
+                                                                    <input type="hidden" class="hfDept" name="iAddDept[]" value="" />
+                                                                    <input type="hidden" class="hfSect" name="iAddSect[]" value="" />
+                                                                    <input type="hidden" class="hfPos" name="iAddPos[]" value="" />
+                                                                </td>
+                                                                <td class="tdDept tdLabel"></td>
+                                                                <td class="tdSect tdLabel"></td>
+                                                                <td class="tdPos tdLabel"></td>
+                                                                <td class="tdDelete text-center"><button type="button" class="btn btn-sm btn-danger btnEmployeeDelete @(isAllowEdit ? "":"d-none")" onclick="return confirm('Are you sure want to delete this item?')"><i class="fas fa-trash"></i></button></td>
+                                                            </tr>
+                                                        }
+                                                    }
+                                                </tbody>
+                                            </table>
+                                            <button type="button" class="btn btn-success form-control btnAddEmployee  @(isAllowEdit ? "":"d-none")">+</button>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Intended Method of Travel</label>
+                                            <div class="col-9">
+                                                <div class="form-group">
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="iPrepareBy" id="rbPrepareBy1" value="Prepare By GA" @(currData?.Travel_Method_By == "Prepare By GA" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                        <label class="form-check-label" for="rbPrepareBy1">
+                                                            Prepare By GA
+                                                        </label>
+                                                    </div>
+                                                    <div class="form-check form-check-inline">
+                                                        <input class="form-check-input" type="radio" name="iPrepareBy" id="rbPrepareBy2" value="Self-Prepared" @(currData?.Travel_Method_By == "Self-Prepared" ? "checked" : "") @(isAllowEdit ? "" : "disabled")>
+                                                        <label class="form-check-label" for="rbPrepareBy2">
+                                                            Self-Prepared
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                @{
+                                                    string[] methodArray = currData?.Travel_Method?.Split(new[] { "," }, StringSplitOptions.None);
+                                                }
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iMethod[]" id="rbMethod1" value="Train" @(methodArray != null && methodArray.Contains("Train") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbMethod1">
+                                                        Train
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iMethod[]" id="rbMethod2" value="Company Vehicle" @(methodArray != null && methodArray.Contains("Company Vehicle") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbMethod2">
+                                                        Company Vehicle
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iMethod[]" id="rbMethod3" value="Airplane" @(methodArray != null && methodArray.Contains("Airplane") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbMethod3">
+                                                        Airplane
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input cbMethod" type="checkbox" name="iMethod[]" id="rbMethod4" value="@("Other|" + (methodArray != null && methodArray?.Last().Split('|').Length > 1 ? methodArray?.Last().Split('|')[1] : ""))" @(methodArray != null && methodArray?.Last().Split('|').Length > 1 && methodArray?.Last().Split('|')[0] == "Other" ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <input class="form-control inline" type="text" id="txtMethodOther" placeholder="Other" value="@(methodArray != null && methodArray?.Last().Split('|').Length > 1 ? methodArray?.Last().Split('|')[1] : "")" @(isAllowEdit ? "" : "disabled")>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group row">
+                                            <label class="col-3">Supporting Travel Need : </label>
+                                            <div class="col-9">
+                                                @{
+                                                    string[] needArray = currData?.Travel_Need?.Split(new[] { "," }, StringSplitOptions.None);
+                                                }
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds1" value="Accomodation/Hotel" @(needArray != null && needArray.Contains("Accomodation/Hotel") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds1">
+                                                        Accomodation/Hotel
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds2" value="Communication" @(needArray != null && needArray.Contains("Communication") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds2">
+                                                        Communication
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds3" value="Excess Baggage" @(needArray != null && needArray.Contains("Excess Baggage") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds3">
+                                                        Excess Baggage
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds4" value="Entertainment" @(needArray != null && needArray.Contains("Entertainment") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds4">
+                                                        Entertainment
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds5" value="Laundry" @(needArray != null && needArray.Contains("Laundry") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds5">
+                                                        Laundry
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds6" value="Emergency" @(needArray != null && needArray.Contains("Emergency") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds6">
+                                                        Emergency
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds7" value="Taxi Voucher" @(needArray != null && needArray.Contains("Taxi Voucher") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds7">
+                                                        Taxi Voucher
+                                                    </label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" name="iNeeds[]" id="rbNeeds8" value="Rent Car in Destination" @(needArray != null && needArray.Contains("Rent Car in Destination") ? "checked" : "") @(isAllowEdit ? "" : "disabled") required>
+                                                    <label class="form-check-label" for="rbNeeds8">
+                                                        Rent Car in Destination
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-group row @(isAllowEdit ? "":"d-none")">
+                                            <div class="col-12">
+                                                <button type="submit" class="btn @((currData != null ? "btn-warning" : "btn-primary")) form-control" onclick="return confirm('Are you sure want to @(currData != null ? "save" : "submit") this data?');">@(currData != null ? "Save" : "Submit")</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+                                <div class="form-group row">
+                                    <div class="col-12 mb-3 mt-5">
+                                        <div id="QTComments"></div>
+                                    </div>
+                                </div>
+                                @if (currData != null)
+                                {
+                                    <table class="table table-bordered tblSign mt-3">
+                                        <thead>
+                                            <tr>
+                                                <th class="text-center">Approved By</th>
+                                                <th colspan="3" class="text-center">Checked By</th>
+                                                <th class="text-center">Prepared By</th>
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center">President Director</th>
+                                                <th class="text-center">Concern Director / GM</th>
+                                                <th class="text-center">Senior Manager</th>
+                                                <th class="text-center">Manager</th>
+                                                <th class="text-center">Traveller</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currData != null && currData.Approval == 3 && currData.Approval_Sub == 0 && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this request ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                            <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                        </form>
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currData != null && ((currData.Approval > 3 && currData.Approval_Sub >= 0) || currData.Approval > 3))
+                                                        {
+                                                            if (currData.isReject != null && currData.isReject == true && currData != null && currData.Approval == 4 && currData.Approval_Sub == 0)
+                                                            {
+                                                                <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                                @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", BT.ApprovalHistory(currData.Req_Number, 4, 0, 3) } });
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                            }
+                                                        }
+                                                    }
+                                                </td>
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 2 && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this request ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                            <button type="submit" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectModal" }, { "btnType", "Reject" } })
+                                                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal">Reject</button>
+                                                        </form>
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currData != null && (currData.Approval >= 3 && currData.Approval_Sub > 0) || currData.Approval >= 3)
+                                                        {
+                                                            if (currData.isReject != null && currData.isReject == true && currData != null && currData.Approval == 3 && currData.Approval_Sub == 0)
+                                                            {
+                                                                <i class="fas fa-circle-xmark img-fluid iReject" style="color:red;font-size:7em;cursor:pointer;" data-toggle="modal" data-target="#rejectNoteModal" title="Click to See the Reject Reason"></i>
+
+                                                                @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "rejectNoteModal" }, { "message", BT.ApprovalHistory(currData.Req_Number, 3, 0, 3) } });
+                                                            }
+                                                            else
+                                                            {
+                                                                <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                            }
+                                                        }
+                                                    }
+                                                </td>
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currData.Approval == 2 && currData.Approval_Sub == 1 && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this request ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure want to return this request ?')" name="btnType" value="Return">Return</button>
+                                                        </form>
+                                                        @*<hr />
+                                                            <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                                <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                                <button type="submit" class="btn btn-danger" onclick="confirm('Are you sure want to reject this request ?')" name="btnType" value="Reject">Reject</button>
+                                                            </form>*@
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 2) || currData.Approval > 2)
+                                                        {
+                                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                        }
+                                                    }
+                                                </td>
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currData != null && currData.Approval == 2 && currData.Approval_Sub == 0 && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this request ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        <hr />
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-warning" onclick="return confirm('Are you sure want to return this request ?')" name="btnType" value="Return">Return</button>
+                                                        </form>
+                                                        @*<hr />
+                                                            <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                                <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                                <button type="submit" class="btn btn-danger" onclick="confirm('Are you sure want to reject this request ?')" name="btnType" value="Reject">Reject</button>
+                                                            </form>*@
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 2)
+                                                        {
+                                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                        }
+                                                    }
+                                                </td>
+                                                <td class="text-center align-middle" style="height:125px;width:100px;">
+                                                    @if (currData != null && currData.Approval == 1 && currData.Approval_Sub == 0 && isAllowSign)
+                                                    {
+                                                        <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post" class="formFirstSign">
+                                                            <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                            <button type="submit" class="btn btn-primary btnFirstSign" onclick="return confirm('Are you sure want to sign this request ?')" name="btnType" value="Sign">Sign</button>
+                                                        </form>
+                                                        @*<hr />
+                                                            <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                                <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                                <button type="submit" class="btn btn-warning" onclick="confirm('Are you sure want to return this request ?')" name="btnType" value="Return">Return</button>
+                                                            </form>*@
+                                                        @*<hr />
+                                                            <form action="@Url.Action("requestSign", "BusinessTrip", new { area = "HC" })" method="post">
+                                                                <input type="hidden" name="iSignReqNumber" value="@(Request["ReqNumber"])" />
+                                                                <button type="submit" class="btn btn-danger" onclick="confirm('Are you sure want to reject this request ?')" name="btnType" value="Reject">Reject</button>
+                                                            </form>*@
+                                                    }
+                                                    else
+                                                    {
+                                                        if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                                        {
+                                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                        }
+                                                    }
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval > 3 && currData.Approval_Sub >= 0) || currData.Approval > 3)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 4, 0, 1));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 3 && currData.Approval_Sub > 0) || currData.Approval >= 3)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 3, 0, 1));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 2) || currData.Approval > 2)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 2, 1));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 2)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 1, 1));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 0, 1));
+                                                    }
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval > 3 && currData.Approval_Sub >= 0) || currData.Approval > 3)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 4, 0, 2));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 3 && currData.Approval_Sub > 0) || currData.Approval >= 3)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 3, 0, 2));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 2) || currData.Approval > 2)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 2, 2));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 2 && currData.Approval_Sub >= 1) || currData.Approval > 2)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 1, 2));
+                                                    }
+                                                </td>
+                                                <td class="text-center">
+                                                    @if (currData != null && (currData.Approval >= 1 && currData.Approval_Sub > 0) || currData.Approval > 1)
+                                                    {
+                                                        @(BT.ApprovalHistory(currData.Req_Number, 2, 0, 2));
+                                                    }
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    @*Accordion start*@
+                </div>
+            </div>
+        </div>
+        @if (currData != null && (currData.Approval_Sub > 0 || currData.Approval > 1))
+        {
+            int currRegID = currData.ID;
+            var currDataDetail = bt.HC_Business_Trip_CA.Where(w => w.Request_ID == currRegID).ToList();
+            string currRegNumber = currData.Req_Number;
+            var currRequest = bt.HC_Business_Trip_Request.Where(w => w.Req_Number == currRegNumber).FirstOrDefault();
+            var currTotalNights = (currRequest != null ? (int)(new DateTime(currRequest.Date_To.Value.Year, currRequest.Date_To.Value.Month, currRequest.Date_To.Value.Day) - new DateTime(currRequest.Date_From.Value.Year, currRequest.Date_From.Value.Month, currRequest.Date_From.Value.Day)).Days : 0);
+            var currTotalDays = currTotalNights + 1;
+            var currHalfDays = currRequest != null ? (Math.Abs(currRequest.Date_From.Value.Hour) >= 16 ? 1 : 0) + (Math.Abs(currRequest.Date_To.Value.Hour) < 16 ? 1 : 0) : 0;
+            var currFullDays = currTotalDays - currHalfDays;
+            foreach (var currDataItem in currDataDetail)
+            {
+                string currNIK = currDataItem.NIK;
+                BusinessTripController.StandardAmount standardAmount = BusinessTripController.getStandardAmount(currDataItem?.Position, currRequest?.Destination_Type);
+                <div class="card">
+                    <div class="card-header" id="acc@(currDataItem.ID)">
+                        <h5 class="mb-0">
+                            <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapseTwo@(currDataItem.ID)" aria-expanded="false" aria-controls="collapseTwo">
+                                Cash Advance - @(currDataItem.Name)
+                            </button>
+                        </h5>
+                    </div>
+                    <div id="collapseTwo@(currDataItem.ID)" class="collapse" aria-labelledby="headingTwo" data-parent="#accordion">
+                        <div class="card-body">
+                            <div class="card divCAData border-secondary shadow-sm">
+                                <div class="card-body">
+                                    <table id="tblHeader" border="1" style="width:100%;">
+                                        <tr>
+                                            <td rowspan="4" class="text-center" style="width:235px">
+                                                <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                                            </td>
+                                            <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h3>BUSINESS TRIP ALLOWANCE</h3></td>
+                                            <td style="width:150px">No. Dok</td>
+                                            <td style="width:150px">PK-GA-ALL-22/F2</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Revisi</td>
+                                            <td>01</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Tanggal</td>
+                                            <td>1 Agustus 2017</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Halaman</td>
+                                            <td>1 of 1</td>
+                                        </tr>
+                                    </table>
+
+                                    <form action="@Url.Action((currDataItem != null ? "CAEdit" : "CAAdd"), "BusinessTrip", new { area = "HC" })" method="post">
+                                        <div class="container-fluid mt-5 divCA">
+                                            <div class="row">
+                                                <div class="col-6">
+                                                    <div class="form-group row">
+                                                        <label for="lblNp" class="col-3">No :</label>
+                                                        <div class="col-9">
+                                                            <a href="@Url.Action("formRequest", "BusinessTrip", new { area = "HC", ReqNumber = currData.Req_Number })" target="_blank">@(currData.Req_Number)</a>
+                                                            <input type="hidden" id="hfCurrDetailID" name="iCurrDetailID" value="@(currDataItem.ID)" />
+                                                            <input type="hidden" id="hfCurrReqNumber" name="iCurrReqNumber" value="@(currData.Req_Number)" />
+                                                            <input type="hidden" id="hfCurrNIK" name="iCurrNIK" value="@(currDataItem.NIK)" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label for="lblName" class="col-3">Name :</label>
+                                                        <div class="col-9">
+                                                            @(currDataItem?.Name)
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label for="lblNIK" class="col-3">Emp.ID :</label>
+                                                        <div class="col-9">
+                                                            @(currDataItem?.NIK)
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label for="lblTransportBy" class="col-3">Transport By :</label>
+                                                        <div class="col-9">
+                                                            @(currData?.Travel_Method_By)
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="form-group row">
+                                                        <label for="lblDept" class="col-3">Dept/Sect :</label>
+                                                        <div class="col-9">
+                                                            @(currDataItem?.Department)
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label for="lblPosition" class="col-3">Position :</label>
+                                                        <div class="col-9">
+                                                            @(currDataItem?.Position)
+                                                        </div>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label for="lblPosition" class="col-3">Request Date :</label>
+                                                        <div class="col-9">
+                                                            @(currData?.Created_At.ToString("dd-MMM-yyyy"))
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <table class="table table-bordered tblCASchedule">
+                                                <tbody>
+                                                    <tr>
+                                                        <th>Date</th>
+                                                        <th>No of Days</th>
+                                                        <th>Destination (City)</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td class="text-center">
+                                                            @(currData?.Date_From?.ToString("dd-MMM-yyyy (HH:mm)") + " to " + currData?.Date_To?.ToString("dd-MMM-yyyy (HH:mm)"))
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @(currTotalDays + " Days")
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @(currData?.Destination)
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th colspan="2">Activity</th>
+                                                        <th>Company to be visited</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <td colspan="2" class="text-center">
+                                                            @(currData?.Purpose)
+                                                        </td>
+                                                        <td class="text-center">
+                                                            @(currData?.Visited_To)
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <table class="table table-bordered tblCADetail">
+                                                <thead>
+                                                    <tr>
+                                                        <th rowspan="2" colspan="2">Detail of Expenses</th>
+                                                        <th colspan="3">CA Request</th>
+                                                        <th colspan="2">Amount CA</th>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Amount</th>
+                                                        <th>X</th>
+                                                        <th>Days/Qty</th>
+                                                        <th>Detail Total</th>
+                                                        <th>Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @*Hotel !===================================================*@
+                                                    @{
+                                                        var detailHotel = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataItem.ID && w.NIK == currDataItem.NIK && w.Item_Type == "Hotel").ToList();
+                                                    }
+                                                    <tr class="trHotel trBlackTop trBlackBottom">
+                                                        <th class="align-middle thMainItems">Hotel</th>
+                                                        <th class="thItems">
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Amount ?? (currRequest.Travel_Need.Contains("Hotel") ? standardAmount.Hotel:0))" />
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Hotel" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Hotel" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                            <input type="hidden" name="iHotelTotal" class="form-control txtTotal" value="@(currDataItem?.Hotel_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@((currRequest.Travel_Need.Contains("Hotel") ? (detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Days ?? currTotalNights):0))" /></td>
+                                                        <td class="tdDetailTotal">@(detailHotel.Where(w => w.Item == "Hotel").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                        <td class="tdTotal" data-allowance="Hotel">@(currDataItem?.Hotel_Total ?? 0)</td>
+                                                    </tr>
+
+                                                    @*Hotel ===================================================!*@
+                                                    @*Meal !===================================================*@
+                                                    @{
+                                                        var detailMeals = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataItem.ID && w.NIK == currDataItem.NIK && w.Item_Type == "Meal Allowance").ToList();
+                                                    }
+                                                    <tr class="trMeals trBlackTop">
+                                                        <th class="thMainItems" rowspan="3">Meal Allowance</th>
+                                                        <th class="thItems">
+                                                            Breakfast
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Breakfast" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                            <input type="hidden" name="iMealsTotal" class="form-control txtTotal" value="@(currDataItem?.Meals_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Days ?? 0)" /></td>
+                                                        <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Breakfast").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                        <td rowspan="3" class="tdTotal" data-allowance="Meals Allowance">@(currDataItem?.Meals_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trMeals">
+                                                        <th class="thItems">
+                                                            Lunch
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Lunch" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Amount ?? standardAmount.Meals)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Days ?? currTotalDays)" /></td>
+                                                        <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Lunch").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trMeals trBlackBottom">
+                                                        <th class="thItems">
+                                                            Dinner
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Meal Allowance" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control" value="Dinner" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Amount ?? standardAmount.Meals)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Days ?? (currTotalDays - (currRequest?.Date_To?.Hour <= 16 ? 1 : 0)))" /></td>
+                                                        <td class="tdDetailTotal">@(detailMeals.Where(w => w.Item == "Dinner").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    @*Meal ===================================================!*@
+                                                    @*Daily !===================================================*@
+                                                    @{
+                                                        var detailDaily = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataItem.ID && w.NIK == currDataItem.NIK && w.Item_Type == "Daily Allowance").ToList();
+                                                    }
+                                                    <tr class="trDaily trBlackTop">
+                                                        <th class="thMainItems" rowspan="2">Daily Allowance</th>
+                                                        <th class="thItems">
+                                                            Full Day
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Daily Allowance" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Full Day" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Amount ?? standardAmount.Daily)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                            <input type="hidden" name="iDailyTotal" class="form-control txtTotal" value="@(currDataItem?.Daily_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Days ?? currFullDays)" /></td>
+                                                        <td class="tdDetailTotal">@(detailDaily.Where(w => w.Item == "Full Day").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                        <td rowspan="2" class="tdTotal">@(currDataItem?.Daily_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trDaily trBlackBottom">
+                                                        <th class="thItems">
+                                                            Half Day
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Daily Allowance" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Half Day" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Amount ?? standardAmount.Daily / 2)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Days ?? currHalfDays)" /></td>
+                                                        <td class="tdDetailTotal">@(detailDaily.Where(w => w.Item == "Half Day").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    @*Daily ===================================================!*@
+                                                    @*Transportation !===================================================*@
+                                                    @{
+                                                        var detailTransport = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataItem.ID && w.NIK == currDataItem.NIK && w.Item_Type == "Transportation").ToList();
+                                                    }
+                                                    <tr class="trTransport trBlackTop">
+                                                        <th class="thMainItems" rowspan="4">Transportation</th>
+                                                        <th class="thItems">
+                                                            Rent Car
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Rent Car" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                            <input type="hidden" name="iTransportTotal" class="form-control txtTotal" value="@(currDataItem?.Transport_Total)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(currRequest.Travel_Need.Contains("Rent Car") ? (detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                                        <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Rent Car").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                        <td rowspan="4" class="tdTotal" data-allowance="Transportation">@(currDataItem?.Transport_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trTransport">
+                                                        <th class="thItems">
+                                                            Gasoline
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Gasoline" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                                        <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Gasoline").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trTransport">
+                                                        <th class="thItems">
+                                                            Tol
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Tol" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                                        <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Tol").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trTransport trBlackBottom">
+                                                        <th class="thItems">
+                                                            Parking
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Transportation" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Parking" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" readonly value="@(currRequest.Travel_Need.Contains("Rent Car") || currRequest.Travel_Method.Contains("Company Vehicle") ? (detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Days ?? currTotalDays):0)" /></td>
+                                                        <td class="tdDetailTotal">@(detailTransport.Where(w => w.Item == "Parking").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    @*Transportation ===================================================!*@
+                                                    @*Miscellanous !===================================================*@
+                                                    @{
+                                                        var detailMisc = bt.HC_Business_Trip_CA_Detail.Where(w => w.CA_ID == currDataItem.ID && w.NIK == currDataItem.NIK && w.Item_Type == "Miscellanous (Lain-Lain)").ToList();
+                                                    }
+                                                    <tr class="trMiscellanous trBlackTop">
+                                                        <th class="thMainItems" rowspan="4">Miscellanous (Lain-Lain)</th>
+                                                        <th class="thItems">
+                                                            Entertainment
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Entertainment" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                            <input type="hidden" name="iMiscellanousTotal" class="form-control txtTotal" value="@(currDataItem?.Misc_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Entertainment") ? (detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Days ?? 1):1))" /></td>
+                                                        <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Entertainment").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                        <td rowspan="4" class="tdTotal" data-allowance="Miscellanous (Lain-Lain)">@(currDataItem?.Misc_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trMiscellanous @(currTotalDays >= 5 ? "":"d-none")">
+                                                        <th class="thItems">
+                                                            Laundry
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Laundry" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Laundry") ? (detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Days ?? 0):0))" /></td>
+                                                        <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Laundry").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trMiscellanous">
+                                                        <th class="thItems">
+                                                            Baggage
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Baggage" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Baggage") ? (detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Days ?? 0):0))" /></td>
+                                                        <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Baggage").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    <tr class="trMiscellanous trBlackBottom">
+                                                        <th class="thItems">
+                                                            Emergency
+                                                            <input type="hidden" name="iDetailItemType[]" class="form-control txtDetailItem" value="Miscellanous (Lain-Lain)" />
+                                                            <input type="hidden" name="iDetailItem[]" class="form-control txtDetailItem" value="Emergency" />
+                                                        </th>
+                                                        <td>
+                                                            <input type="text" name="iAmount[]" class="form-control txtAmount" placeholder="Amount" value="@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Amount ?? 0)" />
+                                                            <input type="hidden" name="iDetailTotal[]" class="form-control txtDetailTotal" value="@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Total ?? 0)" />
+                                                        </td>
+                                                        <td class="text-center">X</td>
+                                                        <td><input type="text" name="iDays[]" class="form-control txtDays" placeholder="Days" value="@((currRequest.Travel_Need.Contains("Emergency") ? (detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Days ?? 0):0))" /></td>
+                                                        <td class="tdDetailTotal">@(detailMisc.Where(w => w.Item == "Emergency").FirstOrDefault()?.CA_Total ?? 0)</td>
+                                                    </tr>
+                                                    @*Miscellanous ===================================================!*@
+                                                </tbody>
+                                                <tfoot>
+                                                    <tr class="trGrandTotal trBlackTop">
+                                                        <th colspan="6" class="thItems">
+                                                            TOTAL
+                                                        </th>
+                                                        <td class="tdGrandTotal">0</td>
+                                                    </tr>
+                                                    @if (currRequest.Destination_Type.IndexOf("Overseas") > -1)
+                                                    {
+                                                        <tr class="trGrandTotal">
+                                                            <th colspan="5" class="thItems">
+                                                                Exchange Rate
+                                                            </th>
+                                                            <td class="tdGrandTotalExchangeRate"><input type="text" name="iExchangeRate" class="form-control txtExchangeRate" placeholder="Exchange Rate" value="@(currDataItem?.Exchange_Rate ?? 1)" /></td>
+                                                            <td class="tdGrandTotalExchange">0</td>
+                                                        </tr>
+                                                    }
+                                                </tfoot>
+                                            </table>
+                                            <table class="table table-bordered tblCABudget">
+                                                <thead>
+                                                    <tr>
+                                                        <th style="width:200px;"></th>
+                                                        <th>Budget Number</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr class="@(currRequest.Travel_Need.Contains("Hotel") ? "":"d-none")">
+                                                        <th>Hotel</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberHotel" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Hotel") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Hotel_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-021" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Hotel_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Daily Allowance</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberDaily" class="form-control select2 selBudgetNumber" style="width:100%">
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Daily_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-019" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Daily_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>Meals</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberMeals" class="form-control select2 selBudgetNumber" style="width:100%">
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Meals_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-022" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Meals_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="@(currRequest.Travel_Method.Contains("Airplane") ? "":"d-none")">
+                                                        <th>Flight</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberFlight" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Airplane") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Flight_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-018" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Flight_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="@(currRequest.Travel_Need.Contains("Rent Car") ? "":"d-none")">
+                                                        <th>Rent Car</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberRentCar" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Rent Car") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.RentCar_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-023" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.RentCar_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="@(currRequest.Travel_Need.Contains("Entertainment") ? "":"d-none")">
+                                                        <th>Entertainment</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberEntertainment" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Entertainment") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Entertaintment_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-029" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Entertaintment_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    @*<tr class="@(currNIK == currRequest.NIK  && currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">*@
+                                                    <tr class="@(currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">
+                                                        <th>Gasoline</th>
+                                                        <td>
+                                                            @*<select name="iBudgetNumberGasoline" class="form-control select2 selBudgetNumber" style="width:100%" @(currNIK == currRequest.NIK && currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "")>*@
+                                                            <select name="iBudgetNumberGasoline" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Gasoline_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-020" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Gasoline_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    @*<tr class="@(currNIK == currRequest.NIK  && currRequest.Travel_Method.Contains("Tol") ? "":"d-none")">*@
+                                                    <tr class="@(currRequest.Travel_Method.Contains("Company Vehicle") ? "":"d-none")">
+                                                        <th>Toll & Parking</th>
+                                                        <td>
+                                                            @*<select name="iBudgetNumberToll" class="form-control select2 selBudgetNumber" style="width:100%" @(currNIK == currRequest.NIK && currRequest.Travel_Method.Contains("Tol") ? "required" : "")>*@
+                                                            <select name="iBudgetNumberToll" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Method.Contains("Company Vehicle") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Toll_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-025" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Toll_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="@(currRequest.Travel_Need.Contains("Baggage") ? "":"d-none")">
+                                                        <th>Baggage</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberBaggage" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Baggage") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Baggage_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-026" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Baggage_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="@(currRequest.Travel_Need.Contains("Taxi") ? "":"d-none")">
+                                                        <th>Taxi</th>
+                                                        <td>
+                                                            <select name="iBudgetNumberTaxi" class="form-control select2 selBudgetNumber" style="width:100%" @(currRequest.Travel_Need.Contains("Taxi") ? "required" : "")>
+                                                                <option value="">-Budget Number-</option>
+                                                                @foreach (var item in ViewBag.Budget)
+                                                                {
+                                                                    <option data-dept-to="@(item.Section_To_Code)" @(currDataItem?.Taxi_Budget == item.Budget_No ? "selected" : (currDataItem?.Department == "MARKETING" && item.Budget_No == "BEX-FY124-B3160-047" ? "selected" : (currDataItem.Department.Contains("SALES - AFTERMARKET") && item.Budget_No == "BEX-FY124-B3130-024" ? "selected" : ""))) value="@(item.Budget_No + "|" + item.Description)">@(item.Budget_No + " | " + item.Description)</option>
+                                                                }
+                                                                <option data-dept-to="ALL" @(currDataItem?.Taxi_Budget == "UNB" ? "selected" : "") value="@("UNB|Unbudgeted")">@("UNB | Unbudgeted")</option>
+                                                            </select>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <div class="form-group row">
+                                                <div class="col-12">
+                                                    <button type="submit" class="btn d-none @(currDataItem != null ? "btn-warning" : "btn-primary") form-control" onclick="return confirm('Are you sure want to @(currDataItem != null ? "save": "submit") this data?');">@(currDataItem != null ? "Save" : "Submit")</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            }
+        }
+    </div>
+}

@@ -1,0 +1,877 @@
+﻿@{
+    ViewBag.Title = "Master Question";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+    html, body {
+        /* Gradien diagonal: Biru agak tua -> Biru muda terang -> Putih/Slate terang */
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+</style>
+
+<div class="min-h-screen pt-3 sm:px-0">
+
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-3xl font-extrabold text-blue-50 tracking-tight">Master Question</h1>
+            <p class="text-sm text-blue-200 mt-1">Manage all audit questions and criteria seamlessly</p>
+        </div>
+
+        <button id="btnImportExcel" class="bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 text-white px-5 py-2.5 rounded-xl flex items-center font-semibold transition-all shadow-lg shadow-emerald-500/30 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+            </svg>
+            Import Excel
+        </button>
+        <input type="file" id="fileExcelUpload" accept=".xlsx" style="display: none;" />
+    </div>
+
+    <div class="flex flex-col md:flex-row gap-4 mb-8">
+
+        <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <input type="text"
+                   id="searchInput"
+                   placeholder="Search Question, Clause, Process Name"
+                   class="block w-full pl-10 pr-14 py-3 border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm text-sm text-gray-700">
+            <button id="clearSearch" class="hidden absolute inset-y-0 right-0 pr-4 flex items-center text-sm text-gray-400 hover:text-red-500 font-semibold transition-colors">
+                Clear
+            </button>
+        </div>
+
+        <div class="w-full md:w-48 relative group">
+            <select id="AuditStandardDropdown" class="block w-full font-bold border border-gray-200 rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-gray-700 bg-white appearance-none cursor-pointer shadow-sm">
+
+                @if (ViewBag.AuditStandard != null)
+                {
+                    bool isFirst = true;
+                    foreach (var at in ViewBag.AuditStandard)
+                    {
+                        <option value="@at.audit_standard_id" @(isFirst ? "selected" : "")>@at.audit_standard_name</option>
+                        isFirst = false;
+                    }
+                }
+
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+
+        <div class="w-full md:w-64 relative group">
+            <select id="sectionDropdown" class="block w-full font-bold border border-gray-200 rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm text-gray-700 bg-white appearance-none cursor-pointer shadow-sm">
+                <option value="">All Sections</option>
+                @foreach (var sec in ViewBag.Section)
+                {
+                    <option value="@sec.section_id">@sec.section_name</option>
+                }
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+
+    </div>
+    @using System.Linq
+
+    @if (ViewBag.GroupedQuestions != null)
+    {
+        foreach (var group in ViewBag.GroupedQuestions)
+        {
+            var castedGroup = (IGrouping<NGKBusi.Areas.Quality.Models.Quality_EAudit_Section, NGKBusi.Areas.Quality.Models.Quality_EAudit_Question_Master>)group;
+            var sectionInfo = castedGroup.Key;
+            var totalQuestions = castedGroup.Count();
+            int no = 1;
+
+            var currentSectionId = sectionInfo != null ? sectionInfo.section_id : Guid.NewGuid().GetHashCode();
+
+            <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 mb-8 overflow-hidden transition-all hover:shadow-xl section-card" data-section-id="@currentSectionId">
+
+                <div class="bg-slate-50/80 px-6 py-4 flex justify-between items-center relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-500 to-cyan-400"></div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">@(sectionInfo != null ? sectionInfo.section_name : "Unknown Section")</h2>
+                        <p class="text-xs font-semibold text-blue-500 mt-0.5">@totalQuestions questions</p>
+                    </div>
+                    <button class="btn-add-question bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg flex items-center font-semibold transition-colors text-sm border border-blue-200/50">
+                        <span class="mr-2 text-lg leading-none">+</span> Add Question
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse audit-table">
+                        <thead>
+                            <tr class="border-y border-slate-100 bg-white">
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase w-16 text-center">NO</th>
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase w-32">AUDIT TYPE</th>
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase w-48">EVIDENCE</th>
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase w-48">CLAUSE (ISO & IATF)</th>
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase">AUDIT PARAMETERS AND QUESTION LIST</th>
+                                <th class="px-6 py-4 text-xs font-extrabold text-slate-500 tracking-wider uppercase w-32 text-center">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @if (totalQuestions > 0)
+                            {
+                                foreach (var item in castedGroup)
+                                {
+                                    <tr class="hover:bg-slate-50/80 transition-colors group table-row-item" data-audit-standard="@item.audit_standard_id">
+                                        <td class="px-6 py-4 text-sm font-medium text-slate-700 text-center">@(no++)</td>
+                                        <td class="px-6 py-4 text-sm font-semibold text-slate-800">
+                                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md text-xs border border-indigo-100">@item.category_audit</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-sm font-semibold text-slate-800">@item.process_name</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            @if (!string.IsNullOrEmpty(item.clausul))
+                                            {
+                                                var badges = item.clausul.Split('/');
+                                                foreach (var badge in badges)
+                                                {
+                                                    <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-xs inline-block mb-1 mr-1">@badge.Trim()</span>
+                                                }
+                                            }
+                                        </td>
+                                        <td class="px-6 py-4 text-sm text-slate-700 leading-relaxed">@item.question</td>
+                                        <td class="px-6 py-4 text-center">
+                                            <div class="flex justify-center gap-3 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button class="btn-edit-question p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-500 hover:text-white transition-colors" title="Edit"
+                                                        data-id="@item.question_master_id"
+                                                        data-type="@item.category_audit"
+                                                        data-process="@item.process_name"
+                                                        data-clause="@item.clausul"
+                                                        data-question="@item.question">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                </button>
+                                                <button class="btn-delete-question p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-500 hover:text-white transition-colors" title="Delete"
+                                                        data-id="@item.question_master_id">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr class="no-data-row">
+                                    <td colspan="6" class="px-6 py-8 text-center text-slate-400 text-sm">No questions found in this section.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (totalQuestions > 0)
+                {
+                    <div class="px-6 py-4 bg-slate-50/30 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-600">
+                        <div>
+                            Showing <span class="font-bold text-slate-800 row-start-num">0</span> to <span class="font-bold text-slate-800 row-end-num">0</span> of <span class="font-bold text-slate-800">@totalQuestions</span> entries
+                        </div>
+                        <div class="flex items-center gap-2 pagination-controls">
+                            <button class="btn-prev p-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm focus:outline-none">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                            </button>
+                            <div class="flex items-center gap-1 page-number-container"></div>
+                            <button class="btn-next p-2 bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm focus:outline-none">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+
+</div>
+
+<div id="editQuestionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-xl overflow-hidden transition-all">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-400 opacity-90 flex items-center gap-3 relative">
+            <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Edit Question</h3>
+                <p class="text-sm text-orange-50 mt-0.5">Update audit clause and question</p>
+            </div>
+            <button id="closeEditModalBtn" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <form id="editQuestionForm" class="space-y-5">
+                <input type="hidden" id="editQuestionId" name="question_master_id" />
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Product/Process <span class="text-red-500">*</span></label>
+                        <select id="editAuditType" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer" required>
+                            <option value="" disabled selected>-- Select Type --</option>
+                            <option value="Product">Product</option>
+                            <option value="System">System</option>
+                            <option value="Process">Process</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Evidence <span class="text-red-500">*</span></label>
+                        <input type="text" id="editProcessName" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all" placeholder="Ya/Tidak" required />
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Clause</label>
+                    <input type="text" id="editClause" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all" placeholder="e.g., 9.1.2 / 7.1.5.1" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Parameters & Question <span class="text-red-500">*</span></label>
+                    <textarea id="editQuestionText" rows="4" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all" placeholder="Detail the audit question here..." required></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button id="cancelEditModalBtn" type="button" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all focus:outline-none">
+                Cancel
+            </button>
+            <button id="submitEditQuestionBtn" type="button" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-400 opacity-90 hover:opacity-100 text-white rounded-lg text-sm font-semibold shadow-sm transition-all focus:outline-none flex items-center">
+                Save Changes
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div id="importModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-xl overflow-hidden transition-all">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-95 flex items-center gap-3 relative">
+            <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Import Master Question</h3>
+                <p class="text-sm text-cyan-50 mt-0.5">Upload an Excel file and map it to sections.</p>
+            </div>
+
+            <button id="closeModalBtn" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Type <span class="text-red-500">*</span></label>
+                    <div class="relative group">
+                        <select id="importAuditStandardId" class="block w-full border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all text-sm text-slate-800 font-medium appearance-none cursor-pointer">
+                            @if (ViewBag.AuditStandard != null)
+                            {
+                                foreach (var at in ViewBag.AuditStandard)
+                                {
+                                    <option value="@at.audit_standard_id">@at.audit_standard_name</option>
+                                }
+                            }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-sm font-semibold text-slate-700">1. Select Excel File (.xlsx) <span class="text-red-500">*</span></label>
+                        <a href="@Url.Action("DownloadExcelTemplateQuestionMaster", "EAudit")"
+                           class="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center font-semibold transition-colors">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                            </svg>
+                            Download Template
+                        </a>
+                    </div>
+                    <input type="file" id="modalFileInput" accept=".xlsx"
+                           class="block w-full text-sm text-slate-800 border border-slate-300 rounded-lg shadow-sm cursor-pointer bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all
+                                  file:mr-4 file:py-2.5 file:px-4 file:border-0 file:text-sm file:font-semibold file:bg-slate-50 file:text-slate-700 hover:file:bg-slate-100" />
+                </div>
+                <div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-0.5">2. Select Target Section <span class="text-red-500">*</span></label>
+                        <p class="text-xs text-slate-500">You can select more than one section to duplicate the questions.</p>
+                    </div>
+
+                    <div class="border border-slate-300 rounded-lg p-4 max-h-56 overflow-y-auto bg-slate-50/50 shadow-inner">
+
+                        <label class="flex items-center space-x-3 cursor-pointer group mb-3 pb-3 border-b border-slate-200">
+                            <input type="checkbox" id="selectAllSections" class="w-4.5 h-4.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500/20 cursor-pointer transition-colors">
+                            <span class="text-sm text-slate-800 font-bold group-hover:text-blue-600 transition-colors">Select All Sections</span>
+                        </label>
+
+                        <div class="space-y-3">
+                            @foreach (var sec in ViewBag.Section)
+                            {
+                                <label class="flex items-center space-x-3 cursor-pointer group">
+                                    <input type="checkbox" name="sectionCheckbox" value="@sec.section_id" class="w-4.5 h-4.5 text-blue-600 border-slate-300 rounded focus:ring-blue-500/20 cursor-pointer transition-colors">
+                                    <span class="text-sm text-slate-700 font-medium group-hover:text-blue-600 transition-colors">@sec.section_name</span>
+                                </label>
+                            }
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button id="cancelModalBtn" type="button"
+                    class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-200">
+                Cancel
+            </button>
+            <button id="submitImportBtn" type="button"
+                    class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-lg text-sm font-semibold shadow-sm hover:shadow transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30 flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                Upload & Import
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<div id="addQuestionModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+    <div class="relative mx-auto bg-white rounded-2xl shadow-2xl ring-1 ring-slate-900/5 w-full max-w-xl overflow-hidden transition-all">
+
+        <div class="px-6 py-4 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-90 flex items-center gap-3 relative">
+            <div class="flex-shrink-0 w-11 h-11 flex items-center justify-center bg-white/20 text-white rounded-xl backdrop-blur-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white tracking-wide">Add New Question</h3>
+                <p id="addSectionNameDisplay" class="text-sm text-cyan-50 mt-0.5">Section: -</p>
+            </div>
+            <button id="closeAddModalBtn" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition-colors focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-6">
+            <form id="addQuestionForm" class="space-y-5">
+                <input type="hidden" id="addSectionId" name="section_id" />
+                <input type="hidden" id="addAuditStandardId" name="audit_standard_id" />
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Type <span class="text-red-500">*</span></label>
+                        <select id="addAuditType" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all cursor-pointer" required>
+                            <option value="" disabled selected>-- Select Type --</option>
+                            <option value="Product">Product</option>
+                            <option value="System">System</option>
+                            <option value="Process">Process</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5">Evidence<span class="text-red-500">*</span></label>
+                        <input type="text" id="addProcessName" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" placeholder="Ya/Tidak" required />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Clause (ISO & IATF)</label>
+                    <input type="text" id="addClause" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" placeholder="e.g., 9.1.2 / 7.1.5.1" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-1.5">Audit Parameters & Question <span class="text-red-500">*</span></label>
+                    <textarea id="addQuestionText" rows="4" class="block w-full text-sm border border-slate-300 rounded-lg p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all" placeholder="Detail the audit question here..." required></textarea>
+                </div>
+            </form>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button id="cancelAddModalBtn" type="button" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all focus:outline-none">
+                Cancel
+            </button>
+            <button id="submitAddQuestionBtn" type="button" class="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-400 opacity-90 hover:opacity-100 text-white rounded-lg text-sm font-semibold shadow-sm transition-all focus:outline-none flex items-center">
+                Save Question
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+    $(document).ready(function () {
+
+        // ==========================================
+        // AJAX DELETE QUESTION
+        // ==========================================
+        $(document).on('click', '.btn-delete-question', function () {
+            const btn = $(this);
+            const deleteId = btn.data('id');
+
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "You won't be able to revert this data!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Deleting...',
+                        text: 'Removing data from server.',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading(); }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("DeleteQuestionMaster", "EAudit")?id=' + deleteId,
+                        type: 'POST',
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Deleted!',
+                                    text: 'Question has been deleted.'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire({ icon: 'error', title: 'Failed!', text: response.message || 'Error deleting data.' });
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire({ icon: 'error', title: 'Server Error', text: 'Failed to contact server. Error: ' + error });
+                        }
+                    });
+                }
+            });
+        });
+
+        // ==========================================
+        // MODAL & AJAX EDIT QUESTION
+        // ==========================================
+        const editModal = $('#editQuestionModal');
+
+        $(document).on('click', '.btn-edit-question', function () {
+            const btn = $(this);
+            const id = btn.data('id');
+            const type = btn.data('type');
+            const processName = btn.data('process');
+            const clause = btn.data('clause');
+            const questionText = btn.data('question');
+
+            $('#editQuestionId').val(id);
+            $('#editAuditType').val(type); // Binding Audit Type
+            $('#editProcessName').val(processName);
+            $('#editClause').val(clause);
+            $('#editQuestionText').val(questionText);
+
+            editModal.removeClass('hidden');
+        });
+
+        function closeEditModal() {
+            editModal.addClass('hidden');
+            $('#editQuestionForm')[0].reset();
+        }
+
+        $('#closeEditModalBtn, #cancelEditModalBtn').on('click', closeEditModal);
+
+        $('#submitEditQuestionBtn').on('click', function () {
+            const editId = $('#editQuestionId').val();
+            const editAuditType = $('#editAuditType').val(); // Retrieve Audit Type
+            const editProcessName = $('#editProcessName').val().trim();
+            const editClause = $('#editClause').val().trim();
+            const editQuestionText = $('#editQuestionText').val().trim();
+
+            if (!editAuditType || !editProcessName || !editQuestionText) {
+                Swal.fire({ icon: 'warning', title: 'Required Fields', text: 'Audit Type, Process Name, and Question cannot be empty!' });
+                return;
+            }
+
+            const questionDto = {
+                category_audit: editAuditType, // Send Audit Type
+                process_name: editProcessName,
+                clausul: editClause,
+                question: editQuestionText
+            };
+
+            Swal.fire({
+                title: 'Updating...',
+                text: 'Saving changes to master data.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("UpdateQuestionMaster", "EAudit")?id=' + editId,
+                type: 'POST',
+                data: JSON.stringify(questionDto),
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    if (response.success) {
+                        closeEditModal();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Updated!',
+                            text: 'Question has been updated successfully.'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Failed!', text: 'Error updating data.' });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    Swal.fire({ icon: 'error', title: 'Server Error', text: 'Failed to contact server. Error: ' + error });
+                }
+            });
+        });
+
+        // ==========================================
+        // MODAL & AJAX ADD QUESTION
+        // ==========================================
+        const addModal = $('#addQuestionModal');
+
+        $('.btn-add-question').on('click', function () {
+            const sectionCard = $(this).closest('.section-card');
+            const sectionId = sectionCard.data('section-id');
+            const sectionName = sectionCard.find('h2').text();
+            const currentAuditStandardId = $('#AuditStandardDropdown').val();
+
+            $('#addSectionId').val(sectionId);
+            $('#addAuditStandardId').val(currentAuditStandardId);
+            $('#addSectionNameDisplay').text('Section: ' + sectionName);
+
+            addModal.removeClass('hidden');
+        });
+
+        function closeAddModal() {
+            addModal.addClass('hidden');
+            $('#addQuestionForm')[0].reset();
+        }
+
+        $('#closeAddModalBtn, #cancelAddModalBtn').on('click', closeAddModal);
+
+        $('#submitAddQuestionBtn').on('click', function () {
+            const sectionId = $('#addSectionId').val();
+            const AuditStandardId = $('#addAuditStandardId').val();
+            const auditType = $('#addAuditType').val(); 
+            const processName = $('#addProcessName').val().trim();
+            const clause = $('#addClause').val().trim();
+            const questionText = $('#addQuestionText').val().trim();
+
+            if (!auditType || !processName || !questionText) {
+                Swal.fire({ icon: 'warning', title: 'Required Fields', text: 'Please fill out Audit Type, Process Name, and Question!' });
+                return;
+            }
+
+            const questionDto = {
+                section_id: sectionId,
+                audit_standard_id: parseInt(AuditStandardId),
+                category_audit: auditType, // Send Audit Type
+                process_name: processName,
+                clausul: clause,
+                question: questionText
+            };
+
+            Swal.fire({
+                title: 'Saving...',
+                text: 'Adding new question to master data.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("CreateQuestionMaster", "EAudit")',
+                type: 'POST',
+                data: JSON.stringify(questionDto),
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    if (response.success) {
+                        closeAddModal();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: 'Question has been added successfully.'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Failed!', text: 'Error saving data to server.' });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    Swal.fire({ icon: 'error', title: 'Server Error', text: 'Failed to contact server. Error: ' + error });
+                }
+            });
+        });
+
+        // ==========================================
+        // LOGIKA PAGINATION & PENCARIAN (SEARCH)
+        // ==========================================
+        const rowsPerPage = 5;
+
+        function setupPagination(card) {
+            const matchedRows = card.find('.audit-table tbody .table-row-item.match-filter');
+            const totalRows = matchedRows.length;
+            const paginationContainer = card.find('.px-6.py-4.bg-slate-50\\/30');
+
+            card.find('.audit-table tbody .table-row-item').hide();
+
+            if (totalRows === 0) {
+                card.hide();
+                return;
+            } else {
+                card.show();
+                paginationContainer.show();
+            }
+
+            const totalPages = Math.ceil(totalRows / rowsPerPage);
+            let currentPage = 1;
+
+            const pageContainer = card.find('.page-number-container');
+            pageContainer.empty();
+            for (let i = 1; i <= totalPages; i++) {
+                pageContainer.append(`
+                    <button class="page-num px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all shadow-sm focus:outline-none
+                        ${i === 1
+                            ? 'bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-transparent'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}"
+                        data-page="${i}">
+                        ${i}
+                    </button>
+                `);
+            }
+
+            card.off('click', '.page-num');
+            card.off('click', '.btn-prev');
+            card.off('click', '.btn-next');
+
+            function displayPage(page) {
+                currentPage = page;
+                const start = (page - 1) * rowsPerPage;
+                const end = Math.min(start + rowsPerPage, totalRows);
+
+                matchedRows.hide();
+                matchedRows.slice(start, end).show();
+
+                card.find('.row-start-num').text(start + 1);
+                card.find('.row-end-num').text(end);
+
+                card.find('.page-num').removeClass('bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-transparent').addClass('bg-white border-slate-200 text-slate-700 hover:bg-slate-50');
+                card.find(`.page-num[data-page="${page}"]`).removeClass('bg-white border-slate-200 text-slate-700 hover:bg-slate-50').addClass('bg-gradient-to-r from-blue-500 to-cyan-400 text-white border-transparent');
+
+                card.find('.btn-prev').prop('disabled', currentPage === 1);
+                card.find('.btn-next').prop('disabled', currentPage === totalPages);
+            }
+
+            card.on('click', '.page-num', function () {
+                const clickedPage = parseInt($(this).data('page'));
+                displayPage(clickedPage);
+            });
+
+            card.on('click', '.btn-prev', function () {
+                if (currentPage > 1) displayPage(currentPage - 1);
+            });
+
+            card.on('click', '.btn-next', function () {
+                if (currentPage < totalPages) displayPage(currentPage + 1);
+            });
+
+            displayPage(1);
+        }
+
+        function performSearch() {
+            const searchTerm = $('#searchInput').val().toLowerCase().trim();
+            const selectedSectionId = $('#sectionDropdown').val();
+            const selectedAuditStandard = $('#AuditStandardDropdown').val();
+
+            $('.section-card').each(function () {
+                const card = $(this);
+                const sectionId = card.data('section-id').toString();
+
+                if (selectedSectionId && selectedSectionId !== sectionId) {
+                    card.hide();
+                    return;
+                }
+
+                const rows = card.find('.audit-table tbody .table-row-item');
+                rows.each(function () {
+                    const row = $(this);
+                    const rowText = row.text().toLowerCase();
+                    const rowAuditStandard = row.data('audit-standard') ? row.data('audit-standard').toString() : "";
+
+                    const matchSearch = rowText.includes(searchTerm);
+                    const matchType = (selectedAuditStandard === "") || (rowAuditStandard === selectedAuditStandard);
+
+                    if (matchSearch && matchType) {
+                        row.addClass('match-filter');
+                    } else {
+                        row.removeClass('match-filter');
+                    }
+                });
+
+                setupPagination(card);
+            });
+        }
+
+        // Jalankan search pertama kali saat page load agar membaca filter default dropdown utama
+        performSearch();
+
+        $('#searchInput').on('input', function () {
+            if ($(this).val().length > 0) {
+                $('#clearSearch').removeClass('hidden');
+            } else {
+                $('#clearSearch').addClass('hidden');
+            }
+            performSearch();
+        });
+
+        $('#clearSearch').on('click', function () {
+            $('#searchInput').val('').trigger('input').focus();
+        });
+
+        $('#sectionDropdown, #AuditStandardDropdown').on('change', function () {
+            performSearch();
+        });
+
+        // ==========================================
+        // MODAL IMPORT EXCEL
+        // ==========================================
+        const modal = $('#importModal');
+        const fileInput = $('#modalFileInput');
+
+        $('#btnImportExcel').on('click', function () {
+            const currentMainAuditStandard = $('#AuditStandardDropdown').val();
+
+            if (currentMainAuditStandard) {
+                $('#importAuditStandardId').val(currentMainAuditStandard);
+            }
+            modal.removeClass('hidden');
+        });
+
+        function closeModal() {
+            modal.addClass('hidden');
+            fileInput.val('');
+            $('input[name="sectionCheckbox"]').prop('checked', false);
+            $('#selectAllSections').prop('checked', false);
+        }
+
+        $('#closeModalBtn, #cancelModalBtn').on('click', closeModal);
+
+        $('#selectAllSections').on('change', function () {
+            var isChecked = $(this).prop('checked');
+            $('input[name="sectionCheckbox"]').prop('checked', isChecked);
+        });
+
+        $('input[name="sectionCheckbox"]').on('change', function () {
+            var totalCheckboxes = $('input[name="sectionCheckbox"]').length;
+            var checkedCheckboxes = $('input[name="sectionCheckbox"]:checked').length;
+
+            if (totalCheckboxes === checkedCheckboxes) {
+                $('#selectAllSections').prop('checked', true);
+            } else {
+                $('#selectAllSections').prop('checked', false);
+            }
+        });
+
+        // PROSES UPLOAD & IMPORT EXCEL VIA AJAX
+        $('#submitImportBtn').on('click', function () {
+            var file = fileInput[0].files[0];
+            if (!file) {
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select an Excel file first!' });
+                return;
+            }
+
+            var selectedSections = [];
+            $('input[name="sectionCheckbox"]:checked').each(function() {
+                selectedSections.push($(this).val());
+            });
+
+            if (selectedSections.length === 0) {
+                Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Please select at least one target Section!' });
+                return;
+            }
+
+            var AuditStandardId = $('#importAuditStandardId').val();
+
+            var formData = new FormData();
+            formData.append('file', file);
+            formData.append('audit_standard_id', parseInt(AuditStandardId));
+
+            selectedSections.forEach(function(id) {
+                formData.append('sectionIds', id);
+            });
+
+            closeModal();
+
+            Swal.fire({
+                title: 'Processing Data...',
+                text: 'Reading Excel and duplicating data, please wait...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            $.ajax({
+                url: '@Url.Action("ImportMasterQuestion", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message + ' (Total inputted: ' + response.totalDataInserted + ' rows)'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Failed!', text: response.message });
+                    }
+                },
+                error: function (xhr, status, error) {
+                    Swal.fire({ icon: 'error', title: 'An Error Occurred!', text: 'Failed to contact server. Error: ' + error });
+                }
+            });
+        });
+
+    });
+    </script>
+}

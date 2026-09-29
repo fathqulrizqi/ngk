@@ -1,0 +1,662 @@
+﻿<!DOCTYPE html>
+@{
+    ViewBag.Title = "Tax Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+<style>
+    .highcharts-figure,
+    .highcharts-data-table table {
+        min-width: 320px;
+        max-width: 660px;
+        margin: 1em auto;
+    }
+
+    .highcharts-data-table table {
+        font-family: Verdana, sans-serif;
+        border-collapse: collapse;
+        border: 1px solid #ebebeb;
+        margin: 10px auto;
+        text-align: center;
+        width: 100%;
+        max-width: 500px;
+    }
+
+    .highcharts-data-table caption {
+        padding: 1em 0;
+        font-size: 1.2em;
+        color: #555;
+    }
+
+    .highcharts-data-table th {
+        font-weight: 600;
+        padding: 0.5em;
+    }
+
+    .highcharts-data-table td,
+    .highcharts-data-table th,
+    .highcharts-data-table caption {
+        padding: 0.5em;
+    }
+
+    .highcharts-data-table thead tr,
+    .highcharts-data-table tr:nth-child(even) {
+        background: #f8f8f8;
+    }
+
+    .highcharts-data-table tr:hover {
+        background: #f1f7ff;
+    }
+
+    body {
+        /* background-color: #F3f3f3; */
+    }
+</style>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.js"></script>
+<script src="@Url.Content("~/Content/highchart/highcharts.js")"></script>
+<script src="@Url.Content("~/Content/highchart/exporting.js")"></script>
+<script src="@Url.Content("~/Content/highchart/export-data.js")"></script>
+<script src="@Url.Content("~/Content/highchart/accessibility.js")"></script>
+<div class="row">
+    <div class="col-8">
+        <div class="card">
+            <div class="card-body">
+                @*<div id="container"></div>*@
+                <div id="barChartContainer"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card">
+            <div class="card-body">
+                <div id="LastThreeYearsChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12" style="background-color:white">
+       
+    </div>
+    <div class="col-4">
+        <div class="card">
+            <div class="card-body">
+                <div id="DonutChartBeforeSPHP"></div>
+            </div>
+        </div>
+    </div><div class="col-4">
+        <div class="card">
+            <div class="card-body">
+                <div id="DonutChartSPHP"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="card">
+            <div class="card-body">
+                <div id="DonutChartResult"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    
+    <div class="col-12">
+        <div class="card mt-3">
+            <div class="card-body">
+                <div id="toolbar">
+                    <a href="#" data-toggle="modal" data-target="#myModal" class="btn btn-primary"><span><i class="fa fa-plus"></i></span> Add New</a>
+
+                </div>
+                <table id="table"
+                       data-toggle="table"
+                       data-toolbar="#toolbar"
+                       data-ajax="ajaxRequest"
+                       data-query-params="queryParams"
+                       data-click-to-select="true"
+                       data-url=""
+                       class="table-sm">
+                    <thead>
+                        <tr>
+                            @*<th data-field="state" data-checkbox="true"></th>*@
+                            <th data-field="HeaderID" data-sortable="true">Tax ID</th>
+                            <th data-field="DocumentationTitle" data-sortable="true">Fiscal Year</th>
+                            <th data-field="Type" data-sortable="true">Type</th>
+                            <th data-field="TaxAuditDate" data-sortable="true">Tax Audit Date</th>
+                            <th data-field="FinalDiscussionDate" data-sortable="">Final Discussion date</th>
+                            <th data-field="TotalClaim" data-sortable="">Total Claim</th>
+                            <th data-field="BeforeSPHP" data-sortable="">Before SPHP</th>
+                            <th data-field="SPHP">SPHP</th>
+                            <th data-field="Received">Result</th>
+                            <th data-field="Button">Action</th>
+                        </tr>
+                    </thead>
+
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="myModalLabel">Add Data</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="@Url.Action("SubmitHeaderDocumentation", "TaxDocumentation", new { area = "FA" })" id="formAddDocumentation" name="formAddDocumentation">
+                    <div class="form-group row has-error">
+                        <label for="txtDocumentationTitle" class="col-md-4 col-form-label">Documentation Title</label>
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-sm" id="txtDocumentationTitle" name="DocumentationTitle" placeholder="input Title" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="selDocumentationType" class="col-md-4 col-form-label">Tax Audit Type</label>
+                        <div class="col-md-8">
+                            <select class="form-control selectpicker form-control-sm select2" data-live-search="true" name="Type" id="selDocumentationType" data-placeholder="Select Type" required>
+                                <option value="">-- select option --</option>
+                                <option value="special"> Special</option>
+                                <option value="objection"> Objection</option>
+                                <option value="refund"> Refund</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtAuditDate" class="col-md-4 col-form-label">Tax Audit Date</label>
+                        <div class="col-md-8">
+                            <input type="text" class="form-control form-control-sm" id="txtAuditDate" name="TaxAuditDate" placeholder="input Date" required autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtFinalDiscussionDate" class="col-md-4 col-form-label">Final Discussion Date</label>
+                        <div class="col-md-8">
+                            <input name="FinalDiscussionDate" type="text" class="form-control form-control-sm" id="txtFinalDiscussionDate" placeholder="input Date" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="txtTotalClaim" class="col-md-4 col-form-label">Total Claim</label>
+                        <div class="col-md-8">
+                            <input name="TotalClaim" type="text" class="form-control form-control-sm" id="txtTotalClaim" placeholder="Input Amount" autocomplete="off" required>
+                        </div>
+                    </div>
+
+</div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
+                <button type="submit" class="btn btn-primary" id="btnAddDocumentation">Save</button>
+            </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function IDRFormatter(angka, prefix) {
+        var number_string = angka.toString().replace(/[^,\d]/g, ''),
+            split = number_string.split(','),
+            sisa = split[0].length % 3,
+            rupiah = split[0].substr(0, sisa),
+            ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+        if (ribuan) {
+            var separator = sisa ? '.' : '';
+            rupiah += separator + ribuan.join('.');
+        }
+
+        rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
+        return prefix == undefined ? rupiah : (rupiah ? 'Rp. ' + rupiah : '');
+    }
+
+    function formatNumber(n) {
+        // format number 1000000 to 1,234,567
+        return n.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    }
+
+    function formatCurrency(input, blur) {
+        // appends $ to value, validates decimal side
+        // and puts cursor back in right position.
+
+        // get input value
+        var input_val = input.val();
+
+        // don't validate empty input
+        if (input_val === "") { return; }
+
+        // original length
+        var original_len = input_val.length;
+
+        // initial caret position
+        var caret_pos = input.prop("selectionStart");
+
+        // check for decimal
+        if (input_val.indexOf(".") >= 0) {
+
+            // get position of first decimal
+            // this prevents multiple decimals from
+            // being entered
+            var decimal_pos = input_val.indexOf(".");
+
+            // split number by decimal point
+            var left_side = input_val.substring(0, decimal_pos);
+            var right_side = input_val.substring(decimal_pos);
+
+            // add commas to left side of number
+            left_side = formatNumber(left_side);
+
+            // validate right side
+            right_side = formatNumber(right_side);
+
+            // On blur make sure 2 numbers after decimal
+            if (blur === "blur") {
+                right_side += "00";
+            }
+
+            // Limit decimal to only 2 digits
+            right_side = right_side.substring(0, 2);
+
+            // join number by .
+            input_val = left_side + "." + right_side;
+
+        } else {
+            // no decimal entered
+            // add commas to number
+            // remove all non-digits
+            input_val = formatNumber(input_val);
+            input_val = input_val;
+
+            // final formatting
+            if (blur === "blur") {
+                input_val += ".00";
+            }
+        }
+
+        // send updated string to input
+        input.val(input_val);
+
+        // put caret back in the right position
+        var updated_len = input_val.length;
+        caret_pos = updated_len - original_len + caret_pos;
+        input[0].setSelectionRange(caret_pos, caret_pos);
+    }
+
+    $(function () {
+        var $auditDate = $('#txtAuditDate');
+        var $endDate = $('#txtFinalDiscussionDate');
+
+        $auditDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+
+        $endDate.datepicker({
+            autoHide: true,
+            format: 'yyyy-mm-dd'
+        });
+    });
+
+    var validateDocumentationtHeader =
+        $("form[name='formAddDocumentation']").validate({
+            // Specify validation rules
+            rules: {
+                DocumentationTitle: {
+                    required: true
+                },
+                Type: {
+                    required: true
+                }
+            },
+            // Specify validation error messages
+            messages: {
+                DocumentationTitle: {
+                    required: "Please Input Title"
+
+                },
+                Type: {
+                    required: "Please select section"
+                }
+            },
+            submitHandler: function (form) {
+                var url = $('#formAddDocumentation').attr('action');
+                ConfirmAddDocumentation(url);
+            }
+        });
+
+    function ConfirmAddDocumentation(Link) {
+        swal({
+            title: "Are you sure?",
+            text: "Add Documentation",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Save it!",
+            closeOnConfirm: false,
+            closeOnCancel: false
+        }, function (isConfirm) {
+            if (isConfirm) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: $('#formAddDocumentation').serialize(),
+                    success: function (json) {
+                        if (json.status == 1) {
+                            $("#myModal").modal("hide");
+                            swal("Success!", json.msg, "success");
+                            $('#table').bootstrapTable('refresh', function () {
+
+                            });
+
+                        } else {
+                            swal("Failed!", json.msg, "error");
+                        }
+                    },
+                    error: function () {
+                        swal("Deactivate!", Link, "error");
+                    }
+                })
+            } else {
+                swal("Cancelled", "Request Not Send", "error");
+            }
+        });
+    }
+
+    function queryParams(params) {
+            params.switch = "";//   <<<----------catch like this
+            return params;
+        }
+
+    function ajaxRequest(params) {
+
+        $.ajax({
+            type: "post",
+            url: "@Url.Action("TaxDocumentationList", "TaxDocumentation", new { area = "FA" })",
+            dataType: 'json',
+            data: { "id": params.data.switch},
+            success: function (items) {
+
+                params.success({
+                    rows: items
+                }, null);
+            },
+            error: function (er) {
+                console.log(params.error(er))
+                console.log("error", er);
+            }
+        })
+    }
+
+    // Mengambil data menggunakan jQuery AJAX
+    $(document).ready(function () {
+        $.ajax({
+            url: '@Url.Action("GetDataBarChart", "TaxDocumentation", new { area = "FA" })',
+            method: 'POST',
+            dataType: 'json',
+            success: function (data) {
+                createBarChart(data);
+            },
+            error: function () {
+                console.error('Failed to fetch data.');
+            }
+        });
+    });
+
+    function createBarChart(data) {
+        Highcharts.chart('barChartContainer', {
+        title: {
+            text: 'Tax Documentation'
+        },
+        colors: ['#2b908f', '#90ee7e', '#f45b5b', '#7798BF', '#ff0066', '#eeaaee', '#55BF3B', '#DF5353', '#7798BF', '#aaeeee'],
+            xAxis: {
+                categories: data.categories,
+            crosshair: true
+        },
+        yAxis: {
+
+            labels: {
+                formatter: function () {
+                    return IDRFormatter(this.value, 'Rp.');
+                }
+            },
+            title: {
+                text: 'Amount (Rp)'
+            },
+            credits: {
+                enabled: false
+            },
+        },
+        tooltip: {
+            headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+            pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+                '<td style="padding:0"><b>Rp {point.y} </b></td></tr>',
+            footerFormat: '</table>',
+            shared: true,
+            useHTML: true
+        },
+
+        subtitle: {
+            text: ''
+        },
+
+
+        //series: [
+        //    {
+        //    type:'column',
+        //    name: 'Total Claim',
+        //        data: [6363335325, 5240929464, 2958189867],
+        //        dataLabels: {
+        //            enabled: true,
+        //            formatter: function () {
+        //                return IDRFormatter(this.y, 'Rp.');
+        //            }
+        //        }
+
+        //    },
+        //    {
+        //    type:'column',
+        //    name: 'Before SPHP',
+        //        data: [0, 21839051139.9175, 0],
+        //        dataLabels: {
+        //            enabled: true,
+        //            formatter: function () {
+        //                return IDRFormatter(this.y, 'Rp.');
+        //            }
+        //        }
+
+        //    }, {
+        //        type: 'column',
+        //        name: 'SPHP',
+        //        data: [1968878039.5, 6180667658.9175, 0],
+        //        dataLabels: {
+        //            enabled: true,
+        //            formatter: function () {
+        //                return IDRFormatter(this.y, 'Rp.');
+        //            }
+        //        }
+
+        //    },
+        //    {
+        //    type:'column',
+        //    name: 'Received (Payment)',
+        //    data: [6362206297, 4186219686, 2958189867],
+        //    dataLabels: {
+        //            enabled: true,
+        //            formatter: function () {
+        //                return IDRFormatter(this.y, 'Rp.');
+        //            }
+        //        }
+
+        //    }
+        //],
+
+            series: data.series
+
+
+    });
+    }
+
+    //function lastThreeYearsChart(data) {
+    //    var options = {
+    //        chart: {
+    //            type: 'bar'
+    //        },
+    //        title: {
+    //            text: 'Last Three Years Result'
+    //        },
+    //        xAxis: {
+    //            categories: data.map(item => item.name),
+    //            title: {
+    //                text: 'Tax Documentation'
+    //            }
+    //        },
+    //        yAxis: {
+    //            title: {
+    //                text: 'Total Result'
+    //            }
+    //        },
+    //        series: [{
+    //            name: 'Total Result',
+    //            data: data.map(item => item.value)
+    //        }]
+    //    };
+
+    //    Highcharts.chart('LastThreeYearsChart', options);
+    //}
+
+    // Mengambil data menggunakan jQuery AJAX
+    $.ajax({
+        url:  '@Url.Action("LastThreeYearsChart", "TaxDocumentation", new { area = "FA" })',
+        method: 'POST',
+        dataType: 'json',
+        success: function (data) {
+            console.log(data);
+            lastThreeYearsChart(data);
+        },
+        error: function() {
+            console.error('Failed to fetch data.');
+        }
+    });
+
+    function detailDonutChart(data, idRender, text) {
+        new Highcharts.Chart({
+            title: {
+                text: text,
+                align: 'left'
+            },
+            chart: {
+                renderTo: idRender,
+                type: 'pie',
+            },
+
+            series: [{
+                innerSize: '40%',
+                data: data,
+            }]
+        });
+    }
+
+    // Mengambil data menggunakan jQuery AJAX
+    $.ajax({
+        url:  '@Url.Action("GetDonutChart", "TaxDocumentation", new { area = "FA" })',
+        method: 'POST',
+        data: {HeaderID : 0},
+        dataType: 'json',
+        success: function (data) {
+            console.log(data);
+            detailDonutChart(data.seriesBeforeSPHP, "DonutChartBeforeSPHP", "Before SPHP " + data.fiscalYear);
+            detailDonutChart(data.seriesSPHP, "DonutChartSPHP", "SPHP " + data.fiscalYear);
+            detailDonutChart(data.seriesResult, "DonutChartResult", "Payment Received " + data.fiscalYear);
+        },
+        error: function() {
+            console.error('Failed to fetch data.');
+        }
+    });
+
+    function lastThreeYearsChart(data) {
+        Highcharts.chart('LastThreeYearsChart', {
+            chart: {
+                type: 'line'
+            },
+            title: {
+                text: 'Payment Received History',
+                align: 'left'
+            },
+
+            yAxis: {
+                title: {
+                    text: 'Total Result'
+                }
+            },
+
+            xAxis: {
+                categories: data.categories
+            },
+
+            legend: {
+                layout: 'vertical',
+                align: 'right',
+                verticalAlign: 'middle'
+            },
+            plotOptions: {
+                line: {
+                    dataLabels: {
+                        enabled: true
+                    },
+                    enableMouseTracking: false
+                }
+            },
+
+
+            series: data.series,
+
+            responsive: {
+                rules: [{
+                    condition: {
+                        maxWidth: 500
+                    },
+                    chartOptions: {
+                        legend: {
+                            layout: 'horizontal',
+                            align: 'center',
+                            verticalAlign: 'bottom'
+                        }
+                    }
+                }]
+            }
+
+        });
+    }
+
+    /* ------------------------------------ selected pie chart ----------------------------------- */
+    $(document).on('click', ".PreviewPieChart", function (e) {
+        //var Link = $("#frmCorrectionList").attr('action');
+        var HeaderID = $(this).data('id');
+        console.log(HeaderID);
+        $.ajax({
+            url:  '@Url.Action("GetSelectedDonutChart", "TaxDocumentation", new { area = "FA" })',
+            method: 'POST',
+            data: { HeaderID: HeaderID },
+            dataType: 'json',
+            success: function (data) {
+                console.log(data);
+                detailDonutChart(data.seriesBeforeSPHP, "DonutChartBeforeSPHP", "Before SPHP " + data.fiscalYear);
+                detailDonutChart(data.seriesSPHP, "DonutChartSPHP", "SPHP " + data.fiscalYear);
+                detailDonutChart(data.seriesResult, "DonutChartResult", "Payment Received " + data.fiscalYear);
+            },
+            error: function() {
+                console.error('Failed to fetch data.');
+            }
+        });
+
+    });
+</script>

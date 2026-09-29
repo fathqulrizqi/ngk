@@ -1,0 +1,789 @@
+﻿@{
+    ViewBag.Title = "Workshop Request Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="@Url.Content("~/Content/tailwindcss/tailwind-3.4.17.js")"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    brand: {
+                        50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc',
+                        400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca',
+                        800: '#3730a3', 900: '#312e81'
+                    }
+                },
+                boxShadow: {
+                    soft: '0 1px 2px rgba(16,24,40,.04), 0 12px 32px -16px rgba(16,24,40,.18)',
+                    lift: '0 2px 4px rgba(16,24,40,.06), 0 18px 40px -18px rgba(16,24,40,.28)'
+                },
+                keyframes: {
+                    fadeUp: {
+                        '0%': { opacity: '0', transform: 'translateY(8px)' },
+                        '100%': { opacity: '1', transform: 'translateY(0)' }
+                    },
+                    toastIn: {
+                        '0%': { opacity: '0', transform: 'translateY(-12px) scale(.97)' },
+                        '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+                    }
+                },
+                animation: {
+                    fadeUp: 'fadeUp .35s ease-out both',
+                    toastIn: 'toastIn .25s ease-out both'
+                }
+            }
+        }
+    }
+</script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+</style>
+
+<div class="min-h-screen">
+    <div class="max-w-screen-2xl ">
+
+        <!-- ======================================= -->
+        <!-- PAGE HEADER -->
+        <!-- ======================================= -->
+        <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[.14em] text-[#1E3A8A]">Production Engineering</p>
+                <h1 class="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-white">Workshop Request</h1>
+                <p class="mt-1.5 text-sm text-white">Submit repair or part fabrication requests to the workshop and track their status.</p>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:w-auto">
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-soft">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Total</p>
+                    <p id="statTotal" class="mt-0.5 text-xl font-bold text-slate-900">0</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-soft">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Pending</p>
+                    <p id="statPending" class="mt-0.5 text-xl font-bold text-[#1E3A8A]">0</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-soft">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">On Progress</p>
+                    <p id="statOpen" class="mt-0.5 text-xl font-bold text-amber-600">0</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-soft">
+                    <p class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Completed</p>
+                    <p id="statDone" class="mt-0.5 text-xl font-bold text-emerald-600">0</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div class="lg:col-span-12">
+                <div class="lg:sticky lg:top-6 rounded-2xl border border-slate-200 bg-white shadow-soft overflow-hidden animate-fadeUp">
+
+                    <div class="relative overflow-hidden bg-gradient-to-br from-[#1E3A8A] via-[#1E3A8A] to-[#1E3A8A] px-6 py-4">
+                        <div class="absolute -right-10 -top-16 h-40 w-40 rounded-full bg-white/10"></div>
+                        <div class="absolute -right-4 top-10 h-24 w-24 rounded-full bg-white/10"></div>
+                        <div class="relative flex items-center gap-3">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-inset ring-white/25">
+                                <svg class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-white">Create New Request</h2>
+                                <p class="text-xs text-green-100">Please complete the details below</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-2">
+                        <form id="formWorkshopRequest" novalidate>
+
+                            <div class="flex col-12 p-2">
+                                <div class="space-y-4 col-6">
+                                    <div class="flex items-center gap-2">
+                                        <span class="h-px flex-1 bg-slate-200"></span>
+                                        <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Request Info</span>
+                                        <span class="h-px flex-1 bg-slate-200"></span>
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Department <span class="text-rose-500">*</span></label>
+                                        <div class="relative">
+                                            <select name="department" id="department"
+                                                    class="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 pr-10 text-sm text-slate-900 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                    required>
+                                                <option value="">Select department</option>
+                                            </select>
+                                            <svg class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </div>
+                                        <input type="text" name="department_other" id="department_other"
+                                               class="hidden mt-2 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                               placeholder="Enter department name..." disabled />
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Request Title <span class="text-rose-500">*</span></label>
+                                        <input type="text" name="request" maxlength="150"
+                                               class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                               placeholder="e.g., Repair assembly line 3 jig" required />
+                                    </div>
+                                    <div>
+                                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Request Type <span class="text-rose-500">*</span></label>
+                                        <div class="grid grid-cols-3 gap-2" id="requestTypeGroup">
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="request_type" value="Perbaikan" class="peer sr-only" required />
+                                                <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-center text-sm font-medium text-slate-600 transition hover:border-slate-300 peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/10">
+                                                    Repair
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="request_type" value="Pembuatan" class="peer sr-only" />
+                                                <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-center text-sm font-medium text-slate-600 transition hover:border-slate-300 peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/10">
+                                                    Fabrication
+                                                </div>
+                                            </label>
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="request_type" value="Other" class="peer sr-only" />
+                                                <div class="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-center text-sm font-medium text-slate-600 transition hover:border-slate-300 peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-checked:text-brand-700 peer-focus-visible:ring-4 peer-focus-visible:ring-brand-500/10">
+                                                    Other
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <input type="text" name="request_type_other" id="request_type_other"
+                                               class="hidden mt-2 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                               placeholder="Enter request type..." disabled />
+                                    </div>
+
+                                    <div>
+                                        <div class="mb-1.5 flex items-center justify-between">
+                                            <label class="block text-sm font-medium text-slate-700">Request Description <span class="text-rose-500">*</span></label>
+                                            <span class="text-xs tabular-nums text-slate-400"><span id="descCount">0</span>/500</span>
+                                        </div>
+                                        <textarea name="request_desc" id="request_desc" rows="3" maxlength="500"
+                                                  class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                  placeholder="Describe the requirements in detail: dimensions, material, etc." required></textarea>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Quantity <span class="text-rose-500">*</span></label>
+                                            <input type="number" name="request_qty" min="1" value="1"
+                                                   class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                   required />
+                                        </div>
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Due Date <span class="text-rose-500">*</span></label>
+                                            <input type="date" name="due_date" id="due_date"
+                                                   class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                   required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-6">
+                                    <div class="space-y-3">
+                                        <div class="flex items-center gap-2">
+                                            <span class="h-px flex-1 bg-slate-200"></span>
+                                            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Attachments (Optional)</span>
+                                            <span class="h-px flex-1 bg-slate-200"></span>
+                                        </div>
+
+                                        <!-- Dropzone: Request Image -->
+                                        <div class="js-dropzone" data-input="file_request_image">
+                                            <input type="file" id="file_request_image" accept="image/*" class="sr-only" />
+                                            <label for="file_request_image"
+                                                   class="group flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 transition hover:border-brand-400 hover:bg-brand-50/50">
+                                                <span class="js-thumb flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+                                                    <svg class="h-5 w-5 text-slate-400 transition group-hover:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 9.75h.008v.008H18V9.75Z M2.25 6.75A2.25 2.25 0 0 1 4.5 4.5h15a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75Z" />
+                                                    </svg>
+                                                </span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block text-sm font-medium text-slate-700">Request Image</span>
+                                                    <span class="js-filename block truncate text-xs text-slate-400">Click to choose an image</span>
+                                                </span>
+                                                <span class="js-clear hidden shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600" role="button" title="Remove">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        <!-- Dropzone: Reference Image -->
+                                        <div class="js-dropzone" data-input="file_reference_image">
+                                            <input type="file" id="file_reference_image" accept="image/*" class="sr-only" />
+                                            <label for="file_reference_image"
+                                                   class="group flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-3 transition hover:border-brand-400 hover:bg-brand-50/50">
+                                                <span class="js-thumb flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-slate-200">
+                                                    <svg class="h-5 w-5 text-slate-400 transition group-hover:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                                                    </svg>
+                                                </span>
+                                                <span class="min-w-0 flex-1">
+                                                    <span class="block text-sm font-medium text-slate-700">Reference Image</span>
+                                                    <span class="js-filename block truncate text-xs text-slate-400">Click to choose an image</span>
+                                                </span>
+                                                <span class="js-clear hidden shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600" role="button" title="Remove">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                                    </svg>
+                                                </span>
+                                            </label>
+                                        </div>
+
+                                        <!-- Reference number -->
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-700">Reference Number (Optional)</label>
+                                            <input type="text" name="reference_no_image" id="reference_no_image"
+                                                   class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                   placeholder="e.g., 1,2,.." />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="mb-1.5 block text-sm font-medium text-slate-700">Remarks</label>
+                                        <textarea name="remarks" rows="2"
+                                                  class="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10"
+                                                  placeholder="Additional notes (optional)"></textarea>
+                                    </div>
+                                    <div class="col-12 mt-4 p-0">
+                                        <button type="reset" id="btnReset"
+                                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                                            Reset
+                                        </button>
+                                    </div>
+                                    <div class="col-12 mt-2 p-0">
+                                        <button type="submit" id="btnSubmit"
+                                                class="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E3A8A] px-4 py-2.5 text-sm font-semibold text-white shadow-lift transition hover:bg-[#1E3A8A] focus:outline-none focus:ring-4 focus:ring-[#1E3A8A]/25 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+                                            <svg id="btnSpinner" class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                            </svg>
+                                            <span id="btnSubmitText">Submit Request</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================================= -->
+            <!-- HISTORY SECTION -->
+            <!-- ======================================= -->
+            <div class="lg:col-span-12">
+                <div class="rounded-2xl border border-slate-200 bg-white shadow-soft overflow-hidden animate-fadeUp">
+
+                    <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100">
+                                <svg class="h-5 w-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">My Request History</h2>
+                                <p class="text-xs text-slate-500">Your submission history</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1 sm:w-56 sm:flex-none">
+                                <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                                <input type="search" id="searchHistory" placeholder="Search requests..."
+                                       class="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-500/10" />
+                            </div>
+                            <button type="button" id="btnRefresh" title="Refresh"
+                                    class="shrink-0 rounded-xl border border-slate-200 bg-white p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus:ring-4 focus:ring-slate-200">
+                                <svg id="refreshIcon" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992V4.356m-4.992 4.992-3.181-3.183a8.25 8.25 0 0 0-13.803 3.7M4.031 9.865H.037m3.994 0v4.992m0-4.992 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filter chips -->
+                    <div class="flex gap-2 overflow-x-auto border-b border-slate-100 px-6 py-3" id="filterChips">
+                        <button type="button" data-filter="all" class="chip shrink-0 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand-700 transition">All</button>
+                        <button type="button" data-filter="pending" class="chip shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">Pending</button>
+                        <button type="button" data-filter="open" class="chip shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">On Progress</button>
+                        <button type="button" data-filter="done" class="chip shrink-0 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">Completed</button>
+                    </div>
+
+                    <!-- Desktop table -->
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="min-w-full" id="tableHistory">
+                            <thead>
+                                <tr class="border-b border-slate-200 bg-slate-50/80">
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Dept</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Title</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Type</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-slate-500">Qty</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Due Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-sm">
+                                <!-- Loaded via AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mobile card list -->
+                    <div class="md:hidden divide-y divide-slate-100" id="cardHistory">
+                        <!-- Loaded via AJAX -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastArea" class="pointer-events-none fixed right-4 top-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2"></div>
+
+@section scripts {
+    <script>
+        var historyData = [];
+        var activeFilter = 'all';
+
+        $(document).ready(function () {
+
+            // Earliest selectable due date = today
+            $('#due_date').attr('min', toInputDate(new Date()));
+
+            loadDepartments()
+
+            loadHistory();
+
+            // Description counter
+            $('#request_desc').on('input', function () {
+                $('#descCount').text($(this).val().length);
+            });
+
+            // File preview + remove button
+            $('.js-dropzone').each(function () {
+                var $zone = $(this);
+                var $input = $zone.find('input[type=file]');
+
+                $input.on('change', function () {
+                    var file = this.files[0];
+                    if (!file) { resetDropzone($zone); return; }
+
+                    $zone.find('.js-filename').text(file.name + '  ·  ' + formatSize(file.size)).removeClass('text-slate-400').addClass('text-brand-600 font-medium');
+                    $zone.find('.js-clear').removeClass('hidden');
+                    $zone.find('label').removeClass('border-dashed border-slate-300 bg-slate-50/60').addClass('border-brand-300 bg-brand-50/60');
+
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        $zone.find('.js-thumb').html('<img src="' + e.target.result + '" class="h-full w-full object-cover" alt="preview" />');
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                $zone.find('.js-clear').on('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    $input.val('');
+                    resetDropzone($zone);
+                });
+            });
+
+            // Show / hide the "Other" inputs
+            $('select[name="department"]').on('change', function () {
+                if ($(this).val() === 'Other') {
+                    $('#department_other').removeClass('hidden').prop('disabled', false).prop('required', true);
+                } else {
+                    $('#department_other').addClass('hidden').prop('disabled', true).prop('required', false).val('');
+                }
+            });
+
+            $('input[name="request_type"]').on('change', function () {
+                if ($(this).val() === 'Other') {
+                    $('#request_type_other').removeClass('hidden').prop('disabled', false).prop('required', true);
+                } else {
+                    $('#request_type_other').addClass('hidden').prop('disabled', true).prop('required', false).val('');
+                }
+            });
+
+            // Reset form
+            $('#btnReset').on('click', function () {
+                $('.js-dropzone').each(function () { resetDropzone($(this)); });
+                $('#descCount').text('0');
+
+                // Hide the "Other" inputs again
+                $('#department_other, #request_type_other').addClass('hidden').prop('disabled', true).prop('required', false);
+            });
+
+            // Filter chips
+            $('#filterChips .chip').on('click', function () {
+                activeFilter = $(this).data('filter');
+                $('#filterChips .chip')
+                    .removeClass('border-brand-200 bg-brand-50 text-brand-700')
+                    .addClass('border-slate-200 bg-white text-slate-600 hover:bg-slate-50');
+                $(this)
+                    .removeClass('border-slate-200 bg-white text-slate-600 hover:bg-slate-50')
+                    .addClass('border-brand-200 bg-brand-50 text-brand-700');
+                renderHistory();
+            });
+
+            $('#searchHistory').on('input', renderHistory);
+            $('#btnRefresh').on('click', function () { loadHistory(); });
+
+            // Submit
+            $('#formWorkshopRequest').on('submit', function (e) {
+                e.preventDefault();
+
+                if (!this.checkValidity()) {
+                    this.reportValidity();
+                    showToast('warning', 'Incomplete form', 'Some required fields are still empty.');
+                    return;
+                }
+
+                setLoading(true);
+
+                var formData = new FormData(this);
+
+                // If the user picked "Other", send the typed value instead
+                if (formData.get('department') === 'Other') {
+                    formData.set('department', formData.get('department_other'));
+                }
+
+                if (formData.get('request_type') === 'Other') {
+                    formData.set('request_type', formData.get('request_type_other'));
+                }
+
+                var reqFile = $('#file_request_image')[0].files[0];
+                if (reqFile) formData.append("file_request_image", reqFile);
+
+                var refFile = $('#file_reference_image')[0].files[0];
+                if (refFile) formData.append("file_reference_image", refFile);
+
+                $.ajax({
+                    url: '@Url.Action("SubmitWorkshopRequest", "BMS", new { area = "PE" })',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        if (res.success) {
+                            showToast('success', 'Request submitted', res.message || 'Data saved successfully.');
+                            $('#formWorkshopRequest')[0].reset();
+                            $('.js-dropzone').each(function () { resetDropzone($(this)); });
+                            $('#descCount').text('0');
+                            $('#department_other, #request_type_other').addClass('hidden').prop('disabled', true).prop('required', false);
+                            loadHistory();
+                        } else {
+                            showToast('error', 'Failed to save', res.message || 'Something went wrong.');
+                        }
+                        
+                    },
+                    error: function (err) {
+                        showToast('error', 'Server error', 'An error occurred while submitting the data.');
+                        console.error(err);
+                    },
+                    complete: function () {
+                        setLoading(false);
+                    }
+                });
+            });
+        });
+
+        /* ---------------- Department ---------------- */
+
+        function loadDepartments() {
+            $.ajax({
+                url: '@Url.Action("GetSectionList", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    var $select = $('#department');
+                    $select.empty();
+                    $select.append('<option value="">Select department</option>');
+
+                    // Jika response langsung berupa array string: ["Dept A", "Dept B"]
+                    if (res && res.length > 0) {
+                        $.each(res, function (i, item) {
+                            if (item) {
+                                $select.append('<option value="' + esc(item) + '">' + esc(item) + '</option>');
+                            }
+                        });
+                    }
+
+                    // Tambahkan opsi "Other" di paling bawah
+                    $select.append('<option value="Other">Other</option>');
+                },
+                error: function (err) {
+                    console.error('Failed to load departments', err);
+                    // Fallback jika error
+                    var $select = $('#department');
+                    $select.empty();
+                    $select.append('<option value="">Select department</option>');
+                    $select.append('<option value="Other">Other</option>');
+                }
+            });
+        }
+
+        /* ---------------- History ---------------- */
+
+        function loadHistory() {
+            $('#refreshIcon').addClass('animate-spin');
+            renderSkeleton();
+
+            $.ajax({
+                url: '@Url.Action("GetMyRequestHistory", "BMS", new { area = "PE" })',
+                type: 'GET',
+                success: function (res) {
+                    if (res.success) {
+                        historyData = res.data || [];
+                        renderStats();
+                        renderHistory();
+                    } else {
+                        historyData = [];
+                        renderHistory();
+                        showToast('error', 'Failed to load history', res.message || '');
+                    }
+                },
+                error: function (err) {
+                    historyData = [];
+                    renderHistory();
+                    showToast('error', 'Failed to load history', 'Unable to reach the server.');
+                    console.error("Failed to get history", err);
+                },
+                complete: function () {
+                    $('#refreshIcon').removeClass('animate-spin');
+                }
+            });
+        }
+
+        function isDone(status) {
+            var s = (status || '').toLowerCase();
+            return s === 'complited' || s === 'completed' || s === 'done' || s === 'selesai';
+        }
+
+        // Display label for stored request-type values (stored values are unchanged)
+        function typeLabel(v) {
+            var map = { 'perbaikan': 'Repair', 'pembuatan': 'Fabrication' };
+            var key = (v || '').toString().toLowerCase();
+            return map[key] || v;
+        }
+
+        function renderStats() {
+            var done = 0, pending = 0, onProgress = 0;
+
+            historyData.forEach(function (item) {
+                var stat = (item.status || '').toLowerCase();
+                if (isDone(stat)) {
+                    done++;
+                } else if (stat === 'pending') {
+                    pending++;
+                } else if (stat === 'on progress') {
+                    onProgress++;
+                }
+            });
+
+            $('#statTotal').text(historyData.length);
+            $('#statPending').text(pending);
+            $('#statOpen').text(onProgress);
+            $('#statDone').text(done);
+        }
+
+        function filteredData() {
+            var q = ($('#searchHistory').val() || '').toLowerCase().trim();
+
+            return historyData.filter(function (item) {
+                var stat = (item.status || '').toLowerCase();
+
+                if (activeFilter === 'done' && !isDone(item.status)) return false;
+                if (activeFilter === 'open' && stat !== 'on progress') return false;
+                if (activeFilter === 'pending' && stat !== 'pending') return false;
+
+                if (!q) return true;
+                var hay = [item.request, item.department, item.request_type, typeLabel(item.request_type), item.status].join(' ').toLowerCase();
+                return hay.indexOf(q) !== -1;
+            });
+        }
+
+        function statusBadge(status) {
+            var stat = (status || '').toLowerCase();
+            var done = isDone(stat);
+            var isPending = (stat === 'pending');
+
+            var cls = done
+                ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20'
+                : isPending
+                    ? 'bg-blue-50 text-[#1E3A8A] ring-[#1E3A8A]/20'
+                    : 'bg-amber-50 text-amber-700 ring-amber-600/20';
+
+            var dot = done ? 'bg-emerald-500' : isPending ? 'bg-[#1E3A8A]' : 'bg-amber-500';
+
+            return '<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ' + cls + '">' +
+                '<span class="h-1.5 w-1.5 rounded-full ' + dot + '"></span>' + esc(status) + '</span>';
+        }
+
+        function renderHistory() {
+            var data = filteredData();
+            var $tbody = $('#tableHistory tbody');
+            var $cards = $('#cardHistory');
+            $tbody.empty();
+            $cards.empty();
+
+            if (data.length === 0) {
+                $tbody.append(
+                    '<tr><td colspan="7" class="px-6 py-16 text-center">' + emptyState() + '</td></tr>'
+                );
+                $cards.append('<div class="px-6 py-16 text-center">' + emptyState() + '</div>');
+                return;
+            }
+
+            $.each(data, function (index, item) {
+                // --- Table row (desktop) ---
+                $tbody.append(
+                    '<tr class="transition hover:bg-slate-50/80">' +
+                        '<td class="whitespace-nowrap px-6 py-4 text-slate-500">' + esc(item.create_at) + '</td>' +
+                        '<td class="whitespace-nowrap px-6 py-4">' +
+                            '<span class="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">' + esc(item.department) + '</span>' +
+                        '</td>' +
+                        '<td class="px-6 py-4 font-medium text-slate-900">' + esc(item.request) + '</td>' +
+                        '<td class="whitespace-nowrap px-6 py-4 text-slate-600">' + esc(typeLabel(item.request_type)) + '</td>' +
+                        '<td class="whitespace-nowrap px-6 py-4 text-right tabular-nums text-slate-900">' + esc(item.request_qty) + '</td>' +
+                        '<td class="whitespace-nowrap px-6 py-4 text-slate-600">' + esc(item.due_date) + '</td>' +
+                        '<td class="whitespace-nowrap px-6 py-4">' + statusBadge(item.status) + '</td>' +
+                    '</tr>'
+                );
+
+                // --- Card (mobile) ---
+                $cards.append(
+                    '<div class="px-6 py-4">' +
+                        '<div class="flex items-start justify-between gap-3">' +
+                            '<div class="min-w-0">' +
+                                '<p class="truncate font-medium text-slate-900">' + esc(item.request) + '</p>' +
+                                '<p class="mt-0.5 text-xs text-slate-500">' + esc(item.department) + ' · ' + esc(typeLabel(item.request_type)) + '</p>' +
+                            '</div>' +
+                            statusBadge(item.status) +
+                        '</div>' +
+                        '<div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">' +
+                            '<span>Qty: <span class="font-medium text-slate-700">' + esc(item.request_qty) + '</span></span>' +
+                            '<span>Due: <span class="font-medium text-slate-700">' + esc(item.due_date) + '</span></span>' +
+                            '<span>Created: <span class="font-medium text-slate-700">' + esc(item.create_at) + '</span></span>' +
+                        '</div>' +
+                    '</div>'
+                );
+            });
+        }
+
+        function renderSkeleton() {
+            var row = '<tr>' +
+                '<td class="px-6 py-4" colspan="7"><div class="h-4 w-full animate-pulse rounded bg-slate-100"></div></td>' +
+                '</tr>';
+            $('#tableHistory tbody').html(row + row + row + row);
+            $('#cardHistory').html(
+                '<div class="space-y-3 px-6 py-5">' +
+                '<div class="h-4 w-2/3 animate-pulse rounded bg-slate-100"></div>' +
+                '<div class="h-4 w-1/2 animate-pulse rounded bg-slate-100"></div>' +
+                '<div class="h-4 w-3/5 animate-pulse rounded bg-slate-100"></div>' +
+                '</div>'
+            );
+        }
+
+        function emptyState() {
+            return '<div class="mx-auto flex max-w-xs flex-col items-center">' +
+                '<div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100">' +
+                    '<svg class="h-7 w-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">' +
+                    '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5A3.375 3.375 0 0 0 10.125 2.25H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />' +
+                    '</svg>' +
+                '</div>' +
+                '<p class="mt-4 text-sm font-medium text-slate-900">No requests yet</p>' +
+                '<p class="mt-1 text-sm text-slate-500">Requests you create will appear here.</p>' +
+                '</div>';
+        }
+
+        /* ---------------- Helpers ---------------- */
+
+        function setLoading(on) {
+            var $btn = $('#btnSubmit');
+            $btn.prop('disabled', on);
+            $('#btnSpinner').toggleClass('hidden', !on);
+            $('#btnSubmitText').text(on ? 'Submitting...' : 'Submit Request');
+        }
+
+        function resetDropzone($zone) {
+            $zone.find('.js-filename').text('Click to choose an image')
+                 .removeClass('text-brand-600 font-medium').addClass('text-slate-400');
+            $zone.find('.js-clear').addClass('hidden');
+            $zone.find('label').removeClass('border-brand-300 bg-brand-50/60')
+                 .addClass('border-dashed border-slate-300 bg-slate-50/60');
+            $zone.find('.js-thumb').html(
+                '<svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">' +
+                '<path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M18 9.75h.008v.008H18V9.75Z M2.25 6.75A2.25 2.25 0 0 1 4.5 4.5h15a2.25 2.25 0 0 1 2.25 2.25v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75Z" />' +
+                '</svg>'
+            );
+        }
+
+        function esc(v) {
+            if (v === null || typeof v === 'undefined') return '';
+            return String(v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(0) + ' KB';
+            return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function toInputDate(d) {
+            var m = ('0' + (d.getMonth() + 1)).slice(-2);
+            var day = ('0' + d.getDate()).slice(-2);
+            return d.getFullYear() + '-' + m + '-' + day;
+        }
+
+        function showToast(type, title, message) {
+            var map = {
+                success: { bar: 'bg-emerald-500', icon: 'text-emerald-600', bg: 'bg-emerald-50', path: 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z' },
+                error:   { bar: 'bg-rose-500',    icon: 'text-rose-600',    bg: 'bg-rose-50',    path: 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z' },
+                warning: { bar: 'bg-amber-500',   icon: 'text-amber-600',   bg: 'bg-amber-50',   path: 'M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z' }
+            };
+            var cfg = map[type] || map.success;
+
+            var $t = $(
+                '<div class="pointer-events-auto flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lift animate-toastIn">' +
+                    '<div class="w-1 ' + cfg.bar + '"></div>' +
+                    '<div class="flex flex-1 items-start gap-3 p-3.5">' +
+                        '<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ' + cfg.bg + '">' +
+                            '<svg class="h-4.5 w-4.5 ' + cfg.icon + '" style="width:18px;height:18px" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="' + cfg.path + '" /></svg>' +
+                        '</span>' +
+                        '<div class="min-w-0 flex-1">' +
+                            '<p class="text-sm font-semibold text-slate-900">' + esc(title) + '</p>' +
+                            (message ? '<p class="mt-0.5 text-sm text-slate-500">' + esc(message) + '</p>' : '') +
+                        '</div>' +
+                        '<button type="button" class="shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">' +
+                            '<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+                            '<path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>' +
+                        '</button>' +
+                    '</div>' +
+                '</div>'
+            );
+
+            $t.find('button').on('click', function () { $t.remove(); });
+            $('#toastArea').append($t);
+            setTimeout(function () { $t.fadeOut(200, function () { $t.remove(); }); }, 4000);
+        }
+    </script>
+}

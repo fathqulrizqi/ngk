@@ -1,0 +1,243 @@
+﻿@using NGKBusi.Areas.HSE.Controllers;
+@using NGKBusi.Models;
+
+@{
+    ViewBag.Title = "Finish Check";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var tbIndex = 0;
+    var SIK = ViewContext.Controller as SIKController;
+    var dailyCheck = ViewBag.dailyCheck;
+    DefaultConnection db = new DefaultConnection();
+}
+@section cssHead{
+    <style type="text/css">
+        table td {
+            position: relative;
+        }
+
+            table td input {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/instascan/instascan.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            function destroyCam() {
+                Instascan.Camera.getCameras().then(function (cameras) {
+                    if (cameras.length > 0) {
+                        if (cameras[1]) {
+                            scanner.stop(cameras[1]);
+                        } else {
+                            scanner.stop(cameras[0]);
+                        }
+                    } else {
+                        console.error('No cameras found.');
+                    }
+                    // $("#preview").remove();
+                }).catch(function (e) {
+                    console.error(e);
+                });
+            }
+
+            function generateCam() {
+                if (!$("#preview").length) {
+                    var videoContainer = '<video id="preview" style="width: 100%;height:auto;" class="video-back" webkit-playsinline playsinline></video>';
+                    $(".videoContainer").append(videoContainer);
+                }
+                if (!Instascan.Camera.getCameras().length) {
+                    scanner = new Instascan.Scanner({ video: document.getElementById('preview'), mirror: false });
+                    scanner.addListener('scan', function (content) {
+                        //if ($(".thForm2").is(":visible")) {
+                        //getTHContent(content);
+                        //}
+                    });
+                }
+
+                Instascan.Camera.getCameras().then(function (cameras) {
+                    if (cameras.length > 0) {
+                        if (cameras[1]) {
+                            scanner.start(cameras[1]);
+                            //scanner.start(cameras[1]);
+                        } else {
+                            scanner.start(cameras[0]);
+                        }
+                        //$('.checkAccount').text("[ START ]");
+                        //$(".thForm1,.thForm3,.thForm4,.thForm5").hide();
+                        //$(".thForm2").fadeIn();
+                    } else {
+                        console.error('No cameras found.');
+                    }
+                }).catch(function (e) {
+                    console.error(e);
+                });
+            }
+            $(".btnCheckCamera").click(function () {
+                $("#cameraModal").modal("show");
+                generateCam();
+
+                var c = document.getElementById('canvas');
+                var context = c.getContext('2d');
+                context.canvas.attr("width", video.clientWidth);
+                context.canvas.attr("height", video.clientHeight);
+            });
+            $("#snap").click(function () {
+                var canvas = document.getElementById('canvas');
+                var context = canvas.getContext('2d');
+                var video = document.getElementById('preview');
+                context.drawImage(video, 0, 0, video.clientWidth, video.clientHeight);
+            });
+
+            $(".btnCheckUpload").click(function () {
+                $(this).closest("tr").find(".btnCheckFile").click();
+            });
+        });
+    </script>
+}
+
+<h2>Finish Check</h2>
+@if (Request.QueryString["SIK"] != null)
+{
+    <hr />
+    <div class="divForm" style="@(Request.QueryString["SIK"]==null ? "display:none;":"")">
+        <form action="@Url.Action(Request.QueryString["FDCID"] != null? "formDailyFinalEdit" : "formFinalCheckAdd", "SIK", new { area = "HSE" })" method="post" enctype='multipart/form-data'>
+
+            <div class="form-group row">
+                <table id="tblDailyCheck" class="table table-bordered" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>H. PEMERIKSAAN SEBELUM BEKERJA (diisi oleh HSE/PJP)</th>
+                            <th>Photo</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1. Kebersihan area kerja/5S</td>
+                            <td class="text-center">
+                                <button class="btn btn-primary d-inline-block btnCheckCamera"><i class="fas fa-camera"></i></button>
+                                <button class="btn btn-primary d-inline-block btnCheckUpload"><i class="fas fa-upload"></i></button>
+                                <input type="file" class="d-none btnCheckFile" name="iQ1File" />
+                            </td>
+                            <td>
+                                <input type="hidden" name="iFDID" value="@(Request.QueryString["FDID"])" />
+                                <input type="hidden" name="iFDCID" value="@(Request.QueryString["FDCID"])" />
+                                <textarea rows="1" class="form-control" name="iQ1Note">@(dailyCheck?.Is_Protected_Note)</textarea>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>2. Pembuangan limbah/sampah sisa pekerjaan</td>
+                            <td class="text-center">
+                                <button class="btn btn-primary d-inline-block btnCheckCamera"><i class="fas fa-camera"></i></button>
+                                <button class="btn btn-primary d-inline-block btnCheckUpload"><i class="fas fa-upload"></i></button>
+                                <input type="file" class="d-none btnCheckFile" name="iQ2File" />
+                            </td>
+                            <td><textarea rows="1" class="form-control" name="iQ2Note">@(dailyCheck?.Is_Toolsafe_Note)</textarea></td>
+                        </tr>
+                        <tr>
+                            <td>3. Kondisi area kerja tidak ada kerusakan/tidak ada potensi bahaya baru setelah adanya pekerjaan</td>
+                            <td class="text-center">
+                                <button class="btn btn-primary d-inline-block btnCheckCamera"><i class="fas fa-camera"></i></button>
+                                <button class="btn btn-primary d-inline-block btnCheckUpload"><i class="fas fa-upload"></i></button>
+                                <input type="file" class="d-none btnCheckFile" name="iQ3File" />
+                            </td>
+                            <td><textarea rows="1" class="form-control" name="iQ3Note">@(dailyCheck?.Is_Risk_Note)</textarea></td>
+                        </tr>
+                        <tr>
+                            <td>4. Peralatan dikembalikan/dirapihkan/disimpan pada tempatnya yang sesuai</td>
+                            <td class="text-center">
+                                <button class="btn btn-primary d-inline-block btnCheckCamera"><i class="fas fa-camera"></i></button>
+                                <button class="btn btn-primary d-inline-block btnCheckUpload"><i class="fas fa-upload"></i></button>
+                                <input type="file" class="d-none btnCheckFile" name="iQ4File" />
+                            </td>
+                            <td><textarea rows="1" class="form-control" name="iQ4Note">@(dailyCheck?.Is_Document_Note)</textarea></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="submit" class="btn @(Request.QueryString["FDCID"] != null ? "btn-warning" : "btn-primary") form-control" onclick="return confirm('Are you sure want to @(Request.QueryString["FDCID"] != null ? "edit" : "submit") this data?')">@(Request.QueryString["FDCID"] != null ? "Edit" : "Submit")</button>
+            </div>
+        </form>
+    </div>
+}
+
+<!-- Modal -->
+<div class="modal fade" id="cameraModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Take Picture</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="videoContainer"></div>
+                <button id="snap">Snap Photo</button>
+                <canvas id="canvas" width="640" height="480"></canvas>
+            </div>
+            <div class="modal-footer text-center">
+                <button type="button" class="btn btn-primary form-control">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row thForm2" style="display: none;">
+    <div class="col-md-6 m-auto">
+        <div class="jumbotron jumbotron-fluid">
+            <div class="container">
+                Mulai scan QR-Code untuk temukan harta karun.
+            </div>
+        </div>
+        <div class="playAccount thInfo">-</div>
+        <div class="totalPoint thInfo"><label class="thPoint">0</label> POINTS</div>
+        <div class="thEnd btn btn-danger form-control">[ END ]</div>
+    </div>
+</div>
+<hr />
+<table class="table">
+    <thead>
+        <tr>
+            <th>No</th>
+            <th>No FID</th>
+            <th>Tanggal</th>
+            <th>Third Party</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.SIKList)
+        {
+            <tr>
+                <td>@(++tbIndex)</td>
+                <td><a href="@("/NGKBusi/HSE/SIK/finishCheck?SIK=" + @data.Number)">@data.Number</a></td>
+                <td>@data.Created_At.ToString("dd-MM-yyyy")</td>
+                <td>(@data.Third_Party_Code) @data.Third_Party_Name</td>
+                <td><span class="badge badge-@(data.Approval <= 1 ? "info": data.Approval == 2 ? "warning" : "success" )">@SIK.ApprovalStatus(data.Approval)</span></td>
+                <td></td>
+            </tr>
+            int? dataID = int.Parse(data.ID.ToString());
+            var dataChild = db.HSE_SIK_Form_Finish_Check.Where(w => w.SIK_ID == dataID).ToList();
+            <tr>
+                <td colspan="6">
+                    <ul class="list-group" style="display:block;">
+                        @foreach (var dataSub in dataChild)
+                        {
+                        <a href="@("/NGKBusi/HSE/SIK/dailyCheck?FDID=" + dataID + "&FDCID=" + @dataSub.ID)"><li class="list-group-item" style="width:50px;float:left;">@dataSub.ID</li></a>
+                        }
+                    </ul>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

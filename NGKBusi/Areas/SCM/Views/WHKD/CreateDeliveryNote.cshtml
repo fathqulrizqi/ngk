@@ -1,0 +1,225 @@
+
+@{
+    ViewBag.Title = "CreateDeliveryNote";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+@*<h2>CreateDeliveryNote</h2>*@
+
+<div class="row">
+    <div class="col-12">
+        <form name="DlvNotesLines" id="formDlvNotesLines" method="post">
+            <div class="card">
+                <div class="card-header text-center bg-primary text-white font-weight-bolder"><h5>Delivery Information</h5></div>
+
+                <div class="card-body">
+
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Date</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="CreateDate" class="form-control" id="txtCreateDate" value="@(DateTime.Now.ToString("dd MMMM yyyy"))" readonly />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Supplier Name</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="SupplierName" class="form-control" id="txtSupplierName" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Address</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="Address" class="form-control" id="txtAddress" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Recipient Name</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="RecipientName" class="form-control" id="txtRecipientName" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="staticEmail" class="col-sm-2 col-form-label">Vehicle Number Plate</label>
+                        <div class="col-sm-10">
+                            <input type="text" name="VehicleNumberPlate" class="form-control" id="txtVehicleNumberPlate" />
+                        </div>
+                    </div>
+                    <hr />
+                    <table class="table table-bordered" id="dynamicTable">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Item Name</th>
+                                <th>Type</th>
+                                <th>Qty</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="data-row">
+                                <td>1</td>
+                                <td><input type="text" name="ItemName[1]" class="form-control text-input" required></td>
+                                <td><input type="text" name="Type[1]" class="form-control" required></td>
+                                <td><input type="number" name="Qty[1]" class="form-control" required></td>
+                                <td><input type="text" name="Description[1]" class="form-control" required></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card-footer">
+                    <button type="button" class="btn btn-primary" id="addRow"><i class="fa fa-add"></i> Add Item</button>
+                    <button type="button" class="btn btn-success" id="btnSubmit"><i class="fa fa-check"></i> Submit</button>
+                    <button type="button" class="btn btn-warning" id="resetTable"><i class="fa fa-ban"></i> Clear Item</button>
+                    <a href="@Url.Action("DeliveryNote", "WHKD", new { area = "SCM" })" class="btn btn-danger"><i class="fa fa-arrow-left"></i> Back</a>
+                </div>
+        </form>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        let rowCount = 1;
+
+        $("#addRow").click(function () {
+            console.log("klik ok");
+            rowCount++;
+            let row = `<tr class="data-row">
+                <td>${rowCount}</td>
+                <td><input type="text" name="ItemName[${rowCount}]" class="form-control text-input" required></td>
+                <td><input type="text" name="Type[${rowCount}]" class="form-control" required></td>
+                <td><input type="number" name="Qty[${rowCount}]" class="form-control" required></td>
+                <td><input type="text" name="Description[${rowCount}]" class="form-control" required></td>
+                <td><button type="button" class="btn btn-danger removeRow">Remove</button></td>
+            </tr>`;
+            $("#dynamicTable tbody").append(row);
+        });
+
+        $(document).on("click", ".removeRow", function () {
+            $(this).closest("tr").remove();
+            updateRowNumbers();
+        });
+
+        $("#resetTable").click(function () {
+            $("#dynamicTable tbody").html(`<tr class="data-row">
+                <td>1</td>
+                <td><input type="text" name="ItemName" class="form-control text-input" required></td>
+                <td><input type="text" name="Type" class="form-control" required></td>
+                <td><input type="number" name="Qty" class="form-control" required></td>
+                <td><input type="text" name="Description" class="form-control" required></td>
+                <td></td>
+            </tr>`);
+            rowCount = 1;
+        });
+
+
+        function updateRowNumbers() {
+            rowCount = 0;
+            $("#dynamicTable tbody tr.data-row").each(function () {
+                rowCount++;
+                $(this).find("td:first").text(rowCount);
+            });
+        }
+
+        $(document).on("blur", ".text-input", function () {
+            let values = [];
+            let isDuplicate = false;
+            $(".text-input").each(function () {
+                let val = $(this).val().trim();
+                if (val && values.includes(val)) {
+                    alert("Item Name values must be unique!");
+                    $(this).val("");
+                    isDuplicate = true;
+                    return false;
+                }
+                values.push(val);
+            });
+        });
+
+        $("#btnSubmit").click(function () {
+            let isValid = true;
+            $("#dynamicTable input").each(function () {
+                if (!$(this).val().trim()) {
+                    isValid = false;
+                    return false;
+                }
+            });
+
+            if (!isValid) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'All fields are required!'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Submit Delivery Note ?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Yes, submit",
+                cancelButtonText: "Close"
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    var urlHome = '@Url.Action("DeliveryNote", "WHKD", new { area = "SCM" })';
+                    $.ajax({
+                        url: '@Url.Action("SubmitDeliveryNote", "WHKD", new { area = "SCM" })',
+                        type: "POST",
+                        cache: false,
+                        dataType: "json",
+                        data: $('form').serialize(),
+                        success: function (json) {
+                            if (json.status == 1) {
+                                Swal.fire({
+                                    icon: "success",
+                                    title: "Success",
+                                    text: json.msg
+                                }).then(function () {
+                                    window.location.href = urlHome;
+                                });
+
+                            } else {
+                                Swal.fire({
+                                    icon: "error",  
+                                    title: "Failed!",
+                                    text: json.msg
+                                });
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            var errMsg = 'An error occurred';
+                            try {
+                                var resp = JSON.parse(xhr.responseText);
+                                if (resp && resp.msg) errMsg = resp.msg;
+                            } catch (e) { }
+                            Swal.fire({
+                                icon: "error",
+                                title: "Canceled!",
+                                text: errMsg
+                            });
+                        }
+
+                    })
+                } else {
+                    Swal.fire({
+                        icon: "info",
+                        title: "Cancelled",
+                        text: "Request Not Send"
+                    });
+                }
+            });
+        });
+    });
+</script>

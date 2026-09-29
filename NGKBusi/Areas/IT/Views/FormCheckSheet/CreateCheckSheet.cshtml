@@ -1,0 +1,780 @@
+﻿@{
+    ViewBag.Title = "Check Sheet Machine Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+
+}
+
+
+@section cssHead{
+    @if (ViewBag.Header.Status == 1)
+    {
+        <style type="text/css">
+
+
+            .TblForm tbody td.ui-selecting {
+                background-color: #cacaca;
+            }
+
+            .TblForm tbody td.ui-selected {
+                background-color: #cacaca;
+                color: white;
+            }
+
+            .TblForm tbody tr td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)):hover {
+                cursor: pointer;
+                background-color: #cacaca !important;
+                color: white;
+            }
+
+            .TblForm tbody td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3)):active {
+                background-color: #cacaca;
+                color: white;
+            }
+        </style>
+    }
+    <style type="text/css">
+        .TblForm thead th {
+            text-align: center;
+        }
+
+        @@page {
+            size: landscape;
+            margin: 0;
+        }
+
+        @@media print {
+            #sidebar {
+                display: none;
+            }
+
+            footer {
+                display: none;
+            }
+
+            #printarea {
+                display: block;
+            }
+
+            #contentPrint, #contentPrint * {
+                display: block;
+            }
+        }
+    </style>
+}
+<style>
+    @@media print {
+        .sidebar {
+            display: none;
+        }
+
+        #btnPrint {
+            display: none;
+        }
+
+        #printarea {
+            display: block;
+        }
+
+        #contentPrint, #contentPrint * {
+            display: block;
+        }
+    }
+</style>
+<table style="margin-bottom:20px">
+    <tr>
+        <td><a href="@Url.Action("Index", "FormCheckSheet", new { area = "IT" })" class="btn btn-danger"><span><i class="fa fa-arrow-circle-left"></i> Back To List</span></a></td>
+        <td><button id="btnPrint" class="btn btn-primary"><span><i class="fa fa-print"></i> Download PDF</span></button></td>
+    </tr>
+</table>
+<div id="content" style="position:relative; z-index: 5">
+    
+    <table id="tblMScheduleHeader" border="1" style="width:100%;" class="contentPrint">
+        <thead>
+            <tr>
+                <td rowspan="4" style="width:175px;" class="p-2">
+                    <img src="~/Images/ngk-logo.png" alt="Alternate Text" class="img-fluid" />
+                </td>
+                <td rowspan="2" class="text-center">FORMULIR INTEGRASI SISTEM MANAJEMEN MUTU, LINGKUNGAN & K3 TERINTEGRASI</td>
+                <td>No. Dok</td>
+                <td class="text-center">PML-IT-01/L4</td>
+            </tr>
+            <tr>
+                <td style="width:75px;">Revisi</td>
+                <td style="width:125px;" class="text-center">02</td>
+            </tr>
+            <tr>
+                <td rowspan="2" class="text-center">CHECK SHEET PEMELIHARAAN MESIN / INFRASTRUKTUR</td>
+                <td>Tanggal</td>
+                <td class="text-center">1-FEB-2017</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td class="text-center">1 of 1</td>
+            </tr>
+        </thead>
+        <tbody>
+            <table width="100%">
+                <tr>
+                    <td colspan="4" align="center">Mesin / InfraStruktur</td>
+                </tr>
+                <tr>
+                    <td width="10%">Dept</td>
+                    <td width="40%">: Information Technology</td>
+                    <td width="10%">Nama / No</td>
+                    <td width="40%">: Ruang Server dan Peralatan Server</td>
+                </tr>
+                <tr>
+                    <td width="10%">Dept</td>
+                    <td width="40%">: Information Technology</td>
+                    <td width="10%">Tahun</td>
+                    <td width="40%">
+                        : @{
+                            var Prd = ViewBag.Header.Periode;
+                            string monthYear = Prd.ToString("MMMM yyyy");
+
+                        } @monthYear
+                    </td>
+                </tr>
+                <tr>
+                    <td width="10%">Interval</td>
+                    <td width="40%">: Harian (Sabtu Minggu tidak dilakukan)</td>
+                    <td width="10%"></td>
+                    <td width="40%"></td>
+                </tr>
+            </table>
+
+            <table class="TblForm" border="1" width="100%" align="center">
+                <thead>
+                    <tr>
+                        <th rowspan="2" width="3%" align="center">No</th>
+                        <th rowspan="2" width="25" align="center">Kontrol Item</th>
+                        <th rowspan="2" width="9%" align="center">Standar</th>
+                        <th colspan="31" align="center">Hasil Pemeriksaan</th>
+                    </tr>
+                    <tr>
+                        @{
+                            for (var a = 1; a <= 31; a++)
+                            {
+                                <th width="2%" align="center">@a</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        int no = 0;
+                        foreach (var daily in ViewBag.dailydata)
+                        {
+                            no++;
+                            var color = "";
+                            <tr>
+                                <td width="2%" align="center">@no</td>
+                                <td width="25%">@daily.ItemControlName</td>
+                                <td width="9%" align="center">@daily.Standar</td>
+                                @for (var a = 1; a <= 31; a++)
+                                {
+                                    if (@daily.GetType().GetProperty("D" + a).GetValue(daily) == "O") { color = "green"; } else if (@daily.GetType().GetProperty("D" + a).GetValue(daily) == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D@(a)" data-interval="Daily" style="color:@color; font-size:16px; font-weight:bold"> @daily.GetType().GetProperty("D" + a).GetValue(daily)</td>
+                                }
+
+                                @*@{ if (daily.D2 == "O") { color = "green"; } else if (daily.D2 == "X") { color = "black"; } else { color = "red"; } }
+                                    <td class="@daily.D2" align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D2" data-interval="Daily" style="color:@color; font-size:16px; font-weight:bold"> @daily.D2</td>
+                                    @{ if (daily.D3 == "O") { color = "green"; } else if (daily.D4 == "X") { color = "black"; } else { color = "red"; } }
+                                    <td class="d" align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D3" data-interval="Daily"> @daily.D3</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D4" data-interval="Daily"> @daily.D4</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D5" data-interval="Daily"> @daily.D5</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D6" data-interval="Daily"> @daily.D6</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D7" data-interval="Daily"> @daily.D7</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D8" data-interval="Daily"> @daily.D8</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D9" data-interval="Daily"> @daily.D9</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D10" data-interval="Daily"> @daily.D9</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D11" data-interval="Daily"> @daily.D10</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D12" data-interval="Daily"> @daily.D11</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D13" data-interval="Daily"> @daily.D12</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D14" data-interval="Daily"> @daily.D13</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D15" data-interval="Daily"> @daily.D14</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D16" data-interval="Daily"> @daily.D15</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D17" data-interval="Daily"> @daily.D16</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D18" data-interval="Daily"> @daily.D17</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D19" data-interval="Daily"> @daily.D19</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D20" data-interval="Daily"> @daily.D20</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D21" data-interval="Daily"> @daily.D21</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D22" data-interval="Daily"> @daily.D22</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D23" data-interval="Daily"> @daily.D23</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D24" data-interval="Daily"> @daily.D24</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D25" data-interval="Daily"> @daily.D25</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D26" data-interval="Daily"> @daily.D26</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D27" data-interval="Daily"> @daily.D27</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D28" data-interval="Daily"> @daily.D28</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D29" data-interval="Daily"> @daily.D29</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D30" data-interval="Daily"> @daily.D30</td>
+                                    <td align="center" width="2%" align="center" data-item="@(daily.ItemControlID)-D31" data-interval="Daily"> @daily.D31</td>*@
+
+                            </tr>
+                        }
+
+                    }
+
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td width="25%" colspan="3" align="center">Initial Pemeriksa</td>
+                        @{ foreach (var initialChecker in ViewBag.dataInitialChecker)
+                            {
+                                var interval = initialChecker.Interval;
+                                if (interval == "daily")
+                                {
+                                    <td align="center" align="center" id="@initialChecker.CheckerSequence" data-item="@initialChecker.CheckerSequence" data-interval="Weekly">@initialChecker.Initial</td>
+                                }
+                            }
+                        }
+                    </tr>
+                </tfoot>
+            </table>
+            <tr>
+                <td colspan="4">Interval : Mingguan</td>
+            </tr>
+            <table class="TblForm" border="1" width="100%">
+                <thead>
+                    <tr>
+                        <th rowspan="2" width="3%" align="center">No</th>
+                        <th rowspan="2" width="25" align="center">Kontrol Item</th>
+                        <th rowspan="2" width="9%" align="center">Standar</th>
+                        <th colspan="31" align="center">Hasil Pemeriksaan</th>
+                    </tr>
+                    <tr>
+                        @{
+                            for (var a = 1; a <= 5; a++)
+                            {
+                                <th width="5%" align="center">@a</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td width="2%" align="center" colspan="3">Rack 1</td>
+                        @{ for (var a = 1; a <= 5; a++)
+                            {
+                                <td align="center" width="5%" align="center" data-item="WR1-W@(a)" data-interval="Weekly"></td>
+                            }
+                        }
+                    </tr>
+                    @{
+                        int b = 0;
+                        foreach (var weekly in ViewBag.weeklydata)
+                        {
+                            b++;
+                            var itemControl = weekly.ItemControlID;
+                            var color = "";
+                            if (itemControl.Substring(0, 3) == "WR1")
+                            {
+                                <tr>
+                                    <td width="2%" align="center">@b</td>
+                                    <td width="25%">@weekly.ItemControlName</td>
+                                    <td width="9%" align="center">@weekly.Standar</td>
+                                    @if (weekly.W1 == "O") { color = "green"; } else if (weekly.W1 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W1" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W1</td>
+                                    @if (weekly.W2 == "O") { color = "green"; } else if (weekly.W2 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W2" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W2</td>
+                                    @if (weekly.W3 == "O") { color = "green"; } else if (weekly.W3 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W3" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W3</td>
+                                    @if (weekly.W4 == "O") { color = "green"; } else if (weekly.W4 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W4" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W4</td>
+                                    @if (weekly.W5 == "O") { color = "green"; } else if (weekly.W5 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W5" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W5</td>
+                                </tr>
+                            }
+                        }
+                    }
+                    </tr>
+                    <tr>
+                        <td width="2%" align="center" colspan="3">Rack 2</td>
+                        @{ for (var a = 1; a <= 5; a++)
+                            {
+                                <td align="center" width="5%" align="center"></td>
+                            }
+                        }
+                    </tr>
+                    @{
+                        int c = 0;
+
+                        foreach (var weekly in ViewBag.weeklydata)
+                        {
+                            c++;
+                            var itemControl = weekly.ItemControlID;
+                            var color = "";
+                            if (itemControl.Substring(0, 3) == "WR2")
+                            {
+                                <tr>
+                                    <td width="2%" align="center">@c</td>
+                                    <td width="25%">@weekly.ItemControlName</td>
+                                    <td width="9%" align="center">@weekly.Standar</td>
+                                    @if (weekly.W1 == "O") { color = "green"; } else if (weekly.W1 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W1" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W1</td>
+                                    @if (weekly.W2 == "O") { color = "green"; } else if (weekly.W2 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W2" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W2</td>
+                                    @if (weekly.W3 == "O") { color = "green"; } else if (weekly.W3 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W3" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W3</td>
+                                    @if (weekly.W4 == "O") { color = "green"; } else if (weekly.W4 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W4" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W4</td>
+                                    @if (weekly.W5 == "O") { color = "green"; } else if (weekly.W5 == "X") { color = "yellow"; } else { color = "red"; }
+                                    <td align="center" width="5%" align="center" data-item="@(weekly.ItemControlID)-W5" data-interval="Weekly" style="color:@color; font-size:16px; font-weight:bold">@weekly.W5</td>
+                                </tr>
+                            }
+                        }
+                    }
+                <tfoot>
+                    <tr>
+                        <td width="25%" colspan="3" align="center">Initial Pemeriksa</td>
+                        @{ foreach (var initialChecker in ViewBag.dataInitialChecker)
+                            {
+                                var interval = initialChecker.Interval;
+                                if (interval == "weekly")
+                                {
+                                    <td align="center" align="center" id="@initialChecker.CheckerSequence" data-item="@initialChecker.CheckerSequence" data-interval="Weekly">@initialChecker.Initial</td>
+                                }
+                            }
+                        }
+                    </tr>
+                </tfoot>
+        </tbody>
+    </table>
+    <tr>
+        <td colspan="4">Interval : Bulanan</td>
+    </tr>
+    <table class="TblForm" border="1" width="100%">
+        <thead>
+            <tr>
+                <th rowspan="2" width="3%" align="center">No</th>
+                <th rowspan="2" width="25" align="center">Kontrol Item</th>
+                <th rowspan="2" width="9%" align="center">Standar</th>
+                <th colspan="31" align="center">Hasil Pemeriksaan</th>
+            </tr>
+            <tr>
+                @{
+                    for (var a = 1; a <= 12; a++)
+                    {
+                        <th width="5%" align="center">@a</th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @{
+                var m = 0;
+                foreach (var monthly in ViewBag.monthlydata)
+                {
+                    m++;
+                    var color = "";
+                    <tr>
+                        <td width="2%" align="center">@m</td>
+                        <td width="25%">@monthly.ItemControlName</td>
+                        <td width="9%" align="center">@monthly.Standar</td>
+                        @for (var a = 1; a <= 12; a++)
+                        {
+                            if (monthly.GetType().GetProperty("M" + a).GetValue(monthly) == "O") { color = "green"; } else if (monthly.GetType().GetProperty("M" + a).GetValue(monthly) == "X") { color = "yellow"; } else { color = "red"; }
+                            <td align="center" width="2%" align="center" data-item="@(monthly.ItemControlID)-M@(a)" data-interval="Daily" style="color:@color; font-size:16px; font-weight:bold"> @monthly.GetType().GetProperty("M" + a).GetValue(monthly)</td>
+                        }
+                        @*<td align="center" align="center" data-item="@(monthly.ItemControlID)-M1" data-interval="Monthly">@monthly.M1</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M2" data-interval="Monthly">@monthly.M2</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M3" data-interval="Monthly">@monthly.M3</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M4" data-interval="Monthly">@monthly.M4</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M5" data-interval="Monthly">@monthly.M5</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M6" data-interval="Monthly">@monthly.M6</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M7</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M8</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M9</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M10</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M11</td>
+                            <td align="center" align="center" data-item="@(monthly.ItemControlID)-M7" data-interval="Monthly">@monthly.M12</td>*@
+                    </tr>
+                }
+            }
+        <tfoot>
+            <tr>
+                <td width="25%" colspan="3" align="center">Initial Pemeriksa</td>
+                @{ foreach (var initialChecker in ViewBag.dataInitialChecker)
+                    {
+                        var interval = initialChecker.Interval;
+                        if (interval == "monthly")
+                        {
+                            <td align="center" align="center" id="@initialChecker.CheckerSequence" data-item="@initialChecker.CheckerSequence" data-interval="Weekly">@initialChecker.Initial</td>
+                        }
+                    }
+                }
+            </tr>
+        </tfoot>
+        </tbody>
+    </table>
+
+    </tbody>
+    </table>
+    <div class="row contentPrint">
+        <div class="col-3">
+            <div class="row">
+                <div class="col-3">Kode</div>
+                <div class="col-9"><input type="hidden" id="ChecklistCode" /></div>
+            </div>
+            <div class="row mt-1">
+                <div class="col-2"><button class="btn btn-success BtnCode btn-block" value="O">O</button></div>
+                <div class="col-10">: Baik ( Kondisi dalam keadaan baik dan terawat) </div>
+            </div>
+            <div class="row mt-1">
+                <div class="col-2"><button class="btn btn-warning BtnCode btn-block" value="X">X</button></div>
+                <div class="col-10">: Rusak ( Segera diperbaiki atau diganti kembali) </div>
+            </div>
+            <div class="row mt-1">
+                <div class="col-2"><button class="btn btn-danger BtnCode btn-block" value="\">\</button></div>
+                <div class="col-10">: Libur Perusahaan </div>
+            </div>
+        </div>
+        <div class="col-4">
+
+            @{ if (ViewBag.Header.Status > 1)
+                {
+                    <div class="row mt-2">
+                        <div class="col-3">Notes</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-11"><textarea class="form-control" readonly>@ViewBag.Header.Notes</textarea></div>
+                    </div>
+                }
+            }
+        </div>
+        <div class="col-5">
+            <div class="row mt-5">
+                @{ if (ViewBag.Header.Status == 1)
+                    {
+
+                        <div class="col-8"><textarea class="form-control" rows="3" placeholder="Notes" id="checkSheetNote"></textarea></div>
+                        <div class="col-4"><button class="btn btn-primary btn-block" value="\" id="btnSubmit">Submit Form</button><a class="btn btn-danger btn-block" href="@Url.Action("", "FormCheckSheet", new { area = "IT" })">Back</a></div>
+                    }
+                    else if (ViewBag.Header.Status == 2)
+                    {
+                        <table width="100%">
+                            <tr>
+                                <td>Submit By<br /><br /><br /></td>
+                                <td>Checked By <br /><br /><br /></td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitName)</td>
+                                <td style="padding:4px;4px;">
+                                    @{
+                                        foreach (var roles in ViewBag.Role)
+                                        {
+                                            if (roles.Role == "Checker")
+                                            {
+                                                <button class="btn btn-primary btn-block" value="\" id="btnChecked">Checked Form</button>
+                                                <button class="btn btn-danger btn-block" value="\" id="btnReturn">Return</button>
+                                            }
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitTime)</td>
+                                <td style="padding:4px;4px;"><a class="btn btn-warning btn-block" href="@Url.Action("", "FormCheckSheet", new { area = "IT" })">Back</a></td>
+                            </tr>
+                        </table>
+                    }
+                    else if (ViewBag.Header.Status == 3)
+                    {
+                        <table width="100%">
+                            <tr>
+                                <td>Submit By<br /><br /><br /></td>
+                                <td>Checked By <br /><br /><br /></td>
+                                <td>Approved By <br /><br /><br /></td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitName)</td>
+                                <td>@(ViewBag.Header.CheckedName)</td>
+                                <td style="padding:4px;4px;">
+                                    @{
+                                        foreach (var roles in ViewBag.Role)
+                                        {
+                                            if (roles.Role == "Approve")
+                                            {
+                                                <button class="btn btn-primary btn-block" value="\" id="btnApprove">Approve</button>
+                                                <button class="btn btn-danger btn-block" value="\" id="btnReturn">Return</button>
+                                            }
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitTime)</td>
+                                <td>@(ViewBag.Header.CheckedTime)</td>
+                                <td style="padding:4px;4px;"><a class="btn btn-warning btn-block" href="@Url.Action("", "FormCheckSheet", new { area = "IT" })">Back</a></td>
+                            </tr>
+                        </table>
+                    }
+                    else if (ViewBag.Header.Status == 4)
+                    {
+                        <table width="100%">
+                            <tr>
+                                <td>Submit By<br /><br /><br /></td>
+                                <td>Checked By <br /><br /><br /></td>
+                                <td>Approved By <br /><br /><br /></td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitName)</td>
+                                <td>@(ViewBag.Header.CheckedName)</td>
+                                <td>@(ViewBag.Header.ApprovedName)</td>
+                            </tr>
+                            <tr>
+                                <td>@(ViewBag.Header.SubmitTime)</td>
+                                <td>@(ViewBag.Header.CheckedTime)</td>
+                                <td>@(ViewBag.Header.ApprovedTime)</td>
+                            </tr>
+                        </table>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(document).ready(function () {
+        var status = "@(ViewBag.Header.Status)";
+        console.log(status);
+        if (status == 1) {
+            $('.TblForm tbody td:not(:nth-child(1)):not(:nth-child(2)):not(:nth-child(3))').click(function () {
+
+                var ChecklistCode = $('#ChecklistCode').val();
+                var urlString = "@Url.Action("UpdateItemCheckSheet", "FormCheckSheet", new { area = "IT" })";
+                var item = $(this).data('item');
+                var interval = $(this).data('interval');
+                var ChecksheetID = "@ViewBag.Header.ID";
+                $(this).text(ChecklistCode);
+                console.log(ChecklistCode);
+                if (ChecklistCode === 'O') { $(this).css('color', 'green'); }
+                else if (ChecklistCode === 'X') { $(this).css('color', 'black'); }
+                else { $(this).css('color', 'red'); }
+                $.ajax({
+                    url: urlString,
+                    type: "POST",
+                    cache: false,
+                    dataType: 'json',
+                    data: { itemID: item, CheckSheetID: ChecksheetID, ChecklistCode: ChecklistCode, interval: interval },
+                    success: function (response) {
+                        console.log(response); console.log(response.status);
+                        if (response.status == '1') {
+                            $(this).text(ChecklistCode);
+
+                            updateInitialChecker(item, interval, ChecksheetID);
+                        } else {
+                            $(this).text('error');
+                        }
+
+                    }
+                });
+
+            })
+        }
+
+        function updateInitialChecker(item, interval, ChecksheetID) {
+            var urlString = "@Url.Action("updateInitialChecker", "FormCheckSheet", new { area = "IT" })";
+            $.ajax({
+                url: urlString,
+                type: "POST",
+                cache: false,
+                dataType: 'json',
+                data: { itemID: item, CheckSheetID: ChecksheetID, interval: interval },
+                success: function (response) {
+                    console.log(response); console.log(response.status);
+                    if (response.status == '1') {
+                        var id = '#' + response.CheckerSequence;
+
+                        $(id).text(response.initial);
+
+                    } else {
+                        //$(this).text('error');
+                    }
+
+                }
+            });
+        }
+
+        $('.BtnCode').click(function () {
+            $('#ChecklistCode').val($(this).val());
+        });
+
+
+
+        function submitCheckSheet(note, urlString, CheckSheetID ) {
+            swal({
+                title: "Are you sure?",
+                text: "Submit Check Sheet Form ?",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Submit!",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: urlString,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { note: note, CheckSheetID: CheckSheetID },
+                        success: function (response) {
+                            console.log(response); console.log(response.status);
+                            if (response.status == '1') {
+
+                                swal("Submit Success!", "Your Check Sheet Form has been submit", "success");
+                            } else {
+                                //$(this).text('error');
+                            }
+                        }
+                    });
+                } else {
+                    swal("Cancelled", "Cancel Submit Form", "error");
+                }
+            });
+        }
+
+        function checkCheckSheet( urlString, CheckSheetID) {
+            swal({
+                title: "Are you sure?",
+                text: "Checked Sheet Form ?",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Check!",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: urlString,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: {  CheckSheetID: CheckSheetID },
+                        success: function (response) {
+                            console.log(response); console.log(response.status);
+                            if (response.status == '1') {
+
+                                swal("Check Success!", "Check Sheet Form has been Checked", "success");
+                            } else {
+                                //$(this).text('error');
+                            }
+                        }
+                    });
+                } else {
+                    swal("Cancelled", "Cancel Checked Form", "error");
+                }
+            });
+        }
+
+        function approveCheckSheet(urlString, CheckSheetID) {
+            swal({
+                title: "Are you sure?",
+                text: "Approve CheckSheet Form ?",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Approve!",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: urlString,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { CheckSheetID: CheckSheetID },
+                        success: function (response) {
+                            console.log(response); console.log(response.status);
+                            if (response.status == '1') {
+
+                                swal("Approve Success!", "Check Sheet Form has been Approved", "success");
+                            } else {
+                                //$(this).text('error');
+                            }
+                        }
+                    });
+                } else {
+                    swal("Cancelled", "Cancel Approve Form", "error");
+                }
+            });
+        }
+
+        function returnCheckSheet(urlString, CheckSheetID) {
+            swal({
+                title: "Are you sure?",
+                text: "Return CheckSheet Form ?",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#fa3f3f",
+                confirmButtonText: "Yes, Return it !",
+                closeOnConfirm: false,
+                closeOnCancel: false
+            }, function (isConfirm) {
+                if (isConfirm) {
+                    $.ajax({
+                        url: urlString,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { CheckSheetID: CheckSheetID },
+                        success: function (response) {
+                            console.log(response); console.log(response.status);
+                            if (response.status == '1') {
+
+                                swal("Return Success!", "Check Sheet Form has been Approved", "success");
+                            } else {
+                                //$(this).text('error');
+                            }
+                        }
+                    });
+                } else {
+                    swal("Cancelled", "Cancel Return Form", "error");
+                }
+            });
+        }
+
+        $('#btnSubmit').click(function () {
+            var note = $('#checkSheetNote').val();
+            var urlString = "@Url.Action("submitCheckSheet", "FormCheckSheet", new { area = "IT" })";
+            var CheckSheetID = "@ViewBag.Header.ID";
+            console.log(note);
+            submitCheckSheet(note, urlString, CheckSheetID);
+
+        });
+
+        $('#btnChecked').click(function () {
+            var urlString = "@Url.Action("CheckedChecksheet", "FormCheckSheet", new { area = "IT" })";
+            var CheckSheetID = "@ViewBag.Header.ID";
+            checkCheckSheet(urlString, CheckSheetID);
+
+        });
+
+        $('#btnApprove').click(function () {
+            var urlString = "@Url.Action("ApproveChecksheet", "FormCheckSheet", new { area = "IT" })";
+            var CheckSheetID = "@ViewBag.Header.ID";
+            approveCheckSheet(urlString, CheckSheetID);
+
+
+
+        });
+
+        $('#btnReturn').click(function () {
+            //alert('afd');
+            var urlString = "@Url.Action("ReturnChecksheet", "FormCheckSheet", new { area = "IT" })";
+            var CheckSheetID = "@ViewBag.Header.ID";
+            returnCheckSheet(urlString, CheckSheetID);
+
+        });
+
+        $('#btnPrint').click(function () {
+            print();
+        })
+    });
+</script>

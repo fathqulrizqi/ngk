@@ -1,0 +1,527 @@
+﻿@{
+    ViewBag.Title = "Audit Recap Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    bool isAdmin = ViewBag.role == "Administrator";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+    .has-tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: help;
+    }
+
+    /* Tooltip menghadap ke Atas (Untuk Major/Minor/OFI) */
+    .tooltip-up {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        bottom: 130%;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #1e293b;
+        color: #f8fafc;
+        text-align: left;
+        padding: 10px 12px;
+        border-radius: 8px;
+        z-index: 99999;
+        transition: all 0.2s ease-in-out;
+        width: max-content;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+    }
+
+        .tooltip-up::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+    .has-tooltip:hover .tooltip-up {
+        visibility: visible;
+        opacity: 1;
+        bottom: 115%; /* Efek animasi naik sedikit */
+    }
+
+    /* Tooltip menghadap ke Kiri (Untuk Catatan Audit) */
+    .tooltip-left {
+        visibility: hidden;
+        opacity: 0;
+        position: absolute;
+        top: 50%;
+        right: 120%;
+        transform: translateY(-50%);
+        background-color: #1e293b;
+        color: #f8fafc;
+        text-align: left;
+        padding: 12px;
+        border-radius: 8px;
+        z-index: 99999;
+        transition: all 0.2s ease-in-out;
+        width: max-content;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        pointer-events: none;
+    }
+
+        .tooltip-left::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            margin-top: -6px;
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent transparent #1e293b;
+        }
+
+    .has-tooltip:hover .tooltip-left {
+        visibility: visible;
+        opacity: 1;
+        right: 105%; 
+    }
+</style>
+
+<div class="min-h-screen pt-4 pb-10 p-1 sm:p-4 md:p-6 lg:px-0 relative">
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 border-t-4 border-t-blue-600 p-4 sm:p-5 mb-6 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 relative z-10">
+            <div class="flex-1 w-full">
+                <h2 class="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                    Rekapitulasi Audit
+                </h2>
+                <div class="relative inline-block w-full md:max-w-md lg:max-w-xl">
+                    <select id="eventSelector" onchange="changeEvent(this.value)" class="appearance-none bg-transparent text-base sm:text-lg font-bold text-blue-700 tracking-tight pr-6 py-1 cursor-pointer focus:outline-none focus:ring-0 border-b border-transparent hover:border-blue-300 transition-colors w-full truncate">
+                        @if (ViewBag.EventList != null)
+                        {
+                            foreach (var data in ViewBag.EventList)
+                            {
+                                <option value="@data.audit_event_id">@data.audit_name</option>
+                            }
+                        }
+                        else
+                        {
+                            <option value="">-- Tidak ada data event --</option>
+                        }
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center text-blue-600">
+                        <i class="bi bi-chevron-down text-xs sm:text-sm font-bold"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-1 md:mt-0">
+                <button id="findingsReportAll"
+                        class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    <i class="bi bi-eye mr-2 text-base"></i>
+                    View All Findings Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div class="bg-white border border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-center">
+            <p class="text-[11px] text-slate-500 font-medium">Total Findings</p>
+            <p class="text-2xl font-bold text-slate-800 mt-0.5" id="sumTotal">0</p>
+        </div>
+        <div class="bg-red-50 border border-red-100 rounded-xl p-3 shadow-sm flex flex-col justify-center">
+            <p class="text-[11px] text-red-600 font-medium">Major</p>
+            <p class="text-2xl font-bold text-red-600 mt-0.5" id="sumMajor">0</p>
+        </div>
+        <div class="bg-orange-50 border border-orange-100 rounded-xl p-3 shadow-sm flex flex-col justify-center">
+            <p class="text-[11px] text-orange-600 font-medium">Minor</p>
+            <p class="text-2xl font-bold text-orange-600 mt-0.5" id="sumMinor">0</p>
+        </div>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 shadow-sm flex flex-col justify-center">
+            <p class="text-[11px] text-blue-600 font-medium">OFI</p>
+            <p class="text-2xl font-bold text-blue-600 mt-0.5" id="sumOFI">0</p>
+        </div>
+
+        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 shadow-sm flex flex-col justify-center relative overflow-hidden">
+            <p class="text-[11px] text-indigo-600 font-medium tracking-tight">Catatan Audit Approved</p>
+            <div class="flex items-center justify-between mt-0.5 relative z-10">
+                <p class="text-2xl font-bold text-indigo-600 flex items-baseline">
+                    <span id="sumCatApp">0</span>
+                    <span class="text-sm font-semibold text-indigo-400 ml-1">/ <span id="sumCatReq">0</span></span>
+                </p>
+                <span class="bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm" id="sumCatRej">0 Reject</span>
+            </div>
+        </div>
+
+        <div class="bg-teal-50 border border-teal-100 rounded-xl p-3 shadow-sm flex flex-col justify-center relative overflow-hidden">
+            <p class="text-[11px] text-teal-600 font-medium tracking-tight">Laporan Temuan Approved</p>
+            <div class="flex items-center justify-between mt-0.5 relative z-10">
+                <p class="text-2xl font-bold text-teal-600 flex items-baseline">
+                    <span id="sumLapApp">0</span>
+                    <span class="text-sm font-semibold text-teal-400 ml-1">/ <span id="sumLapReq">0</span></span>
+                </p>
+                <span class="bg-rose-100 text-rose-700 border border-rose-200 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm" id="sumLapRej">0 Reject</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-md border border-slate-200 relative pb-16">
+        <div class="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h2 class="text-lg sm:text-xl font-bold text-slate-800">Detail Rekap per Section</h2>
+            </div>
+            <div class="relative w-full sm:w-64">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-4 h-4 text-slate-400" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z" />
+                    </svg>
+                </div>
+                <input type="text" id="tableSearch" class="bg-slate-50 border border-slate-200 text-slate-900 text-xs sm:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full py-2 pl-10 transition-colors outline-none" placeholder="Cari section...">
+            </div>
+        </div>
+
+        <div class="max-md:overflow-x-auto table-container">
+            <table class="w-full text-left border-collapse whitespace-nowrap">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">SECTION NAME</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center">MAJOR</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center">MINOR</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center">OFI</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center border-l border-slate-200 bg-slate-100/50">CATATAN AUDIT</th>
+                        <th class="px-4 sm:px-6 py-3 sm:py-4 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider text-center bg-slate-100/50">LAPORAN TEMUAN</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="text-sm divide-y divide-slate-100">
+                    <tr>
+                        <td colspan="6" class="text-center py-8 text-slate-500">
+                            <i class="bi bi-arrow-repeat animate-spin inline-block text-xl mr-2 text-blue-500"></i> Memuat data...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
+
+    let currentEventId = $('#eventSelector').val();
+
+    $(document).ready(function () {
+        // Sembunyikan tombol View All Findings di awal sampai proses AJAX selesai mengecek
+        $('#findingsReportAll').hide();
+
+        loadDataRekap();
+
+        $("#tableSearch").on("keyup", function () {
+            var value = $(this).val().toLowerCase();
+            $("#tableBody tr.searchable-row").filter(function () {
+                $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1)
+            });
+        });
+
+        $('#findingsReportAll').on('click', function() {
+            let currentEventId = $('#eventSelector').val();
+            if (!currentEventId) {
+                alert("Silakan pilih Event Audit terlebih dahulu!");
+                return;
+            }
+            let url = '@Url.Action("FindingsReportAll", "EAudit")' + '?eventId=' + encodeURIComponent(currentEventId);
+
+            window.location.href = url;
+        });
+
+    });
+
+    function changeEvent(eventId) {
+        if (!eventId) return;
+        currentEventId = eventId;
+
+        // Sembunyikan tombol saat pindah event sebelum divalidasi ulang oleh AJAX
+        $('#findingsReportAll').hide();
+
+        loadDataRekap();
+    }
+
+    function loadDataRekap() {
+        $("#tableBody").html('<tr><td colspan="6" class="text-center py-8 text-slate-500"><i class="bi bi-arrow-repeat animate-spin inline-block text-xl mr-2 text-blue-500"></i> Memuat data...</td></tr>');
+
+        $.ajax({
+            url: '@Url.Action("GetRekapitulasiAudit", "EAudit")',
+            type: 'GET',
+            data: { eventId: currentEventId },
+            success: function (res) {
+                if (res.success) {
+
+                    if (res.isAdministrator || res.isMR) {
+                        $('#findingsReportAll').fadeIn();
+                    } else {
+                        $('#findingsReportAll').hide();
+                    }
+
+                    $("#sumTotal").text(res.summary.totalFindings);
+                    $("#sumMajor").text(res.summary.major);
+                    $("#sumMinor").text(res.summary.minor);
+                    $("#sumOFI").text(res.summary.ofi);
+
+                    $("#sumCatApp").text(res.summary.catatanApproved);
+                    $("#sumCatReq").text(res.summary.catatanRequired);
+
+                    $("#sumCatApp").text(res.summary.catatanApproved);
+                    $("#sumCatReq").text(res.summary.catatanRequired);
+                    $("#sumCatRej").text(res.summary.catatanRejected + " Reject");
+
+                    $("#sumLapApp").text(res.summary.laporanApproved);
+                    $("#sumLapReq").text(res.summary.laporanRequired);
+                    $("#sumLapRej").text(res.summary.laporanRejected + " Reject");
+
+                    renderTable(res.data);
+                } else {
+                    Toast.fire({ icon: 'error', title: res.message });
+                    $("#tableBody").html(`<tr><td colspan="6" class="text-center py-8 text-red-500">${res.message}</td></tr>`);
+                }
+            },
+            error: function () {
+                Toast.fire({ icon: 'error', title: "Gagal terhubung ke server." });
+                $("#tableBody").html('<tr><td colspan="6" class="text-center py-8 text-red-500">Koneksi terputus.</td></tr>');
+            }
+        });
+    }
+
+    function renderTable(data) {
+        let tbody = $("#tableBody");
+        tbody.empty();
+
+        if (data.length === 0) {
+            tbody.html('<tr><td colspan="6" class="text-center py-8 text-slate-500">Tidak ada section/data ditemukan pada event ini.</td></tr>');
+            return;
+        }
+
+        let html = "";
+        data.forEach(item => {
+
+            // 1. TOOLTIP MAJOR & MINOR (MENGGUNAKAN KELAS CSS MURNI)
+            const majorTooltipHtml = `
+                <div class="tooltip-up">
+                    <div class="flex flex-col gap-1.5 text-[11px]">
+                        <div class="flex justify-between items-center gap-6"><span class="text-slate-300">System</span> <span class="font-bold text-rose-400">${item.Major.System}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Process</span> <span class="font-bold text-rose-400">${item.Major.Process}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Product</span> <span class="font-bold text-rose-400">${item.Major.Product}</span></div>
+                    </div>
+                </div>
+            `;
+
+            const minorTooltipHtml = `
+                <div class="tooltip-up">
+                    <div class="flex flex-col gap-1.5 text-[11px]">
+                        <div class="flex justify-between items-center gap-6"><span class="text-slate-300">System</span> <span class="font-bold text-amber-400">${item.Minor.System}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Process</span> <span class="font-bold text-amber-400">${item.Minor.Process}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Product</span> <span class="font-bold text-amber-400">${item.Minor.Product}</span></div>
+                    </div>
+                </div>
+            `;
+
+            const ofiTooltipHtml = `
+                <div class="tooltip-up">
+                    <div class="flex flex-col gap-1.5 text-[11px]">
+                        <div class="flex justify-between items-center gap-6"><span class="text-slate-300">System</span> <span class="font-bold text-blue-400">${item.OFI.System}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Process</span> <span class="font-bold text-blue-400">${item.OFI.Process}</span></div>
+                        <div class="flex justify-between items-center gap-6 border-t border-slate-600 pt-1 mt-0.5"><span class="text-slate-300">Product</span> <span class="font-bold text-blue-400">${item.OFI.Product}</span></div>
+                    </div>
+                </div>
+            `;
+
+            const getStatusIcon = (status) => {
+                if (status === 'N/A') return '<span class="text-slate-500 font-bold">N/A <i class="bi bi-dash-circle ml-1"></i></span>';
+                if (status === 'Approved') return '<span class="text-emerald-400 font-bold">Approved <i class="bi bi-check-circle-fill ml-1"></i></span>';
+                if (status === 'Rejected') return '<span class="text-rose-400 font-bold">Rejected <i class="bi bi-x-circle-fill ml-1"></i></span>';
+                if (status === 'Pending Approval' || status === 'Pending') return '<span class="text-amber-400 font-bold">Pending <i class="bi bi-exclamation-circle-fill ml-1"></i></span>';
+                return '<span class="text-slate-400 font-bold">Draft <i class="bi bi-file-earmark-fill ml-1"></i></span>';
+            };
+
+            const catTooltipHtml = `
+                <div class="tooltip-left">
+                    <div class="flex flex-col gap-2.5 text-[11px]">
+                        <div class="flex justify-between items-center gap-8 border-b border-slate-600 pb-1.5">
+                            <span class="text-slate-300">System</span>
+                            ${getStatusIcon(item.CatatanStatus.System)}
+                        </div>
+                        <div class="flex justify-between items-center gap-8 border-b border-slate-600 pb-1.5">
+                            <span class="text-slate-300">Process</span>
+                            ${getStatusIcon(item.CatatanStatus.Process)}
+                        </div>
+                        <div class="flex justify-between items-center gap-8">
+                            <span class="text-slate-300">Product</span>
+                            ${getStatusIcon(item.CatatanStatus.Product)}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const approvedCount = item.CatatanStatus.TotalCategoryFullyApproved;
+            const totalRequired = item.CatatanStatus.TotalCategoryActive;
+            const rejectedCount = item.CatatanStatus.TotalCategoryRejected || 0;
+
+            let catBadgeClass = '';
+            let catBadgeText = '';
+
+            if (totalRequired === 0) {
+                catBadgeClass = 'bg-slate-100 text-slate-500 border-slate-200';
+                catBadgeText = 'No Scope';
+            } else if (rejectedCount > 0) {
+                catBadgeClass = 'bg-rose-100 text-rose-700 border-rose-200';
+                catBadgeText = `${rejectedCount} Rejected`;
+            } else if (approvedCount === totalRequired) {
+                catBadgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                catBadgeText = `${approvedCount}/${totalRequired} Approved`;
+            } else if (approvedCount > 0) {
+                catBadgeClass = 'bg-amber-100 text-amber-700 border-amber-200';
+                catBadgeText = `${approvedCount}/${totalRequired} Approved`;
+            } else {
+                catBadgeClass = 'bg-slate-100 text-slate-600 border-slate-200';
+                catBadgeText = `0/${totalRequired} Approved`;
+            }
+
+            let catatanBtnHtml = '';
+            if (totalRequired === 0) {
+                catatanBtnHtml = `
+                    <button type="button" disabled class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-400 border border-slate-200 rounded-lg text-xs font-bold cursor-not-allowed opacity-70">
+                        <i class="bi bi-journal-text text-sm"></i>
+                        <span>Catatan</span>
+                    </button>
+                `;
+            } else {
+                catatanBtnHtml = `
+                    <button type="button" onclick="viewAuditNotes('${item.StakeholderId}', 'ALL')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors shadow-sm focus:ring-2 focus:ring-indigo-300">
+                        <i class="bi bi-journal-text text-sm"></i>
+                        <span>Catatan</span>
+                    </button>
+                `;
+            }
+
+            const getLaporanBadge = (status) => {
+                if (status === 'N/A') return `<span class="bg-slate-100 text-slate-500 border border-slate-200 text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">N/A</span>`;
+                if (status === 'Approved') return `<span class="bg-emerald-100 text-emerald-700 border border-emerald-200 text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Approved</span>`;
+                if (status === 'Rejected') return `<span class="bg-rose-100 text-rose-700 border border-rose-200 text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Rejected</span>`;
+                if (status === 'Pending Approval' || status === 'Pending') return `<span class="bg-amber-100 text-amber-700 border border-amber-200 text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Pending</span>`;
+                return `<span class="bg-slate-100 text-slate-600 border border-slate-200 text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Draft</span>`;
+            };
+
+            let laporanBtnHtml = '';
+            if (item.LaporanStatus === 'N/A') {
+                laporanBtnHtml = `
+                    <button type="button" disabled class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 text-slate-400 border border-slate-200 rounded-lg text-xs font-bold cursor-not-allowed opacity-70">
+                        <i class="bi bi-clipboard-data text-sm"></i>
+                        <span>Laporan</span>
+                    </button>
+                `;
+            } else {
+                laporanBtnHtml = `
+                    <button type="button" onclick="viewAuditFindings('${item.StakeholderId}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-lg text-xs font-bold transition-colors shadow-sm focus:ring-2 focus:ring-teal-300">
+                        <i class="bi bi-clipboard-data text-sm"></i>
+                        <span>Laporan</span>
+                    </button>
+                `;
+            }
+
+            html += `
+                <tr class="hover:bg-blue-50/50 transition-colors duration-200 searchable-row">
+                    <td class="px-4 sm:px-6 py-3 sm:py-4">
+                        <div class="font-bold text-slate-800 text-sm whitespace-normal w-40 sm:w-auto">${item.SectionName}</div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-center">
+                        <div class="has-tooltip inline-block">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${item.Major.Total > 0 ? 'bg-rose-100 text-rose-700 border-rose-200 shadow-sm' : 'bg-slate-100 text-slate-400 border-slate-200'} font-bold text-xs border transition-transform hover:scale-110">
+                                ${item.Major.Total}
+                            </span>
+                            ${majorTooltipHtml}
+                        </div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-center">
+                        <div class="has-tooltip inline-block">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${item.Minor.Total > 0 ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm' : 'bg-slate-100 text-slate-400 border-slate-200'} font-bold text-xs border transition-transform hover:scale-110">
+                                ${item.Minor.Total}
+                            </span>
+                            ${minorTooltipHtml}
+                        </div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-center">
+                        <div class="has-tooltip inline-block">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full ${item.OFI.Total > 0 ? 'bg-blue-100 text-blue-700 border-blue-200 shadow-sm' : 'bg-slate-100 text-slate-400 border-slate-200'} font-bold text-xs border transition-transform hover:scale-110">
+                                ${item.OFI.Total}
+                            </span>
+                            ${ofiTooltipHtml}
+                        </div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-center border-l border-slate-100">
+                        <div class="flex flex-col items-center justify-center gap-1.5">
+                            <div class="has-tooltip inline-block">
+                                <span class="border ${catBadgeClass} text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wide shadow-sm transition-transform hover:scale-105">
+                                    ${catBadgeText}
+                                </span>
+                                ${catTooltipHtml}
+                            </div>
+                            ${catatanBtnHtml}
+                        </div>
+                    </td>
+                    <td class="px-4 sm:px-6 py-3 sm:py-4 text-center">
+                        <div class="flex flex-col items-center justify-center gap-1.5">
+                            ${getLaporanBadge(item.LaporanStatus)}
+                            ${laporanBtnHtml}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.html(html);
+    }
+
+    function viewAuditNotes(sectionId, type) {
+        window.location.href = '@Url.Action("AuditNotes", "EAudit")' + '?id=' + sectionId + '&type=' + type;
+    }
+
+    function viewAuditFindings(sectionId) {
+        window.location.href = '@Url.Action("FindingsReport", "EAudit")' + '?id=' + sectionId;
+    }
+</script>

@@ -1,0 +1,89 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+
+@{
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+            double totalAmountofInvoice = 0;
+}
+<script type="text/javascript">
+    $(document).ready(function () {
+        //$(".thDebitTotal").each(function () {
+        //    var currTable = $(this).closest("table");
+        //    var currTotal = 0;
+        //    $(".tdDebit", currTable).each(function () {
+        //        var value = accounting.unformat($(this).text());
+        //        // add only if the value is number
+        //        if (!isNaN(value) && value.length != 0) {
+        //            currTotal += parseFloat(value);
+        //        }
+        //    });
+        //    $(this).text(accounting.formatNumber(currTotal, 2));
+        //});
+        //$(".thCreditTotal").each(function () {
+        //    var currTable = $(this).closest("table");
+        //    var currTotal = 0;
+        //    $(".tdCredit", currTable).each(function () {
+        //        var value = accounting.unformat($(this).text());
+        //        // add only if the value is number
+        //        if (!isNaN(value) && value.length != 0) {
+        //            currTotal += parseFloat(value);
+        //        }
+        //    });
+        //    $(this).text(accounting.formatNumber(currTotal, 2));
+        //});
+    });
+</script>
+<table class="table tblJournal"> 
+    <thead>
+        <tr>
+            <th>Receive Number</th>
+            <th>AP Number</th>
+            <th>Third Party</th>
+            <th>Invoice Number</th>
+            <th>Due Date</th>
+            <th>Currency</th>
+            <th>Amount of Invoice</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.WithPOList)
+        {
+            totalAmountofInvoice += (item.Amount_of_Invoice - (item.WHT_Amount ?? 0));
+            <tr>
+                <td>@(item.Receive_Number)</td>
+                <td>@(item.AP_Number)</td>
+                <td>@("(" + item.Third_Party_Id + ")" + item.Third_Party_Name)</td>
+                <td>@(item.Invoice_Number)</td>
+                <td>@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Currency_Code)</td>
+                <td>@((item.Amount_of_Invoice).ToString("N2"))</td>
+            </tr>
+            if (item.WHT_Amount > 0)
+            {
+                <tr>
+                    <td>@(item.Receive_Number)</td>
+                    <td>@("-")</td>
+                    <td>@("(" + item.WHT_COA_Code + ")" + item.WHT_COA_Name)</td>
+                    <td>@(item.Invoice_Number)</td>
+                    <td>@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td>@((item.WHT_Amount * -1).ToString("N2"))</td>
+                </tr>
+            }
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th></th>
+            <th>Total</th>
+            <th>@(totalAmountofInvoice.ToString("N2"))</th>
+        </tr>
+    </tfoot>
+</table>

@@ -1,0 +1,725 @@
+﻿@{
+    ViewBag.Title = "Plug Cup Qr Generator";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section scriptHead{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: {
+                preflight: false,
+            }
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f8fafc;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+            }
+
+        /* Datatable Customization - Ukuran Lebih Kompak */
+        .datatable-wrapper .datatable-top {
+            margin: 0;
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .datatable-input {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            height: 32px;
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s;
+            background: white;
+        }
+
+            .datatable-input:focus {
+                border-color: #6366f1 !important;
+                box-shadow: 0 0 0 2px rgba(99,102,241,0.1);
+            }
+
+        .datatable-table > thead > tr > th {
+            border-bottom: 1px solid #e2e8f0 !important;
+            background-color: #f8fafc;
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+        }
+
+        .datatable-table > tbody > tr > td {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        /* Select2 Tailwind Integration - Dikecilkan ke 36px */
+        .select2-container .select2-selection--single {
+            height: 36px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0.375rem !important;
+            display: flex;
+            align-items: center;
+            background-color: #ffffff !important;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #334155 !important;
+            padding-left: 0.75rem !important;
+            line-height: 36px !important;
+            font-size: 0.875rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px !important;
+            right: 5px !important;
+        }
+
+        .select2-container--default.select2-container--focus .select2-selection--single,
+        .select2-container--default.select2-container--open .select2-selection--single {
+            border-color: #6366f1 !important;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1) !important;
+            outline: none;
+        }
+
+        .select2-dropdown {
+            border-color: #cbd5e1 !important;
+            border-radius: 0.375rem !important;
+            font-size: 0.875rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+        }
+    </style>
+}
+
+@{
+    var typeList = ViewBag.TypeList as List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_Master_Type> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_Master_Type>();
+    var historyList = ViewBag.HistoryList as List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History>();
+}
+
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans p-4 sm:p-4">
+    <!-- Diubah ke max-w-screen-xl agar layout tidak terlalu melar ke samping -->
+    <div class="max-w-screen-xl mx-auto">
+
+        <!-- Header Section -->
+        <div class="mb-3">
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">QR Plug Cap Generator</h1>
+            <p class="text-xs text-slate-500 mt-1">Manage, generate, and print QR Codes easily.</p>
+        </div>
+
+        <!-- Main Layout Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+            <!-- LEFT PANEL: GENERATE FORM (5 Columns) -->
+            <div class="lg:col-span-5 flex flex-col">
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 flex-grow">
+                    <!-- Padding card dikecilkan -->
+                    <div class="px-3 py-3 border-b border-slate-100 flex items-center bg-slate-50/80 rounded-t-lg">
+                        <div class="w-7 h-7 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 border border-indigo-100">
+                            <i class="fas fa-qrcode text-sm"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Generate Label</h2>
+                    </div>
+
+                    <form id="generateQr" method="post" action="@Url.Action("createHistory", "PlugCupQrGenerator")" class="p-3">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Unified Grid Layout (Kiri-Kanan Sejajar) -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-6">
+
+                            <!-- Baris 1 -->
+                            <div>
+                                <label for="selectCustomer" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer</label>
+                                <select id="selectCustomer" name="customer" class="w-full" required>
+                                    <option value="">Pilih Customer...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="page_count" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Page Count</label>
+                                <input type="number" id="page_count" name="page_count" placeholder="Contoh: 1" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" min="1" required>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="selectPartName" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tipe</label>
+                                <select name="id_tipe" id="selectPartName" required class="w-full">
+                                    <option value="">Pilih Tipe...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="selectLotNumber" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Lot Number</label>
+                                <input type="text" id="lot" name="lot" placeholder="Masukan Lot" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors uppercase" required>
+                            </div>
+
+                            <!-- Baris 2 -->
+
+                            <div>
+                                <label id="label_tgl_inspection" for="tgl_inspection" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tgl Inspection</label>
+                                <input type="date" id="tgl_inspection" name="tgl_inspection" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" required>
+                            </div>
+
+                            <!-- Baris 3 -->
+                            <div>
+                                <label for="quantity" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Quantity</label>
+                                <select id="quantitySelector" name="qty" class="w-full">
+                                    <option value="" selected>Pilih Quantity...</option>
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                    <option value="50">50</option>
+                                    <option value="60">60</option>
+                                    <option value="80">80</option>
+                                    <option value="96">96</option>
+                                    <option value="99">99</option>
+                                    <option value="100">100</option>
+                                    <option value="manual">Input Manual...</option>
+                                </select>
+                                <div id="manualInputContainer" class="hidden mt-2">
+                                    <input type="number" id="manualQuantity" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Masukkan jumlah" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="inspector" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Inspector</label>
+                                <input type="text" id="inspector" name="inspector" placeholder="Nama Inspector" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors uppercase" required>
+                            </div>
+
+                            <div id="container_operator_packing" class="hidden">
+                                <label for="operator_packing" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Operator Packing</label>
+                                <input type="text" id="operator_packing" name="operator_packing" placeholder="Nama Operator" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors uppercase">
+                            </div>
+
+                            <!-- Baris 4: Membentang penuh (Full Width) untuk menyeimbangkan layout -->
+
+                        </div>
+
+                        <!-- Tombol Submit -->
+                        <div class="pt-1 mt-2">
+                            <button type="submit" id="generateButton" class="w-full bg-indigo-600 text-white text-sm font-semibold py-2.5 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all duration-200 shadow-sm flex justify-center items-center gap-2 border-0">
+                                <i class="fas fa-print"></i> Generate Labels
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: DAFTAR TIPE (7 Columns) -->
+            <div class="lg:col-span-7 flex flex-col">
+                <div class="bg-white rounded-lg shadow-sm border border-slate-200 flex-grow">
+                    <div class="px-3 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 rounded-t-lg">
+                        <div class="flex items-center gap-3">
+                            <div class="w-7 h-7 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+                                <i class="fas fa-list-ul text-sm"></i>
+                            </div>
+                            <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Daftar Tipe</h2>
+                        </div>
+                        <!-- Ukuran tombol tambah diperkecil -->
+                        <button id="addTypeButton" class="bg-blue-600 text-white text-xs font-semibold py-1.5 px-3 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50 transition-all duration-200 flex items-center gap-1.5 shadow-sm border-0">
+                            <i class="fas fa-plus"></i> Tambah
+                        </button>
+                    </div>
+                    <div class="overflow-hidden">
+                        <table id="type-table" class="w-full text-left">
+                            <thead>
+                                <tr>
+                                    <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Customer</th>
+                                    <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tipe</th>
+                                    <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Part Number</th>
+                                    <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Part Name</th>
+                                    <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @if (typeList.Any())
+                                {
+                                    foreach (var item in typeList)
+                                    {
+                                        <tr class="hover:bg-slate-50 transition-colors duration-150">
+                                            <td class="text-sm font-medium text-slate-800">@(item.customer ?? "-")</td>
+                                            <td class="text-sm text-slate-600">@item.tipe</td>
+                                            <!-- Menghilangkan padding bg berlebih pada mono -->
+                                            <td class="text-sm text-slate-600 font-mono tracking-tight">@item.part_no</td>
+                                            <td class="text-sm text-slate-600">@item.part_name</td>
+                                            <td class="text-right whitespace-nowrap">
+                                                <div class="flex justify-end gap-1.5">
+                                                    <!-- Padding tombol edit & hapus diperkecil -->
+                                                    <button class="edit-type-btn text-amber-600 bg-amber-50 border-0 hover:bg-amber-100 p-1.5 rounded-md transition-colors"
+                                                            data-id="@item.id"
+                                                            data-customer="@item.customer"
+                                                            data-customer_code="@item.customer_code"
+                                                            data-tipe="@item.tipe"
+                                                            data-part_no="@item.part_no"
+                                                            data-part_name="@item.part_name"
+                                                            data-gimz_code="@item.gimz_code"
+                                                            data-product_name="@item.product_name"
+                                                            data-type_customer="@item.type_customer"    
+                                                            data-label_per_page="@item.label_per_page"  
+
+                                                            title="Edit">
+                                                        <i class="fas fa-pen text-[13px]"></i>
+                                                    </button>
+                                                    <button class="delete-type-btn text-red-600 bg-red-50 border-0 hover:bg-red-100 p-1.5 rounded-md transition-colors" data-id="@item.id" title="Delete">
+                                                        <i class="fas fa-trash-alt text-[13px]"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="5" class="py-8 text-center text-sm text-slate-500">
+                                            <div class="flex flex-col items-center justify-center">
+                                                <i class="fas fa-inbox text-3xl text-slate-300 mb-2"></i>
+                                                <p>Belum ada data Tipe tersimpan.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Toggle Divider -->
+        <div id="toggleHistoryButton" class="flex items-center my-4 cursor-pointer group">
+            <div class="flex-grow h-px bg-slate-200 group-hover:bg-slate-300 transition-colors"></div>
+            <div class="flex items-center mx-4 text-slate-400 group-hover:text-indigo-600 transition-colors">
+                <span class="font-bold text-xs uppercase tracking-widest mr-2">Riwayat Generate</span>
+                <i id="toggleIcon" class="fas fa-chevron-down text-xs transform transition-transform duration-300"></i>
+            </div>
+            <div class="flex-grow h-px bg-slate-200 group-hover:bg-slate-300 transition-colors"></div>
+        </div>
+
+        <!-- HISTORY PANEL -->
+        <div class="hidden transition-all duration-500 ease-in-out" id="card-history">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 mb-8 overflow-hidden">
+                <div class="px-3 py-3 border-b border-slate-100 bg-slate-50/80">
+                    <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Riwayat Generate Label</h2>
+                </div>
+                <div>
+                    <table id="history-table" class="w-full text-left">
+                        <thead>
+                            <tr>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Customer</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Part Name</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Qty</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Lot Number</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Inspector</th>
+                                <th class="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @if (historyList != null && historyList.Any())
+                            {
+                                foreach (var item in historyList)
+                                {
+                                    <tr class="hover:bg-slate-50 transition-colors">
+                                        <td class="text-sm font-medium text-slate-800">@(item.Customer ?? "-")</td>
+                                        <td class="text-sm text-slate-600 font-medium">@(item.Part_Name)</td>
+                                        <td class="text-sm text-slate-600">
+                                            <span class="px-2 py-0.5 bg-slate-100 border border-slate-200 rounded text-slate-700 font-mono text-xs">@(item.Qty)</span>
+                                        </td>
+                                        <td class="text-sm text-slate-600 font-mono tracking-tight">@(item.Lot_No)</td>
+
+                                        <!-- FIX SORTING TANGGAL -->
+                                        <td class="text-sm text-slate-600 whitespace-nowrap">
+                                            @if (item.Tgl_Inspection.HasValue)
+                                            {
+                                                <span class="hidden">@item.Tgl_Inspection.Value.ToString("yyyyMMdd")</span>
+                                                @item.Tgl_Inspection.Value.ToString("dd MMM yyyy")
+                                            }
+                                            else
+                                            {
+                                                <span class="hidden">00000000</span>
+                                                <span>-</span>
+                                            }
+                                        </td>
+
+                                        <td class="text-sm text-slate-600">@(item.Inspector)</td>
+                                        <td class="text-center">
+                                            <a href="@Url.Action("DetailHistory", "PlugCupQrGenerator", new { id = item.id })"
+                                               class="inline-flex items-center gap-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md text-[13px] font-medium transition-colors border-0 no-underline">
+                                                <i class="fas fa-external-link-alt text-xs"></i> View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="7" class="py-8 text-center text-sm text-slate-500">
+                                        Belum ada data riwayat tersimpan.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<!-- MODAL TAMBAH/EDIT TIPE -->
+<div id="typeModal" class="hidden fixed inset-0 z-[999] overflow-y-auto">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
+
+    <!-- Modal Panel -->
+    <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0 relative">
+        <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-200">
+            <!-- Header -->
+            <div class="bg-slate-50 px-3 py-3.5 border-b border-slate-100 flex justify-between items-center">
+                <h3 id="typeModalTitle" class="text-base font-bold text-slate-800 uppercase tracking-wide">Tambah Tipe Baru</h3>
+                <button type="button" id="closeTypeModal" class="text-slate-400 border-0 bg-transparent hover:text-red-500 hover:bg-red-50 rounded-md p-1.5 transition-colors">
+                    <i class="fas fa-times text-base"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <form id="formAddType" class="p-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="typeId" name="id" />
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="newCustomer" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer</label>
+                            <select id="newCustomer" name="customer" class="w-full" required>
+                                <option value="">Pilih / Ketik...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="newCustomerCode" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Code <span class="text-slate-400 font-normal lowercase capitalize-first">(Opsional)</span></label>
+                            <input type="text" id="newCustomerCode" name="customer_code" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="newTipe" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tipe / Model</label>
+                        <input type="text" id="newTipe" name="tipe" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: LD05FGA" required>
+                    </div>
+
+                    <div>
+                        <label for="newPartNo" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Number</label>
+                        <input type="text" id="newPartNo" name="part_no" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors font-mono" placeholder="Contoh: 31916-KPH -9014-M1" required>
+                    </div>
+
+                    <div>
+                        <label for="newPartName" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Name</label>
+                        <input type="text" id="newPartName" name="part_name" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: CAP ASSY NOISE SUPPRESSOR" required>
+                    </div>
+                    <div>
+                        <label for="newGimzCode" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gimz Code</label>
+                        <!-- Ubah name menjadi gimz_code -->
+                        <input type="text" id="newGimzCode" name="gimz_code" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: LD05FGA/09" required>
+                    </div>
+                    <div>
+                        <label for="newProductName" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Product Name</label>
+                        <!-- Ubah name menjadi product_name -->
+                        <input type="text" id="newProductName" name="product_name" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: LD05FGA OEM" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="newTypeCustomer" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Type Customer  <span class="text-slate-400 font-normal lowercase capitalize-first">(Opsional)</span></label>
+                            <input type="text" id="newTypeCustomer" name="type_customer" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: XC - 321">
+                        </div>
+                        <div>
+                            <label for="newLabelPerPage" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Label Per Page</label>
+                            <input type="number" id="newLabelPerPage" name="label_per_page" class="block w-full h-[36px] bg-white border border-solid border-slate-300 rounded-md px-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors" placeholder="Contoh: 16">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="pt-4 border-t border-slate-100 flex justify-end gap-2.5">
+                    <button type="button" id="cancelAddType" class="bg-white border border-solid border-slate-300 text-slate-700 text-sm font-semibold py-2 px-4 rounded-md hover:bg-slate-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="bg-blue-600 border-0 text-white text-sm font-semibold py-2 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500/50 transition-all">
+                        <i class="fas fa-save mr-1"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+
+            // Inisialisasi Select2
+            $('#selectCustomer').select2({ placeholder: "Pilih Customer...", allowClear: true, width: '100%' });
+            $('#newCustomer').select2({ placeholder: "Pilih / Ketik Customer...", allowClear: true, tags: true, width: '100%', dropdownParent: $('#typeModal') });
+            $('#selectPartName').select2({ placeholder: "Pilih Tipe...", allowClear: true, width: '100%' });
+            $('#quantitySelector').select2({ placeholder: "Pilih Quantity...", allowClear: true, width: '100%' });
+
+            // 1. AJAX FETCH CUSTOMERS
+            function loadCustomers() {
+                $.ajax({
+                    url: '@Url.Action("getCustomerList", "PlugCupQrGenerator")',
+                    type: 'GET',
+                    success: function (res) {
+                        if (res.success) {
+                            let opts = '<option value="">Pilih Customer...</option>';
+                            res.data.forEach(c => {
+                                if (c) opts += `<option value="${c}">${c}</option>`;
+                            });
+                            $('#selectCustomer').html(opts);
+                            $('#newCustomer').html(opts);
+                        }
+                    }
+                });
+            }
+            loadCustomers();
+
+           // 2. CASCADING: LOAD TYPES BERDASARKAN CUSTOMER & TOGGLE OPERATOR PACKING
+            $('#selectCustomer').on('change', function() {
+                const custName = $(this).val();
+
+                // --- LOGIKA UNTUK TOGGLE OPERATOR PACKING & LABEL TANGGAL ---
+                if (custName === 'Yamaha - OEM EXP' || custName === 'Yamaha - OEM Partisi') {
+                    // Tampilkan Operator Packing & Set Required
+                    $('#container_operator_packing').removeClass('hidden');
+                    $('#operator_packing').prop('required', true);
+
+                    // Ubah Label Tgl
+                    $('#label_tgl_inspection').text('Tgl Repacking');
+                } else {
+                    // Sembunyikan Operator Packing, Hilangkan Required, & Kosongkan Value
+                    $('#container_operator_packing').addClass('hidden');
+                    $('#operator_packing').prop('required', false).val('');
+
+                    // Kembalikan Label Tgl
+                    $('#label_tgl_inspection').text('Tgl Inspection');
+                }
+                // -----------------------------------------------------------
+
+                if (!custName) {
+                    $('#selectPartName').html('<option value="">Pilih Tipe...</option>').trigger('change');
+                    return;
+                }
+
+                // Ajax untuk load Tipe (Tetap menggunakan kode Anda)
+                $.ajax({
+                    url: '@Url.Action("GetTypeList", "PlugCupQrGenerator")',
+                    type: 'GET',
+                    data: { custName: custName },
+                    success: function (res) {
+                        if (res.success) {
+                            let opts = '<option value="">Pilih Tipe...</option>';
+                            res.data.forEach(t => {
+                                opts += `<option value="${t.id}">${t.tipe} (${t.part_name})</option>`;
+                            });
+                            $('#selectPartName').html(opts).trigger('change');
+                        }
+                    }
+                });
+            });
+
+            // 3. Inisialisasi Simple-Datatables
+            @if (typeList.Any())
+            {
+                @:new simpleDatatables.DataTable("#type-table", {
+                @:    perPage: 5, pagerDelta: 1, perPageSelect: false, labels: { placeholder: "Cari Tipe..." }
+                @:});
+            }
+
+            @if (historyList.Any())
+            {
+                @:const historyTableElement = document.getElementById("history-table");
+                @:if (historyTableElement) {
+                @:    new simpleDatatables.DataTable("#history-table", {
+                @:        perPage: 10, pagerDelta: 2, perPageSelect: false, labels: { placeholder: "Cari Riwayat..." }
+                @:    });
+                @:}
+            }
+
+            // Input Custom Quantity
+            $('#quantitySelector').on('change', function () {
+                const selectedValue = $(this).val();
+                const $manualInputContainer = $('#manualInputContainer');
+                const $manualInput = $('#manualQuantity');
+                const $quantitySelector = $(this);
+
+                if (selectedValue === 'manual') {
+                    $manualInputContainer.removeClass('hidden');
+                    $manualInput.attr('name', 'qty');
+                    $manualInput.prop('required', true);
+                    $quantitySelector.removeAttr('name');
+                    $quantitySelector.prop('required', false);
+                    $manualInput.focus();
+                } else {
+                    $manualInputContainer.addClass('hidden');
+                    $manualInput.removeAttr('name');
+                    $manualInput.prop('required', false);
+                    $quantitySelector.attr('name', 'qty');
+                    $quantitySelector.prop('required', true);
+                }
+            });
+            $('#quantitySelector').trigger('change');
+
+            // HELPER FUNCTIONS & MODAL CRUD
+            function getAntiForgeryToken() {
+                return $('#formAddType input[name="__RequestVerificationToken"]').val();
+            }
+
+            function showNotification(icon, title, text = '') {
+                Swal.fire({ icon: icon, title: title, text: text, showConfirmButton: false, timer: 2000,
+                            customClass: { popup: 'rounded-xl shadow-lg border border-slate-100' }
+                });
+            }
+
+            function handleAjaxResponse(response) {
+                if (response.success) {
+                    showNotification('success', 'Berhasil!', response.message);
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showNotification('error', 'Gagal!', response.message);
+                }
+            }
+
+            const $typeModal = $('#typeModal');
+            const $typeForm = $('#formAddType');
+
+            $('#addTypeButton').on('click', function () {
+                $typeForm[0].reset();
+                $('#typeId').val('');
+                $('#newCustomer').val('').trigger('change');
+                $('#typeModalTitle').text('Tambah Tipe Baru');
+                $typeModal.removeClass('hidden');
+            });
+
+            $('#type-table').on('click', '.edit-type-btn', function () {
+                const $btn = $(this);
+                $typeForm[0].reset();
+
+                $('#typeId').val($btn.data('id'));
+
+                let customerVal = $btn.data('customer');
+                if (customerVal && !$('#newCustomer').find("option[value='" + customerVal + "']").length) {
+                    var newOption = new Option(customerVal, customerVal, true, true);
+                    $('#newCustomer').append(newOption);
+                }
+
+                $('#newCustomer').val(customerVal).trigger('change');
+                $('#newCustomerCode').val($btn.data('customer_code'));
+                $('#newTipe').val($btn.data('tipe'));
+                $('#newPartNo').val($btn.data('part_no'));
+                $('#newPartName').val($btn.data('part_name'));
+                $('#newGimzCode').val($btn.data('gimz_code'));
+                $('#newProductName').val($btn.data('product_name'));
+                $('#newTypeCustomer').val($btn.data('type_customer'));
+                $('#newLabelPerPage').val($btn.data('label_per_page'));
+
+
+                $('#typeModalTitle').text('Edit Tipe');
+                $typeModal.removeClass('hidden');
+            });
+
+            $typeForm.on('submit', function (e) {
+                e.preventDefault();
+                if (!this.checkValidity()) {
+                    this.reportValidity();
+                    return;
+                }
+
+                const typeId = $('#typeId').val();
+                const url = typeId ? '@Url.Action("UpdateTipe", "PlugCupQrGenerator")' : '@Url.Action("CreateTipe", "PlugCupQrGenerator")';
+
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: $(this).serialize(),
+                    success: handleAjaxResponse,
+                    error: function () {
+                        showNotification('error', 'Error', 'Terjadi kesalahan server.');
+                    }
+                });
+            });
+
+            $('#type-table').on('click', '.delete-type-btn', function () {
+                const typeId = $(this).data('id');
+
+                Swal.fire({
+                    title: 'Hapus Data?',
+                    text: "Data ini tidak dapat dikembalikan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal',
+                    customClass: { popup: 'rounded-xl' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '@Url.Action("DeleteTipe", "PlugCupQrGenerator")',
+                            type: 'POST',
+                            data: { id: typeId, __RequestVerificationToken: getAntiForgeryToken() },
+                            success: handleAjaxResponse,
+                            error: function () {
+                                showNotification('error', 'Error', 'Terjadi kesalahan server.');
+                            }
+                        });
+                    }
+                });
+            });
+
+            function closeModal($modal) { $modal.addClass('hidden'); }
+            $('#closeTypeModal, #cancelAddType').on('click', () => closeModal($typeModal));
+
+            // Klik diluar modal untuk menutup
+            $(window).on('click', function (event) {
+                if ($(event.target).is($typeModal.find('.fixed.inset-0.bg-slate-900\\/60'))) {
+                    closeModal($typeModal);
+                }
+            });
+
+            // Toggle History Animation
+            $('#toggleHistoryButton').on('click', function () {
+                const $history = $('#card-history');
+                const $icon = $('#toggleIcon');
+
+                if ($history.hasClass('hidden')) {
+                    $history.removeClass('hidden');
+                    $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                    $('html, body').animate({ scrollTop: $history.offset().top - 20 }, 500);
+                } else {
+                    $history.addClass('hidden');
+                    $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                }
+            });
+        });
+    </script>
+}

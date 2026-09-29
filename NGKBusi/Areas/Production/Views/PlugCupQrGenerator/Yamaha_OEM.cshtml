@@ -1,0 +1,301 @@
+﻿@{
+    ViewBag.Title = "Kawasaki - OEM";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section scriptHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+    <style>
+        .main-barcode, .hanko-barcode {
+            width: 100%;
+            height: auto;
+        }
+
+        td {
+            padding: 0;
+        }
+
+        /* ====== LAYOUT RESPONSIVE (PERSENTASE) ====== */
+        .page {
+            width: 100%;
+            max-width: 29.7cm;
+            aspect-ratio: 29.7/21;
+            padding: 5% 9.76% 5% 9.76%;
+            box-sizing: border-box;
+            background: #fff;
+            margin: 0 auto;
+        }
+
+        .page-content{
+            width: 100vw !important;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(5, 1fr);
+            column-gap: 6.5%;
+            row-gap: 2%;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .border {
+            border: 1px solid black !important;
+        }
+
+        /* Card Box dihapus, CSS Card Table dipertahankan */
+        .card-table {
+            width: 100%;
+            height: 100%;
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        @@media print {
+            @@page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                width: 100%;
+                height: 100%;
+            }
+
+            #print-area {
+                display: block !important;
+                gap: 0 !important;
+            }
+
+            .page {
+                font-size : 12px !important;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                max-width: 100%;
+                page-break-after: always;
+                break-after: page;
+            }
+
+            #qr-info, #back-button, #print-button {
+                display: none !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+                break-before: page;
+            }
+            .card-table tbody {
+                font-size: 12px !important;
+            }
+        }
+    </style>
+}
+@{
+    var data = ViewBag.Data as NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History;
+    var details = ViewBag.Details as List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History_Detail>();
+    bool isDetailEmpty = details.Count == 0;
+    var type_cust = data.Part_No.Split(' ', '-')[0];
+    string fallbackFrontQr = $"{data.Part_No}|1202402|{data.Qty}|{data.Lot_No}";
+    string displayFrontQr = !string.IsNullOrEmpty(data.Front_QR) ? data.Front_QR : fallbackFrontQr;
+
+    // PERBAIKAN: Dibagi 10 agar halaman terisi penuh (kapasitas grid 5x2 = 10)
+    int totalChunks = isDetailEmpty ? 1 : (int)Math.Ceiling(details.Count / 10.0);
+}
+<body class="bg-gray-50 flex flex-col justify-content-center align-items-center ">
+    <div class="text-center mb-3 mt-4 flex justify-center gap-4">
+        <a href="@Url.Action("Index", "PlugCupQrGenerator")" id="back-button" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow-lg no-underline hover:no-underline">
+            ⬅️ Kembali
+        </a>
+        <button id="print-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg">
+            🖨️ Cetak Label
+        </button>
+    </div>
+    <div class="mb-3 text-center" id="qr-info">
+        <p class="text-lg bg-yellow-100 p-2 rounded inline-block">
+            Information Front QR: <b>@(displayFrontQr)</b>
+        </p>
+    </div>
+
+    <div id="print-area" class="flex flex-col gap-8 align-items-center mb-5 w-full">
+        @for (int c = 0; c < totalChunks; c++)
+        {
+            // PERBAIKAN: Skip dan Take diubah menjadi 10
+            var chunkDetails = isDetailEmpty ? null : details.Skip(c * 10).Take(10).ToList();
+
+            <!-- ================= PAGE DEPAN ================= -->
+            <div class="page shadow-lg flex flex-col @(c > 0 ? "page-break" : "")">
+                <div class="card-grid">
+                    @for (int i = 0; i < 10; i++)
+                    {
+                        bool shouldRenderBox = isDetailEmpty || (chunkDetails != null && i < chunkDetails.Count);
+
+                        if (shouldRenderBox)
+                        {
+                            <table class="card-table relative">
+                                <colgroup>
+                                    <col style="width: 35.25%;">
+                                    <col style="width: 24.99%;">
+                                    <col style="width: 13.25%;">
+                                    <col style="width: 13.25%;">
+                                    <col style="width: 13.25%;">
+                                </colgroup>
+                                <tbody class="font-bold text-left align-middle" style="font-size: 9px; font-family: Arial, sans-serif;">
+                                    <tr>
+                                        <td class="border px-1">Customer</td>
+                                        <td class="border px-1" colspan="4">PT KAWASAKI MOTOR INDONESIA</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Part No</td>
+                                        <td class="border px-1" colspan="4">@data.Part_No</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Part Name</td>
+                                        <td class="border px-1" colspan="4">@data.Part_Name</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Model</td>
+                                        <td class="border px-1" colspan="4">@data.Customer_Type</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Quantity</td>
+                                        <td class="border px-1">@data.Qty</td>
+                                        <td class="border px-1" colspan="3" rowspan="6"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">NITERRA Type No</td>
+                                        <td class="border px-1">@data.Tipe</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Lot No</td>
+                                        <td class="border px-1">@data.Lot_No</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Manufact Date</td>
+                                        <td class="border px-1">@(data.Tgl_Inspection.HasValue ? data.Tgl_Inspection.Value.ToString("dd/MM/yyyy") : "")</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Delivery Date</td>
+                                        <td class="border px-1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Delivery Location</td>
+                                        <td class="border px-1"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border px-1">Supplier</td>
+                                        <td class="border px-1" colspan="4">PT NITERRA MOBILITY INDONESIA</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <!-- Placeholder berupa kotak bergaris hitam jika datanya kosong -->
+                            <div class="w-full h-full border border-black"></div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- ================= PAGE BELAKANG ================= -->
+            if (!isDetailEmpty)
+            {
+                <div class="page shadow-lg page-break">
+                    <div class="card-grid">
+                        @for (int i = 0; i < 10; i++)
+                        {
+                            int row = i / 2;
+                            int col = i % 2;
+                            int mirroredCol = 1 - col;
+                            int mappedIndex = (row * 2) + mirroredCol;
+                            var mirroredItem = mappedIndex < chunkDetails.Count ? chunkDetails[mappedIndex] : null;
+
+                            <!-- Pembungkus langsung diisi class border agar match dengan tabel depan -->
+                            <div class="w-full h-full flex justify-center items-center border border-black relative" style="padding: 4%;">
+                                @if (mirroredItem != null)
+                                {
+                                    <div class="qrcode-page2-container flex justify-center items-center w-full h-full" data-qr-text="@mirroredItem.QR_String"></div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    @section scripts {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var qrCodeContainers = document.querySelectorAll('.qrcode-container');
+                var qrCodePage2Containers = document.querySelectorAll('.qrcode-page2-container');
+
+                qrCodeContainers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        container.innerHTML = "";
+                        new QRCode(container, {
+                            text: textQr,
+                            width: 81,
+                            height: 81,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.H
+                        });
+                    }
+                });
+
+                qrCodePage2Containers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        container.innerHTML = "";
+                        new QRCode(container, {
+                            text: textQr,
+                            width: 400,
+                            height: 400,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
+                        setTimeout(() => {
+                            var img = container.querySelector('img');
+                            var cvs = container.querySelector('canvas');
+                            if (img) {
+                                img.style.width = '100%';
+                                img.style.maxWidth = '35%';
+                                img.style.height = 'auto';
+                                img.style.aspectRatio = '1 / 1';
+                                img.style.imageRendering = 'pixelated';
+                            }
+                            if (cvs) {
+                                cvs.style.display = 'none';
+                            }
+                        }, 50);
+                    }
+                });
+
+                $('#print-button').on('click', function () {
+                    $('#print-area').printThis({
+                        importCSS: true,
+                        importStyle: true,
+                        loadCSS: "",
+                        pageTitle: "Parts Contents Card",
+                        printDelay: 800,
+                        header: null,
+                        footer: null
+                    });
+                });
+            });
+        </script>
+    }
+</body>

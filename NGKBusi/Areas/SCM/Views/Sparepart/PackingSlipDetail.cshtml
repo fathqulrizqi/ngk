@@ -1,0 +1,204 @@
+<!doctype html>
+@{
+    ViewBag.Title = "Data Stock In";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+
+<title>Fresh Bootstrap Table by Creative Tim</title>
+<!-- Canonical SEO -->
+@*<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">*@
+@*<link href="@Url.Content("~/Content/fresh-bootstrap-table/css/fresh-bootstrap-table.css")" rel="stylesheet" />*@
+<link href="@Url.Content("~/Content/datepicker/datepicker.css")" rel="stylesheet" />
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
+<link href="https://unpkg.com/bootstrap-table@1.21.0/dist/bootstrap-table.min.css" rel="stylesheet">
+<!--   Fonts and icons   -->
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+<link href="http://fonts.googleapis.com/css?family=Roboto:400,700,300" rel="stylesheet" type="text/css">
+
+<!-- bootstrap-select -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+<!-- bootstrap-select -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+
+@*<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>*@
+<script src="https://unpkg.com/bootstrap-table/dist/bootstrap-table.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/toolbar/bootstrap-table-toolbar.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tableexport.jquery.plugin@1.10.21/tableExport.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/export/bootstrap-table-export.min.js"></script>
+<script src="https://unpkg.com/bootstrap-table@1.21.0/dist/extensions/filter-control/bootstrap-table-filter-control.min.js"></script>
+<script src="@Url.Content("~/Content/datepicker/datepicker.js")"></script>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<style>
+    .card
+
+    .card .card-header {
+        text-align: center;
+        color: white;
+        font-weight: bold;
+        font-size: medium;
+        box-shadow: inset;
+    }
+
+    .bootstrap-select.is-invalid .dropdown-toggle, .error .bootstrap-select .dropdown-toggle, .has-error .bootstrap-select .dropdown-toggle, .was-validated .bootstrap-select select:invalid + .dropdown-toggle {
+        border-color: #dc3545;
+    }
+</style>
+
+
+<div class="row">
+    <div class="col-12">
+        
+            <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-primary" style="color:white; font-weight:bold">
+                                <a href="@Url.Action("StockIn", "Sparepart", new { area = "SCM" })" data-tooltip="Previous Pagge" class="btn btn-sm btn-outline-light mr-2" title="Previous Page">
+                                    <i class="fa fa-arrow-left"></i>
+                                </a>
+                                Packing Slip Detail
+                            </div>
+                            <div class="card-body">
+                                <div class="row p-2">
+                                    <div class="col-lg-12">
+
+
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-lg-12">
+                                        <div id="toolbar">
+                                            Packing Slip ID : @ViewBag.ProductReceipt
+                                        </div>
+                                        <table id="temp-table"
+                                               data-filter-control="true"
+                                               data-filter="true"
+                                               data-id-table="advancedTable"
+                                               data-toggle="table"
+                                               data-toolbar="#toolbar"
+                                               data-click-to-select="true"
+                                               class="table table-sm table-striped">
+                                            <thead>
+                                            <th data-field="Item" data-sortable="true">Item ID</th>
+                                            <th data-field="ProductName" data-sortable="true">Product Name</th>
+                                            <th data-field="ReceivedQuantity">Received Quantity</th>
+                                            </thead>
+                                            <tbody>
+                                                @{ 
+                                                    foreach (var item in ViewBag.ItemList)
+                                                    {
+
+                                                    <tr>
+                                                        <td>@item.Item</td>
+                                                        <td>@item.ProductName</td>
+                                                        <td>@item.ReceivedQuantity</td>
+                                                    </tr>
+                                                    }
+                                                }
+
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                @{
+                                    var button = "";
+                                    if (ViewBag.statusConfirmReceived == 0)
+                                    {
+                                        <button type="button" id="confirmReceived" class="btn btn-success">Confirm Received</button>
+                                    } 
+                                 }
+                                </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </div>
+</div>
+
+<script>
+    $(function () {
+        $('.selectpicker').selectpicker();
+
+        var $table = $('#table');
+
+        $table.on('check.bs.table uncheck.bs.table check-all.bs.table uncheck-all.bs.table', function () {
+            $process.prop('disabled', !$table.bootstrapTable('getSelections').length)
+        });
+
+        var $process = $('#process');
+
+    });
+    $('#confirmReceived').click(function () {
+        var ProductReceipt = "@ViewBag.ProductReceipt";
+        var link = '@Url.Action("ConfirmReceivedStockIn", "Sparepart", new { area = "SCM" })';
+        ConfirmSendRequest(link, ProductReceipt);
+    })
+
+    function ConfirmSendRequest(Link, ids) {
+        // migrated to SweetAlert2 (swal.fire)
+        Swal.fire({
+            title: "Are you sure?",
+            text: "Confirm Product Received",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#0275d8",
+            confirmButtonText: "Yes, Confirm",
+            allowOutsideClick: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: Link,
+                    type: "POST",
+                    cache: false,
+                    dataType: "json",
+                    data: { ProductReceipt: ids },
+                    success: function (json) {
+                        if (json.status == 1) {
+                            Swal.fire({
+                                title: "Success",
+                                text: json.msg,
+                                icon: "success"
+                            }).then(function () {
+                                $('#confirmReceived').hide();
+                            });
+
+                        } else {
+                            Swal.fire({
+                                title: "Failed!",
+                                text: json.msg,
+                                icon: "error"
+                            });
+                        }
+                    },
+
+                    error: function () {
+                        Swal.fire({
+                            title: "Canceled!",
+                            text: Link,
+                            icon: "error"
+                        });
+                    }
+
+                })
+            } else {
+                Swal.fire({
+                    title: "Cancelled",
+                    text: "Cancel Request",
+                    icon: "error"
+                });
+            }
+        });
+    }
+
+</script>

@@ -1,0 +1,133 @@
+﻿
+@{
+    ViewBag.Title = "Progress";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var salestCategoryList = new List<string> { "OEM", "OES", "AMP" };
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/handsontable/handsontable.full.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        .tblGIMSProgress tbody tr td i.done {
+            color: forestgreen;
+            font-weight: bold;
+        }
+
+        .tblGIMSProgress tbody tr td.not-done {
+            border: 1px solid red !important;
+        }
+
+        .tblGIMSProgress tbody tr td i.not-done {
+            color: darkred;
+            font-weight: bold;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/handsontable/handsontable.full.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($(".tblGIMSProgress").length > 0) {
+                $(".tblGIMSProgress").tablesorter({
+                    theme: "bootstrap",
+                    widthFixed: true,
+                    widgets: ["filter", "columns", "stickyHeaders", "zebra"],
+                    widgetOptions: {
+                        columns: ["primary", "secondary", "tertiary"],
+                        filter_cssFilter: [
+                            'form-control',
+                            'form-control',
+                            'form-control',
+                            'form-control'
+                        ], filter_defaultFilter: {
+                        }
+                    }
+                }).tablesorterPager({
+                    cssGoto: '.pagenum',
+                    container: $(".ts-pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: '10'
+                });
+
+                $(".btnCopy").click(function () {
+                    var clipData = [];
+                    $(".tblGIMSProgress tbody tr").each(function () {
+                        if ($(".tdWFL", this).hasClass("not-done")) {
+                            var data = [];
+                            data.push("Create new item(GIMS)");
+                            data.push($(".tdGIMSRequest", this).data("gims"));
+                            clipData.push(data);
+                        }
+                    });
+                    var formattedData = clipData.map(lines => lines.join("\t")).join("\n");
+                    navigator.clipboard.writeText(formattedData);
+                    swal("Success!", "Data coppied to clipboard.", "success");
+
+                });
+            }
+        });
+    </script>
+}
+
+    <h2>
+        Progress
+        <a href="@Url.Action("DownloadRequestData", "GIMS", new { area = "IC" })" class="btn btn-success">Download Request Data</a>
+    </h2>
+
+<table class="tblGIMSProgress">
+    <thead>
+        <tr>
+            <th><a href="@Url.Action("NewRequest", "GIMS", new { area = "IC" })" target="_blank">GIMS Request</a></th>
+            <th>
+                <a href="@Url.Action("WFL", "GIMS", new { area = "IC" })" target="_blank">WFL</a>
+                @*<form action="@Url.Action("WFLDownloadData", "GIMS", new { area = "IC" })" class="d-inline-block" method="post">
+                        <button type="submit" class="btn btn-sm btn-warning" title="Download"><i class="fas fa-file-import"></i></button>
+                    </form>*@
+                <button type="submit" class="btn btn-sm btn-success btnCopy d-inline-block" title="Copy-to-Clipboard"><i class="fas fa-copy"></i></button>
+            </th>
+            @*<th><a href="@Url.Action("Flexnet", "GIMS", new { area = "IC" })" target="_blank">Flexnet</a></th>*@
+            <th>Flexnet</th>
+            <th><a href="@Url.Action("Kniguris", "GIMS", new { area = "IC" })" target="_blank">Kniguris</a></th>
+
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var data in ViewBag.Progress)
+        {
+            <tr>
+                <td data-gims="@(data.GIMSRequest)" class="tdGIMSRequest @(data.GIMSRequest == null ? "not-done":"done")"><i class="fas @(data.GIMSRequest == null ? "fa-xmark not-done":"fa-check done")"></i><label class="d-none">@(data.GIMSRequest == null ? "Not-Done" : "Done")</label>@data.GIMSRequest</td>
+                <td class="tdWFL @(data.WFL == null ? "not-done":"done")"><i class="fas @(data.WFL == null ? "fa-xmark not-done":"fa-check done")"></i><label class="d-none">@(data.WFL == null ? "Not-Done" : "Done")</label>@data.WFL</td>
+                <td class="tdFLEXNet @(data.Flexnet == null && !salestCategoryList.Contains(data.Category) ? "not-done":"done")"><i class="fas @(data.Flexnet == null && !salestCategoryList.Contains(data.Category) ? "fa-xmark not-done":"fa-check done")"></i><label class="d-none">@(data.Flexnet == null && !salestCategoryList.Contains(data.Category) ? "Not-Done" : "Done")</label>@(data.Flexnet != null && !salestCategoryList.Contains(data.Category) ? data.Flexnet : (salestCategoryList.Contains(data.Category) ? "Non Production Item":""))</td>
+                <td class="tdKniguris @(data.Kniguris == null ? "not-done":"done")"><i class="fas @(data.Kniguris == null ? "fa-xmark not-done":"fa-check done")"></i><label class="d-none">@(data.Kniguris == null ? "Not-Done" : "Done")</label>@data.Kniguris</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="4" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>

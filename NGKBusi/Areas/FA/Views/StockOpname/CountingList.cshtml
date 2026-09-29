@@ -1,0 +1,347 @@
+﻿
+@{
+    /**/
+
+    ViewBag.Title = "Counting List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, maximum-scale=12.0, user-scalable=yes" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .ui-autocomplete {
+            z-index: 215000000 !important;
+        }
+
+        td[data-column="1"] {
+            display: none;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+
+        .modal-lg {
+            max-width: 90% !important;
+        }
+    </style>
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/StockOpname/Counting.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<script src="@Url.Content("~/Scripts/QRBarcodeScanner/minified/html5-qrcode.min.js")"></script>
+<script type="text/javascript">
+    $(function () {
+
+        var html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 30, qrbox: { width: 500, height: 375 } });
+        function onScanSuccess(decodedText, decodedResult) {
+            // Handle on success condition with the decoded text or result.
+            if ($("#selWarehouse").val() == "MP" || $("#selWarehouse").val() == "TL") {
+                var QR = decodedText.split(" ").filter(item => item);
+                var itemID = QR[0];
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/FA/StockOpname/CountingGetItemIDQR",
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iIgnore: true,
+                        iProduct: $("#selProduct").val(),
+                        iItemID: itemID,
+                        iWarehouse: $("#selWarehouse").val()
+                    },
+                    success: function (data) {
+                        $("#txtItemID").val(data[0].value);
+                        $("#txtLot").val("DM");
+
+                        $("#txtDimension").val(data[0].unit);
+                        $("#hfDimension").val(data[0].unit);
+                        $("#selProduct").val(data[0].product);
+                        $("#hfItemID").val(data[0].itemID);
+                        $("#hfItemName").val(data[0].itemName);
+                        $("#hfItemProduct").val(data[0].product);
+                        $("#txtQty").val(data[0].stock);
+                        if (data[0].itemID.substring(0, 5) == "QIDTL") {
+                            $("#selWarehouse").val("TL").change();
+                        } else if (data[0].itemID.substring(0, 5) == "QIDMP") {
+                            $("#selWarehouse").val("MP").change();
+                        }
+
+                        $("#txtDescription").focus();
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }, error: function (textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        alert("Error Occurred, Please Try Again.");
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }
+                });
+            } else if ($("#selWarehouse").val() == "WH-FG") {
+                var barcode = decodedText.split(" ").filter(item => item);
+                var qty = barcode[2] * 1;
+                var itemID = barcode[1];
+                var location = barcode[0];
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/FA/StockOpname/CountingGetItemIDBarcode",
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iIgnore: true,
+                        iProduct: $("#selProduct").val(),
+                        iItemID: itemID,
+                        iWarehouse: "WH-FG"
+                    },
+                    success: function (data) {
+                        $("#txtItemID").val(data[0].value);
+                        $("#txtDescription").val(location);
+                        $("#txtLot").val("DM");
+
+                        $("#txtDimension").val(data[0].unit);
+                        $("#hfDimension").val(data[0].unit);
+                        $("#selProduct").val(data[0].product);
+                        $("#hfItemID").val(data[0].itemID);
+                        $("#hfItemName").val(data[0].itemName);
+                        $("#hfItemProduct").val(data[0].product);
+                        $("#txtQty").val(qty);
+                        $("#txtDescription").focus();
+
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }, error: function (textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        alert("Error Occurred, Please Try Again.");
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }
+                });
+
+
+                html5QrcodeScanner.clear();
+                $('#QRBarcodeScannerModal').modal('hide');
+
+            } else {
+                var QR = decodedText.split(" ").filter(item => item);
+                var itemID = QR[0].substring(1, QR[0].lenght);
+                var lot = QR[1].substring(0, 10);
+                var qty = QR[1].substring(20, QR[1].lenght);
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/FA/StockOpname/CountingGetItemIDQR",
+                    dataType: "json",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    data: {
+                        iIgnore: true,
+                        iProduct: $("#selProduct").val(),
+                        iItemID: itemID,
+                        iWarehouse: $("#selWarehouse").val()
+                    },
+                    success: function (data) {
+                        $("#txtItemID").val(data[0].value);
+                        $("#txtLot").val(lot);
+                        $("#txtQty").val(qty);
+
+                        $("#txtDimension").val(data[0].unit);
+                        $("#hfDimension").val(data[0].unit);
+                        $("#selProduct").val(data[0].product);
+                        $("#hfItemID").val(data[0].itemID);
+                        $("#hfItemName").val(data[0].itemName);
+                        $("#hfItemProduct").val(data[0].product);
+                        $("#txtDescription").val('');
+                        $("#txtDescription").focus();
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }, error: function (textStatus) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        alert("Error Occurred, Please Try Again.");
+                        html5QrcodeScanner.clear();
+                        $('#QRBarcodeScannerModal').modal('hide');
+                    }
+                });
+            }
+        }
+
+        $('#QRBarcodeScannerModal').on('shown.bs.modal', function (e) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 30, qrbox: { width: 500, height: 375 } });
+            //if ($("#selWarehouse").val() == "WH-FG") {
+            //    html5QrcodeScanner = new Html5QrcodeScanner(
+            //        "reader", { fps: 30, qrbox: { width: 500, height: 225 } });
+            //} else {
+            //    html5QrcodeScanner = new Html5QrcodeScanner(
+            //        "reader", { fps: 30, qrbox: { width: 500, height: 375 } });
+            //}
+            html5QrcodeScanner.render(onScanSuccess);
+        });
+
+        $('#QRBarcodeScannerModal').on('hidden.bs.modal', function (e) {
+            html5QrcodeScanner.clear();
+        });
+    });
+</script>
+<div class="container-fluid" style="overflow:auto;">
+    <div class="row">
+        <div class="col-12">
+            <table id="tblCountingList">
+                <thead>
+                    <tr>
+                        <th class="filter-select" data-placeholder="-Warehouse-">Warehouse</th>
+                        <th class="filter-select d-none" data-placeholder="-Product-">Product</th>
+                        <th>ItemID</th>
+                        <th>ItemName</th>
+                        <th class="filter-select" data-placeholder="-Unit-">Unit</th>
+                        <th>Qty</th>
+                        <th>Lot</th>
+                        <th>Description</th>
+                        <th class="filter-false sorter-false"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in ViewBag.CountingList)
+                    {
+                        <tr>
+                            <td class="text-center">@(item.Warehouse)</td>
+                            <td class="d-none">@(item.Product)</td>
+                            <td>@(item.ItemID)</td>
+                            <td>@(item.ItemName)</td>
+                            <td class="text-center">@(item.Unit)</td>
+                            <td class="text-right">@(item.Qty.ToString("G29"))</td>
+                            <td>@(item.Batch_Number)</td>
+                            <td>@(item.Description)</td>
+                            <td class="text-nowrap">
+                                <button id="btnCLEdit" data-id="@(item.ID)" class="btn btn-warning btnCLEdit"><i class="fas fa-edit"></i></button>
+                                <button id="btnCLDelete" data-id="@(item.ID)" class="btn btn-danger btnCLDelete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="dark-row">
+                        <th colspan="9">
+                            <div class="pager">
+                                <button type="button" class="first"><<</button>
+                                <button type="button" class="prev"><</button>
+                                <span class="pagedisplay"></span>
+                                <button type="button" class="next">></button>
+                                <button type="button" class="last">>></button>
+                                <select class="pagesize" title="Select page size" style="color:black;">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="30">30</option>
+                                    <option value="40">40</option>
+                                </select>
+                                <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                            </div>
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCountingList" tabindex="-1" role="dialog" aria-labelledby="modalCountingListLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCountingListLabel">Stock Counting</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formSOCounting" method="post" action="@Url.Action("CountingListAdd","StockOpname",new { area = "FA" })">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="Warehouse">Warehouse:</label>
+                        <select id="selWarehouse" name="iWarehouse" class="form-control" required>
+                            <option value="">-Warehouse-</option>
+                            @foreach (var item in ViewBag.Warehouse)
+                            {
+                                <option value="@(item)">@(item)</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group d-none">
+                        <label for="Product">Product:</label>
+                        <select id="selProduct" name="iProduct" class="form-control">
+                            <option value="">-Product-</option>
+                        </select>
+                        <div class="checkbox">
+                            <label><input id="cbIgnoreProduct" type="checkbox" checked> Ignore Product</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="Product">ItemID:</label><button id="btnQRBarcodeScan" type="button" class="btn btn-sm btn-info btnQRBarcodeScan ml-2" data-toggle="modal" data-target="#QRBarcodeScannerModal"><i class="fas fa-qrcode"></i></button>
+                        <input type="text" id="txtItemID" value="" placeholder="Item ID" class="form-control" required />
+                        <input type="hidden" id="hfID" name="iID" value="" placeholder="ID" class="form-control" required />
+                        <input type="hidden" id="hfItemID" name="iItemID" value="" placeholder="Item ID" class="form-control" required />
+                        <input type="hidden" id="hfItemName" name="iItemName" value="" placeholder="Item Name" class="form-control" required />
+                        <input type="hidden" id="hfItemProduct" name="iItemProduct" value="" placeholder="Item Product" class="form-control" required />
+                    </div>
+                    <div class="form-group divLot" style="display:none;">
+                        <label for="Lot">Lot:</label>
+                        <input type="text" id="txtLot" name="iLot" value="DM" placeholder="Lot" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label for="Dimension">Dimension (Unit):</label>
+                        <input id="txtDimension" type="text" name="iDimension" placeholder="Dimension (Unit)" class="form-control" disabled required />
+                        <input id="hfDimension" type="hidden" name="iUnit" placeholder="Dimension (Unit)" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Stock Take Quantity:</label>
+                        <input id="txtQty" type="number" name="iQty" step=".01" value="" placeholder="Stock Take Quantity" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Description:</label>
+                        <textarea id="txtDescription" name="iDescription" class="form-control" rows="5" placeholder="Description"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success form-control">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="QRBarcodeScannerModal" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="width: 100%;height: auto;" id="reader"></div>
+            </div>
+        </div>
+    </div>
+</div>

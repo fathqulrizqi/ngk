@@ -1,0 +1,373 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.MTN.Models;
+@using Microsoft.AspNet.Identity;
+@using System.Security.Claims;
+@{
+    ViewBag.Title = "Maintenance Checklist";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(Request.Url.AbsoluteUri);
+    var urlParameter = HttpUtility.ParseQueryString(myUri.Query);
+    MachineDatabaseConnection db = new MachineDatabaseConnection();
+    DefaultConnection dbDef = new DefaultConnection();
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId().Trim();
+    var currPeriod = Int32.Parse(urlParameter.Get("iPeriod"));
+    var currPeriodFY = urlParameter.Get("iPeriodFY");
+    var currArea = urlParameter.Get("iArea");
+    var currMachineName = urlParameter.Get("iMachineName");
+    var currMachineNo = urlParameter.Get("iMachineNo");
+    var getHeader = db.MTN_MachineDatabase_Maintenance_Checklist_Header.Where(w => w.Period_FY == currPeriodFY && w.Area == currArea && w.Machine_Name == currMachineName && w.Machine_No == currMachineNo).FirstOrDefault();
+
+    var isAllowCheckerSign = false;
+    var isAllowApproverSign = false;
+    var isAllowEdit1 = false;
+    var isAllowEdit2 = false;
+    var isAllowEdit3 = false;
+    var isAllowEdit4 = false;
+    var checkerSign = dbDef.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 3 && w.Levels == 1 && w.Levels_Sub == 0 && w.User_NIK == currUserID).FirstOrDefault();
+    if (checkerSign != null)
+    {
+        isAllowCheckerSign = true;
+    }
+    var ApproverSign = dbDef.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 3 && w.Levels == 1 && w.Levels_Sub == 1 && w.User_NIK == currUserID).FirstOrDefault();
+    if (ApproverSign != null)
+    {
+        isAllowApproverSign = true;
+    }
+
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By1 == null) || (isAllowApproverSign && getHeader.Approved_By1 == null && getHeader.Checked_By1 != null))
+    {
+        isAllowEdit1 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By2 == null) || (isAllowApproverSign && getHeader.Approved_By2 == null && getHeader.Checked_By2 != null))
+    {
+        isAllowEdit2 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By3 == null) || (isAllowApproverSign && getHeader.Approved_By3 == null && getHeader.Checked_By3 != null))
+    {
+        isAllowEdit3 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By4 == null) || (isAllowApproverSign && getHeader.Approved_By4 == null && getHeader.Checked_By4 != null))
+    {
+        isAllowEdit4 = true;
+    }
+}
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/MTN/MaintenanceChecklist.js?v=" + DateTime.Now.TimeOfDay)"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+        });
+    </script>
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/MTN/MaintenanceChecklist.css")" rel="stylesheet" type="text/css" />
+}
+
+<h2>Maintenance Checklist</h2>
+<input id="hfPeriod" type="hidden" name="name" value="@(currPeriod)" />
+<input id="hfPeriodFY" type="hidden" name="name" value="@(currPeriodFY)" />
+<input id="hfArea" type="hidden" name="name" value="@(currArea)" />
+<input id="hfMachineName" type="hidden" name="name" value="@(currMachineName)" />
+<input id="hfMachineNo" type="hidden" name="name" value="@(currMachineNo)" />
+<input id="hfHeaderID" type="hidden" name="name" value="@(getHeader.ID)" />
+
+<div class="modal fade" id="fileUploadModal" tabindex="-1" role="dialog" aria-labelledby="fileUploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formChecklistReport" action="@Url.Action("setMChecklistLines","MachineDatabase",new { area = "MTN" })" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input id="hfFileHeaderID" type="hidden" name="iHeaderID" value="" />
+                    <input id="hfItemID" type="hidden" name="iItemID" value="" />
+                    <input id="hfInterval" type="hidden" name="iInterval" value="" />
+                    <input id="hfCategory" type="hidden" name="iCategory" value="" />
+                    <input id="hfModule" type="hidden" name="iModule" value="" />
+                    <div class="form-group">
+                        <input type="file" class="form-control-file" id="fileCheckImage" name="iCheckImage" accept="image/*" required multiple>
+                    </div>
+                    <div id="divCurrentChecklistImage"></div>
+                    <div class="form-group">
+                        <textarea id="txtImageNote" name="iImageNote" class="form-control" placeholder="Comment/Note" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary btnChecklistSubmit">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div>
+    <table id="tblMCData" border="1" style="width:100%;">
+        <thead>
+            <tr>
+                <th rowspan="4" colspan="6" style="width:125px;" class="p-2">
+                    <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+                </th>
+                <th rowspan="2" colspan="15" class="text-center">FORMULIR INTEGRASI</th>
+                <th colspan="3">No. Dok</th>
+                <th colspan="2" class="text-center">PMLK3-MTN-01/L4</th>
+            </tr>
+            <tr>
+                <th colspan="3">Revisi</th>
+                <th colspan="2" class="text-center">00</th>
+            </tr>
+            <tr>
+                <th rowspan="2" colspan="15" class="text-center">CHECK SHEET PERAWATAN MESIN BERKALA</th>
+                <th colspan="3">Tanggal</th>
+                <th colspan="2" class="text-center">05-Apr-2023</th>
+            </tr>
+            <tr>
+                <th colspan="3">Halaman</th>
+                <th colspan="2" class="text-center">1</th>
+            </tr>
+            <tr>
+                <th colspan="26" style="border: none;height:25px;"></th>
+            </tr>
+            <tr>
+                <th colspan="2">SEKSI</th>
+                <th colspan="4">@(currArea)</th>
+                <th colspan="20" style="border: none;"></th>
+            </tr>
+            <tr>
+                <th colspan="2">NAMA MESIN</th>
+                <th colspan="4">@(currMachineName)</th>
+                <th colspan="20" style="border: none;"></th>
+            </tr>
+            <tr>
+                <th colspan="2">No. MESIN</th>
+                <th colspan="4">@(currMachineNo)</th>
+                <th colspan="20" class="text-center">INTERVAL PEMERIKSAAN</th>
+            </tr>
+            <tr>
+                <th colspan="2">LINE No.</th>
+                <th colspan="4">-</th>
+                <th colspan="5" class="text-center"><a href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceCheckListReport?iMachineName=" + currMachineName + "&iDate=" + getHeader.Date1?.ToShortDateString() + "&iIntervalName=" + "Per 3B ke-1" + "&iInterval=" + "1" + "&iHeaderID=" + getHeader.ID)" target="_blank">Per 3B ke-1</a></th>
+                <th colspan="5" class="text-center"><a href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceCheckListReport?iMachineName=" + currMachineName + "&iDate=" + getHeader.Date2?.ToShortDateString() + "&iIntervalName=" + "Per 6B ke-1 & 3B ke-2" + "&iInterval=" + "2" + "&iHeaderID=" + getHeader.ID)" target="_blank">Per 6B ke-1 & 3B ke-2</a></th>
+                <th colspan="5" class="text-center"><a href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceCheckListReport?iMachineName=" + currMachineName + "&iDate=" + getHeader.Date3?.ToShortDateString() + "&iIntervalName=" + "Per 3B ke-3" + "&iInterval=" + "3" + "&iHeaderID=" + getHeader.ID)" target="_blank">Per 3B ke-3</a></th>
+                <th colspan="5" class="text-center"><a href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceCheckListReport?iMachineName=" + currMachineName + "&iDate=" + getHeader.Date4?.ToShortDateString() + "&iIntervalName=" + "Per 1T ke-1, 6B ke-2 & 3B ke-4" + "&iInterval=" + "4" + "&iHeaderID=" + getHeader.ID)" target="_blank">Per 1T ke-1, 6B ke-2 & 3B ke-4</a></th>
+            </tr>
+            <tr>
+                <th rowspan="3" colspan="3" class="text-center">BAGIAN MESIN</th>
+                <th colspan="3" class="text-center">Pemeriksaan</th>
+                <th colspan="5">Tanggal : <input type="text" data-interval="1" class="txtMCDate" name="iDate1" value="@(getHeader.Date1?.ToShortDateString())" @(isAllowEdit1 ? "" : "disabled") /></th>
+                <th colspan="5">Tanggal : <input type="text" data-interval="2" class="txtMCDate" name="iDate2" value="@(getHeader.Date2?.ToShortDateString())" @(isAllowEdit2 ? "" : "disabled") /></th>
+                <th colspan="5">Tanggal : <input type="text" data-interval="3" class="txtMCDate" name="iDate3" value="@(getHeader.Date3?.ToShortDateString())" @(isAllowEdit3 ? "" : "disabled") /></th>
+                <th colspan="5">Tanggal : <input type="text" data-interval="4" class="txtMCDate" name="iDate4" value="@(getHeader.Date4?.ToShortDateString())" @(isAllowEdit4 ? "" : "disabled") /></th>
+            </tr>
+            <tr>
+                <th colspan="3" class="text-center">Berkala</th>
+                @for (var i = 1; i <= 4; i++)
+                {
+                    <th colspan="2" class="text-center">Kondisi</th>
+                    <th colspan="3" class="text-center">Keputusan</th>
+                }
+            </tr>
+            <tr class="text-center">
+                <th>3B</th>
+                <th>6B</th>
+                <th>1T</th>
+                @for (var i = 1; i <= 4; i++)
+                {
+                    <th>O</th>
+                    <th>X</th>
+                    <th>OK</th>
+                    <th>Repair</th>
+                    <th>Ganti</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.MachineItemList)
+            {
+                <tr data-itemid="@(item.ID)">
+                    <td class="text-right">@(ViewBag.MachineItemList.IndexOf(item) + 1)</td>
+                    <td colspan="2">@(item.Item)</td>
+                    <td class="text-center">@(item.is3B ? "o" : "")</td>
+                    <td class="text-center">@(item.is6B ? "o" : "")</td>
+                    <td class="text-center">@(item.is1T ? "o" : "")</td>
+                    @for (var i = 1; i <= 4; i++)
+                    {
+                        var isAllowEdit = false;
+
+                        switch (i)
+                        {
+                            case 1:
+                                isAllowEdit = isAllowEdit1;
+                                break;
+                            case 2:
+                                isAllowEdit = isAllowEdit2;
+                                break;
+                            case 3:
+                                isAllowEdit = isAllowEdit3;
+                                break;
+                            default:
+                                isAllowEdit = isAllowEdit4;
+                                break;
+                        }
+                        <td data-interval="@(i)" data-allowedit="@(isAllowEdit)" data-category="@(item.Category)" data-module="ConditionOK" class="text-center tdChecklistDataCondition disabled @(item.is3B?"available" : (item.is6B && (i==2 || i==4) ? "available":(item.is1T && i==4?"available":"")))"></td>
+                        <td data-interval="@(i)" data-allowedit="@(isAllowEdit)" data-category="@(item.Category)" data-module="ConditionNOT" class="text-center tdChecklistDataCondition disabled @(item.is3B?"available" : (item.is6B && (i==2 || i==4) ? "available":(item.is1T && i==4?"available":"")))"></td>
+                        <td data-interval="@(i)" data-allowedit="@(isAllowEdit)" data-category="@(item.Category)" data-module="ActionOK" class="text-center tdChecklistDataAction disabled @(item.is3B?"available" : (item.is6B && (i==2 || i==4) ? "available":(item.is1T && i==4?"available":"")))"></td>
+                        <td data-interval="@(i)" data-allowedit="@(isAllowEdit)" data-category="@(item.Category)" data-module="ActionRepair" class="text-center tdChecklistDataAction disabled @(item.is3B?"available" : (item.is6B && (i==2 || i==4) ? "available":(item.is1T && i==4?"available":"")))"></td>
+                        <td data-interval="@(i)" data-allowedit="@(isAllowEdit)" data-category="@(item.Category)" data-module="ActionChange" class="text-center tdChecklistDataAction disabled @(item.is3B?"available" : (item.is6B && (i==2 || i==4) ? "available":(item.is1T && i==4?"available":"")))"></td>
+                    }
+                </tr>
+            }
+            <tr>
+                <td colspan="6">
+                    Keterangan:<br />
+                    O : Kondisi OK<br />
+                    X : Kondisi Rusak / NG<br />
+                    3B : Perawatan Mesin per 3(Tiga) Bulan<br />
+                    6B : Perawatan Mesin per 6(Enam) Bulan<br />
+                    1T : Perawatan Mesin per 1(Satu) Tahun
+                </td>
+                <td colspan="5" style="vertical-align :top;">
+                    Catatan:<br />
+                    <textarea class="txtNote form-control" rows="5" data-interval="1" @(getHeader.Date1 != null && isAllowEdit1 ? "" : "disabled")>@(getHeader.Note1)</textarea>
+                </td>
+                <td colspan="5" style="vertical-align :top;">
+                    Catatan:<br />
+                    <textarea class="txtNote form-control" rows="5" data-interval="2" @(getHeader.Date2 != null && isAllowEdit2 ? "" : "disabled")>@(getHeader.Note2)</textarea>
+                </td>
+                <td colspan="5" style="vertical-align :top;">
+                    Catatan:<br />
+                    <textarea class="txtNote form-control" rows="5" data-interval="3" @(getHeader.Date3 != null && isAllowEdit3 ? "" : "disabled")>@(getHeader.Note3)</textarea>
+                </td>
+                <td colspan="5" style="vertical-align :top;">
+                    Catatan:<br />
+                    <textarea class="txtNote form-control" rows="5" data-interval="4" @(getHeader.Date4 != null && isAllowEdit4 ? "" : "disabled")>@(getHeader.Note4)</textarea>
+                </td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="6" rowspan="3" class="text-center" style="vertical-align:middle;">
+                    Standar Pemeriksaan Lihat Pada<br />
+                    <span class="font-weight-bold">MTN - MTN - 001 / Spec.</span>
+                </td>
+                @for (var i = 1; i <= 4; i++)
+                {
+                    <td colspan="3" class="text-center">Disetujui</td>
+                    <td colspan="2" class="text-center">Diperiksa</td>
+                }
+            </tr>
+            <tr>
+                @for (var i = 1; i <= 4; i++)
+                {
+                    var checkedBy = "";
+                    var approvedBy = "";
+
+                    switch (i)
+                    {
+                        case 1:
+                            checkedBy = getHeader?.Checked_User1?.Name;
+                            approvedBy = getHeader?.Approved_User1?.Name;
+                            break;
+                        case 2:
+                            checkedBy = getHeader?.Checked_User2?.Name;
+                            approvedBy = getHeader?.Approved_User2?.Name;
+                            break;
+                        case 3:
+                            checkedBy = getHeader?.Checked_User3?.Name;
+                            approvedBy = getHeader?.Approved_User3?.Name;
+                            break;
+                        default:
+                            checkedBy = getHeader?.Checked_User4?.Name;
+                            approvedBy = getHeader?.Approved_User4?.Name;
+                            break;
+                    }
+
+                    <td colspan="3" height="75" class="text-center">
+                        @if (approvedBy == null && checkedBy != null)
+                        {
+                            if (isAllowApproverSign)
+                            {
+                                <form class="m-2" action="@Url.Action("signMaintenanceChecklist", "MachineDatabase", new { area = "MTN" })" method="post">
+                                    <input type="hidden" name="iChecklistID" value="@(getHeader.ID)" />
+                                    <input type="hidden" name="iApprovalType" value="Approver" />
+                                    <input type="hidden" name="iApprovalNumber" value="@(i)" />
+                                    <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this data ?')" name="btnType" value="Sign">Sign</button>
+                                </form>
+                                <form class="m-2" action="@Url.Action("signMaintenanceChecklist", "MachineDatabase", new { area = "MTN" })" method="post">
+                                    <input type="hidden" name="iChecklistID" value="@(getHeader.ID)" />
+                                    <input type="hidden" name="iApprovalNumber" value="@(i)" />
+                                    @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                    <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                </form>
+                            }
+                        }
+                        else
+                        { @approvedBy}
+                    </td>
+                    <td colspan="2" class="text-center">
+
+                        @if (checkedBy == null)
+                        {
+                            if (isAllowCheckerSign)
+                            {
+                                <form action="@Url.Action("signMaintenanceChecklist", "MachineDatabase", new { area = "MTN" })" method="post">
+                                    <input type="hidden" name="iChecklistID" value="@(getHeader.ID)" />
+                                    <input type="hidden" name="iApprovalType" value="Checker" />
+                                    <input type="hidden" name="iApprovalNumber" value="@(i)" />
+                                    <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this data ?')" name="btnType" value="Sign">Sign</button>
+                                </form>
+                            }
+                        }
+                        else
+                        { @checkedBy}
+                    </td>
+                }
+            </tr>
+            <tr>
+                @for (var i = 1; i <= 4; i++)
+                {
+                    var checkedAt = "";
+                    var approvedAt = "";
+
+                    switch (i)
+                    {
+                        case 1:
+                            checkedAt = getHeader?.Checked_At1?.ToString("dd-MM-yyyy");
+                            approvedAt = getHeader?.Approved_At1?.ToString("dd-MM-yyyy");
+                            break;
+                        case 2:
+                            checkedAt = getHeader?.Checked_At2?.ToString("dd-MM-yyyy");
+                            approvedAt = getHeader?.Approved_At2?.ToString("dd-MM-yyyy");
+                            break;
+                        case 3:
+                            checkedAt = getHeader?.Checked_At3?.ToString("dd-MM-yyyy");
+                            approvedAt = getHeader?.Approved_At3?.ToString("dd-MM-yyyy");
+                            break;
+                        default:
+                            checkedAt = getHeader?.Checked_At4?.ToString("dd-MM-yyyy");
+                            approvedAt = getHeader?.Approved_At4?.ToString("dd-MM-yyyy");
+                            break;
+                    }
+                    <td colspan="3" height="25" class="text-center">
+                        @if (approvedAt != null)
+                        {
+                            @approvedAt
+                        }
+                    </td>
+                    <td colspan="2" class="text-center">
+                        @if (checkedAt != null)
+                        {
+                            @checkedAt
+                        }
+                    </td>
+                }
+            </tr>
+        </tfoot>
+    </table>
+</div>

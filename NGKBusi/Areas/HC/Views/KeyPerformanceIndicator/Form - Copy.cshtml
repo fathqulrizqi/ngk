@@ -1,0 +1,1391 @@
+﻿
+@using NGKBusi.Models;
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Areas.HC.Models;
+@using NGKBusi.Areas.HC.Controllers;
+@{
+    /**/
+
+    /**/
+
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    DefaultConnection db = new DefaultConnection();
+    var KPI = ViewContext.Controller as KeyPerformanceIndicatorController;
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = Request["addNIK"] != null ? Request["addNIK"] : _currUser.GetUserId();
+    var currHeader = ViewBag.KPIHeader;
+    List<HC_KPI_Data> currData = ViewBag.KPIData;
+    var currPerspectiveWeight = ViewBag.KPIPerspectiveWeight;
+
+    var currUser = db.Users.Where(w => w.NIK == currUserID).FirstOrDefault();
+
+    var currFormGUID = Request["guid"];
+    var KPIDataList = ViewBag.DataList;
+    var KPIMemberList = ViewBag.MemberList;
+
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/AutoNumeric.min.js")"></script>
+    <script src="~/Scripts/autosize/dist/autosize.min.js"></script>
+    <script src="~/Scripts/jquery.contextMenu.min.js"></script>
+    <script src="~/Scripts/jquery.ui.position.min.js"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            if ($(".tblKPIForm").length > 0) {
+                $(".tblKPIForm").tablesorter({
+                    widthFixed: true,
+
+                    // widget code contained in the jquery.tablesorter.widgets.js file
+                    // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                    // the uitheme widget is NOT REQUIRED!
+                    widgets: ["stickyHeaders"],
+
+                    widgetOptions: {
+                        filter_excludeFilter: {
+                            // zero-based column index
+                            7: 'range',
+                            8: 'range',
+                            10: 'range'
+                        },
+                        // class names added to columns when sorted
+                        columns: ["primary", "secondary", "tertiary"],
+                        stickyHeaders_xScroll: "#divTblKPIForm"
+                    }
+                });
+            }
+            if ($(".tblKPIFormList").length > 0) {
+                $(".tblKPIFormList").tablesorter({
+                    theme: "bootstrap",
+
+                    widthFixed: true,
+
+                    // widget code contained in the jquery.tablesorter.widgets.js file
+                    // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                    // the uitheme widget is NOT REQUIRED!
+                    widgets: ["filter", "columns", "stickyHeaders"],
+
+                    widgetOptions: {
+                        //filter_excludeFilter: {
+                        //    // zero-based column index
+                        //    7: 'range',
+                        //    8: 'range',
+                        //    10: 'range'
+                        //},
+                        // class names added to columns when sorted
+                        columns: ["primary", "secondary", "tertiary"],
+
+                        // extra css class name (string or array) added to the filter element (input or select)
+                        filter_cssFilter: [
+                            'form-control',
+                            'form-control',
+                            'form-control',
+                            'form-control',
+                            'form-control',
+                            'form-control'
+                        ], filter_defaultFilter: {
+                            // "{query} - a single or double quote signals an exact filter search
+                            3: '"{q}',
+                            4: '"{q}',
+                            5: '"{q}'
+                        }
+                    }
+                }).tablesorterPager({
+                    cssGoto: '.pagenum',
+                    container: $(".ts-pager"),
+                    output: '{startRow} to {endRow} ({totalRows})',
+                    size: 'all'
+                });
+            }
+
+            //autosize($('textarea'));
+            if ($(".tblKPIForm tbody td[data-progress='Act'] input").length > 1) {
+                new AutoNumeric.multiple(".tblKPIForm tbody td[data-progress='Act'] input", { unformatOnSubmit: true, allowDecimalPadding: false, decimalPlaces: 4, showWarnings: false });
+                new AutoNumeric.multiple(".tblKPIForm tbody td[data-progress='Plan'] input", { unformatOnSubmit: true, allowDecimalPadding: false, decimalPlaces: 4, showWarnings: false });
+                new AutoNumeric.multiple(".tblKPIForm tbody .tdPercentage input", { unformatOnSubmit: true, allowDecimalPadding: false, decimalPlaces: 2, showWarnings: false,suffixText:"%" });
+            }
+            $(document).on("keyup", ".tblKPIForm tbody td[data-progress='Act'] input,.tblKPIForm tbody td[data-progress='Plan'] input", function () {
+                //$(this).val(AutoNumeric.format($(this).val()));
+                var perspective = $(this).closest("td").data("perspective");
+                var idx = $(this).closest("td").data("idx");
+                var mth = $(this).closest("td").data("month");
+                var calType = $(".tblKPIForm tbody .tdCalType[data-idx='" + idx + "'] .selCalType").find(":selected").val();
+                //$(this).val(AutoNumeric.format($(this).val().replace(/\D/g, '')));
+                var planVal = AutoNumeric.unformat($(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val());
+                var actVal = AutoNumeric.unformat($(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val());
+                var percentVal = calculatePercentage(planVal, actVal, calType);
+                $(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(AutoNumeric.format(isFinite(percentVal) && percentVal || 0, { allowDecimalPadding: false,suffixText : "%" }));
+                var planValTotalArr = [];
+                var actValTotalArr = [];
+                var planValTotalAcu = 0;
+                var actValTotalAcu = 0;
+                var planValTotal = 0;
+                var actValTotal = 0;
+                var q = [["Apr", "May", "Jun"], ["Jul", "Aug", "Sep"], ["Oct", "Nov", "Des"], ["Jan", "Feb", "Mar"]];
+                for (var i = 0; i <= 3; i++) {
+                    var qPlanValArr = [];
+                    var qActValArr = [];
+                    var qPlanVal = 0;
+                    var qActVal = 0;
+                    var qPlanValAcu = 0;
+                    var qActValAcu = 0;
+                    var qPlanValTotal = 0;
+                    var qActValTotal = 0;
+                    var qPercentVal = [];
+                    q[i].forEach(function (e) {
+                        qPlanVal = parseInt(AutoNumeric.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0);
+                        qActVal = parseInt(AutoNumeric.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0);
+                        qPlanValAcu += qPlanVal;
+                        qActValAcu += qActVal;
+                        qPlanValArr.push(qPlanVal);
+                        qActValArr.push(qActVal);
+                        planValTotalArr.push(qPlanVal);
+                        actValTotalArr.push(qActVal);
+                        planValTotalAcu += qPlanVal;
+                        actValTotalAcu += qActVal;
+                        qPercentVal.push(parseInt(AutoNumeric.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0));
+                    });
+                    qPlanValTotal = parseFloat(calType == "Project" ? Math.max.apply(Math, qPlanValArr) : (calType == "Demerit" ? Math.min.apply(Math, qPlanValArr) : (calType == "Monthly Higher Average" || calType == "Monthly Lower Average" ? qPlanValAcu / 3 : qPlanValAcu))) || 0;
+                    qActValTotal = parseFloat(calType == "Project" ? Math.max.apply(Math, qActValArr) : (calType == "Demerit" ? Math.min.apply(Math, qActValArr) : (calType == "Monthly Higher Average" || calType == "Monthly Lower Average" ? qActValAcu / 3 : qActValAcu))) || 0;
+
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(AutoNumeric.format(qPlanValTotal, { allowDecimalPadding: false }));
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(AutoNumeric.format(qActValTotal, { allowDecimalPadding: false }));
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(AutoNumeric.format(calculatePercentage(qPlanValTotal, qActValTotal, calType), { allowDecimalPadding: false, suffixText: "%" }));
+                }
+                var currWeight = parseFloat($(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "']").attr("data-weight"));
+
+                planValTotal = calType == "Project" ? Math.max.apply(Math, planValTotalArr) : (calType == "Demerit" ? Math.min.apply(Math, planValTotalArr) : (calType == "Monthly Higher Average" || calType == "Monthly Lower Average" ? planValTotalAcu / 12 : planValTotalAcu));
+                actValTotal = calType == "Project" ? Math.max.apply(Math, actValTotalArr) : (calType == "Demerit" ? Math.min.apply(Math, actValTotalArr) : (calType == "Monthly Higher Average" || calType == "Monthly Lower Average" ? actValTotalAcu / 12 : actValTotalAcu));
+                var currTotal = parseFloat(calculatePercentage(planValTotal, actValTotal, calType, currWeight)).toFixed(0);
+                currTotal = currTotal > currWeight ? currWeight : currTotal;
+                $(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "'] input").val(AutoNumeric.format(currTotal, { allowDecimalPadding: false, suffixText: "%" }));
+
+                countTotal();
+            });
+            $(document).on("change", ".tblKPIForm tbody .selCalType", function () {
+                var idx = $(this).closest("td").data("idx");
+                if ($(this).val() == "Demerit") {
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").val(100);
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").prop("readonly", true);
+                } else {
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").prop("readonly", false);
+                }
+                $(".tblKPIForm tbody td[data-progress='Act'][data-idx='" + idx + "'] input").keyup();
+            });
+            $(".tblKPIForm tbody .selCalType").change();
+            $(document).on("keyup", ".tblKPIForm tbody .tdPercentage input", function () {
+                var idx = $(this).closest("td").data("idx");
+                $(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "']").attr("data-weight", AutoNumeric.format($(this).val(), { allowDecimalPadding: false }));
+                $(".tblKPIForm tbody td.tdNumber[data-idx='" + idx + "'][data-progress='Percent']").attr("data-weight", AutoNumeric.format($(this).val(), { allowDecimalPadding: false }));
+                $(".tblKPIForm tbody td[data-idx='" + idx + "'][data-progress='Act'] input").keyup();
+            });
+
+            function calculatePercentage(dataPlan, dataActual, calType, Weight = 100) {
+                var Plan = parseFloat(dataPlan) || 0;
+                var Actual = parseFloat(dataActual) || 0;
+                var calPercentVal = parseFloat(((Actual || 0) / (Plan || 0)) * Weight).toFixed(0);
+                if (calType == "Monthly Lower Accumulative" || calType == "Monthly Lower Average") {
+                    //calPercentVal = Actual <= Plan ? 100 : 0;
+                    calPercentVal = parseFloat(((Plan || 0) / (Actual || 0)) * Weight).toFixed(0);
+                } else if (calType == "Demerit") {
+                    calPercentVal = Actual;
+                }
+                return !isFinite(calPercentVal) || isNaN(calPercentVal) ? 0 : calPercentVal;
+            }
+
+            $(".tblKPIForm tbody td .txtKPIDataStatus").change(function () {
+                var currVal = $(this).find(":selected").val();
+                $(this).css("color", "#000000");
+                if (currVal == "Selesai") {
+                    $(this).css("background-color", "#00B050");
+                } else if (currVal == "Sedang Berjalan") {
+                    $(this).css("background-color", "#D9D9D9");
+                } else if (currVal == "Tertunda") {
+                    $(this).css("background-color", "#FFFF00");
+                } else if (currVal == "Batal") {
+                    $(this).css("background-color", "#000000");
+                    $(this).css("color", "#ffffff");
+                }
+            });
+            $(".tblKPIForm tbody td .txtKPIDataStatus").change();
+            //$(this).val(AutoNumeric.format($(this).val(), { allowDecimalPadding: false }));
+
+            $(".btnKPISign").click(function (e) {
+                var checkTotal = $(".tdTotalWeight").text();
+                if (checkTotal != "100%") {
+                    alert("Bobot/Weight Total is Not 100%!");
+                    e.preventDefault();
+                    return false;
+                }
+            });
+            $(".btnKPIFormSubmit").click(function () {
+                $(".tdNumber input").each(function () {
+                    $(this).val(AutoNumeric.unformat($(this).val().replace("%", "")));
+                });
+            });
+
+            //$(document).on("keyup", ".tblKPIForm tbody .tdPercentage input", function (e) {
+            //    $(this).val($(this).val().replace("%", "") + "%");
+            //});
+
+            var isAllowEdit = true;
+            $('.ulFiles').each(function () {
+                var currCTR = $(this);
+                var currHeaderID = $("#hfHeaderID").val();
+                //var currDataID = $(this).attr("data-id");
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("getEvidence", "KeyPerformanceIndicator", new { area = "HC" })",
+                    data: {
+                        iHeaderID: currHeaderID
+                    },
+                    success: function (data) {
+                        var liFiles = "";
+                        currCTR.empty();
+                        $.each(data.files, function (k, v) {
+                            switch (v.ext) {
+                                case ".doc":
+                                case ".docx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".xls":
+                                case ".xlsx":
+                                case ".csv":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li>";
+                                    break;
+                                case ".pdf":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".ppt":
+                                case ".pptx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".jpg":
+                                case ".jpeg":
+                                case ".png":
+                                case ".gif":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                            }
+                        });
+                        currCTR.append(liFiles);
+                        if ($("li", currCTR).length < 1) {
+                            liFiles = "<li style = 'list-style: none; '>-</li>";
+                            currCTR.append(liFiles);
+                        }
+                    }, error: function () {
+                        alert("Error Occurred, Please try again !");
+                    }
+                });
+            });
+
+            $('.ulFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/HC/KeyPerformanceIndicator/deleteEvidence",
+                        data: {
+                            iID: currID
+                        },
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            addContextMenu('.tblKPIForm tbody tr');
+            function addContextMenu(selector) {
+                $(document).contextMenu({
+                    selector: selector,
+                    build: ($trigger, e) => ({
+                        items: {
+                            add: {
+                                name: "Add",
+                                icon: "fas fa-plus",
+                                callback: function (key, opt) {
+                                    var currPerspective = opt.$trigger.data("perspective");
+                                    var currIdx = opt.$trigger.data("idx");
+                                    var currRowspan = parseInt($(".tblKPIForm tbody .tdPerspective[data-perspective='" + currPerspective + "']").attr("rowspan")) + 3;
+                                    $(".tblKPIForm tbody .tdPerspective[data-perspective='" + currPerspective + "']").attr("rowspan", currRowspan);
+                                    var currTR = $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "']").slice(0, 3);
+                                    var newTR = currTR.clone();
+                                    var countTR = $(".tblKPIForm tbody tr").length;
+                                    var newIDX = currIdx + countTR;
+                                    newTR.attr("data-idx", currIdx + countTR).attr("data-id", 0);
+                                    newTR.find("td").attr("data-idx", newIDX).attr("data-id", 0);
+                                    newTR.find(".tdPerspective").remove();
+                                    newTR.find("input[name='iDataID[]']").val(0);
+                                    newTR.find("textarea").val('');
+                                    newTR.find(".tdNumber[data-progress='Plan'] input[type='text'],.tdNumber[data-progress='Act'] input[type='text']").val('0');
+                                    newTR.removeClass("context-menu-active");
+                                    newTR.insertAfter(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "']:last");
+                                    $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + newIDX + "']")
+                                        .find(".tdNumber[data-progress='Plan'] input[type='text'],.tdNumber[data-progress='Act'] input[type='text']").keyup();
+                                }
+                            },
+                            delete: {
+                                name: "Delete",
+                                icon: "fas fa-x",
+                                callback: function (key, opt) {
+                                    var currPerspective = opt.$trigger.data("perspective");
+                                    var currIdx = opt.$trigger.data("idx");
+                                    var currID = opt.$trigger.data("id");
+                                    if (confirm("Are you sure want to delete this data ?")) {
+                                        var cntTr = $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "']").length;
+                                        if (cntTr > 3) {
+                                            $.ajax({
+                                                type: "POST",
+                                                url: "/NGKBusi/HC/KeyPerformanceIndicator/deleteData",
+                                                tryCount: 0,
+                                                tryLimit: 3,
+                                                data: {
+                                                    iID: currID
+                                                },
+                                                success: function (data) {
+                                                    var currRowspan = parseInt($(".tblKPIForm tbody .tdPerspective[data-perspective='" + currPerspective + "']").attr("rowspan")) - 3;
+                                                    var checkTR = $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "']");
+                                                    if (checkTR.find(".tdPerspective").length == 0) {
+                                                        $(".tblKPIForm tbody .tdPerspective[data-perspective='" + currPerspective + "']").attr("rowspan", currRowspan);
+                                                        checkTR.remove();
+                                                        countTotal();
+                                                    } else {
+                                                        checkTR.find("textarea").val('');
+                                                        checkTR.find(".tdNumber[data-progress='Plan'] input[type='text'],.tdNumber[data-progress='Act'] input[type='text']").val('0').keyup();
+                                                    }
+                                                }, error: function (xhr, textStatus, errorThrown) {
+                                                    if (textStatus === "timeout") {
+                                                        this.tryCount++;
+                                                        if (this.tryCount <= this.tryLimit) {
+                                                            $.ajax(this);
+                                                            return;
+                                                        }
+                                                    }
+                                                    alert("Error Occurred, Please try again !");
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    })
+                });
+            }
+
+            countTotal();
+            function countTotal() {
+                var totalWeightPercent = 0;
+                var totalScorePercent = 0;
+                $("input[name='iWeight[]']").each(function (e, v) {
+                    totalWeightPercent += parseFloat($(this).val().replace("%", ""));
+                });
+                $("input[name='iTotal[]']").each(function (e, v) {
+                    totalScorePercent += parseFloat($(this).val().replace("%", ""));
+                });
+                var te = 1;
+                $(".tdTotalMonth").each(function () {
+                    var mth = $(this).data("month");
+                    var currTotalPercent = 0;
+                    $(".tdNumber[data-month='" + mth + "'][data-progress='Percent']").each(function () {
+                        var currWeight = $(this).data("weight") || 0;
+                        var currPercent = AutoNumeric.unformat($(this).find("input").val().replace("%", "")) || 0;
+                        currPercent = currPercent > 100 ? 100 : currPercent;
+
+                        var currTotal = (currPercent / 100) * currWeight;
+                        currTotal = currTotal > currWeight ? currWeight : currTotal;
+                        currTotalPercent += currTotal;
+                    });
+
+                    $(this).text(currTotalPercent + "%");
+                });
+
+                $(".tdTotalWeight").text(totalWeightPercent + "%");
+                $(".tdTotalScore").text(totalScorePercent + "%");
+            }
+
+            $("#selKPIPeriod").change(function () {
+                if ($(this).val() != "") {
+                    $(".btnKPIPeriod").click();
+                }
+            });
+
+            $(".btnKPISubmit").click(function () {
+                $(".btnKPIFormSubmit").click();
+            });
+
+            $('#frmUploadKPI').on('submit', (function (e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+
+                var fileInput = $(this).find('input[type="file"]');
+                if (fileInput.val() === '') {
+                    alert("Please select a file to upload.");
+                    return;
+                }
+                //var periode = $('#monthPeriode').val();
+                //formData.append('Periode', periode);
+                $.ajax({
+                    type: 'POST',
+                    url: "@Url.Action("UploadDocumentKPI", "KeyPerformanceIndicator", new { area = "HC" })",
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    beforeSend: function () {
+                        $('.upload-icon').hide();
+                        $('#btnUploadKPI').addClass('loading').attr('disabled', true);
+                    },
+                    success: function (json) {
+                        console.log(json);
+                        //$('.loading').css("display", "");
+                        if (json.status == 1) {
+                            var link = '@Url.Action("Form", "KeyPerformanceIndicator", new { area = "HC", guid = "-1" })';
+                                link = link.replace("-1", json.guid);
+
+                            swal({
+                                title: "Success!",
+                                text: "Finish Import Row",
+                                type: "success"
+                            }, function () {
+                                window.location = link;
+                            });
+
+                        }
+                        $('#btnUploadKPI').removeClass('loading').attr('disabled', false);
+                        $('.upload-icon').show();
+                    },
+                    error: function (data) {
+                        console.log("error");
+                        //$('.loading').css("display", "none");
+                        swal("Failed!", json.msg, "error");
+                    }
+                });
+            }));
+
+        });
+    </script>
+}
+
+@section cssHead{
+    <link href="~/Content/jquery.contextMenu.min.css" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .tblKPIForm thead tr th, .tblKPIForm tbody tr td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblKPIForm tbody td {
+            position: relative;
+        }
+
+        .tblKPIForm tbody .tdText, .tblKPIForm tbody .tdFile {
+            text-align: left;
+            min-width: 250px;
+        }
+
+        .tblKPIForm tbody .tdNumber {
+            min-width: 100px;
+        }
+
+        .tblKPIForm tbody .tdSelect {
+            min-width: 150px;
+        }
+
+        .tblKPIForm tbody .tdNumber input:not([type='file']), .tblKPIForm tbody .tdPercentage input:not([type='file']) {
+            text-align: right;
+        }
+
+        .tblKPIForm tbody td input:not([type='file']), .tblKPIForm tbody td textarea, .tblKPIForm tbody td select {
+            position: absolute;
+            display: block;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .tblKPIForm tfoot tr.trSign td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblKPIForm tfoot .tdTotalMonth {
+            text-align: right;
+            font-weight: bold;
+            background-color: goldenrod;
+        }
+
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+
+        .loading-spinner {
+            display: none;
+        }
+
+        .btn.loading .loading-spinner {
+            display: inline-block;
+        }
+    </style>
+}
+
+@if (currFormGUID == null && Request["addNew"] == null)
+{
+    <form action="@Url.Action("Form", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+        <select id="selKPIPeriod" class="form-control" name="iKPIPeriod">
+            <option value="">-Period-</option>
+            @for (var i = 2024; i <= (DateTime.Now.Month >= 3 ? DateTime.Now.Year + 1 : DateTime.Now.Year); i++)
+            {
+                <option value="@(i)" @("FY1" + (i).ToString().Substring(2, 2) == ViewBag.Period ? "selected" : "")>@("FY1" + (i).ToString().Substring(2, 2))</option>
+            }
+        </select>
+        <button type="submit" class="btnKPIPeriod d-none">Submit</button>
+    </form>
+    <h2>Key Performance Indicator @ViewBag.Period</h2>
+    <hr />
+    <table class="table table-bordered table-striped tblKPIFormList">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>NIK</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="Select">Department</th>
+                <th class="filter-select" data-placeholder="Select">Section</th>
+                <th class="filter-select" data-placeholder="Select">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in KPIDataList)
+            {
+                <tr>
+                    <td>@data.Period_FY</td>
+                    <td>
+                        <a href="@Url.Action("Form", "KeyPerformanceIndicator", new { area = "HC",GUID = data.GUID })">
+                            @data.NIK
+                        </a>
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    <td><span class="badge badge-@(KPI.ApprovalStatus(data.Approval,data.Approval_Sub).Badge)">@(KPI.ApprovalStatus(data.Approval, data.Approval_Sub).Stat)</span></td>
+                </tr>
+            }
+            @foreach (var data in KPIMemberList)
+            {
+                <tr>
+                    <td>@ViewBag.Period</td>
+                    <td>
+                        @*@if (data.NIK == currUserID)
+                            {*@
+                        <a href="@Url.Action("Form", "KeyPerformanceIndicator", new { area = "HC", addNew = "addNew", addNIK = @data.NIK })">
+                            @data.NIK
+                        </a>
+                        @*}
+                            else
+                            {
+                                @data.NIK
+                            }*@
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    <td><span class="badge badge-danger">Not-Submitted</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="6" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <form class="form-inline" enctype="multipart/form-data" name="frmUploadKPI" id="frmUploadKPI">
+        <a href="@Url.Action("Form", "KeyPerformanceIndicator", new { area = "HC"})" class="btn btn-success d-inline-block mb-2"><i class="fa fa-arrow-circle-left"></i> Back to List</a>
+        <a href="@Url.Action("DownloadTemplate", "KeyPerformanceIndicator", new { area = "HC"})" class="btn btn-secondary d-inline-block mb-2 ml-2"><i class="fa fa-file-download"></i> Download Template</a>
+        <input type="hidden" class="form-control" name="uNIK" placeholder="NIK" value="@(currHeader?.NIK ?? currUserID)" />
+        <input type="hidden" class="form-control" name="uPeriodFY" placeholder="Period" value="@(currHeader?.Period_FY ?? ViewBag.PeriodFY)" />
+        <div class="form-group mb-2 ml-2">
+            <label for="staticEmail2" class="sr-only">KPI File</label>
+            <input name="fileDocumentKPI" type="file" class="form-control" />
+        </div>
+        <button type="submit" class="btn btn-primary mb-2 ml-2" id="btnUploadKPI"><span class="upload-icon"><i class="fa fa-upload"></i> </span><span class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></span> Start Upload </button>
+    </form>
+
+    <form id="formKPISubmit" action="@Url.Action("FormSubmit", "KeyPerformanceIndicator", new { area = "HC" })" method="post" enctype="multipart/form-data">
+        <button type="submit" class="btn btnKPIFormSubmit btn-primary form-control d-none">Save</button>
+        <input type="hidden" id="hfHeaderID" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+        <input type="hidden" class="form-control" name="iName" placeholder="Nama" value="@(currHeader?.Name ?? currUser.Name)" />
+        <input type="hidden" class="form-control" name="iNIK" placeholder="NIK" value="@(currHeader?.NIK ?? currUserID)" />
+        <input type="hidden" class="form-control" name="iPeriodFY" placeholder="Period" value="@(currHeader?.Period_FY ?? ViewBag.PeriodFY)" />
+        <input type="hidden" class="form-control" name="iPosition" placeholder="Position" value="@(currHeader?.PostName ?? currUser.PositionName)" />
+        <input type="hidden" class="form-control" name="iDivDeptSect" placeholder="Div/Dept./Sect." value="@(currHeader?.DeptName ?? currHeader?.DivName ?? currUser.DeptName ?? currUser.DivisionName)" />
+    </form>
+    <div id="divKPIFormWrapper">
+        <table id="tblHeader" border="1" style="width:100%;">
+            <tr>
+                <td rowspan="4" class="text-center" style="width:235px">
+                    <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+                </td>
+                <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h4>KEY PERFORMANCE INDICATOR</h4></td>
+                <td style="width:150px">No. Dok</td>
+                <td style="width:150px">PK-HRD-ALL-01/F2</td>
+            </tr>
+            <tr>
+                <td>Revisi</td>
+                <td>01</td>
+            </tr>
+            <tr>
+                <td>Tanggal</td>
+                <td>28 Juni 2023</td>
+            </tr>
+            <tr>
+                <td>Halaman</td>
+                <td>1 of 1</td>
+            </tr>
+        </table>
+        <div class="container-fluid">
+            <div class="row p-3">
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Nama: </label>
+                        <div class="col-10">
+                            @(currHeader?.Name ?? currUser.Name)
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">NIK: </label>
+                        <div class="col-10">
+                            @(currHeader?.NIK ?? currUserID)
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Periode: </label>
+                        <div class="col-10">
+                            @(currHeader?.Period_FY ?? ViewBag.PeriodFY)
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group row d-none">
+                        <label class="col-3 text-right">Position:</label>
+                        <div class="col-9">
+                            @(currHeader?.PostName ?? currUser.PositionName)
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 text-right">Div/Dept./Sect.:</label>
+                        <div class="col-9">
+                            @(currHeader?.DeptName ?? currHeader?.DivName ?? currUser.DeptName ?? currUser.DivisionName)
+                        </div>
+                    </div>
+                    @if (currHeader != null)
+                    {
+                        <div class="form-group row">
+                            <label class="col-3 text-right">Data Pendukung:</label>
+                            <div class="col-9">
+                                <input type="file" name="iFiles" multiple="multiple" />
+                                <ul class="ulFiles pl-0">-</ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="col-4">
+                    <table class="table table-borderless table-sm">
+                        <tbody>
+                            <tr>
+                                <td rowspan="4" class="text-right">*)</td>
+                                <td>Selesai</td>
+                                <td style="background-color:#00B050;"></td>
+                                <td>Selesai 100% sesuai jadwal</td>
+                            </tr>
+                            <tr>
+                                <td>Sedang Berjalan</td>
+                                <td style="background-color:#D9D9D9;"></td>
+                                <td>Mencapai target (Q=25%) tetapi di bawah 100%</td>
+                            </tr>
+                            <tr>
+                                <td>Tertunda</td>
+                                <td style="background-color:#FFFF00;"></td>
+                                <td>Tidak mencapai target & tidak sesuai jadwal</td>
+                            </tr>
+                            <tr>
+                                <td>Batal</td>
+                                <td style="background-color:#000000;"></td>
+                                <td>Gagal mencapai target sepenuhnya</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="overflow:auto;" id="divTblKPIForm">
+                <table class="table table-bordered table-sm tblKPIForm">
+                    <thead>
+                        <tr class="table-success">
+                            <th rowspan="2" class="sorter-false">Perspektif<br />(Bobot %)</th>
+                            <th rowspan="2" class="sorter-false" style="width:275px;">KPI</th>
+                            <th rowspan="2" class="sorter-false">Pencapaian FY Sebelumnya</th>
+                            <th rowspan="2" class="sorter-false">Target</th>
+                            <th rowspan="2" class="sorter-false">Detil Rencana Kerja<br />(Action Plan)</th>
+                            <th rowspan="2" class="sorter-false">Utama/Primary<br />Bersama/Share</th>
+                            <th rowspan="2" class="sorter-false">Bobot/Weight %</th>
+                            <th rowspan="2" class="sorter-false">Perhitungan Penilaian</th>
+                            <th rowspan="2" class="sorter-false" style="writing-mode: vertical-lr;transform: rotate(180deg);">Progress</th>
+                            <th colspan="12" class="sorter-false">FY124</th>
+                            <th colspan="4" class="sorter-false">Pencapaian</th>
+                            <th rowspan="2" class="sorter-false">Total</th>
+                            <th rowspan="2" class="sorter-false">Status *)</th>
+                            <th rowspan="2" class="sorter-false">Keterangan</th>
+                        </tr>
+                        <tr class="table-success">
+                            <th class="bg-secondary">Apr</th>
+                            <th class="bg-secondary">May</th>
+                            <th class="bg-secondary">Jun</th>
+                            <th class="bg-warning">Jul</th>
+                            <th class="bg-warning">Aug</th>
+                            <th class="bg-warning">Sep</th>
+                            <th class="bg-info">Oct</th>
+                            <th class="bg-info">Nov</th>
+                            <th class="bg-info">Des</th>
+                            <th class="bg-success">Jan</th>
+                            <th class="bg-success">Feb</th>
+                            <th class="bg-success">Mar</th>
+                            <th class="bg-secondary">Q1</th>
+                            <th class="bg-warning">Q2</th>
+                            <th class="bg-info">Q3</th>
+                            <th class="bg-success">Q4</th>
+                        </tr>
+                    </thead>                    
+                    <tbody>
+                        @{
+                            var weightFinancial = (currPerspectiveWeight?.Financial ?? 25).ToString() + "%";
+                            var weightCustomer = (currPerspectiveWeight?.Customer ?? 30).ToString() + "%";
+                            var weightInternalProcess = (currPerspectiveWeight?.Internal_Process ?? 25).ToString() + "%";
+                            var weightLearningGrowth = (currPerspectiveWeight?.Learning_Growth ?? 20).ToString() + "%";
+
+                            string[,] perspectiveList = { { "Finansial", "25", "#002060", "Financial", "1" }, { "Customer", "30", "#5B9BD5", "Customer", "1" }, { "Internal Process", "25", "#00B050", "Internal_Process", "1" }, { "Learning & Growth", "20", "#C65911", "Learning_Growth", "1" } };
+                            string[] weightList = { weightFinancial, weightCustomer, weightInternalProcess, weightLearningGrowth };
+                            int perspectiveSeq = 0;
+                            var perspectiveArray = new List<string>();
+                        }
+                        @*==================================================================*@
+                        @if (currData.Count > 0)
+                        {
+                            var i = 0;
+                            foreach (var data in currData)
+                            {
+                                switch (data.Perspective)
+                                {
+                                    case "Finansial":
+                                        perspectiveSeq = 0;
+                                        break;
+                                    case "Customer":
+                                        perspectiveSeq = 1;
+                                        break;
+                                    case "Internal Process":
+                                        perspectiveSeq = 2;
+                                        break;
+                                    default:
+                                        perspectiveSeq = 3;
+                                        break;
+                                }
+                                var perspectiveCount = currData.Where(w => w.Perspective == data.Perspective).ToList().Count() * 3;
+                                <tr data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID">
+                                    @if (!perspectiveArray.Any(a => a.Contains(data.Perspective)))
+                                    {
+                                        <td rowspan="@(perspectiveCount)" class="tdPerspective" style="background-color:@perspectiveList[perspectiveSeq, 2];color:white;font-weight:bold;" data-perspective="@(data.Perspective)" data-idx="@i" data-id="@data.ID">
+                                            @data.Perspective
+                                            <br />
+                                            @weightList[perspectiveSeq]
+                                            <br />
+                                        </td>
+                                        perspectiveArray.Add(data.Perspective);
+                                    }
+                                    <td rowspan="3" class="tdText tdKPI" data-perspective="@(data.Perspective)" data-idx="@i" data-id="@data.ID"><textarea rows="5" name="iKPI[]" required form="formKPISubmit">@data.KPI</textarea><input type="hidden" name="iPerspective[]" value="@perspectiveList[perspectiveSeq, 0]" form="formKPISubmit"/><input type="hidden" name="iPeriodFY[]" value="@data.Period_FY" /><input type="hidden" name="iDataID[]" value="@data.ID" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdText" data-idx="@i" data-id="@data.ID"><textarea rows="5" name="iLastAchievement[]" form="formKPISubmit">@data.Last_Achievement</textarea></td>
+                                    <td rowspan="3" class="tdText" data-idx="@i" data-id="@data.ID"><textarea rows="5" name="iTarget[]" form="formKPISubmit">@data.Target</textarea></td>
+                                    <td rowspan="3" class="tdText" data-idx="@i" data-id="@data.ID"><textarea rows="5" name="iActionPlan[]" form="formKPISubmit">@data.Action_Plan</textarea></td>
+                                    <td rowspan="3" class="tdSelect" data-idx="@i" data-id="@data.ID">
+                                        <select name="iPrimaryShare[]" form="formKPISubmit">
+                                            <option @(data.Primary_Share == "Utama/Primary" ? "Selected" : "") value="Utama/Primary">Utama/Primary</option>
+                                            <option @(data.Primary_Share == "Bersama/Share" ? "Selected" : "") value="Bersama/Share">Bersama/Share</option>
+                                        </select>
+                                    </td>
+                                    <td class="tdPercentage" rowspan="3" data-idx="@i" data-id="@data.ID"><input type="text" name="iWeight[]" value="@data.Weight%" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdSelect tdCalType" data-idx="@i" data-id="@data.ID">
+                                        <select class="selCalType" name="iKPIType[]" form="formKPISubmit">
+                                            <option @(data.Type == "Project" ? "Selected" : "") value="Project">Project</option>
+                                            <option @(data.Type == "Monthly Higher Accumulative" ? "Selected" : "") value="Monthly Higher Accumulative">Monthly Higher Accumulative</option>
+                                            <option @(data.Type == "Monthly Higher Average" ? "Selected" : "") value="Monthly Higher Average">Monthly Higher Average</option>
+                                            <option @(data.Type == "Monthly Lower Accumulative" ? "Selected" : "") value="Monthly Lower Accumulative">Monthly Lower Accumulative</option>
+                                            <option @(data.Type == "Monthly Lower Average" ? "Selected" : "") value="Monthly Lower Average">Monthly Lower Average</option>
+                                            <option @(data.Type == "Demerit" ? "Selected" : "") value="Demerit">Demerit</option>
+                                        </select>
+                                    </td>
+                                    <td>Plan</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanApr[]" value="@data.Plan_Apr" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanMay[]" value="@data.Plan_May" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanJun[]" value="@data.Plan_Jun" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanJul[]" value="@data.Plan_Jul" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanAug[]" value="@data.Plan_Aug" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanSep[]" value="@data.Plan_Sep" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanOct[]" value="@data.Plan_Oct" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanNov[]" value="@data.Plan_Nov" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanDes[]" value="@data.Plan_Des" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanJan[]" value="@data.Plan_Jan" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanFeb[]" value="@data.Plan_Feb" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanMar[]" value="@data.Plan_Mar" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanQ1[]" value="@data.Plan_Q1" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanQ2[]" value="@data.Plan_Q2" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanQ3[]" value="@data.Plan_Q3" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Plan" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iPlanQ4[]" value="@data.Plan_Q4" readonly form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdNumber tdTotal" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iTotal[]" value="@data.Total" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdSelect" data-idx="@i" data-id="@data.ID">
+                                        <select class="txtKPIDataStatus" name="iStatus[]" form="formKPISubmit">
+                                            <option @(data.Status == "Selesai" ? "Selected" : "") value="Selesai">Selesai</option>
+                                            <option @(data.Status == "Sedang Berjalan" ? "Selected" : "") value="Sedang Berjalan">Sedang Berjalan</option>
+                                            <option @(data.Status == "Tertunda" ? "Selected" : "") value="Tertunda">Tertunda</option>
+                                            <option @(data.Status == "Batal" ? "Selected" : "") value="Batal">Batal</option>
+                                        </select>
+                                    </td>
+                                    <td rowspan="3" class="tdText" data-idx="@i" data-id="@data.ID"><textarea rows="5" name="iRemark[]" form="formKPISubmit">@data.Remark</textarea></td>
+
+                                </tr>
+                                <tr data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID">
+                                    <td>Act.</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActApr[]" value="@data.Act_Apr" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActMay[]" value="@data.Act_May" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActJun[]" value="@data.Act_Jun" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActJul[]" value="@data.Act_Jul" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActAug[]" value="@data.Act_Aug" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActSep[]" value="@data.Act_Sep" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActOct[]" value="@data.Act_Oct" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActNov[]" value="@data.Act_Nov" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActDes[]" value="@data.Act_Des" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActJan[]" value="@data.Act_Jan" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActFeb[]" value="@data.Act_Feb" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActMar[]" value="@data.Act_Mar" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActQ1[]" value="@data.Act_Q1" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActQ2[]" value="@data.Act_Q2" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActQ3[]" value="@data.Act_Q3" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Act" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID"><input type="text" name="iActQ4[]" value="@data.Act_Q4" readonly form="formKPISubmit"/></td>
+                                </tr>
+                                <tr data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID">
+                                    <td>%</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentApr[]" value="@data.Percent_Apr" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentMay[]" value="@data.Percent_May" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentJun[]" value="@data.Percent_Jun" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentJul[]" value="@data.Percent_Jul" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentAug[]" value="@data.Percent_Aug" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentSep[]" value="@data.Percent_Sep" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentOct[]" value="@data.Percent_Oct" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentNov[]" value="@data.Percent_Nov" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentDes[]" value="@data.Percent_Des" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentJan[]" value="@data.Percent_Jan" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentFeb[]" value="@data.Percent_Feb" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentMar[]" value="@data.Percent_Mar" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentQ1[]" value="@data.Percent_Q1" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentQ2[]" value="@data.Percent_Q2" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentQ3[]" value="@data.Percent_Q3" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Percent" data-perspective="@perspectiveList[perspectiveSeq, 0]" data-idx="@i" data-id="@data.ID" data-weight="@data.Weight"><input type="text" name="iPercentQ4[]" value="@data.Percent_Q4" readonly form="formKPISubmit"/></td>
+                                </tr>
+                                i++;
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < perspectiveList.GetLength(0); i++)
+                            {
+                                <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i">
+                                    <td rowspan="@(3 * int.Parse(perspectiveList[i, 4]))" class="tdPerspective" style="background-color:@perspectiveList[i, 2];color:white;font-weight:bold;" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i">
+                                        @perspectiveList[i, 0]
+                                        <br />
+                                        @weightList[i]
+                                        <br />
+                                    </td>
+                                    <td rowspan="3" class="tdText tdKPI" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><textarea rows="5" name="iKPI[]" required form="formKPISubmit"></textarea><input type="hidden" name="iPerspective[]" value="@perspectiveList[i, 0]" form="formKPISubmit"/><input type="hidden" name="iPeriodFY[]" value="@(ViewBag.PeriodFY)" form="formKPISubmit"/><input type="hidden" name="iDataID[]" value="0" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdText" data-id="0" data-idx="@i"><textarea rows="5" name="iLastAchievement[]" form="formKPISubmit"></textarea></td>
+                                    <td rowspan="3" class="tdText" data-id="0" data-idx="@i"><textarea rows="5" name="iTarget[]" form="formKPISubmit"></textarea></td>
+                                    <td rowspan="3" class="tdText" data-id="0" data-idx="@i"><textarea rows="5" name="iActionPlan[]" form="formKPISubmit"></textarea></td>
+                                    <td rowspan="3" class="tdSelect" data-id="0" data-idx="@i">
+                                        <select name="iPrimaryShare[]" form="formKPISubmit">
+                                            <option value="Utama/Primary">Utama/Primary</option>
+                                            <option value="Bersama/Share">Bersama/Share</option>
+                                        </select>
+                                    </td>
+                                    <td class="tdPercentage" rowspan="3" data-id="0" data-idx="@i"><input type="text" name="iWeight[]" value="@perspectiveList[i, 1]%" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdSelect tdCalType" data-id="0" data-idx="@i">
+                                        <select class="selCalType" name="iKPIType[]" form="formKPISubmit">
+                                            <option value="Project">Project</option>
+                                            <option selected value="Monthly Higher Accumulative">Monthly Higher Accumulative</option>
+                                            <option value="Monthly Higher Average">Monthly Higher Average</option>
+                                            <option value="Monthly Lower Accumulative">Monthly Lower Accumulative</option>
+                                            <option value="Monthly Lower Average">Monthly Lower Average</option>
+                                            <option value="Demerit">Demerit</option>
+                                        </select>
+                                    </td>
+                                    <td>Plan</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanApr[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanMay[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanJun[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanJul[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanAug[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanSep[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanOct[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanNov[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanDes[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanJan[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanFeb[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanMar[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPlanQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdNumber tdTotal" data-id="0" data-idx="@i" data-weight="@perspectiveList[i, 1]"><input type="text" name="iTotal[]" form="formKPISubmit"/></td>
+                                    <td rowspan="3" class="tdSelect" data-id="0" data-idx="@i">
+                                        <select class="txtKPIDataStatus" name="iStatus[]" form="formKPISubmit">
+                                            <option value="Selesai">Selesai</option>
+                                            <option selected value="Sedang Berjalan">Sedang Berjalan</option>
+                                            <option value="Tertunda">Tertunda</option>
+                                            <option value="Batal">Batal</option>
+                                        </select>
+                                    </td>
+                                    <td rowspan="3" class="tdText" data-id="0" data-idx="@i"><textarea rows="5" name="iRemark[]" form="formKPISubmit"></textarea></td>
+                                </tr>
+                                <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i">
+                                    <td>Act.</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActApr[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActMay[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActJun[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActJul[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActAug[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActSep[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActOct[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActNov[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActDes[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActJan[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActFeb[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActMar[]" value="0" form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iActQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                </tr>
+                                <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i">
+                                    <td>%</td>
+                                    <td class="tdNumber" data-month="Apr" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentApr[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="May" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentMay[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jun" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentJun[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jul" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentJul[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Aug" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentAug[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Sep" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentSep[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Oct" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentOct[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Nov" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentNov[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Des" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentDes[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Jan" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentJan[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Feb" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentFeb[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Mar" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentMar[]" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q1" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q2" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q3" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                    <td class="tdNumber" data-month="Q4" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@i"><input type="text" name="iPercentQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                </tr>
+                                for (var j = 1; j <= int.Parse(perspectiveList[i, 4]) - 1; j++)
+                                {
+                                    <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                        <td rowspan="3" class="tdText tdKPI" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><textarea rows="5" name="iKPI[]" required form="formKPISubmit"></textarea><input type="hidden" name="iPerspective[]" value="@perspectiveList[i, 0]" form="formKPISubmit"/><input type="hidden" name="iPeriodFY[]" value="@(ViewBag.PeriodFY)" form="formKPISubmit"/><input type="hidden" name="iDataID[]" value="0" form="formKPISubmit"/></td>
+                                        <td rowspan="3" class="tdText" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><textarea rows="5" name="iLastAchievement[]" form="formKPISubmit"></textarea></td>
+                                        <td rowspan="3" class="tdText" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><textarea rows="5" name="iTarget[]" form="formKPISubmit"></textarea></td>
+                                        <td rowspan="3" class="tdText" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><textarea rows="5" name="iActionPlan[]" form="formKPISubmit"></textarea></td>
+                                        <td rowspan="3" class="tdSelect" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                            <select name="iPrimaryShare[]" form="formKPISubmit">
+                                                <option value="Utama/Primary">Utama/Primary</option>
+                                                <option value="Bersama/Share">Bersama/Share</option>
+                                            </select>
+                                        </td>
+                                        <td class="tdPercentage" rowspan="3" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iWeight[]" value="@perspectiveList[i, 1]%" form="formKPISubmit"/></td>
+                                        <td rowspan="3" class="tdSelect tdCalType" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                            <select class="selCalType" name="iKPIType[]" form="formKPISubmit">
+                                                <option value="Project">Project</option>
+                                                <option value="Monthly Higher Accumulative">Monthly Higher Accumulative</option>
+                                                <option value="Monthly Higher Average">Monthly Higher Average</option>
+                                                <option value="Monthly Lower Accumulative">Monthly Lower Accumulative</option>
+                                                <option value="Monthly Lower Average">Monthly Lower Average</option>
+                                                <option value="Demerit">Demerit</option>
+                                            </select>
+                                        </td>
+                                        <td>Plan</td>
+                                        <td class="tdNumber" data-month="Apr" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanApr[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="May" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanMay[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jun" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanJun[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jul" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanJul[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Aug" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanAug[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Sep" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanSep[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Oct" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanOct[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Nov" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanNov[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Des" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanDes[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jan" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanJan[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Feb" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanFeb[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Mar" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanMar[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q1" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q2" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q3" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q4" data-progress="Plan" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPlanQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td rowspan="3" class="tdNumber tdTotal" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())" data-weight="@perspectiveList[i, 1]"><input type="text" name="iTotal[]" form="formKPISubmit"/></td>
+                                        <td rowspan="3" class="tdSelect" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                            <select class="txtKPIDataStatus" name="iStatus[]" form="formKPISubmit">
+                                                <option value="Selesai">Selesai</option>
+                                                <option selected value="Sedang Berjalan">Sedang Berjalan</option>
+                                                <option value="Tertunda">Tertunda</option>
+                                                <option value="Batal">Batal</option>
+                                            </select>
+                                        </td>
+                                        <td rowspan="3" class="tdText" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><textarea rows="5" name="iRemark[]" form="formKPISubmit"></textarea></td>
+                                    </tr>
+                                    <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                        <td>Act.</td>
+                                        <td class="tdNumber" data-month="Apr" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActApr[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="May" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActMay[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jun" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActJun[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jul" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActJul[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Aug" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActAug[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Sep" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActSep[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Oct" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActOct[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Nov" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActNov[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Des" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActDes[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jan" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActJan[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Feb" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActFeb[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Mar" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActMar[]" value="0" form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q1" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q2" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q3" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q4" data-progress="Act" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iActQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                    </tr>
+                                    <tr data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())">
+                                        <td>%</td>
+                                        <td class="tdNumber" data-month="Apr" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentApr[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="May" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentMay[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jun" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentJun[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jul" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentJul[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Aug" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentAug[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Sep" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentSep[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Oct" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentOct[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Nov" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentNov[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Des" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentDes[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Jan" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentJan[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Feb" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentFeb[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Mar" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentMar[]" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q1" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentQ1[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q2" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentQ2[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q3" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentQ3[]" value="0" readonly form="formKPISubmit"/></td>
+                                        <td class="tdNumber" data-month="Q4" data-progress="Percent" data-perspective="@perspectiveList[i, 0]" data-id="0" data-idx="@(i.ToString() + j.ToString()+ j.ToString())"><input type="text" name="iPercentQ4[]" value="0" readonly form="formKPISubmit"/></td>
+                                    </tr>
+                                }
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" style="background-color:gray"></td>
+                            <td class="tdTotalWeight text-right font-weight-bold" style="background-color:goldenrod">0%</td>
+                            <td colspan="2" style="background-color:gray"></td>
+                            <td class="tdTotalMonth" data-month="Apr">0%</td>
+                            <td class="tdTotalMonth" data-month="May">0%</td>
+                            <td class="tdTotalMonth" data-month="Jun">0%</td>
+                            <td class="tdTotalMonth" data-month="Jul">0%</td>
+                            <td class="tdTotalMonth" data-month="Aug">0%</td>
+                            <td class="tdTotalMonth" data-month="Sep">0%</td>
+                            <td class="tdTotalMonth" data-month="Oct">0%</td>
+                            <td class="tdTotalMonth" data-month="Nov">0%</td>
+                            <td class="tdTotalMonth" data-month="Des">0%</td>
+                            <td class="tdTotalMonth" data-month="Jan">0%</td>
+                            <td class="tdTotalMonth" data-month="Feb">0%</td>
+                            <td class="tdTotalMonth" data-month="Mar">0%</td>
+                            <td class="tdTotalMonth" data-month="Q1">0%</td>
+                            <td class="tdTotalMonth" data-month="Q2">0%</td>
+                            <td class="tdTotalMonth" data-month="Q3">0%</td>
+                            <td class="tdTotalMonth" data-month="Q4">0%</td>
+                            <td class="tdTotalScore text-right font-weight-bold" style="background-color:goldenrod">0%</td>
+                            <td colspan="2" style="background-color:gray"></td>
+                        </tr>
+                        <tr class="trSign">
+                            <td rowspan="3" colspan="4"></td>
+                            <th colspan="3" class="bg-info">Karyawan</th>
+                            <td colspan="2">
+                                @if (currHeader != null)
+                                {
+                                    if (currHeader?.Approval == 1 && currHeader?.Approval_Sub >= 0 || (currHeader?.Approval > 1))
+                                    {
+                                        if (currHeader?.Approval == 1 && currHeader?.Approval_Sub == 0)
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="1" />
+                                                <input type="hidden" name="iApprovalSub" value="1" />
+                                                <button class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+                                    }
+                                }
+                            </td>
+                            @for (var signI = 1; signI <= 12; signI++)
+                            {
+                                <td>
+                                    @if (currHeader?.Approval >= 1 + signI)
+                                    {
+                                        if ((currHeader?.Approval == 1 + signI && currHeader?.Approval_Sub == 0))
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="@(1 + signI)" />
+                                                <input type="hidden" name="iApprovalSub" value="@(1)" />
+                                                <button type="submit" class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+                                    }
+                                </td>
+                            }
+                            <td rowspan="3" colspan="7"></td>
+                        </tr>
+                        <tr class="trSign">
+                            <th colspan="3" class="bg-info">Atasan Langsung (Spv./Assistant Manager/Manager)</th>
+                            <td colspan="2">
+                                @if (currHeader != null)
+                                {
+                                    if (currHeader?.Approval == 1 && currHeader?.Approval_Sub >= 1 || currHeader?.Approval > 1)
+                                    {
+                                        if (currHeader?.Approval == 1 && currHeader?.Approval_Sub == 1)
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="1" />
+                                                <input type="hidden" name="iApprovalSub" value="2" />
+                                                <button type="submit" class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Month-Checker-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                <button type="submit" class="btn btn-sm btn-warning d-inline-block" name="btnType" value="Month-Checker-Return" onclick="return confirm('Are you sure want to return this data?')"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+
+                                    }
+                                }
+                            </td>
+                            @for (var signI = 1; signI <= 12; signI++)
+                            {
+                                <td>
+                                    @if (currHeader?.Approval > (1 + signI) || (currHeader?.Approval == 1 + signI && currHeader?.Approval_Sub >= 1))
+                                    {
+                                        if ((currHeader?.Approval == 1 + signI && currHeader?.Approval_Sub == 1))
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="@(1 + signI)" />
+                                                <input type="hidden" name="iApprovalSub" value="@(2)" />
+                                                <button type="submit" class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                <button type="submit" class="btn btn-sm btn-warning d-inline-block" name="btnType" value="Month-Checker-Return" onclick="return confirm('Are you sure want to return this data?')"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+                                    }
+                                </td>
+                            }
+                        </tr>
+                        <tr class="trSign">
+                            <th colspan="3" class="bg-info">Atasan Tidak Langsung (Senior Manager/General Manager/Director)</th>
+                            <td colspan="2">
+                                @if (currHeader != null)
+                                {
+                                    if (currHeader?.Approval == 1 && currHeader?.Approval_Sub >= 2 || currHeader?.Approval > 1)
+                                    {
+                                        if (currHeader?.Approval == 1 && currHeader?.Approval_Sub == 2)
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="2" />
+                                                <input type="hidden" name="iApprovalSub" value="0" />
+                                                <button type="submit" class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Month-Approver-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                <button type="submit" class="btn btn-sm btn-warning d-inline-block" name="btnType" value="Month-Approver-Return" onclick="return confirm('Are you sure want to return this data?')"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+                                    }
+                                }
+                            </td>
+                            @for (var signI = 1; signI <= 12; signI++)
+                            {
+                                <td>
+                                    @if (currHeader?.Approval > 1 + signI || (currHeader?.Approval == 1 + signI && currHeader?.Approval_Sub >= 2))
+                                    {
+                                        if ((currHeader?.Approval == 1 + signI && currHeader?.Approval_Sub == 2))
+                                        {
+                                            <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                <input type="hidden" name="iApproval" value="@(2 + signI)" />
+                                                <input type="hidden" name="iApprovalSub" value="@(0)" />
+                                                <button type="submit" class="btn btnKPISign btn-sm btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-check-circle img-fluid" style="color:green;font-size:2em;"></i>
+                                        }
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="form-group row mt-1">
+                <div class="offset-6 col col-6 text-right">
+
+                    @if (currHeader?.Approval >= 14)
+                    {
+                        <table id="tblKPISign" class="table table-bordered">
+                            <thead>
+                                <tr class="bg-info text-center">
+                                    <th>Appoved By</th>
+                                    <th>Checked By</th>
+                                    <th>Created By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="height:125px;" class="align-middle text-center">
+                                        @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 2))
+                                        {
+                                            if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 2))
+                                            {
+                                                <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                    <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                    <input type="hidden" name="iApproval" value="@(15)" />
+                                                    <input type="hidden" name="iApprovalSub" value="@(0)" />
+                                                    <button type="submit" class="btn btnKPISign btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="height:125px;" class="align-middle text-center">
+                                        @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 1))
+                                        {
+                                            if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 1))
+                                            {
+                                                <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                    <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                    <input type="hidden" name="iApproval" value="@(14)" />
+                                                    <input type="hidden" name="iApprovalSub" value="@(2)" />
+                                                    <button type="submit" class="btn btnKPISign btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="height:125px;" class="align-middle text-center">
+                                        @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 0))
+                                        {
+                                            if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 0))
+                                            {
+                                                <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                                    <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                                    <input type="hidden" name="iApproval" value="@(14)" />
+                                                    <input type="hidden" name="iApprovalSub" value="@(1)" />
+                                                    <button type="submit" class="btn btnKPISign btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                                </form>
+                                            }
+                                            else
+                                            {
+                                                <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                            }
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+            <div class="form-group row">
+                <div class="col-12">
+                    <button type="button" class="btn btnKPISubmit btn-primary form-control">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

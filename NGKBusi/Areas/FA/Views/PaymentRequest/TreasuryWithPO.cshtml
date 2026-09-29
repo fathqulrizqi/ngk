@@ -1,0 +1,489 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+    var totalAllocation = 0;
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    @*<script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.widgets.js")"></script>*@
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $('[data-toggle="tooltip"]').tooltip();
+            $(".txtPRDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $("#txtTaxInvoiceDate").datepicker({ dateFormat: 'mm/dd/yy' });
+            $('.tablesorter-childRow td').hide();
+            $(".tblPRWPO").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns"],
+
+                widgetOptions: {
+                    filter_excludeFilter: {
+                        // zero-based column index
+                        6: 'range',
+                        7: 'range',
+                        9: 'range'
+                    },
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control', // select needs custom class names :(
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                    ]
+
+                }
+            });
+            $('.tablesorter').delegate('.toggle', 'click', function () {
+
+                $(this).closest('tr').nextUntil('tr:not(.tablesorter-childRow)').find('td').toggle();
+
+                return false;
+            });
+            $(".btnWithPODelete").click(function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    var currTR = $(this).closest("tr");
+                    var currTRChild = $(this).closest("tr").nextUntil('tr:not(.tablesorter-childRow)');
+                    currTR.css("background-color", "orange");
+                    currTRChild.css("background-color", "orange");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/WithPODelete",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iWithPOID: $(this).data("id")
+                        }, success: function () {
+                            currTR.remove();
+                            currTRChild.remove();
+                            $(".tblPRWPO").trigger("refresh");
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTR.css("background-color", "initial");
+                            currTRChild.css("background-color", "initial");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+            $(".btnWithPOAdd").click(function () {
+                $("#divWithPOForm").show("blind");
+            });
+            $(".btnWPOCancel").click(function () {
+                $("#divWithPOForm").hide("blind");
+            });
+
+            $("#selVATRate").change(function () {
+                if ($(this).val() == "0") {
+                    $(".divTaxInvoiceNumber").hide("blind");
+                    $("#txtTaxInvoiceNumber").val("");
+                    $("#txtTaxInvoiceNumber").prop("required", false);
+                } else {
+                    $("#txtTaxInvoiceNumber").prop("required", true);
+                    $(".divTaxInvoiceNumber").show("blind");
+                }
+            });
+            $("#selWHTCode").change(function () {
+                if ($(this).val() == "") {
+                    $(".divWHTAmount").hide("blind");
+                    $("#txtWHTAmount").val("");
+                    $("#txtWHTAmount").prop("required", false);
+                } else {
+                    $("#txtWHTAmount").prop("required", true);
+                    $(".divWHTAmount").show("blind");
+                }
+            });
+            $(".btnWPOSubmit").click(function (e) {
+                var InvoiceAmount = parseInt($("#txtInvoiceAmount").val(), 10) || 0;
+                var TotalAllocation = parseInt($("#tdTotalAllocation").text(), 10) || 0;
+                var VAT = $("#selVATRate").val() != "" ? parseInt($("#selVATRate").val(), 10) : 0;
+                var VATAmount = VAT > 0 ? parseInt((TotalAllocation / 100) * VAT, 10) : 0;
+                if (InvoiceAmount != TotalAllocation + VATAmount) {
+                    e.preventDefault();
+                    $(".spanInvoiceAmount").text("Rp. " + parseFloat(InvoiceAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanAllocation").text("Rp. " + parseFloat(TotalAllocation, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanVAT").text(VAT);
+                    $(".spanVATAmount").text("Rp. " + parseFloat(VATAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $(".spanGrandTotal").text("Rp. " + parseFloat(TotalAllocation + VATAmount, 10).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, "$1,").toString());
+                    $("#calculateModal").modal();
+                }
+            });
+
+            $("#btnDPAdd").click(function () {
+                var newRow = $("#tblDirectPayment tbody tr:first()").clone();
+                newRow.find("input").val("");
+                newRow.find(".select2-container").remove();
+                newRow.find(".select2").select2();
+                $("#tblDirectPayment tbody").append(newRow);
+            });
+            $(document).on("click", ".dpDelete", function () {
+                if (confirm("Are you sure want to delete this data ?")) {
+                    $(this).closest("tr").remove();
+                    totalAlloc();
+                }
+            });
+            $(document).on("keyup", ".txtAllocationAmount", function () {
+                totalAlloc();
+            });
+
+            function totalAlloc() {
+                var totalAllocation = 0;
+                $(".txtAllocationAmount").each(function () {
+                    totalAllocation += parseInt($(this).val(), 10) || 0;
+                });
+                $("#tdTotalAllocation").text(totalAllocation);
+            }
+            $(".btnWithPOSign").click(function () {
+                if (confirm("Sign This Data ?")) {
+                    var currTD = $(this).closest("td");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/TreasuryWithPOSign",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iWithPOID: $(this).data("id"),
+                            iApproval: $(this).data("approval"),
+                            iApprovalSub: $(this).data("approval_sub")
+                        }, success: function () {
+                            location.reload();
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+            $(".btnWithPOReceived").click(function () {
+                if (confirm("Receive This Document ?")) {
+                    var currTD = $(this).closest("td");
+                    currTD.LoadingOverlay("show");
+                    $.ajax({
+                        url: "/NGKBusi/FA/PaymentRequest/APWithPOReceive",
+                        method: "POST",
+                        tryCount: 0,
+                        tryLimit: 3,
+                        data: {
+                            iWithPOID: $(this).data("id"),
+                            iApproval: $(this).data("approval"),
+                            iApprovalSub: $(this).data("approval_sub")
+                        }, success: function () {
+                            location.reload();
+                        }, error: function () {
+                            if (textStatus === "timeout") {
+                                this.tryCount++;
+                                if (this.tryCount <= this.tryLimit) {
+                                    $.ajax(this);
+                                    return;
+                                }
+                            }
+                            currTD.LoadingOverlay("hide");
+                            alert("Error Occurred, Please Try Again.");
+                        }
+                    });
+                }
+            });
+
+            var latestDueDate = 0;
+            $("#txtDueDate").change(function () {
+                if ($(this).val() == "" || $(this).val() == latestDueDate) {
+                    $("#txtDueDateReason").val('');
+                    $("#txtDueDateReason").prop("required", false);
+                    $("#txtDueDateReason").hide();
+                } else {
+                    $("#txtDueDateReason").show();
+                    $("#txtDueDateReason").prop("required", true);
+                }
+            });
+            $(".btnWithPOEdit").click(function () {
+                var currID = $(this).data("id");
+                latestDueDate = $(this).data("duedate").replace(/-/gi, "/");
+                var currWHT = $(this).data("wht");
+                var currWHTAmount = $(this).data("whtamount");
+                $("#hfPaymentID").val(currID);
+                $("#txtDueDate").val(latestDueDate);
+                if (currWHTAmount > 0) {
+                    $("#selWHTCode").val(currWHT);
+                    $("#txtWHTAmount").val(currWHTAmount);
+                    $("#txtWHTAmount").prop("required", true);
+                    $(".divWHTAmount").show("blind");
+                }
+                $("#withPOFAEditModal").modal("show");
+            });
+            $(".thAllocationTotal").each(function () {
+                var currTable = $(this).closest("table");
+                var currTotal = 0;
+                $(".tdAllocation", currTable).each(function () {
+                    var value = accounting.unformat($(this).text());
+                    // add only if the value is number
+                    if (!isNaN(value) && value.length != 0) {
+                        currTotal += parseFloat(value);
+                    }
+                });
+                $(this).text(currTotal.toLocaleString(undefined, { minimumFractionDigits: 2 }));
+            });
+
+            $(".btnWithPOReturn").click(function () {
+                var currID = $(this).data("id");
+                $("#hfReturnID").val(currID);
+                $("#returnModal").modal();
+            });
+        });
+    </script>
+}
+
+<h2>
+    Treasury - Payment Request With PO
+</h2>
+<hr />
+
+<table class="tblPRWPO table table-striped">
+    <thead>
+        <tr>
+            <th>Receive Number</th>
+            <th>Entry Date</th>
+            <th>Section From</th>
+            <th>Invoice Number</th>
+            <th>Third Party</th>
+            <th>Amount of Invoice</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Created By</th>
+            <th class="filter-select" data-placeholder="Select">Status</th>
+            <th class="filter-false sorter-false"></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.WPO)
+        {
+            int itemID = item.id;
+            var subData = db.FA_Payment_Request_PO_Sub.Where(w => w.With_PO_ID == itemID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_PO_Sub.Where(w => w.With_PO_ID == itemID).ToList().Sum(s => s.Allocation_Amount);
+            <tr>
+                <td class="text-nowrap">
+                    <a href="#" class="toggle">@(item.Receive_Number)</a>
+                </td>
+                <td class="text-nowrap">@( item.Entry_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@( "(" + item.Section_From_Code + ") " + item.Section_From_Name)</td>
+                <td>@(item.Invoice_Number)</td>
+                <td>@( "(" + item.Third_Party_Id + ") " + item.Third_Party_Name)</td>
+                <td class="text-right">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                <td>@(item.Description)</td>
+                <td class="text-nowrap">@(item.Due_Date.ToString("dd-MM-yyyy"))</td>
+                <td>@(item.Users.Name)</td>
+                <td>
+                    @(PaymentRequestController.ApprovalStatus(item.Approval, item.Approval_Sub, item.Is_Reject, item.Amount_of_Invoice))
+                </td>
+                <td class="text-nowrap text-center">
+                    @if (item.Approval == 5)
+                    {
+                        <button class="btn btn-sm btn-primary btnWithPOSign" data-toggle="tooltip" title="Sign" data-id="@(item.id)" data-approval="@(item.Approval)" data-approval_sub="@(item.Approval_Sub)"><i class="fas fa-file-signature"></i></button>
+                    }
+                    <button class="btn btn-sm btn-primary btnNonPODownload" data-toggle="tooltip" title="Download" data-id="@(item.id)"><i class="fas fa-file-download"></i></button>
+                </td>
+            </tr>
+
+            <tr class="tablesorter-childRow">
+                <td colspan="11">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>To Section</th>
+                                <th style="min-width:275px;">Allocation Amount</th>
+                                <th>Budget Number</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var itemSub in subData)
+                            {
+                                <tr>
+                                    <td>@("(" + itemSub.Section_To_Code + ")" + itemSub.Section_To_Name)</td>
+                                    <td class="tdAllocation text-right">@(itemSub.Allocation_Amount.ToString("N2"))</td>
+                                    <td>@("(" + itemSub.Budget_Number + ")" + itemSub.Budget_Desc)</td>
+                                </tr>
+                            }
+                            @if (item.VAT > 0)
+                            {
+                                <tr>
+                                    <td>@("(" + item.Tax_Number + ")VAT " + item.VAT + "%")</td>
+                                    <td class="tdAllocation text-right">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                                    <td>@("-")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th>Total Allocation</th>
+                                <th class="thAllocationTotal text-right">0</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="11" class="ts-pager">
+                <div class="form-inline">
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                        <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                    </div>
+                    <span class="pagedisplay"></span>
+                    <div class="btn-group btn-group-sm mx-1" role="group">
+                        <button type="button" class="btn btn-secondary next" title="next">→</button>
+                        <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                    </div>
+                    <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                        <option selected="selected" value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="all">All Rows</option>
+                    </select>
+                    <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+</table>
+
+
+
+
+<div class="modal fade" id="calculateModal" tabindex="-1" role="dialog" aria-labelledby="calculateModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Calculate Total</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h5>We're sorry, your <span style="color:red;">Total Amount</span> and <span style="color:red;">Amount of Invoice</span> is <span style="color:red;">not match!!</span></h5>
+                <br />
+                <label class="font-weight-bold">Allocation Amount: </label> <span class="spanAllocation">0</span><br />
+                <label class="font-weight-bold">VAT (<span class="spanVAT">0</span>%) : </label> <span class="spanVATAmount">0</span><br />
+                <hr />
+                <label class="font-weight-bold">Total Amount : </label> <span class="spanGrandTotal">0</span>
+                <hr />
+                <label class="font-weight-bold">Amount of Invoice : </label> <span class="spanInvoiceAmount">0</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="withPOFAEditModal" tabindex="-1" role="dialog" aria-labelledby="withPOFAEditModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">FA - Edit</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action(" APWithPOEdit", "PaymentRequest" , new { area="FA" })" method="post" class="form-horizontal">
+                <div class="modal-body">
+                    <input type="hidden" id="hfPaymentID" name="iPaymentID" value="" />
+                    <div class="form-group row">
+                        <label for="DueDate" class="control-label col-3 text-right font-weight-bold">Due Date:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control txtPRDate" autocomplete="off" placeholder="Due Date" name="iEntryDueDate" id="txtDueDate" required>
+                            <textarea id="txtDueDateReason" class="txtDueDateReason form-control" name="iDueDateReason" placeholder="Due Date Change Reason" style="display:none;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold">WHT Code:</label>
+                        <div class="col-9">
+                            <select id="selWHTCode" name="iWHTCode" class="form-control selWHTCode" style="width:100%">
+                                <option value="" selected>-COA-</option>
+                                @foreach (var item in ViewBag.WHTCOA)
+                                {
+                                    <option value="@(item.MAINACCOUNTID + " |" + item.NAME)">@(item.MAINACCOUNTID + " | " + item.NAME)</option>
+                                }
+                            </select>
+                            <div class="form-group row divWHTAmount mt-2" style="display:none;">
+                                <label class="control-label col-3 text-right font-weight-bold">WHT Amount:</label>
+                                <div class="col-9">
+                                    <input type="text" class="form-control" placeholder="WHT Amount" name="iWHTAmount" id="txtWHTAmount">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModal" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Reject</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="@Url.Action("WithPOReturn", "PaymentRequest", new { area = "FA" })" class="form-horizontal" method="post">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <input type="hidden" id="hfReturnID" name="iWithPOID" />
+                        <textarea id="txteturnReason" name="iReturnReason" class="form-control" placeholder="Return Reason" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-secondary">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

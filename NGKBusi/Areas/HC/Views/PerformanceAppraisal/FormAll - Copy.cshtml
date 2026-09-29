@@ -1,0 +1,1141 @@
+﻿@using Microsoft.AspNet.Identity;
+@using System.Security.Claims;
+@using NGKBusi.Models;
+@using NGKBusi.Areas.HC.Models;
+@using NGKBusi.Areas.HC.Controllers;
+@{
+    /**/
+
+    ViewBag.Title = "Performance Appraisal - Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var PA = ViewContext.Controller as PerformanceAppraisalController;
+    PerformanceAppraisalConnection dbPA = new PerformanceAppraisalConnection();
+
+    var currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = currUser.GetUserId();
+    var currUserName = currUser.FindFirstValue("fullName");
+    var currUserDept = currUser.FindFirstValue("DeptName");
+    var currUserSect = currUser.FindFirstValue("SectName");
+    var currUserPost = currUser.FindFirstValue("PostName").Replace(" [ACTING]", "").Replace(" (ACTING)", "");
+    var currFormNIK = Request["NIK"];
+    var currFormPeriodFY = Request["PeriodFY"];
+    var currFormGUID = Request["guid"];
+    var PADataList = ViewBag.DataList;
+    var PAMemberList = ViewBag.MemberList;
+    var currData = dbPA.HC_Performance_Appraisal
+                .Include("EmployeeBy")
+                .Include("DirectBy")
+                .Include("IndirectBy")
+                .Where(w => w.GUID == currFormGUID).FirstOrDefault();
+    var currPercent = ViewBag.Percentage;
+    var currDataEmployee = currData?.PostName;
+    var direct = dbPA.HC_Performance_Appraisal_Positioning.Where(w => w.Employee == currDataEmployee && w.Direct == currUserPost).ToList();
+    var inDirect = dbPA.HC_Performance_Appraisal_Positioning.Where(w => w.Employee == currDataEmployee && w.InDirect == currUserPost).ToList();
+
+    var isInDirect = inDirect.Count() > 0 && currData?.Approval == 1 && currData?.Approval_Sub == 2 ? true : false;
+    var isDirect = direct.Count() > 0 && currData?.Approval == 1 && currData?.Approval_Sub == 1 ? true : false;
+    var isEmployee = Request["AddNew"] != null || (currData?.NIK == currUserID && currData?.Approval <= 1 && currData?.Approval_Sub == 0) ? true : false;
+    //var isShowScore = ((direct.Count() > 0 || inDirect.Count() > 0) && currData?.NIK != currUserID) || currData?.IsReleased == true ? true : false;
+    var isShowScore = true;
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+
+        .tblPAForm tbody tr .tdPointsTitle {
+            vertical-align: middle;
+        }
+
+            .tblPAForm tbody tr .tdPointsTitle h3 {
+                writing-mode: vertical-rl;
+                transform: rotate(-180deg);
+            }
+
+        .tblPAForm .tdScore, .tblParticipation td, .tblPANotes td {
+            position: relative;
+        }
+
+            .tblPAForm td input, .tblPANotes td textarea {
+                position: absolute;
+                display: block;
+                top: 0;
+                left: 0;
+                margin: 0;
+                height: 100%;
+                width: 100%;
+                border: none;
+                padding: 10px;
+                box-sizing: border-box;
+            }
+
+        .tblPAForm tbody ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            white-space: nowrap;
+        }
+
+        .tblCriteria tr td {
+            padding: 5px;
+        }
+
+        .tblParticipation {
+            font-size: 0.7em;
+        }
+
+        .divSelfScore label {
+            display: flex;
+            cursor: pointer;
+            font-weight: 500;
+            /*position: relative;*/
+            overflow: hidden;
+            margin-bottom: 0.375em;
+            /* Accessible outline */
+            /* Remove comment to use */
+            /*
+          &:focus-within {
+                  outline: .125em solid $primary-color;
+          }
+        */
+        }
+
+            .divSelfScore label input {
+                display: none;
+            }
+
+                .divSelfScore label input:checked + span {
+                    background-color: #d6d6e5;
+                }
+
+                    .divSelfScore label input:checked + span:before {
+                        box-shadow: inset 0 0 0 0.4375em #00005c;
+                    }
+
+            .divSelfScore label span {
+                display: flex;
+                align-items: center;
+                padding: 0.375em 0.75em 0.375em 0.375em;
+                border-radius: 99em;
+                transition: 0.25s ease;
+            }
+
+                .divSelfScore label span:hover {
+                    background-color: #d6d6e5;
+                }
+
+                .divSelfScore label span:before {
+                    display: flex;
+                    flex-shrink: 0;
+                    content: "";
+                    background-color: #fff;
+                    width: 1.5em;
+                    height: 1.5em;
+                    border-radius: 50%;
+                    margin-right: 0.375em;
+                    transition: 0.25s ease;
+                    box-shadow: inset 0 0 0 0.125em #00005c;
+                }
+
+        .tdScoreAchievement {
+            font-size: 2em;
+        }
+
+        .tdScoreGrandTotal, .tdSubTotalScore, .tdTotalScore {
+            font-size: 1.2em;
+        }
+
+        .select2-container--default .select2-results__option[aria-disabled=true] {
+            display: none;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".divSelfScore input").click(function () {
+                if ($(this).is('[readonly]')) {
+                    return false;
+                }
+            });
+            $(".tdScore input,.tblParticipation input").focus(function () { $(this).select(); });
+            $(".tdScore input").keyup(function () {
+                PAScore($(this));
+            });
+            $(".tdScore input").change(function () {
+                PAScore($(this));
+            });
+            $(".tdScore input").each(function () {
+                PAScore($(this));
+            });
+            PAParticipation();
+            $(".txtScoreParticipation").keyup(function () {
+                PAParticipation();
+            });
+            $(".txtScoreParticipation").change(function () {
+                PAParticipation();
+            });
+            function PAParticipation() {
+                var scoreParticipationTotal = 0;
+                $(".txtScoreParticipation").each(function () {
+                    scoreParticipationTotal += parseInt($(this).val());
+                });
+
+                var scoreParticipation = 1;
+                switch (true) {
+                    case (scoreParticipationTotal >= 50):
+                        scoreParticipation = 5;
+                        break;
+                    case (scoreParticipationTotal >= 40):
+                        scoreParticipation = 4;
+                        break;
+                    case (scoreParticipationTotal >= 30):
+                        scoreParticipation = 3;
+                        break;
+                    case (scoreParticipationTotal >= 15):
+                        scoreParticipation = 2;
+                        break;
+                    default:
+                        scoreParticipation = 1;
+                        break;
+                }
+                $("input[name='iSelfScoreParticipation'][value='" + scoreParticipation + "']").prop("checked", true);
+            }
+
+            function PAScore(ctr) {
+                var currScore = ctr.val();
+                var currTD = ctr.parent();
+                var currPercentage = currTD.data("percentage");
+                var tdSubTotal = $(".tblPAForm").find("." + currTD.data("scoresub"));
+                var tdTotal = $(".tblPAForm").find("." + currTD.data("scoretotal"));
+                var tdGrandTotal = $(".tblPAForm").find(".tdScoreGrandTotal");
+                var tdAchievement = $(".tblPAForm").find(".tdScoreAchievement");
+                var currTotal = 0;
+                var currGrandTotal = 0;
+
+                tdSubTotal.text((currScore * currPercentage).toFixed(2));
+                $(".tblPAForm ." + currTD.data("scoresubgroup")).each(function () {
+                    currTotal += parseFloat($(this).text());
+                });
+                tdTotal.text(currTotal.toFixed(2));
+                $(".tblPAForm .tdTotalScore").each(function () {
+                    currGrandTotal += parseFloat($(this).text());
+                });
+                tdGrandTotal.text(currGrandTotal.toFixed(2));
+                tdAchievement.text(PAAchievement(currGrandTotal.toFixed(2)));
+                if ($("#hfIsWarning").val() == "1") {
+                    tdAchievement.text("D");
+                } else if ($("#hfIsWarning").val() == "2" || $("#hfIsWarning").val() == "3") {
+                    tdAchievement.text("E");
+                }
+            }
+
+            function PAAchievement(currScore) {
+                var PA = "E";
+                switch (true) {
+                    case (currScore >= 4.6):
+                        PA = "A";
+                        break;
+                    case (currScore >= 4.1):
+                        PA = "B";
+                        break;
+                    case (currScore >= 2.55):
+                        PA = "C";
+                        break;
+                    case (currScore >= 1.5):
+                        PA = "D";
+                        break;
+                    default:
+                        PA = "E";
+                        break;
+                }
+                return PA;
+            };
+            $(".btnPASubmitTrigger").click(function () {
+                $(".btnPANote").click();
+            });
+            $("#selPAPeriod").change(function () {
+                if ($(this).val() != "") {
+                    $(".btnPAPeriod").click();
+                }
+            });
+            $(".formPA").submit(function () {
+                $(this).append($(".txtPANote"));
+            });
+            $(".formPANote").submit(function () {
+                if ($(this).valid()) {
+                    $(".btnPASubmit").click();
+                }
+                return false;
+            });
+            $(".txtPANote,.divSelfScore input, .divSelfScore textarea,.tdScore input").change(function () {
+                $(".btnPASign").hide();
+            });
+
+            $(".btnPASignDisabled").click(function () {
+                alert("Please save the data first to sign this document.");
+
+                return false;
+            });
+
+
+
+            $(".tblPAFormList").tablesorter({
+                theme: "bootstrap",
+
+                widthFixed: true,
+
+                // widget code contained in the jquery.tablesorter.widgets.js file
+                // use the zebra stripe widget if you plan on hiding any rows (filter widget)
+                // the uitheme widget is NOT REQUIRED!
+                widgets: ["filter", "columns", "stickyHeaders"],
+
+                widgetOptions: {
+                    //filter_excludeFilter: {
+                    //    // zero-based column index
+                    //    7: 'range',
+                    //    8: 'range',
+                    //    10: 'range'
+                    //},
+                    // class names added to columns when sorted
+                    columns: ["primary", "secondary", "tertiary"],
+
+                    // extra css class name (string or array) added to the filter element (input or select)
+                    filter_cssFilter: [
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control',
+                        'form-control'
+                    ], filter_defaultFilter: {
+                        // "{query} - a single or double quote signals an exact filter search
+                        3: '"{q}',
+                        4: '"{q}',
+                        5: '"{q}'
+                    }
+
+                }
+            }).tablesorterPager({
+                cssGoto: '.pagenum',
+                container: $(".ts-pager"),
+                output: '{startRow} to {endRow} ({totalRows})',
+                size: 'all'
+            });
+            $(".iWarning").tooltip();
+        });
+    </script>
+}
+<form action="@Url.Action("FormAll", "PerformanceAppraisal", new { area = "HC" })" method="post">
+    <select id="selPAPeriod" class="form-control" name="iPAPeriod">
+        <option value="">-Period-</option>
+        @for (var i = 2023; i <= (DateTime.Now.Month < 3 ? DateTime.Now.Year - 1 : DateTime.Now.Year); i++)
+        {
+            <option value="@(i)" @("FY1" + (i).ToString().Substring(2, 2) == ViewBag.Period ? "selected" : "")>@("FY1" + (i).ToString().Substring(2, 2))</option>
+        }
+    </select>
+    <button type="submit" class="btnPAPeriod d-none">Submit</button>
+</form>
+@if (currFormGUID == null && Request["addNew"] == null)
+{
+    <h2>Performance Appraisal @ViewBag.Period</h2>
+    <hr />
+    <table class="table table-bordered table-striped tblPAFormList">
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>NIK</th>
+                <th>Name</th>
+                <th class="filter-select" data-placeholder="Select">Department</th>
+                <th class="filter-select" data-placeholder="Select">Section</th>
+                <th class="filter-select" data-placeholder="Select">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var data in PADataList)
+            {
+                <tr>
+                    <td>@data.Period_FY</td>
+                    <td>
+                        <a href="@Url.Action("FormAll", "PerformanceAppraisal", new { area = "HC",GUID = data.GUID })">
+                            @data.NIK
+                        </a>
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    <td><span class="badge badge-@(PA.ApprovalStatus(data.Approval,data.Approval_Sub).Badge)">@(PA.ApprovalStatus(data.Approval, data.Approval_Sub).Stat)</span></td>
+                </tr>
+            }
+            @foreach (var data in PAMemberList)
+            {
+                <tr>
+                    <td>@ViewBag.Period</td>
+                    <td>
+                        @if (data.NIK == currUserID)
+                        {
+                            <a href="@Url.Action("FormAll", "PerformanceAppraisal", new { area = "HC", addNew = "addNew" })">
+                                @data.NIK
+                            </a>
+                        }
+                        else
+                        {
+                            @data.NIK
+                        }
+                    </td>
+                    <td>@data.Name</td>
+                    <td>@data.DeptName</td>
+                    <td>@data.SectionName</td>
+                    <td><span class="badge badge-danger">Not-Submitted</span></td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="6" class="ts-pager">
+                    <div class="form-inline">
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary first" title="first">⇤</button>
+                            <button type="button" class="btn btn-secondary prev" title="previous">←</button>
+                        </div>
+                        <span class="pagedisplay"></span>
+                        <div class="btn-group btn-group-sm mx-1" role="group">
+                            <button type="button" class="btn btn-secondary next" title="next">→</button>
+                            <button type="button" class="btn btn-secondary last" title="last">⇥</button>
+                        </div>
+                        <select class="form-control-sm custom-select px-1 pagesize" title="Select page size">
+                            <option selected="selected" value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="all">All Rows</option>
+                        </select>
+                        <select class="form-control-sm custom-select px-4 mx-1 pagenum" title="Select page number"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+}
+else
+{
+    <a href="@Url.Action("FormAll", "PerformanceAppraisal", new { area = "HC"})" class="btn btn-success d-inline-block mt-2">Back to List</a>
+    <button id="btnPrintForm" type="button" class="btn btn-info mt-2">Print</button>
+    <input type="hidden" id="hfIsWarning" name="iIsWarning" value="@(currData.IsWarning)" />
+    <hr />
+    <div class="card border-secondary shadow-sm">
+        <div class="card-body">
+            <table id="tblHeader" border="1" style="width:100%;">
+                <tr>
+                    <td rowspan="4" class="text-center" style="width:235px">
+                        <img src="~/Images/ngk-logo.png" class="img-fluid p-3" />
+                    </td>
+                    <td rowspan="4" class="text-center"><h3>FORMULIR</h3><h3>PENILAIAN KINERJA</h3></td>
+                    <td style="width:150px">No. Dok</td>
+                    <td style="width:150px">PK-HRD-ALL-01/F1</td>
+                </tr>
+                <tr>
+                    <td>Revisi</td>
+                    <td>06</td>
+                </tr>
+                <tr>
+                    <td>Tanggal</td>
+                    <td>
+                        08 February 2023
+                    </td>
+                </tr>
+                <tr>
+                    <td>Halaman</td>
+                    <td>1/1</td>
+                </tr>
+            </table>
+            <form class="formPA" action="@Url.Action((currData == null ? "PAAdd" : "PAEdit"), "PerformanceAppraisal", new { area = "HC" })" method="post">
+                <div class="container-fluid">
+                    <div class="row p-3">
+                        <div class="col-6">
+                            <div class="form-group row">
+                                <label for="colFormLabelSm" class="col-sm-4 text-right font-weight-bold">Nama/NIK :</label>
+                                <div class="col-sm-8">
+                                    @((currData?.NIK ?? currUserID) + " | " + (currData?.Name ?? currUserName))
+                                    <input type="hidden" id="hfPAID" name="iPAID" value="@(currData?.ID ?? 0)">
+                                    <input type="hidden" id="hfPANIK" name="iPANIK" value="@(currData?.NIK ?? currUserID)">
+                                    <input type="hidden" id="hfPAName" name="iPAName" value="@(currData?.Name ?? currUserName)">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="colFormLabelSm" class="col-sm-4 text-right font-weight-bold">Periode :</label>
+                                <div class="col-sm-8">
+                                    @(currData?.Period_FY ?? "FY1" + (DateTime.Now.Month > 4 ? DateTime.Now.AddYears(-1).ToString("yy") : DateTime.Now.ToString("yy")))
+                                    <input type="hidden" id="hfPAPeriodFY" name="iPAPeriodFY" value="@(currData?.Period_FY ?? "FY1" + (DateTime.Now.Month > 4 ? DateTime.Now.AddYears(-1).ToString("yy") : DateTime.Now.ToString("yy")))">
+                                    <input type="hidden" id="hfPAPeriodYear" name="iPAPeriodYear" value="@(currData?.Period_Year ?? (DateTime.Now.Month > 4 ? DateTime.Now.AddYears(-1).Year : DateTime.Now.Year))">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-group row">
+                                <label for="colFormLabelSm" class="col-sm-4 text-right font-weight-bold">Department :</label>
+                                <div class="col-sm-8">
+                                    @(currData?.DeptName ?? currUserDept)
+                                    <input type="hidden" id="hfPADept" name="iPADept" value="@(currData?.DeptName ?? currUserDept)">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="colFormLabelSm" class="col-sm-4 text-right font-weight-bold">Bagian :</label>
+                                <div class="col-sm-8">
+                                    @(currData?.SectionName ?? currUserSect)
+                                    <input type="hidden" id="hfPASect" name="iPASect" value="@(currData?.SectionName ?? (currUserSect == "" ? "-" : currUserSect))">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row p-3">
+                        Lakukan penilaian terhadap objek sesuai aktual prestasi kerja karyawan di lapangan selama masa penilaian.<br />
+                        ** Pilihlah angka yang dianggap sesuai dengan hasil penilaian
+                    </div>
+                    <div class="row">
+                        <table class="table table-bordered tblPAForm">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th class="text-center">Points</th>
+                                    <th class="text-center">Kriteria</th>
+                                    <th class="text-center">Range</th>
+                                    <th class="text-center">Penilaian</th>
+                                    <th class="text-center">Kriteria Penilaian</th>
+                                    <th class="text-center">Penilaian Sendiri<br />(lembaran yg diisi oleh Karyawan)</th>
+                                    @if (isShowScore)
+                                    {
+                                        <th class="text-center">Atasan</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @*Kinerja=============================================================================================================*@
+                                <tr>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="tdPointsTitle table-warning">
+                                        <h3>KINERJA (@((currPercent.Performance_KPI * 100).ToString("G29"))%)</h3>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <h6>
+                                            KPI<br />
+                                            @((currPercent.Performance_KPI * 100).ToString("G29"))%
+                                        </h6>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <ul>
+                                            <li>5</li>
+                                            <li>4 - 4,9</li>
+                                            <li>3 - 3,9</li>
+                                            <li>2 - 2,9</li>
+                                            <li>1 - 1,9</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-left">
+                                        <ul>
+                                            <li>Pencapaian KPI ≥ 96 %</li>
+                                            <li>Pencapaian KPI 86 % - 95 %</li>
+                                            <li>Pencapaian KPI 76 % - 85 %</li>
+                                            <li>Pencapaian KPI 66 % - 75 %</li>
+                                            <li>Pencapaian KPI 56 % - 65%</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "")>
+                                        <p>
+                                            Hasil Prestasi pada tahun berjalan dibandingkan dengan target yang sudah ditentukan sebelumnya, dan mempertimbangkan prestasi kerja di luar tanggung jawabnya.
+                                        </p>
+                                        <br />
+                                        <label class="font-weight-bold">Kriteria Pengukuran</label>
+                                        <ol style="list-style-type:upper-alpha;">
+                                            <li>
+                                                Production : Key Performance Indicators (KPI)
+                                            </li>
+                                            <li>Non Production : Key Performance Indicators (KPI)</li>
+                                            <li>Administration : Key Performance Indicators (KPI)</li>
+                                        </ol>
+                                        <p>
+                                            Berlaku angka desimal untuk perhitungan nilai Range pada Kinerja dengan ketentuan sebagaiamana disebutkan dalam PK-HRD-ALL-01
+                                        </p>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <div class="divSelfScore">
+                                            <label>
+                                                <input type="radio" name="iSelfScoreKPI" value="1" @(isEmployee ? "required" : "readonly") @(currData?.Performance_KPI_Self == 1 ? "checked" : (currData == null ? "checked" : "")) />
+                                                <span>1</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreKPI" value="2" @(isEmployee ? "required" : "readonly") @(currData?.Performance_KPI_Self == 2 ? "checked" : "") />
+                                                <span>2</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreKPI" value="3" @(isEmployee ? "required" : "readonly") @(currData?.Performance_KPI_Self == 3 ? "checked" : "") />
+                                                <span>3</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreKPI" value="4" @(isEmployee ? "required" : "readonly") @(currData?.Performance_KPI_Self == 4 ? "checked" : "") />
+                                                <span>4</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreKPI" value="5" @(isEmployee ? "required" : "readonly") @(currData?.Performance_KPI_Self == 5 ? "checked" : "") />
+                                                <span>5</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    @if (isShowScore)
+                                    {
+                                        <td class="tdScore text-center" data-scoresubgroup="tdSubTotalScorePerformance" data-scoresub="tdSubTotalScoreKPI" data-scoretotal="tdTotalScorePerformance" data-percentage="@(currPercent.Performance_KPI)">
+                                            <input type="number" name="iScoreKPI" value="@(currData?.Performance_KPI ?? 0)" placeholder="0" autocomplete="off" min="0" max="5" step=".1" readonly />
+                                        </td>
+                                    }
+                                </tr>
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <th class="tdSubTotalScore tdSubTotalScoreKPI tdSubTotalScorePerformance text-center align-middle table-secondary" style="height:100px;">
+                                            0.0
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5"></td>
+                                        <th class="table-secondary">Kinerja :</th>
+                                        <th class="tdTotalScore tdTotalScorePerformance text-center align-middle table-secondary">0.0</th>
+                                    </tr>
+                                }
+                                @*Integritas=============================================================================================================*@
+                                <tr>
+                                    <td rowspan="@(isShowScore?"4":"2")" class="tdPointsTitle table-info">
+                                        <h3>INTEGRITAS (@(((currPercent.Integrity_Participation * 100) + (currPercent.Integrity_Discipline * 100)).ToString("G29"))%)</h3>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <h6>
+                                            Kedisiplinan<br />
+                                            @((currPercent.Integrity_Discipline * 100).ToString("G29"))%
+                                        </h6>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <ul>
+                                            <li>5</li>
+                                            <li>4</li>
+                                            <li>3</li>
+                                            <li>2</li>
+                                            <li>1</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-left">
+                                        <ul>
+                                            <li>Nilai Kedisiplinan  = 91% - 100%</li>
+                                            <li>Nilai Kedisiplinan = 81% - 90%</li>
+                                            <li>Nilai Kedisiplinan= 71% - 80%</li>
+                                            <li>Nilai Kedisiplinan = 51% - 70%</li>
+                                            <li>Nilai Kedisiplinan= ≤ 50%</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "")>
+                                        <label class="font-weight-bold">Kedisiplinan diukur dari (akumulasi untuk setiap kasusnya)</label>
+                                        <ol style="list-style-type:upper-alpha;">
+                                            <li>Kecelakaan</li>
+                                            <li>Surat Teguran</li>
+                                            <li>Laporan Ketidak Hadiran: Alpha / Tidak Hadir</li>
+                                            <li>Temuan Ketidak Disiplinan (Patrol Kedisplinan & HSE)</li>
+                                            <li>Terlambat</li>
+                                        </ol>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <div class="divSelfScore">
+                                            <label>
+                                                <input type="radio" name="iSelfScoreDiscipline" value="1" @(isEmployee ? "required" : "readonly") @(currData?.Integrity_Discipline_Self == 1 ? "checked" : (currData == null ? "checked" : "")) />
+                                                <span>1</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreDiscipline" value="2" @(isEmployee ? "required" : "readonly") @(currData?.Integrity_Discipline_Self == 2 ? "checked" : "") />
+                                                <span>2</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreDiscipline" value="3" @(isEmployee ? "required" : "readonly") @(currData?.Integrity_Discipline_Self == 3 ? "checked" : "") />
+                                                <span>3</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreDiscipline" value="4" @(isEmployee ? "required" : "readonly") @(currData?.Integrity_Discipline_Self == 4 ? "checked" : "") />
+                                                <span>4</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreDiscipline" value="5" @(isEmployee ? "required" : "readonly") @(currData?.Integrity_Discipline_Self == 5 ? "checked" : "") />
+                                                <span>5</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    @if (isShowScore)
+                                    {
+                                        <td class="tdScore text-center" data-scoresubgroup="tdSubTotalScoreIntegrity" data-scoresub="tdSubTotalScoreDiscipline" data-scoretotal="tdTotalScoreIntegrity" data-percentage="@(currPercent.Integrity_Discipline)">
+                                            <input type="number" name="iScoreDiscipline" value="@(currData?.Integrity_Discipline ?? 0)" placeholder="0" autocomplete="off" min="0" max="5" readonly />
+                                        </td>
+                                    }
+                                </tr>
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <th class="tdSubTotalScore tdSubTotalScoreIntegrity tdSubTotalScoreDiscipline text-center align-middle table-secondary" style="height:100px;">
+                                            0.0
+                                        </th>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <h6>
+                                            Partisipasi dalam Kegiatan Perusahaan<br />
+                                            @((currPercent.Integrity_Participation * 100).ToString("G29"))%
+                                        </h6>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <ul>
+                                            <li>5</li>
+                                            <li>4</li>
+                                            <li>3</li>
+                                            <li>2</li>
+                                            <li>1</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-left">
+                                        <ul>
+                                            <li>Nilai Partisipasi ≥ 50</li>
+                                            <li>Nilai Partisipasi 40 - 45</li>
+                                            <li>Nilai Partisipasi 30 - 35</li>
+                                            <li>Nilai Partisipasi 15 - 25</li>
+                                            <li>Nilai Partisipasi 0 - 10</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "")>
+                                        <p>Diukur berdasarkan partisipasi aktif dalam mendukung kegiatan perusahaan baik sebagai peserta ataupun panitia pelaksana</p>
+                                        @{
+                                            var scoreComitte = currData?.Integrity_Participation_Comittee?.Split(',');
+                                            var scoreParticipant = currData?.Integrity_Participation_Participant?.Split(',');
+                                        }
+                                        <table class="table table-bordered tblParticipation">
+                                            <thead class="table-light">
+                                                <tr><th>No.</th><th>Panitia(OC)</th><th>Score</th><th>Partisipasi</th><th>Score</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td>1</td><td>TPM</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[0] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td><td>AKK-TPM</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[0] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>2</td><td>5S</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[1] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td><td>Quality/Slogan Contest</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[1] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>3</td><td>Kaizen</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[2] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td><td>Trainer</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[2] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>4</td><td>K3</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[3] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td><td>Kaizen-QCC</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[3] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>5</td><td>CSR</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[4] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td><td>Kaizen-Idea</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[4] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>6</td><td>Panitia Lainnya</td><td><input type="number" name="iScoreComittee[]" class="txtScoreParticipation" value="@(scoreComitte != null ? scoreComitte[5] : "0")" placeholder="0" autocomplete="off" @(isEmployee ? "required" : "readonly") /></td><td>Quatro</td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[5] : "0")" placeholder="0" autocomplete="off" min="0" max="10" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                                <tr><td>7</td><td></td><td></td><td>Kegiatan Eksternal yang mewakili Perusahaan </td><td><input type="number" name="iScoreParticipant[]" class="txtScoreParticipation" value="@(scoreParticipant != null ? scoreParticipant[6] : "0")" placeholder="0" autocomplete="off" @(isEmployee ? "required" : "readonly") /></td></tr>
+                                            </tbody>
+                                        </table>
+                                        <textarea class="form-control" rows="5" placeholder="Remark" name="iRemarkIntegrity" @(isEmployee ? "" : "readonly")>@(currData?.Integrity_Participation_Remark)</textarea>
+                                        <label class="font-weight-bold">Note :</label>
+                                        <ol style="list-style-type:upper-alpha;">
+                                            <li>
+                                                <ul>
+                                                    <li>Partisipasi (Peserta) :	Peserta aktif = 5</li>
+                                                    <li>OC (Panitia Pelaksana) : Panitia Aktif= 10</li>
+                                                    <li>Komite/Pengurus : Panitia Aktif= 10</li>
+                                                </ul>
+                                            </li>
+                                            <li>Dibutuhkan konfirmasi panitia untuk setiap kegiatan</li>
+                                            <li>Kegiatan tersebut bukan merupakan kewajiban bagi karyawan tersebut</li>
+                                            <li>
+                                                Apabila ada kegiatan lain yang membawa nama perusahaan namun
+                                                bukan bagian dari kewajiban dapat ditambahan pada kolom remark
+                                            </li>
+
+
+                                        </ol>
+
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <div class="divSelfScore">
+                                            <label>
+                                                <input type="radio" name="iSelfScoreParticipation" value="1" @(isEmployee ? "required" : "readonly") onclick="return false;" @(currData?.Integrity_Participation_Self == 1 ? "checked" : (currData == null ? "checked" : "")) />
+                                                <span>1</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreParticipation" value="2" @(isEmployee ? "required" : "readonly") onclick="return false;" @(currData?.Integrity_Participation_Self == 2 ? "checked" : "") />
+                                                <span>2</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreParticipation" value="3" @(isEmployee ? "required" : "readonly") onclick="return false;" @(currData?.Integrity_Participation_Self == 3 ? "checked" : "") />
+                                                <span>3</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreParticipation" value="4" @(isEmployee ? "required" : "readonly") onclick="return false;" @(currData?.Integrity_Participation_Self == 4 ? "checked" : "") />
+                                                <span>4</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreParticipation" value="5" @(isEmployee ? "required" : "readonly") onclick="return false;" @(currData?.Integrity_Participation_Self == 5 ? "checked" : "") />
+                                                <span>5</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    @if (isShowScore)
+                                    {
+                                        <td class="tdScore text-center" data-scoresubgroup="tdSubTotalScoreIntegrity" data-scoresub="tdSubTotalScoreParticipation" data-scoretotal="tdTotalScoreIntegrity" data-percentage="@(currPercent.Integrity_Participation)">
+                                            <input type="number" name="iScoreParticipation" value="@(currData?.Integrity_Participation ?? 0)" placeholder="0" autocomplete="off" min="0" max="5" readonly />
+                                        </td>
+                                    }
+                                </tr>
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <th class="tdSubTotalScore tdSubTotalScoreIntegrity tdSubTotalScoreParticipation text-center align-middle table-secondary" style="height:100px;">
+                                            0.0
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5"></td>
+                                        <th class="table-secondary">Integritas :</th>
+                                        <th class="tdTotalScore tdTotalScoreIntegrity text-center align-middle table-secondary">0.0</th>
+                                    </tr>
+                                }
+                                @*Kompetensi=============================================================================================================*@
+                                <tr>
+                                    <td rowspan="@(isShowScore?"4":"2")" class="tdPointsTitle table-primary">
+                                        <h3>KOMPETENSI (@(((currPercent.Competency_Skill * 100) + (currPercent.Competency_Behaviour * 100)).ToString("G29"))%)</h3>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <h6>
+                                            Knowledge and Technical Skill Competency<br />
+                                            @((currPercent.Competency_Skill * 100).ToString("G29"))%
+                                        </h6>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <ul>
+                                            <li>5</li>
+                                            <li>4</li>
+                                            <li>3</li>
+                                            <li>2</li>
+                                            <li>1</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-left">
+                                        <ul>
+                                            <li>Competency Result = A</li>
+                                            <li>Competency Result = B</li>
+                                            <li>Competency Result = C</li>
+                                            <li>Competency Result = D</li>
+                                            <li>Competency Result = E</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "")>
+                                        <p>Hasil Penilaian Kompetensi Pengetahuan dan Keterampilan teknis berdasarkan nilai yang tertera pada form Hasil Kompetensi/ Competency Result yang diisi oleh atasan masing-masing berdasarkan hasil tes yang dilaksanakan oleh atasan dan/atau HRD</p>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <div class="divSelfScore">
+                                            <label>
+                                                <input type="radio" name="iSelfScoreSkill" value="1" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Skill_Self == 1 ? "checked" : (currData == null ? "checked" : "")) />
+                                                <span>1</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreSkill" value="2" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Skill_Self == 2 ? "checked" : "") />
+                                                <span>2</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreSkill" value="3" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Skill_Self == 3 ? "checked" : "") />
+                                                <span>3</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreSkill" value="4" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Skill_Self == 4 ? "checked" : "") />
+                                                <span>4</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreSkill" value="5" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Skill_Self == 5 ? "checked" : "") />
+                                                <span>5</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    @if (isShowScore)
+                                    {
+                                        <td class="tdScore text-center" data-scoresubgroup="tdSubTotalScoreCompetency" data-scoresub="tdSubTotalScoreSkill" data-scoretotal="tdTotalScoreCompetency" data-percentage="@(currPercent.Competency_Skill)">
+                                            <input type="number" name="iScoreSkill" value="@(currData?.Competency_Skill ?? 0)" placeholder="0" autocomplete="off" min="0" max="5" readonly />
+                                        </td>
+                                    }
+                                </tr>
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <th class="tdSubTotalScore tdSubTotalScoreCompetency tdSubTotalScoreSkill text-center align-middle table-secondary" style="height:100px;">
+                                            0.0
+                                        </th>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <h6>
+                                            Behavioral Competency<br />
+                                            @((currPercent.Competency_Behaviour * 100).ToString("G29"))%
+                                        </h6>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <ul>
+                                            <li>5</li>
+                                            <li>4</li>
+                                            <li>3</li>
+                                            <li>2</li>
+                                            <li>1</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-left">
+                                        <ul>
+                                            <li>Competency Result = A (100%)</li>
+                                            <li>Competency Result = B (80% - 99%)</li>
+                                            <li>Competency Result = C (60% - 79%)</li>
+                                            <li>Competency Result = D (30% - 59%)</li>
+                                            <li>Competency Result = E (0% - 29%)</li>
+                                        </ul>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "")>
+                                        <p>Hasil Penilaian Kompetensi Perilaku berdasarkan nilai yang tertera pada form Hasil Kompetensi/ Competency Result yang diisi oleh atasan masing-masing berdasarkan hasil assessment yang dilaksanakan oleh atasan dan/atau HRD</p>
+                                    </td>
+                                    <td @(isShowScore ? "rowspan=2" : "") class="text-center">
+                                        <div class="divSelfScore">
+                                            <label>
+                                                <input type="radio" name="iSelfScoreBehaviour" value="1" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Behaviour_Self == 1 ? "checked" : (currData == null ? "checked" : "")) />
+                                                <span>1</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreBehaviour" value="2" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Behaviour_Self == 2 ? "checked" : "") />
+                                                <span>2</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreBehaviour" value="3" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Behaviour_Self == 3 ? "checked" : "") />
+                                                <span>3</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreBehaviour" value="4" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Behaviour_Self == 4 ? "checked" : "") />
+                                                <span>4</span>
+                                            </label>
+                                            <label>
+                                                <input type="radio" name="iSelfScoreBehaviour" value="5" @(isEmployee ? "required" : "readonly") @(currData?.Competency_Behaviour_Self == 5 ? "checked" : "") />
+                                                <span>5</span>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    @if (isShowScore)
+                                    {
+                                        <td class="tdScore text-center" data-scoresubgroup="tdSubTotalScoreCompetency" data-scoresub="tdSubTotalScoreBehaviour" data-scoretotal="tdTotalScoreCompetency" data-percentage="@(currPercent.Competency_Behaviour)">
+                                            <input type="number" name="iScoreBehaviour" value="@(currData?.Competency_Behaviour ?? 0)" placeholder="0" autocomplete="off" min="0" max="5" readonly />
+                                        </td>
+                                    }
+                                </tr>
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <th class="tdSubTotalScore tdSubTotalScoreBehaviour tdSubTotalScoreCompetency text-center align-middle table-secondary @(isShowScore ? "":"d-none")" style="height:100px;">
+                                            0.0
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="5"></td>
+                                        <th class="table-secondary">Kompetensi :</th>
+                                        <th class="tdTotalScore tdTotalScoreCompetency text-center align-middle table-secondary">0.0</th>
+                                    </tr>
+                                }
+                                @if (isShowScore)
+                                {
+                                    <tr>
+                                        <td rowspan="3" colspan="5" class="p-3">
+                                            <label class="font-weight-bold">Kriteria Nilai</label>
+                                            <table class="table table-bordered tblCriteria" style="font-size:.65em;width:175px;">
+                                                <thead>
+                                                    <tr class="table-light">
+                                                        <th>POINT</th>
+                                                        <th>SCORE</th>
+                                                        <th>RANGE</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>A</td>
+                                                        <td>4.6 - 5.0</td>
+                                                        <td>< 0.4 ></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>B</td>
+                                                        <td>4.1 - 4.55</td>
+                                                        <td>< 0.5 ></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>C</td>
+                                                        <td>2.55 - 4.05</td>
+                                                        <td>< 1,5 ></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>D</td>
+                                                        <td>1.50- 2.50</td>
+                                                        <td>< 1 ></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td>E</td>
+                                                        <td>0 - 1.45</td>
+                                                        <td>< 1,5 ></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            <p>
+                                                * Bagi karyawan yang mendapatkan Surat Peringatan I, Capaian Penilaian Kinerja Karyawan maksimal "D"<br />
+                                                * Bagi karyawan yang mendapatkan Surat Peringatan II & III, Capaian Penilaian Kinerja Karyawan maksimal "E"
+                                            </p>
+                                        </td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-weight-bold table-secondary text-center align-middle" style="height:75px;">GRAND TOTAL</td>
+                                        <td class="tdScoreGrandTotal font-weight-bold table-secondary text-center align-middle">0</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-weight-bold table-secondary text-center align-middle" style="height:75px;">
+                                            Pencapaian
+                                            @if (currData.IsWarning > 0)
+                                            {
+                                                <i class="fa-solid fa-circle-exclamation iWarning" style="color:red;" data-toggle="tooltip" data-placement="top" title="Terdapat Surat Peringatan (SP-@(currData.IsWarning))!"></i>
+                                            }
+                                        </td>
+                                        <td class="tdScoreAchievement font-weight-bold table-secondary text-center align-middle">E</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btnPASubmit d-none">@(currData == null ? "Submit" : "Edit")</button>
+                </div>
+            </form>
+
+            <div class="container-fluid">
+                <div class="row">
+                    <table class="table table-bordered tblPANotes">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th class="text-center align-middle" style="width:200px;">Catatan</th>
+                                <th class="text-center align-middle" style="width:400px;">
+                                    Atasan Tidak Langsung<br />
+                                    (Senior Manager/General Manager/Director)
+                                </th>
+                                <th class="text-center align-middle" style="width:400px;">
+                                    Atasan Langsung<br />
+                                    (Spv./Assistant Manager/Manager)
+                                </th>
+                                <th class="text-center align-middle" style="width:400px;">Karyawan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <form class="formPANote" action="/">
+                                <tr>
+                                    <td style="height:125px;">Kelebihan</td>
+                                    <td><textarea class="txtPANote" name="iStrenghtIndirect" placeholder="Kelebihan" @(isInDirect ? "required" : "readonly")>@(currData?.Note_Strenght_Indirect)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iStrenghtDirect" placeholder="Kelebihan" @(isDirect ? "required" : "readonly")>@(currData?.Note_Strenght_Direct)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iStrenghtSelf" placeholder="Kelebihan" @(isEmployee ? "required" : "readonly")>@(currData?.Note_Strenght_Self)</textarea></td>
+                                </tr>
+                                <tr>
+                                    <td style="height:125px;">Kekurangan</td>
+                                    <td><textarea class="txtPANote" name="iWeaknessIndirect" placeholder="Kekurangan" @(isInDirect ? "required" : "readonly")>@(currData?.Note_Weakness_Indirect)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iWeaknessDirect" placeholder="Kekurangan" @(isDirect ? "required" : "readonly")>@(currData?.Note_Weakness_Direct)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iWeaknessSelf" placeholder="Kekurangan" @(isEmployee ? "required" : "readonly")>@(currData?.Note_Weakness_Self)</textarea></td>
+                                </tr>
+                                <tr>
+                                    <td style="height:125px;">Rencana Perkembangan<br />(Periode Berikutnya)</td>
+                                    <td><textarea class="txtPANote" name="iPlanningIndirect" placeholder="Rencana Perkembangan" @(isInDirect ? "required" : "readonly")>@(currData?.Note_Planning_Indirect)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iPlanningDirect" placeholder="Rencana Perkembangan" @(isDirect ? "required" : "readonly")>@(currData?.Note_Planning_Direct)</textarea></td>
+                                    <td><textarea class="txtPANote" name="iPlanningSelf" placeholder="Rencana Perkembangan" @(isEmployee ? "required" : "readonly")>@(currData?.Note_Planning_Self)</textarea></td>
+                                </tr>
+                                <button type="submit" class="btnPANote d-none">Submit</button>
+                            </form>
+                            <tr>
+                                <td style="height:125px;">Signature</td>
+                                <td class="text-center align-middle">
+                                    @if (isInDirect && currData?.Approval_Sub == 2)
+                                    {
+                                        if (currData?.IsSaved == true)
+                                        {
+                                            <form action="@Url.Action("PASign", "PerformanceAppraisal", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iPASignMethod" value="Indirect" />
+                                                <input type="hidden" name="iPASignFormID" value="@(currData?.ID ?? 0)" />
+                                                <button type="submit" class="btn btn-success btnPASign mb-2 form-control dis" onclick="return confirm('Are you sure want to sign this data?')">Sign</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-warning btnPASignDisabled mb-2 form-control ">Sign</button>
+                                        }
+                                        <form action="@Url.Action("PAReturn", "PerformanceAppraisal", new { area = "HC" })" method="post">
+                                            <input type="hidden" name="iPASignMethod" value="Indirect" />
+                                            <input type="hidden" name="iPASignFormID" value="@(currData?.ID ?? 0)" />
+                                            <button type="submit" class="btn btn-warning btnPASign form-control" onclick="return confirm('Are you sure want to return this data?')">Return</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <label>@(currData?.IndirectBy?.Name)</label><br />
+                                        <label>@(((DateTime?)currData?.Sign_Indirect_At)?.ToString("dd/MM/yyyy"))</label>
+                                    }
+                                </td>
+                                <td class="text-center align-middle">
+                                    @if (isDirect && currData?.Approval_Sub == 1)
+                                    {
+                                        if (currData?.IsSaved == true)
+                                        {
+                                            <form action="@Url.Action("PASign", "PerformanceAppraisal", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iPASignMethod" value="Direct" />
+                                                <input type="hidden" name="iPASignFormID" value="@(currData?.ID ?? 0)" />
+                                                <button type="submit" class="btn btn-success btnPASign mb-2 form-control" onclick="return confirm('Are you sure want to sign this data?')">Sign</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-warning btnPASignDisabled mb-2 form-control">Sign</button>
+                                        }
+                                        <form action="@Url.Action("PAReturn", "PerformanceAppraisal", new { area = "HC" })" method="post">
+                                            <input type="hidden" name="iPASignMethod" value="Direct" />
+                                            <input type="hidden" name="iPASignFormID" value="@(currData?.ID ?? 0)" />
+                                            <button type="submit" class="btn btn-warning btnPASign form-control" onclick="return confirm('Are you sure want to return this data?')">Return</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <label>@(currData?.DirectBy?.Name)</label><br />
+                                        <label>@(((DateTime?)currData?.Sign_Direct_At)?.ToString("dd/MM/yyyy"))</label>
+                                    }
+                                </td>
+                                <td class="text-center align-middle">
+                                    @if (isEmployee && currData?.Approval <= 1 && currData?.Approval_Sub == 0)
+                                    {
+                                        if (currData?.IsSaved == true)
+                                        {
+                                            <form action="@Url.Action("PASign", "PerformanceAppraisal", new { area = "HC" })" method="post">
+                                                <input type="hidden" name="iPASignMethod" value="Employee" />
+                                                <input type="hidden" name="iPASignFormID" value="@(currData?.ID ?? 0)" />
+                                                <button type="submit" class="btn btn-success btnPASign mb-2 form-control" onclick="return confirm('Are you sure want to sign this data?')">Sign</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-warning btnPASignDisabled mb-2 form-control">Sign</button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <label>@(currData?.EmployeeBy?.Name)</label><br />
+                                        <label>@(((DateTime?)currData?.Sign_Employee_At)?.ToString("dd/MM/yyyy"))</label>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <p class="text-center w-100">
+                        *Sesuai dengan ketentuan yang berlaku bahwa dokumen ini telah ditandatangani secara elektronik sehingga
+                        tidak diperlukan tanda tangan basah pada dokumen ini.*
+                    </p>
+                </div>
+                @if (isEmployee || isDirect || isInDirect)
+                {
+                    <div class="row">
+                        <button type="button" class="btn btnPASubmitTrigger btn-primary form-control" onclick="return confirm('Are you sure want to save this data?')">Save</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}

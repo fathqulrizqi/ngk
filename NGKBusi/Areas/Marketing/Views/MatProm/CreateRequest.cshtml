@@ -1,0 +1,1317 @@
+@{
+    ViewBag.Title = "Request MatProm";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var currUser = ViewBag.CurrUser;
+}
+@section cssHead{
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/3.2.1/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+    <style type="text/css">
+        label {
+            font-weight: bold;
+        }
+
+        .has-error .select2-selection {
+            border-color: #dc3545 !important;
+        }
+
+        .card {
+            text-align: left;
+            box-shadow: 0 5px 10px rgba(0,0,0,.2);
+        }
+
+            .card img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+                width: 50%;
+            }
+
+            .card .card-header {
+                text-align: center;
+                color: white;
+                font-weight: bold;
+                font-size: medium;
+                box-shadow: inherit;
+            }
+
+        #txtQuantity-error {
+            font-size: 18px;
+        }
+
+        /* === BASE HEADING === */
+        h1 {
+            position: relative;
+            padding: 0;
+            margin: 0;
+            font-family: "Raleway", sans-serif;
+            font-weight: 300;
+            font-size: 40px;
+            color: #080808;
+            -webkit-transition: all 0.4s ease 0s;
+            -o-transition: all 0.4s ease 0s;
+            transition: all 0.4s ease 0s;
+        }
+
+            h1 span {
+                display: block;
+                font-size: 0.5em;
+                line-height: 1.3;
+            }
+
+            h1 em {
+                font-style: normal;
+                font-weight: 600;
+            }
+
+        /* === HEADING STYLE #3 === */
+        .three h1 {
+            font-size: 28px;
+            font-weight: 500;
+            letter-spacing: 0;
+            line-height: 1.5em;
+            padding-bottom: 15px;
+            position: relative;
+        }
+
+            .three h1:before {
+                content: "";
+                position: absolute;
+                left: 0;
+                bottom: 0;
+                height: 5px;
+                width: 55px;
+                background-color: #111;
+            }
+
+            .three h1:after {
+                content: "";
+                position: absolute;
+                left: 0;
+                bottom: 2px;
+                height: 1px;
+                width: 95%;
+                max-width: 255px;
+                background-color: #333;
+            }
+
+        /* Tab Nav */
+
+        .job-tab .nav-tabs {
+            margin-bottom: 20px;
+            margin-top: 20px;
+            border-bottom: 0;
+        }
+
+            .job-tab .nav-tabs > li {
+                float: none;
+                display: inline;
+            }
+
+            .job-tab .nav-tabs li {
+                margin-right: 15px;
+            }
+
+                .job-tab .nav-tabs li:last-child {
+                    margin-right: 0;
+                }
+
+        .job-tab .nav-tabs {
+            position: relative;
+            z-index: 1;
+            display: inline-block;
+        }
+
+            .job-tab .nav-tabs:after {
+                position: absolute;
+                content: "";
+                top: 50%;
+                left: 0;
+                width: 100%;
+                height: 1px;
+                background-color: #fff;
+                z-index: -1;
+            }
+
+            .job-tab .nav-tabs > li a {
+                display: inline-block;
+                background-color: #fff;
+                border: none;
+                border-radius: 30px;
+                font-size: 16px;
+                font-weight: bold;
+                color: #17a2b8;
+                padding: 5px 30px;
+                text-decoration: none;
+            }
+
+                .job-tab .nav-tabs > li > a.active,
+                .job-tab .nav-tabs > li a.active > :focus,
+                .job-tab .nav-tabs > li > a.active:hover,
+                .job-tab .nav-tabs > li > a:hover {
+                    border: none;
+                    background-color: #008def;
+                    color: #fff;
+                }
+
+        .checkbox {
+            padding-left: 5px;
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+            .checkbox label {
+                display: inline-block;
+                vertical-align: middle;
+                position: relative;
+                padding-left: 5px;
+            }
+
+                .checkbox label::before {
+                    content: "";
+                    display: inline-block;
+                    position: absolute;
+                    width: 17px;
+                    height: 17px;
+                    left: 0;
+                    margin-left: -20px;
+                    border: 1px solid #cccccc;
+                    border-radius: 3px;
+                    background-color: #fff;
+                    -webkit-transition: border 0.15s ease-in-out, color 0.15s ease-in-out;
+                    -o-transition: border 0.15s ease-in-out, color 0.15s ease-in-out;
+                    transition: border 0.15s ease-in-out, color 0.15s ease-in-out;
+                }
+
+                .checkbox label::after {
+                    display: inline-block;
+                    position: absolute;
+                    width: 16px;
+                    height: 16px;
+                    left: 0;
+                    top: 0;
+                    margin-left: -20px;
+                    padding-left: 3px;
+                    padding-top: 1px;
+                    font-size: 11px;
+                    color: #555555;
+                }
+
+            .checkbox input[type="checkbox"],
+            .checkbox input[type="radio"] {
+                opacity: 0;
+                z-index: 1;
+            }
+
+                .checkbox input[type="checkbox"]:focus + label::before,
+                .checkbox input[type="radio"]:focus + label::before {
+                    outline: thin dotted;
+                    outline: 5px auto -webkit-focus-ring-color;
+                    outline-offset: -2px;
+                }
+
+                .checkbox input[type="checkbox"]:checked + label::after,
+                .checkbox input[type="radio"]:checked + label::after {
+                    font-family: "FontAwesome";
+                    content: "\f00c";
+                }
+
+                .checkbox input[type="checkbox"]:disabled + label,
+                .checkbox input[type="radio"]:disabled + label {
+                    opacity: 0.65;
+                }
+
+                    .checkbox input[type="checkbox"]:disabled + label::before,
+                    .checkbox input[type="radio"]:disabled + label::before {
+                        background-color: #eeeeee;
+                        cursor: not-allowed;
+                    }
+
+            .checkbox.checkbox-circle label::before {
+                border-radius: 50%;
+            }
+
+            .checkbox.checkbox-inline {
+                margin-top: 0;
+            }
+
+        .checkbox-primary input[type="checkbox"]:checked + label::before,
+        .checkbox-primary input[type="radio"]:checked + label::before {
+            background-color: #337ab7;
+            border-color: #337ab7;
+        }
+
+        .checkbox-primary input[type="checkbox"]:checked + label::after,
+        .checkbox-primary input[type="radio"]:checked + label::after {
+            color: #fff;
+        }
+
+        .checkbox-danger input[type="checkbox"]:checked + label::before,
+        .checkbox-danger input[type="radio"]:checked + label::before {
+            background-color: #d9534f;
+            border-color: #d9534f;
+        }
+
+        .checkbox-danger input[type="checkbox"]:checked + label::after,
+        .checkbox-danger input[type="radio"]:checked + label::after {
+            color: #fff;
+        }
+
+        .checkbox-info input[type="checkbox"]:checked + label::before,
+        .checkbox-info input[type="radio"]:checked + label::before {
+            background-color: #5bc0de;
+            border-color: #5bc0de;
+        }
+
+        .checkbox-info input[type="checkbox"]:checked + label::after,
+        .checkbox-info input[type="radio"]:checked + label::after {
+            color: #fff;
+        }
+
+        .checkbox-warning input[type="checkbox"]:checked + label::before,
+        .checkbox-warning input[type="radio"]:checked + label::before {
+            background-color: #f0ad4e;
+            border-color: #f0ad4e;
+        }
+
+        .checkbox-warning input[type="checkbox"]:checked + label::after,
+        .checkbox-warning input[type="radio"]:checked + label::after {
+            color: #fff;
+        }
+
+        .checkbox-success input[type="checkbox"]:checked + label::before,
+        .checkbox-success input[type="radio"]:checked + label::before {
+            background-color: #5cb85c;
+            border-color: #5cb85c;
+        }
+
+        .checkbox-success input[type="checkbox"]:checked + label::after,
+        .checkbox-success input[type="radio"]:checked + label::after {
+            color: #fff;
+        }
+
+        .checkbox.checkbox-sm label::before {
+            width: 30px;
+            height: 30px;
+            top: -13px;
+        }
+
+        .checkbox.checkbox-sm label::after {
+            width: 30px;
+            height: 30px;
+            padding-left: 4px;
+            font-size: 20px;
+            left: 1px;
+            top: -13px;
+        }
+
+        .checkbox.checkbox-sm label {
+            padding-left: 18px;
+            top: 13px;
+        }
+
+        .checkbox.checkbox-md label::before {
+            width: 34px;
+            height: 34px;
+            top: -17px;
+        }
+
+        .checkbox.checkbox-md label::after {
+            width: 34px;
+            height: 34px;
+            padding-left: 4px;
+            font-size: 24px;
+            left: 1px;
+            top: -18px;
+        }
+
+        .checkbox.checkbox-md label {
+            padding-left: 22px;
+            top: 17px;
+        }
+
+        .checkbox.checkbox-lg label::before {
+            width: 46px;
+            height: 46px;
+            top: -28px;
+        }
+
+        .checkbox.checkbox-lg label::after {
+            width: 46px;
+            height: 46px;
+            padding-left: 4px;
+            font-size: 36px;
+            left: 1px;
+            top: -31px;
+        }
+
+        .checkbox.checkbox-lg label {
+            padding-left: 34px;
+            top: 32px;
+        }
+
+        input[type="checkbox"].styled:checked + label:after,
+        input[type="radio"].styled:checked + label:after {
+            font-family: 'FontAwesome';
+            content: "\f00c";
+        }
+
+        input[type="checkbox"] .styled:checked + label::before,
+        input[type="radio"] .styled:checked + label::before {
+            color: #fff;
+        }
+
+        input[type="checkbox"] .styled:checked + label::after,
+        input[type="radio"] .styled:checked + label::after {
+            color: #fff;
+        }
+    </style>
+}
+@section scriptHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+}
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/css/bootstrap-select.min.css">
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.13.14/dist/js/bootstrap-select.min.js"></script>
+
+<div class="row mb-3">
+    <div class="col-sm-12">
+        <a href="@Url.Action("RequestData", "MatProm" , new { area="Marketing" })" class="btn btn-outline-success" data-toggle="tooltip" title="Request List" role="button" aria-pressed="true"><i class="fa-solid fa-list fa-lg" style=""></i> Request List</a>
+    </div>
+</div>
+<div class="row">
+    <div class="col-sm-12">
+        <div class="card">
+            <div class="card-header bg-primary">Request Form</div>
+            <div class="row mr-2 ml-2 mt-2">
+                <div class="col-12">
+                    <div class="three">
+                        <h1>Request Information</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="row mr-2 ml-2">
+                <div class="col-12">
+                    <div class="tr-job-posted section-padding">
+                        <div class="job-tab">
+                            <label for="staticEmail" class="col-sm-2 col-form-label">Select Form Type</label>
+
+                            <ul class="nav nav-tabs justify-content-center" role="tablist">
+                                <li role="presentation" class="active">
+                                    <a class="active show formType" href="#distributor" aria-controls="hot-jobs" role="tab" data-toggle="tab" data-type="distributor" aria-selected="true">Distributor</a>
+                                </li>
+                                <li role="presentation"><a href="#bengkel-points" aria-controls="recent-jobs" role="tab" data-toggle="tab" data-type="bengkel-points" class="formType" aria-selected="false">Bengkel Points</a></li>
+                                <li role="presentation"><a href="#community" aria-controls="popular-jobs" role="tab" data-toggle="tab" data-type="community" class="formType" aria-selected="false">Community</a></li>
+                                <li role="presentation"><a href="#internal" aria-controls="popular-jobs" role="tab" data-toggle="tab" data-type="internal" class="formType" aria-selected="false">Internal</a></li>
+                                <li role="presentation"><a href="#sales-marketing-event" aria-controls="popular-jobs" role="tab" data-toggle="tab" data-type="SalesMarketing" class="formType" aria-selected="false">Iam & marketing support</a></li>
+                            </ul>
+                            <form name="formHeaderRequest" id="formHeaderRequest" method="post" action="@Url.Action("CreateRequest", "MatProm", new { area = "Marketing" })">
+
+                                <input type="hidden" name="userRequest" value="@(currUser.NIK)" />
+
+                                <div class="tab-content text-left">
+                                    <div role="tabpanel" class="tab-pane fade active show" id="distributor" style="width:100%">
+                                        <div class="card-body">
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label">Select Recipient</label>
+                                                <div class="col-sm-4">
+                                                    <select data-livesearch="true" name="tDistributor" data-live-search="true" data-live-search-style="startsWith" class="form-control required select-item form-control" id="selDistributor">
+                                                        <option selected></option>
+                                                        @foreach (var item in ViewBag.Address)
+                                                        {
+                                                            <option value="@(item.ID)" data-detail="@(item.AddressDetail)" data-city="@item.AddressCity" data-person="@item.AddressPerson">@(item.AddressTitle + " - " + item.AddressCode)</option>
+                                                        }
+                                                    </select>
+                                                    <div id="error" class="invalid-feedback">Please make a selection.</div>
+                                                </div>
+                                                <label for="txtUsage" class="col-sm-2 col-form-label">Usage</label>
+                                                <div class="col-sm-4">
+                                                    <input type="text" name="tUsageDistributor" class="form-control required" id="txtUsage" value="Distributor Support" readonly>
+                                                </div>
+                                            </div>
+                                            <div class="form-group row">
+                                                <label for="inputAddress" class="col-sm-2 col-form-label">Address</label>
+                                                <div class="col-sm-4">
+                                                    <span id="AddressDetail"></span><br />
+                                                    <span id="AddressCity"></span><br />
+                                                    <span id="AddressPerson"></span>
+
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div><!-- /.tab-pane -->
+                                    <div role="tabpanel" class="tab-pane fade in" id="bengkel-points">
+                                        <div class="card-body">
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label">Select Event</label>
+                                                <div class="col-sm-4">
+                                                    <select data-livesearch="true" name="tBPevent" data-live-search="true" data-live-search-style="startsWith" class="form-control required select-item form-control" id="selEvent">
+                                                        <option value="" selected></option>
+                                                        <option value="Garage Activation" data-usage="Garage Activation">Garage Activation</option>
+                                                        <option value="Redeem" data-usage="Marketing Activity">Redeem</option>
+
+                                                    </select>
+                                                    <div id="error" class="invalid-feedback">Please make a selection.</div>
+                                                </div>
+
+                                                <label for="inputPassword" class="col-sm-2 col-form-label">Usage</label>
+                                                <div class="col-sm-4">
+                                                    <input type="text" name="tUsageBP" class="form-control required" id="txtUsageBP" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.tab-pane -->
+                                    <div role="tabpanel" class="tab-pane fade in" id="community">
+
+                                        <div class="card-body">
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label">Name of Community</label>
+                                                <div class="col-sm-4">
+                                                    <!--<div id="textbox-container">-->
+                                                    <!-- Secara default ada satu textbox -->
+                                                    <!--<input class="form-control" type='text' id='textbox1' name='tCommunityName' />
+                                                    </div>-->
+                                                    <div class="inc">
+
+                                                        <div class="controls">
+                                                            <div class="row">
+                                                                <div class="col-sm-8">
+                                                                    <input type="text" class="form-control comName" name="tCommunityName[]" placeholder="community name" />
+                                                                </div>
+                                                                <div class="col-sm-4">
+                                                                    <button class="btn btn-info" type="submit" id="append" name="append">
+                                                                        Add Textbox
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <label for="txtUsage" class="col-sm-2 col-form-label">Usage</label>
+                                                <div class="col-sm-4">
+                                                    <input type="text" name="tCommunityUsage" class="form-control required" id="txtUsage" value="marketing activity" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.tab-pane -->
+                                    <div role="tabpanel" class="tab-pane fade in" id="internal">
+
+                                        <div class="card-body">
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label">Select Department</label>
+                                                <div class="col-sm-4">
+                                                    <select data-livesearch="true" name="tInternalSection" data-live-search="true" data-live-search-style="startsWith" class="form-control required select-item form-control" id="selInternalSection">
+                                                        <option selected></option>
+
+                                                        @foreach (var item in ViewBag.section)
+                                                        {
+                                                            <option value="@item.COSTNAME ">@item.COSTNAME</option>
+                                                        }
+                                                    </select>
+                                                    <div id="error" class="invalid-feedback">Please make a selection.</div>
+                                                </div>
+
+                                                <label for="txtUsage" class="col-sm-2 col-form-label">Usage</label>
+                                                <div class="col-sm-4">
+                                                    <input type="text" name="tInternalUsage" class="form-control required" id="txtUsage" value="marketing activity" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div><!-- /.tab-pane -->
+                                    <div role="tabpanel" class="tab-pane fade in" id="sales-marketing-event">
+                                        <div class="card-body">
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label">Select Event Template</label>
+                                                <div class="col-sm-4">
+                                                    <select data-livesearch="true" data-live-search="true" data-live-search-style="startsWith" name="tSMEventTemplate" class="form-control" id="selSMEventTemplate">
+                                                        <option value="0" selected></option>
+                                                        @foreach (var item in ViewBag.Template)
+                                                        {
+                                                            <option value="@item.ID">@item.TemplateName</option>
+                                                        }
+
+                                                    </select>
+
+                                                </div>
+
+                                                <label for="txtUsage" class="col-sm-2 col-form-label">Usage</label>
+                                                <div class="col-sm-4">
+                                                    <input type="text" name="tSMEventUsage" class="form-control required" id="txtUsage" value="marketing activity" readonly>
+                                                </div>
+                                            </div>
+                                            <div class="form-group row">
+                                                <label for="staticEmail" class="col-sm-2 col-form-label"></label>
+                                                <div class="col-sm-4">
+                                                    <div class="checkbox checkbox-inline checkbox-primary checkbox-sm">
+                                                        <input type="checkbox" name="chkManualEvent" class="styled" id="inlineCheckbox2sm" value="true">
+                                                        <label for="inlineCheckbox2sm"> Other Event </label>
+                                                    </div>
+
+                                                    <input type="text" class="form-control" placeholder="Type Event" name="tNameEvent" id="txtNameEvent" style="display:none" />
+                                                    <div id="error" class="invalid-feedback">Please make a selection.</div>
+
+                                                </div>
+
+                                                <label for="txtUsage" class="col-sm-2 col-form-label">Select Recipient</label>
+                                                <div class="col-sm-4">
+                                                    <select data-livesearch="true" name="tDistributorSalesMarketing" data-live-search="true" data-live-search-style="startsWith" class="form-control required select-item form-control" id="selDistributorMarketingEvent">
+                                                        <option selected></option>
+                                                        @foreach (var item in ViewBag.Address)
+                                                        {
+                                                            <option value="@(item.ID)" data-detail="@(item.AddressDetail)" data-city="@item.AddressCity" data-person="@item.AddressPerson">@(item.AddressTitle + " - " + item.AddressCode)</option>
+                                                        }
+                                                    </select>
+                                                </div>
+
+                                            </div>
+                                            <div class="form-group row">
+                                                <label for="inputAddress" class="col-sm-2 col-form-label"></label>
+                                                <div class="col-sm-4">
+
+                                                </div>
+                                                <label for="inputAddress" class="col-sm-2 col-form-label">Address</label>
+                                                <div class="col-sm-4">
+                                                    <span id="AddressDetailMarketingEvent"></span><br />
+                                                    <span id="AddressCityMarketingEvent"></span><br />
+                                                    <span id="AddressPersonMarketingEvent"></span>
+
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.tab-pane -->
+                                </div>
+                            </form>
+                        </div><!-- /.job-tab -->
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+        <div class="card mt-2">
+            <div class="row mr-2 ml-2 mt-2">
+                <div class="col-12">
+                    <div class="three">
+                        <h1>Item Request</h1>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+
+                    <form action="@Url.Action("AddRequestList", "MatProm", new { area = "Marketing" })" id="formRequestList" name="formAddItem">
+
+                        <input type="hidden" name="userRequest" value="@(currUser.NIK)" />
+                        <input type="hidden" name="formType" id="txtFormType" />
+                        <input type="hidden" name="TemplateID" id="frmHdrTemplateID" value="0" /> <!-- used for add request list -->
+                        @*<input type="hidden" name="TemplateID" value="0" />*@
+                        <div class="card-body ml-4 mr-4 mb-4">
+                            <div class="row p-6">
+
+                                <div class="col-12 mx-auto ">
+
+                                    <div class="form-row">
+                                        <div class="form-group col-md-2">
+                                            <label for="inputState">Select Material Promotion</label>
+                                            <select id="selItem" name="ITEMID" data-livesearch="true" data-live-search="true" data-live-search-style="startsWith" class="selectpicker select-item form-control">
+                                                <option selected>Choose...</option>
+                                                @foreach (var item in ViewBag.ProductList)
+                                                {
+                                                    <option value="@(item.ITEMID)" data-category="@(item.ProCateName)" data-section="@item.Section" data-stock="@item.Stock">@(item.ProductName + " | " + item.ITEMID)</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="form-group col-md-2">
+                                            <label for="inputCity">Product Category</label>
+                                            <input type="text" class="form-control" readonly id="CategoryInfo">
+                                        </div>
+                                        <div class="form-group col-md-2">
+                                            <label for="inputCity">Section</label>
+                                            <input type="text" class="form-control" readonly id="SectionInfo">
+                                        </div>
+                                        <div class="form-group col-md-1">
+                                            <label for="inputCity">Stock </label>
+                                            <input type="text" class="form-control" readonly id="StockInfo">
+                                        </div>
+                                        <div class="form-group col-md-1">
+                                            <label for="inputZip">Quantity</label>
+                                            <input name="quantity" type="text" class="form-control" id="txtQuantity" placeholder="Quantity">
+                                        </div>
+                                        <div class="form-group col-md-3">
+                                            <label for="inputZip">Notes</label>
+                                            <input name="Notes" type="text" class="form-control" id="txtNotes" placeholder="Notes">
+                                        </div>
+                                        <div class="form-group col-md-1">
+                                            <label for="addData">&nbsp;</label>
+                                            <input type="submit" class="form-control btn btn-primary" id="addData" value="add item">
+                                        </div>
+                                    </div>
+
+                                    <table class='table table-striped table-sm' id='TransTable'>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>ITEMID</th>
+                                                <th>Product Name</th>
+                                                <th>Qty</th>
+                                                <th>Notes</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                    </form>
+                    <div class="spinner-border" style="width: 3rem; height: 3rem; display:none" role="status">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+
+                    <div class="card-footer">
+                        <button type="button" class="btn btn-primary" id="btnSendRequest">Send Request</button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal fade bd-example-modal-lg" id="imagemodal" tabindex="-1" aria-labelledby="my-modalLabel" aria-hidden="true" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg">
+
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <img src="" id="imagepreview" style="width: 750px; height: auto">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="EditQuantityModal" class="modal fade">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" action="@Url.Action("EditQuantityItem", "MatProm", new { area = "Marketing" })" id="formUpdateQuantity" name="formUpdateQuantity">
+                        <div class="modal-header">
+                            <h4 class="modal-title">Edit Item Quantity</h4>
+                            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="ITEMID">Id</label>
+                                <input name="tEditITEMID" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="">Name</label>
+                                <input name="ProductName" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="">Available Stock</label>
+                                <input name="Stock" type="text" class="form-control" required="required" readonly />
+                            </div>
+                            <div class="form-group">
+                                <label for="txtQty">Request Quantity</label>
+                                <input name="Quantity" id="txtQty" type="text" class="form-control" required="required" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <input type="button" class="btn btn-default" data-dismiss="modal" value="Cancel" />
+                            <input type="Submit" class="btn btn-info" value="Save" id="updateQuantity" />
+                            <input type="hidden" id="id" name="ITEMID" />
+                            <!-- TemplateID for edit quantity modal -->
+                            <input type="hidden" id="TemplateID" name="TemplateID" value="0" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+
+    $('.select-item').selectpicker();
+
+    $('#multiple-select-field').select2({
+        theme: "bootstrap-5",
+        width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+        placeholder: $(this).data('placeholder'),
+        closeOnSelect: false,
+    });
+
+    var availableTags = ["Distributor Support", "Marketing Activity", "Garage Activation"];
+    //$("#txtUsage").on("focus", function () {
+    //    $(this).autocomplete("search");
+    //});
+    //$("#txtUsage").autocomplete({
+    //    source: availableTags,
+    //    minLength: 0
+    //});
+
+    /* Distributor Form */
+
+
+    /* bengkel points form */
+    $('#selEvent').change(function () {
+        usage = $(this).val();
+        if (usage == "Garage Activation") {
+            $('#txtUsageBP').val(usage);
+        } else if (usage == "Redeem") {
+            $('#txtUsageBP').val("Marketing Activity");
+        }
+    });
+
+
+
+    $(document).ready(function ()
+    {
+        var templateID;
+        // sales marketing form Checkbox change action
+        $("#inlineCheckbox2sm").change(function () {
+            if (this.checked) {
+
+                $("#selSMEventTemplate").prop("disabled", true);
+                $('#txtNameEvent').show();
+                templateID = 0;
+                $('#frmHdrTemplateID').val(templateID);
+                displayList('SalesMarketing', templateID);
+            } else {
+                $("#selSMEventTemplate").prop("disabled", false);
+                $('#txtNameEvent').hide();
+                templateID = $("#selSMEventTemplate").val();
+                $('#frmHdrTemplateID').val(templateID);
+                displayList('SalesMarketing', templateID);
+            }
+        });
+
+        $("#append").click(function (e) {
+            e.preventDefault();
+            $(".inc").append('<div class="controls" style="margin-top:10px;">\
+                <div class="row">\
+                    <div class="col-sm-8">\
+                    <input type="text" class="form-control comName" name="tCommunityName[]" placeholder="community name" />\
+                    </div>\
+                    <div class="col-sm-4">\
+                        <a href="#" class="remove_this btn btn-danger">remove</a>\
+                    </div>\
+                </div>\
+            </div>');
+            return false;
+        });
+
+        $(document).on('click', '.remove_this', function () {
+            $(this).parent().parent().remove();
+            return false;
+        });
+
+        $('#selDistributor').change(function () {
+            console.log('sel distributor');
+            var selDetail = $(this).find(':selected').data('detail');
+            var selCity = $(this).find(':selected').data('city');
+            var selPerson = $(this).find(':selected').data('person');
+
+            $('#AddressDetail').text(selDetail);
+            $('#AddressCity').text(selCity);
+            $('#AddressPerson').text(selPerson);
+
+        });
+
+        $('#selDistributorMarketingEvent').change(function () {
+            console.log('sel distributor');
+            var selDetail = $(this).find(':selected').data('detail');
+            var selCity = $(this).find(':selected').data('city');
+            var selPerson = $(this).find(':selected').data('person');
+
+            $('#AddressDetailMarketingEvent').text(selDetail);
+            $('#AddressCityMarketingEvent').text(selCity);
+            $('#AddressPersonMarketingEvent').text(selPerson);
+
+        });
+
+        $('#selSMEventTemplate').change(function () {
+            templateID = $(this).val();
+            $('#frmHdrTemplateID').val(templateID);
+            displayList('SalesMarketing', templateID);
+        })
+
+        $('#txtFormType').val("distributor");
+        displayList("distributor");
+
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            var target = $(e.target).data("type") // activated tab
+            $('#txtFormType').val(target);
+            displayList(target);
+        });
+
+        /* ----------------------------------------- ----------------------------------------------- -------------------------------------- */
+        /*item request form */
+        $('#selItem').change(function () {
+            console.log('test');
+            var selStock = $(this).find(':selected').data('stock');
+            var selCategory = $(this).find(':selected').data('category');
+            var selSection = $(this).find(':selected').data('section');
+
+            $('#txtQuantity').rules('add', {
+                max: selStock,
+                messages: {
+                    max: "Stock Available " + selStock
+                }
+            });
+
+            $('#StockInfo').val(selStock);
+            $('#CategoryInfo').val(selCategory);
+            $('#SectionInfo').val(selSection);
+
+            $('#txtQuantity').focus();
+
+        });
+
+        var formValidate =
+
+            $("form[name='formAddItem']").validate({
+
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    quantity: {
+                        required: true,
+                        min: 1
+                    },
+                    ITEMID: "required"
+                },
+                // Specify validation error messages
+                messages: {
+                    quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+                    },
+                    ITEMID: "Please select an item"
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    formType = $('#txtFormType').val();
+                    TemplateID = $('#frmHdrTemplateID').val();
+                    addList(formType, TemplateID);
+                }
+            });
+
+        $('#addData').click(function (e) {
+            //e.preventDefault();
+            formValidate.form();
+        });
+
+        function confirmDelete(Link, id, formType) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Delete This Data!",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "Yes, delete it!"
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: { itemid: id },
+                        success: function (json) {
+                            if (json.status == 1) {
+                                displayList(formType);
+                                Swal.fire("Deleted!", "Your imaginary file has been deleted.", "success");
+                            } else {
+                                Swal.fire("Deleted!", "Your imaginary file has been deleted.", "error");
+                            }
+                        },
+                        error: function () {
+                            Swal.fire("Error", "Unable to delete.", "error");
+                        }
+
+                    })
+                } else {
+                    Swal.fire("Cancelled", "Your imaginary file is safe :)", "info");
+                }
+            });
+        }
+
+        function displayList(formType, templateID = 0) {
+            $("#TransTable tbody tr").remove();
+            var urlString = "@Url.Action("RequestList", "MatProm", new { area = "Marketing" })";
+            if (formType == "SalesMarketing" && templateID != 0 ) {
+                templateID = $("#selSMEventTemplate").val();
+            }
+            $.ajax({
+                type: 'post',
+                url: urlString,
+                dataType: 'json',
+                data: { formType: formType, TemplateID : templateID },
+                beforeSend: function () {
+                    $('.spinner-border').css("display", "");
+                },
+                success: function (response) {
+                    $('.spinner-border').css("display", "none");
+                    if (response) {
+                        var len = response.length;
+                        var txt = "";
+                        if (len > 0) {
+                            var NO = 1;
+                            for (var i = 0; i < len; i++) {
+
+                                if (response[i].ITEMID) {
+                                    //var urlImage = '@Url.Content("~/Files/SCM/Sparepart/Images/")' + response[i].Image;
+                                    txt += "<tr><td>" + NO + "</td><td>" + response[i].ITEMID + "</td><td>" + response[i].ProductName + "</td><td>" + response[i].Quantity + "</td><td>" + response[i].Notes + "</td><td><a href='#EditQuantityModal' data-toggle='modal' data-id='" + response[i].ITEMID + "' data-stock='" + response[i].Stock + "' data-template='" + response[i].TemplateID + "'  title='Edit Quantity' class='btnEdit btn btn-warning'><i class='fa fa-edit'></i></a> <a href='#' data-id='" + response[i].ITEMID + "' title='delete item' class='btnDelete btn btn-danger'><i class='fa fa-trash'></i></a></td></tr>";
+                                }
+                                NO++;
+                            }
+                            if (txt != "") {
+                                $("#TransTable tbody").html(txt);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        $(document).on('click', '.btnDelete', function (e) {
+            e.preventDefault();
+            var itemid = $(this).attr("data-id");
+            var formType = $('#txtFormType').val();
+            console.log(itemid);
+            var urlString = "@Url.Action("RemoveList", "MatProm", new { area = "Marketing" })";
+            confirmDelete(urlString, itemid, formType);
+        });
+
+        $(document).on('click', '.btnEdit', function (e) {
+            e.preventDefault();
+            console.log("kesini");
+            var urlString = "@Url.Action("EditQuantityItem", "MatProm", new { area = "Marketing" })";
+            var itemid = $(this).attr("data-id");
+            var templateID = $(this).attr("data-template");
+            console.log(urlString, itemid);
+            $.ajax({
+                type: 'GET',
+                url: urlString,
+                data: { itemid: itemid, templateID : templateID },
+                success: function (response) {
+                    console.log(response);
+                    $('#EditQuantityModal input[name="tEditITEMID"]').val(response.ITEMID);
+                    $('#EditQuantityModal input[name="ProductName"]').val(response.ProductName);
+                    $('#EditQuantityModal input[name="Quantity"]').val(response.Quantity);
+                    $('#EditQuantityModal input[name="Stock"]').val(response.Stock);
+                    $('#EditQuantityModal input[name="TemplateID"]').val(response.TemplateID)
+                    var selStock = response.Stock;
+                    $('#txtQty').rules('add', {
+                        max: selStock,
+                        messages: {
+                            max: "Stock Available " + selStock
+                        }
+                    });
+                }
+            });
+
+        });
+
+        $('#updateQuantity').click(function () {
+            validateUpdateQuantity.form();
+
+        });
+
+        var validateUpdateQuantity =
+            $("form[name='formUpdateQuantity']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+                    quantity: {
+                        required: true,
+                        min: 1
+                    }
+                },
+                // Specify validation error messages
+                messages: {
+                    quantity: {
+                        required: "Please enter quantity",
+                        min: "please ente minimal 1 quantity"
+
+                    }
+                },
+                errorElement: 'span',
+                errorPlacement: function (error, element) {
+                    error.addClass('invalid-feedback');
+                    element.closest('.form-group').append(error);
+                },
+                highlight: function (element, errorClass, validClass) {
+
+                    var elem = $(element);
+                    if (elem.hasClass("select2-offscreen")) {
+                        $("#s2id_" + elem.attr("id") + " ul").addClass(errorClass);
+                    } else {
+                        $(element).addClass('is-invalid');
+                    }
+                    jQuery(element).closest('.form-group').addClass('has-error');
+                },
+                unhighlight: function (element, errorClass, validClass) {
+                    $(element).removeClass('is-invalid');
+                    jQuery(element).closest('.form-group').removeClass('has-error');
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    updateQuantity();
+                }
+            });
+
+        function updateQuantity() {
+            var formType = $('#txtFormType').val();
+            templateID = $('#frmHdrTemplateID').val();
+            $.ajax({
+                url: $('#formUpdateQuantity').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formUpdateQuantity').serialize(),
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.options.positionClass = 'toast-bottom-right';
+                        toastr.success(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                        displayList(formType, templateID);
+                    }
+                    else {
+                        toastr.error(json.msg);
+                        $('#EditQuantityModal').modal('toggle');
+                    }
+                }
+            });
+        }
+
+        function removeList(itemid) {
+            var urlString = "@Url.Action("RemoveList", "Sparepart", new { area = "SCM" })";
+            var formType = $('#txtFormType').val();
+            $.ajax({
+                url: urlString,
+                type: "POST",
+                cache: false,
+                data: { itemid: itemid },
+                dataType: 'json',
+                success: function (json) {
+                    if (json.status == 1) {
+                        toastr.success(json.msg);
+                        displayList(formType);
+                    }
+                    else {
+
+                        toastr.error(json.msg);
+                    }
+                }
+            });
+        }
+
+        function addList(formType, TemplateID) {
+            //var stock = $("#selItem").find(':selected').data('stock');
+
+            $.ajax({
+                url: $('#formRequestList').attr('action'),
+                type: "POST",
+                cache: false,
+                data: $('#formRequestList').serialize() + "&formType= " + formType,
+                dataType: 'json',
+                beforeSend: function () {
+                    $('#addData').prop('disabled', true);
+                },
+                success: function (json) {
+                    if (json.status == 1) {
+                        console.log('kesini');
+                        // $('#ResponseInput').html(json.pesan);
+
+                        toastr.options.positionClass = 'toast-bottom-center';
+
+                        $('#selItem').val("");
+                        $('#selItem').trigger('change');
+
+                        $('#addData').prop('disabled', false);
+                        displayList(formType, TemplateID);
+                        //toastr.success(json.msg);
+
+                    }
+                    else {
+                        toastr.error(json.msg);
+                        $('#item').val("");
+                        $('#item').trigger('change');
+                        $('#formRequestList')[0].reset();
+                    }
+                },
+                complete: function () {
+                    $('#addData').prop('disabled', false);
+
+                }
+            });
+        }
+
+        $(".select2").on("select2:close", function (e) {
+            $(this).valid();
+        });
+
+        $(document).on('click', '.blah', function (e) {
+            var a = $('.imageItem').data('id');
+            $('#imagepreview').attr('src', a); // here asign the image to the modal when the user click the enlarge link
+            $('#imagemodal').modal('show'); // imagemodal is the id attribute assigned to the bootstrap modal, then i use the show function
+        });
+
+        toastr.options = {
+            "closeButton": false,
+            "debug": false,
+            "newestOnTop": false,
+            "progressBar": false,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        }
+
+        $(document).on('click', '#btnSendRequest', function (e) {
+            console.log('ok');
+            var url = $('#formHeaderRequest').attr('action');
+            //var formType = $('#txtFormType').val();
+
+            //if (formType == 'distributor') {
+            //    $('#selDistributor').rules('add', {
+            //        required: true,
+            //        messages: {
+            //            required: "please select option"
+            //        }
+            //    });
+            //}
+
+            //validateRequestHeader.form();
+            ConfirmSendRequest(url);
+
+        });
+        // --------------------- request header validation --------------------------  //
+
+        var validateRequestHeader =
+            $("form[name='formHeaderRequest']").validate({
+                // Specify validation rules
+                rules: {
+                    // The key name on the left side is the name attribute
+                    // of an input field. Validation rules are defined
+                    // on the right side
+
+                },
+                // Specify validation error messages
+                messages: {
+
+                },
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+                submitHandler: function (form) {
+                    console.log('submit');
+                    var url = $('#formHeaderRequest').attr('action');
+                    ConfirmSendRequest(url);
+                }
+                // Make sure the form is submitted to the destination defined
+                // in the "action" attribute of the form when valid
+
+            });
+
+        function ConfirmSendRequest(Link) {
+            Swal.fire({
+                title: "Are you sure?",
+                text: "Send Request Data",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#0275d8",
+                confirmButtonText: "Yes, Send it!"
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    var formType = $('#txtFormType').val();
+                    if (formType == 'community') {
+                        var textBoxValues = [];
+                        $(".comName").each(function () {
+                            textBoxValues.push($(this).val());
+                        });
+                    }
+                    $.ajax({
+                        url: Link,
+                        type: "POST",
+                        cache: false,
+                        dataType: 'json',
+                        data: $('#formHeaderRequest').serialize() + '&formType=' + formType + '&txtCommunityName=' + textBoxValues,
+                        success: function (json) {
+                            if (json.status == 1) {
+
+                                Swal.fire({
+                                    title: "Success",
+                                    text: json.msg,
+                                    icon: "success"
+                                }).then(function () {
+                                    location.reload();
+                                });
+
+                            } else if (json.status == 2) {
+                                var msg = json.msg;
+                                Swal.fire("Failed!", msg, "error");
+                                displayList(formType);
+                                //$('#formHeaderRequest')[0].reset();
+
+                            } else {
+                                Swal.fire("Failed!", json.msg, "error");
+                            }
+                        },
+                        error: function () {
+                            Swal.fire("Error", "Request failed", "error");
+                        }
+
+                    })
+                } else {
+                    Swal.fire("Cancelled", "Request Not Send", "info");
+                }
+            });
+        }
+
+    });
+
+
+</script>

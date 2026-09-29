@@ -1,0 +1,536 @@
+﻿
+@{
+    ViewBag.Title = "Process Review";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    int userLevel = ViewBag.UserLevel;
+    string status = ViewBag.data.Status;
+
+    // Path Helper
+    string basePath = "~/Files/HC/LegalPermit/Review/";
+    string resPath = "~/Files/HC/LegalPermit/ReviewResult/";
+}
+
+<style>
+    .section-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-bottom: 15px;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+    }
+
+    /* CARD DOKUMEN MODERN */
+    .doc-card-modern {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s ease;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+        .doc-card-modern:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+            border-color: #00747f;
+        }
+
+    .doc-icon-box {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+
+    /* Warna Icon Box */
+    .icon-word {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .icon-pdf {
+        background: #ffebee;
+        color: #d32f2f;
+    }
+
+    .icon-img {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .icon-success {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .doc-title {
+        font-weight: 700;
+        color: #333;
+        font-size: 0.95rem;
+        margin-bottom: 5px;
+    }
+
+    .doc-subtitle {
+        font-size: 0.8rem;
+        color: #888;
+    }
+
+    .btn-download-modern {
+        position: absolute;
+        bottom: 15px;
+        right: 15px;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: #f8f9fa;
+        color: #555;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #ddd;
+        transition: all 0.2s;
+    }
+
+        .btn-download-modern:hover {
+            background: #00747f;
+            color: #fff;
+            border-color: #00747f;
+        }
+
+    /* STATUS HEADER */
+    .header-status-box {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="font-weight-bold text-dark mb-1">@ViewBag.data.ProjectName</h4>
+            <span class="text-muted"><i class="fa fa-building mr-1"></i> @ViewBag.data.CompanyName</span>
+        </div>
+        <div class="text-right">
+            <span class="badge badge-@ViewBag.BadgeColor px-3 py-2" style="font-size: 1rem;">
+                @ViewBag.DisplayStatus
+            </span>
+            <br>
+            <small class="text-muted">ID: #@ViewBag.data.ID | Date: @ViewBag.data.CreateTime.ToString("dd MMM yyyy")</small>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="section-title"><i class="fa fa-folder-open mr-2"></i> Request Documents</div>
+            <div class="row mb-4">
+
+                <div class="col-md-4 mb-3">
+                    <div class="doc-card-modern">
+                        <div class="doc-icon-box icon-word"><i class="fa fa-file-word"></i></div>
+                        <div class="doc-title text-truncate" title="@ViewBag.data.OriginalReviewDocumentName">Draft Agreement</div>
+                        <div class="doc-subtitle">Main Document</div>
+
+                        <a href="@Url.Content(basePath + ViewBag.data.ReviewDocument)" class="btn-download-modern" title="Download Draft" download>
+                            <i class="fa fa-download"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="doc-card-modern">
+                        <div class="doc-icon-box icon-pdf"><i class="fa fa-file-invoice"></i></div>
+                        <div class="doc-title text-truncate" title="@ViewBag.data.QuotationDocumentName">Quotation File</div>
+                        <div class="doc-subtitle">Supporting Doc</div>
+
+                        @if (!string.IsNullOrEmpty(ViewBag.data.QuotationDocumentName))
+                        {
+                            <a href="@Url.Content(basePath + ViewBag.data.QuotationDocumentName)" class="btn-download-modern" title="Download Quotation" target="_blank">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small font-italic mt-2 d-block">Not Available</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="doc-card-modern">
+                        <div class="doc-icon-box icon-img"><i class="fa fa-id-card"></i></div>
+                        <div class="doc-title text-truncate" title="@ViewBag.data.SignerInfoDocumentName">Signer Info</div>
+                        <div class="doc-subtitle">Identity Data</div>
+
+                        @if (!string.IsNullOrEmpty(ViewBag.data.SignerInfoDocumentName))
+                        {
+                            <a href="@Url.Content(basePath + ViewBag.data.SignerInfoDocumentName)" class="btn-download-modern" title="Download Signer Info" target="_blank">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                        }
+                        else
+                        {
+                            <span class="text-muted small font-italic mt-2 d-block">Not Available</span>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewBag.data.AfterReviewDocument))
+            {
+                <div class="section-title text-success mt-4"><i class="fa fa-check-double mr-2"></i> Review Result</div>
+                <div class="card border-success mb-4 shadow-sm" style="background: #f0fff4;">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <div class="doc-icon-box icon-success mb-0 mr-3 shadow-sm"><i class="fa fa-file-contract"></i></div>
+                            <div>
+                                <h6 class="font-weight-bold text-success mb-0">@ViewBag.data.OriginalAfterReviewDocument</h6>
+                                <small class="text-muted">Reviewed by Admin 1 &bull; Ready for Approval</small>
+                            </div>
+                        </div>
+                        <a href="@Url.Content(resPath + ViewBag.data.AfterReviewDocument)" class="btn btn-success font-weight-bold shadow-sm" download>
+                            <i class="fa fa-download mr-2"></i> Download Result
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white font-weight-bold">
+                    <i class="fa fa-comments mr-2"></i> Discussions
+                </div>
+                <div class="card-body p-0">
+                    <div id="comments-container" style="min-height:300px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm sticky-top" style="top: 20px;">
+                <div class="card-header bg-light border-bottom">
+                    <h6 class="mb-0 font-weight-bold text-dark">ACTION PANEL</h6>
+                </div>
+                <div class="card-body">
+
+                    @* --- ACTION UNTUK ADMIN LEVEL 1 (UPLOAD) --- *@
+                    @if (userLevel == 1)
+                    {
+                        if (status == "Pending" || status == "ReturnedL1")
+                        {
+                            <div class="alert alert-info small">
+                                <i class="fa fa-info-circle"></i> Silakan download dokumen asli, lakukan review, lalu upload hasil review di sini.
+                            </div>
+
+                            <form id="formReviewUpload">
+                                <div class="form-group">
+                                    <label class="font-weight-bold small text-muted">UPLOAD REVIEWED DOC (Word Only)</label>
+                                    <div class="custom-file">
+                                        <input type="file" class="custom-file-input" id="fileReview" accept=".doc, .docx">
+                                        <label class="custom-file-label" for="fileReview">Choose file...</label>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-block font-weight-bold" onclick="uploadReview()">
+                                    <i class="fa fa-upload mr-2"></i> Submit Review Result
+                                </button>
+                            </form>
+                        }
+                        else if (status == "WaitingApproval")
+                        {
+                            <div class="alert alert-warning text-center">
+                                <i class="fa fa-clock mb-2 fa-2x"></i><br>
+                                Menunggu Approval Admin Level 2.
+                            </div>
+                        }
+                        else if (status == "Approved")
+                        {
+                            <div class="alert alert-success text-center">Proses Selesai.</div>
+                        }
+                    }
+
+                    @* --- ACTION UNTUK ADMIN LEVEL 2 (APPROVE) --- *@
+                    else if (userLevel == 2)
+                    {
+                        if (status == "WaitingApproval")
+                        {
+                            <div class="alert alert-info small mb-3">
+                                <i class="fa fa-user-check"></i> Admin 1 telah mengupload hasil review. Silakan cek dokumen di sebelah kiri.
+                            </div>
+                            <button class="btn btn-success btn-block font-weight-bold mb-2" onclick="actionL2('Approve')">
+                                <i class="fa fa-check-circle mr-2"></i> APPROVE REQUEST
+                            </button>
+                            <button class="btn btn-danger btn-block font-weight-bold" onclick="actionL2('Return')">
+                                <i class="fa fa-undo mr-2"></i> RETURN TO ADMIN 1
+                            </button>
+                        }
+                        else if (status == "Pending" || status == "ReturnedL1")
+                        {
+                            <div class="alert alert-warning text-center">Menunggu Admin 1 Upload Dokumen.</div>
+                        }
+                        else if (status == "Approved")
+                        {
+                            <div class="alert alert-success text-center">Approved by You.</div>
+                        }
+                    }
+
+                    @* --- ACTION UNTUK USER CREATOR --- *@
+                    else
+                    {
+                        <div class="text-center py-4 text-muted">
+                            <i class="fa fa-shield-alt fa-3x mb-3 text-light"></i><br>
+                            Read Only Mode
+                        </div>
+                    }
+
+                    <hr>
+                    <a href="@Url.Action("ReviewAgreementRequest")" class="btn btn-outline-secondary btn-block btn-sm">Kembali ke List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/viima/jquery-comments@1.5.0/css/jquery-comments.css">
+    <script src="https://cdn.jsdelivr.net/gh/viima/jquery-comments@1.5.0/js/jquery-comments.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        var config = {
+            reviewID: @ViewBag.data.ID,
+
+        };
+
+        // 1. INIT COMMENTS
+        $(document).ready(function () {
+            var agreementId = @ViewBag.data.ID;
+
+            // URL Helper (Disimpan di variabel agar rapi)
+            var urlUpload = '@Url.Action("UploadCommentAttachment", "LegalPermit", new { area = "HC" })';
+            var urlPost   = '@Url.Action("PostComment", "LegalPermit", new { area = "HC" })?agreementId=' + agreementId + '&source=review';
+            var urlGet    = '@Url.Action("GetComments", "LegalPermit", new { area = "HC" })';
+
+            if ($('#comments-container').length === 0) return;
+
+            // --- FUNGSI SIMPAN KOMENTAR KE DB (Dipanggil setelah upload atau jika tanpa file) ---
+            function saveCommentToDB(data, validAttachments, success, error) {
+                var payload = {
+                    parent: data.parent,
+                    content: data.content,
+                    attachments: validAttachments
+                };
+
+                $.ajax({
+                    type: 'POST',
+                    url: urlPost,
+                    data: JSON.stringify(payload),
+                    contentType: 'application/json',
+                    success: function (res) {
+                        if (res.success === false) {
+                            Swal.fire('Gagal', res.message, 'error');
+                            error();
+                        } else {
+                            // ============================================================
+                            // FIX: MAPPING DATA AGAR LIBRARY TIDAK CRASH (ERROR SPLIT)
+                            // ============================================================
+
+                            // Cek apakah response memiliki attachment
+                            if (res.attachments && res.attachments.length > 0) {
+
+                                // Kita format ulang attachment di response agar punya properti 'file'
+                                res.attachments = res.attachments.map(function (att) {
+
+                                    // Fallback: Jika server mengembalikan 'url', kita copy ke 'file'
+                                    var safeUrl = att.url || att.Url || att.file_url;
+
+                                    return {
+                                        id: att.id,
+                                        name: att.name || att.Name,
+                                        mime_type: att.mime_type || att.MimeType,
+
+                                        // PROPERTI KRUSIAL YANG DIBUTUHKAN LIBRARY:
+                                        url: safeUrl,
+                                        file: safeUrl,      // <--- INI OBATNYA (Library cari ini buat split)
+                                        file_url: safeUrl   // Cadangan
+                                    };
+                                });
+                            }
+
+                            // Berikan data yang sudah "sehat" ke library
+                            success(res);
+                        }
+                    },
+                    error: function () {
+                        Swal.fire('Error', 'Gagal koneksi database.', 'error');
+                        error();
+                    }
+                });
+            }
+
+            // --- INISIALISASI ---
+            $('#comments-container').comments({
+                profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+                roundProfilePictures: true,
+                textareaRows: 2,
+                enableAttachments: true, // Wajib True
+
+                // HAPUS BAGIAN uploadAttachments DISINI (KARENA TIDAK DIPANGGIL)
+
+                // 1. GET COMMENTS
+                getComments: function(success, error) {
+                    $.ajax({
+                        type: 'GET',
+                        url: '@Url.Action("GetComments", "LegalPermit", new { area = "HC" })',
+                        data: { agreementId: agreementId, source: 'review' },
+                        success: function(ArrayComment) {
+
+                            // --- PERBAIKAN: Mapping Data Sebelum Render ---
+                            // Kita pastikan setiap attachment memiliki property 'file' dan 'file_url'
+                            // yang isinya sama dengan 'url'.
+
+                            var fixedComments = ArrayComment.map(function(comment) {
+                                // Cek jika komentar punya attachment
+                                if (comment.attachments && comment.attachments.length > 0) {
+
+                                    comment.attachments = comment.attachments.map(function(att) {
+                                        return {
+                                            id: att.id,
+                                            mime_type: att.mime_type,
+                                            name: att.name,
+
+                                            // MAGIC FIX: Isi semua kemungkinan nama property
+                                            url: att.url,
+                                            file: att.url,      // Library sering cari ini buat split extension
+                                            file_url: att.url   // Cadangan
+                                        };
+                                    });
+                                }
+                                return comment;
+                            });
+
+                            // Serahkan data yang sudah "diperbaiki" ke library
+                            success(fixedComments);
+                        },
+                        error: error
+                    });
+                },
+
+                // 2. POST COMMENT (LOGIKA UPLOAD PINDAH KESINI)
+                postComment: function(data, success, error) {
+                    console.log("► MEMPROSES KOMENTAR:", data);
+
+                    // Cek apakah ada file mentah yang perlu diupload
+                    var rawFile = null;
+                    if (data.attachments.length > 0) {
+                        // Ambil file pertama (asumsi single upload per komen)
+                        // Library menyimpan file asli di property .file
+                        rawFile = data.attachments[0].file;
+                    }
+
+                    // --- SKENARIO A: ADA FILE -> UPLOAD DULU ---
+                    if (rawFile) {
+                        console.log("► Mendeteksi File. Memulai Upload Manual...", rawFile.name);
+
+                        var formData = new FormData();
+                        formData.append("file", rawFile);
+
+                        $.ajax({
+                            url: urlUpload,
+                            type: 'POST',
+                            data: formData,
+                            contentType: false,
+                            processData: false,
+                            success: function(res) {
+                                console.log("► Upload Response:", res);
+
+                                // Tangkap URL (Case Insensitive)
+                                var finalUrl = res.url || res.Url;
+
+                                if (res.success && finalUrl) {
+                                    // BENTUK DATA ATTACHMENT YANG SUDAH JADI
+                                    var validAttachments = [{
+                                        url: finalUrl,
+                                        name: res.name || rawFile.name,
+                                        mime_type: res.mime_type || rawFile.type
+                                    }];
+
+                                    // LANJUT SIMPAN KE DB
+                                    saveCommentToDB(data, validAttachments, success, error);
+                                } else {
+                                    Swal.fire('Upload Gagal', 'Server tidak mengembalikan URL valid.', 'error');
+                                    error();
+                                }
+                            },
+                            error: function(xhr) {
+                                console.error("Upload Error:", xhr.responseText);
+                                Swal.fire('Error', 'Gagal mengupload file ke server.', 'error');
+                                error();
+                            }
+                        });
+                    }
+                    // --- SKENARIO B: TIDAK ADA FILE -> LANGSUNG SIMPAN ---
+                    else {
+                        console.log("► Tidak ada file. Langsung simpan teks.");
+                        saveCommentToDB(data, [], success, error);
+                    }
+                }
+            });
+        });
+
+        // 2. ADMIN 1 UPLOAD
+        $('#fileReview').change(function() { if(this.files[0]) $(this).next().text(this.files[0].name); });
+
+        function uploadReview() {
+            var file = $('#fileReview')[0].files[0];
+            if(!file) return Swal.fire('Error', 'Pilih file dahulu', 'error');
+
+            var fd = new FormData();
+            fd.append('id', config.reviewID);
+            fd.append('fileReview', file);
+
+            Swal.showLoading();
+            $.ajax({
+                url: '@Url.Action("UploadReviewResult")',
+                type: 'POST', data: fd, contentType: false, processData: false,
+                success: function(res) {
+                    if(res.success) Swal.fire('Success', res.message, 'success').then(() => location.reload());
+                    else Swal.fire('Error', res.message, 'error');
+                }
+            });
+        }
+
+        // 3. ADMIN 2 ACTION
+        function actionL2(type) {
+            Swal.fire({
+                title: 'Konfirmasi',
+                text: type + ' dokumen ini?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Lanjutkan'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.showLoading();
+                    $.post('@Url.Action("ActionL2")', { id: config.reviewID, type: type }, function (res) {
+                        if(res.success) Swal.fire('Success', res.message, 'success').then(() => location.reload());
+                        else Swal.fire('Error', res.message, 'error');
+                    });
+                }
+            });
+        }
+    </script>
+}

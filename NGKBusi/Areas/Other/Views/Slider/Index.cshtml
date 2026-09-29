@@ -1,0 +1,64 @@
+﻿@{
+    ViewBag.Title = "Slider";
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/Other/Sliders.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<div>
+    <button id="btnSliderUpload" class="btn btn-info" data-toggle="modal" data-target="#sliderModal">Upload</button>
+    <hr />
+    @foreach (var item in ViewBag.MainSlider)
+    {
+        <div class="divSliderImg" style="display:inline-block; margin:10px;position:relative;">
+            <img src="@(item.Path)" alt="main Slider" class="img-fluid img-thumbnail" style="height:150px;width:auto;">
+            <div style="position:absolute;top:5px;right:5px;">
+                <button data-id="@(item.ID)" data-path="@(item.Path)" data-content="@(item.Content)" data-expired="@(item.Expired_Date!=null?item.Expired_Date.ToString("dd-MM-yyyy"):"")" class="btn btn-info btn-sm btnSliderEdit"><i class="fas fa-edit"></i></button>
+                <button data-id="@(item.ID)" data-visible="@(item.Is_Visible)" class="btn btn-warning btn-sm btnSliderVisible fas @(item.Is_Visible?"fa-eye":"fa-eye-slash")"></button>
+                <button data-id="@(item.ID)" data-path="@(item.Path)" class="btn btn-danger btn-sm btnSliderDelete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="sliderModal" tabindex="-1" role="dialog" aria-labelledby="sliderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sliderModalLabel">Slider</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formSlider" action="@Url.Action("Add", "Slider", new { area = "Other" })" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="col-sm-3">Image</label>
+                        <div class="col-sm-9">
+                            <input type="file" id="fileSliderImage" name="iSliderImage" required />
+                            <input type="hidden" name="iCurrID" id="hfCurrID" value="" />
+                            <input type="hidden" name="iCurrPath" id="hfCurrPath" value="" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3">Expired Date</label>
+                        <div class="col-sm-9">
+                            <input type="text" name="iExpiredDate" id="txtExpiredDate" value="" class="form-control jqDate" placeholder="Expired Date" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-sm-3">Content (Optional)</label>
+                        <div class="col-sm-9">
+                            <textarea id="txtContent" name="iContent" class="txtTinyMCE"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

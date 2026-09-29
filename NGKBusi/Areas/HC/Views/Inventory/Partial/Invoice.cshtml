@@ -1,0 +1,630 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - KOPKAR SEJAHTERA</title>
+    <link rel="icon" type="image/jpeg" href="NGKBusi/Content/Images/koperasi-logo.jpeg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .wave {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            overflow: hidden;
+            line-height: 0;
+        }
+
+            .wave svg {
+                position: relative;
+                display: block;
+                width: calc(100% + 1.3px);
+                height: 80px;
+            }
+
+            .wave .shape-fill {
+                fill: rgba(15, 118, 110, 0.15);
+            }
+
+           @media print {
+    /* Reset untuk print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Hilangkan elemen yang tidak perlu */
+    .no-print,
+    button,
+    .btn {
+        display: none !important;
+    }
+
+    /* Pastikan layout tetap rapi */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* PENTING: Pertahankan warna background header */
+    .bg-gradient-to-r,
+    .from-teal-600,
+    .to-teal-700,
+    .kop {
+        background: linear-gradient(to right, #0d9488, #0f766e) !important;
+        color: white !important;
+    }
+
+    /* Pertahankan warna background lainnya */
+    .bg-gray-50 {
+        background-color: #f9fafb !important;
+    }
+
+    .bg-teal-50 {
+        background-color: #f0fdfa !important;
+    }
+
+    .bg-blue-50 {
+        background-color: #eff6ff !important;
+    }
+
+    .bg-orange-50 {
+        background-color: #fff7ed !important;
+    }
+
+    /* Pertahankan border */
+    .border-l-4 {
+        border-left-width: 4px !important;
+    }
+
+    .border-teal-600 {
+        border-color: #0d9488 !important;
+    }
+
+    .border-blue-400 {
+        border-color: #60a5fa !important;
+    }
+
+    /* Pertahankan rounded corners */
+    .rounded-xl {
+        border-radius: 0.75rem !important;
+    }
+
+    .rounded-lg {
+        border-radius: 0.5rem !important;
+    }
+
+    .rounded-2xl {
+        border-radius: 1rem !important;
+    }
+
+    /* Pertahankan padding dan margin */
+    .p-8 {
+        padding: 2rem !important;
+    }
+
+    .p-4 {
+        padding: 1rem !important;
+    }
+
+    .p-2 {
+        padding: 0.5rem !important;
+    }
+
+    /* Table styling */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    thead tr {
+        background: linear-gradient(to right, #0d9488, #0f766e) !important;
+        color: white !important;
+    }
+
+    thead th {
+        padding: 0.5rem !important;
+        font-weight: 600 !important;
+    }
+
+    tbody td {
+        padding: 0.5rem !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+
+    /* Hilangkan shadow untuk print */
+    .shadow,
+    .shadow-lg,
+    .shadow-xl,
+    .shadow-2xl {
+        box-shadow: none !important;
+    }
+
+    /* Pastikan text color tetap */
+    .text-white {
+        color: white !important;
+    }
+
+    .text-teal-700 {
+        color: #0f766e !important;
+    }
+
+    .text-teal-600 {
+        color: #0d9488 !important;
+    }
+
+    .text-gray-800 {
+        color: #1f2937 !important;
+    }
+
+    .text-gray-600 {
+        color: #4b5563 !important;
+    }
+
+    .text-red-600 {
+        color: #dc2626 !important;
+    }
+
+    .text-orange-500 {
+        color: #f97316 !important;
+    }
+
+    /* Page break optimization */
+    .container > div {
+        page-break-inside: avoid !important;
+    }
+
+    /* Hilangkan page margins default browser */
+    @@page {
+        margin: 0.5cm;
+    }
+ss
+
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen py-8 invoice-wrapper">
+
+    <div class="container mx-auto px-4 max-w-5xl">
+        <div class="bg-white rounded-2xl shadow-2xl overflow-hidden relative" id="invoiceContent">
+            <!-- Header Section with Gradient -->
+            <div class="kop bg-gradient-to-r from-teal-600 to-teal-700 p-8 text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+                <div class="absolute bottom-0 left-0 w-48 h-48 bg-white opacity-5 rounded-full -ml-24 -mb-24"></div>
+
+                <div class="relative z-10 flex justify-between items-start flex-wrap gap-4">
+                    <div class="flex items-center gap-4">
+                        <img class="w-20 h-20 rounded-xl bg-white p-2 shadow-lg"
+                             src="https://www.studiobelajar.com/wp-content/uploads/2017/06/lambang-koperasi1.jpeg"
+                             alt="Koperasi Logo" />
+                        <div>
+                            <h1 class="text-3xl font-bold mb-1">KOPKAR SEJAHTERA</h1>
+                            <p class="text-teal-100 text-sm">PT Niterra Mobility Indonesia</p>
+                        </div>
+                    </div>
+
+                    <div class="text-right">
+                        <h2 class="text-4xl font-bold mb-2">##Title##</h2>
+                        <div class="flex items-center justify-end mb-2 gap-2">
+                            <span id="invoiceNumber" class="text-xl max-w-sm break-words text-right leading-tight">##InvoiceNo##</span>
+                        </div>
+                        <!-- <span class="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                    <i class="fas fa-check-circle mr-1"></i>PAID
+                </span> -->
+                    </div>
+                </div>
+
+                <div class="mt-4 text-teal-50 text-sm relative z-10">
+                    <p class="flex items-center gap-2 mb-1">
+                        <i class="fas fa-map-marker-alt w-4"></i>
+                        Jl. Raya Jakarta-Bogor Km. 26,6 Ciracas, Jakarta Timur, 13740 Indonesia
+                    </p>
+                    <p class="flex items-center gap-2 mb-1">
+                        <i class="fas fa-envelope w-4"></i>
+                        kopkarngkbusi@gmail.com
+                    </p>
+                    <p class="flex items-center gap-2">
+                        <i class="fas fa-phone w-4"></i>
+                        (021) 8710-974
+                    </p>
+                </div>
+            </div>
+
+            <!-- Invoice Details -->
+            <div class="p-8">
+                <!-- Bill To & Invoice Info -->
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-xl border-l-4 border-teal-600">
+                        <h3 class="text-teal-700 font-bold text-xs uppercase tracking-wider mb-3">Billed To</h3>
+                        <h4 class="font-bold text-xs text-gray-800 mb-2">Finance & Accounting Department</h4>
+                        <p class="text-gray-600 text-xs leading-relaxed">
+                            PT Niterra Mobility Indonesia<br>
+                            Jl. Raya Jakarta-Bogor Km. 26,6 Ciracas<br>
+                            Jakarta Timur, 13740 Indonesia<br>
+                            <span class="inline-flex items-center gap-1 mt-2">
+                                <i class="fas fa-phone text-teal-600"></i> (021) 8710-974
+                            </span><br>
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <div class="flex justify-between items-center">
+                                <span class="text-teal-700 font-semibold text-xs">Invoice Date:</span>
+                                <span class="font-bold text-xs text-gray-800">##InvoiceDate##</span>
+                            </div>
+                        </div>
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <div class="flex justify-between items-center">
+                                <span class="text-teal-700 font-semibold text-xs">Due Date:</span>
+                                <span class="font-bold text-xs text-red-600">##DueDate##</span>
+                            </div>
+                        </div>
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <div class="flex justify-between items-center">
+                                <span class="text-teal-700 font-semibold text-xs">Payment Duration:</span>
+                                <span class="font-bold text-xs text-gray-800">7 Days</span>
+                            </div>
+                        </div>
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <div class="flex justify-between items-center">
+                                <span class="text-teal-700 font-semibold text-xs">Subject:</span>
+                                <span class="font-bold uppercase text-sm text-blue-500">##Subject##</span>
+                            </div>
+                        </div>
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <div class="flex justify-between items-center gap-4">
+                                <span class="text-teal-700 font-semibold text-xs whitespace-nowrap">Receive Number:</span>
+                                <span class="font-bold uppercase text-sm text-blue-500 text-right break-words max-w-[200px]">##ReceiveNumber##</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                ##SECTION_BLOCKS##
+
+
+                <!-- Summary Section -->
+                <div class="flex justify-end mb-8">
+                    <div class="w-full space-y-3">
+                        <div class="flex justify-between items-center p-2 bg-orange-50 rounded-lg">
+                            <span class="text-gray-900 font-bold text-xs">GRAND TOTAL</span>
+                            <span class="font-bold text-xl text-orange-500">Rp ##Subtotal##</span>
+                        </div>
+
+                        <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                            <span class="text-gray-600 font-medium text-xs">Total Items:</span>
+                            <span class="font-semibold text-xs text-teal-700">##TotalItems##</span>
+                        </div>
+
+                        <div class="bg-teal-50 p-2 rounded-lg no-border-print">
+                            <p class="text-xs text-gray-600 mb-1">Amount in words:</p>
+                            <p class="text-sm font-semibold text-gray-800 italic">
+                                ##AmountInWords##
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-12 mb-6">
+                    <div class="flex flex-col items-center gap-1">
+                        <p class="text-[12px] leading-[10px] font-bold text-black font-inter text-center mb-2">Prepare By:</p>
+                        <div id="prepared-stamp">
+                            <div class="flex w-[90px] h-[90px] py-[15px] flex-col items-center gap-[20px]" style="background-image: url('/NGKBusi/images/stamp.svg'); background-size: cover; background-repeat: no-repeat; background-position: center;">
+                                <p id="nameprepared" class="text-[12px] leading-[10px] font-bold text-red-500 font-inter text-center">ANGGELA</p>
+                                <p id="dateprepared" class="text-[12px] leading-[10px] font-normal text-red-500 font-inter text-center">##InvoiceDate##</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Terms & Notes -->
+                <div class="w-full mb-2 no-print">
+                    <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                        <h4 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                            <i class="fas fa-info-circle text-blue-600"></i>
+                            Notes
+                        </h4>
+                        <p class="text-sm text-gray-600">
+                            Thank you for your business! For any inquiries regarding this invoice,
+                            please contact accounting department.
+                        </p>
+                    </div>
+                </div>
+                <div class="w-full mb-2">
+                    <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
+                        <h4 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                            <i class="fas fa-shield-alt text-teal-600"></i>
+                            This is a system-generated invoice and is valid for official and administrative purposes.
+                        </h4>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="no-print flex flex-wrap gap-3 justify-end pt-6 border-t border-gray-200">
+                    <button onclick="window.print()"
+                            class="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i class="fas fa-print"></i>
+                        Print Invoice
+                    </button>
+                    <button onclick="downloadPDF()"
+                            class="flex items-center hidden gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                        <i class="fas fa-download"></i>
+                        Download PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <div class="no-print mt-8 text-center text-gray-500 text-sm">
+            <p class="mb-2">
+                <i class="fas fa-shield-alt text-teal-600"></i>
+                This is a computer-generated invoice
+            </p>
+            <p class="flex items-center justify-center gap-4 flex-wrap">
+                <span><i class="fas fa-phone text-teal-600"></i> (021) 8710-974</span>
+                <span><i class="fas fa-envelope text-teal-600"></i> kopkarngkbusi@gmail.com</span>
+            </p>
+        </div>
+    </div>
+
+    <style>
+        @@media print {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    .no-print,
+    button,
+    .btn {
+        display: none !important;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .bg-gradient-to-r,
+    .from-teal-600,
+    .to-teal-700,
+    .kop {
+        background: linear-gradient(to right, #0d9488, #0f766e) !important;
+        color: white !important;
+    }
+
+    .bg-gray-50 {
+        background-color: #f9fafb !important;
+    }
+
+    .bg-teal-50 {
+        background-color: #f0fdfa !important;
+    }
+
+    .bg-blue-50 {
+        background-color: #eff6ff !important;
+    }
+
+    .bg-orange-50 {
+        background-color: #fff7ed !important;
+    }
+
+    .border-l-4 {
+        border-left-width: 4px !important;
+    }
+
+    .border-teal-600 {
+        border-color: #0d9488 !important;
+    }
+
+    .border-blue-400 {
+        border-color: #60a5fa !important;
+    }
+
+    .rounded-xl {
+        border-radius: 0.75rem !important;
+    }
+
+    .rounded-lg {
+        border-radius: 0.5rem !important;
+    }
+
+    .rounded-2xl {
+        border-radius: 1rem !important;
+    }
+
+    .p-8 {
+        padding: 2rem !important;
+    }
+
+    .p-4 {
+        padding: 1rem !important;
+    }
+
+    .p-2 {
+        padding: 0.5rem !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    thead tr {
+        background: linear-gradient(to right, #0d9488, #0f766e) !important;
+        color: white !important;
+    }
+
+    thead th {
+        padding: 0.5rem !important;
+        font-weight: 600 !important;
+    }
+
+    tbody td {
+        padding: 0.5rem !important;
+        border-bottom: 1px solid #e5e7eb !important;
+    }
+
+    /* Hilangkan shadow untuk print */
+    .shadow,
+    .shadow-lg,
+    .shadow-xl,
+    .shadow-2xl {
+        box-shadow: none !important;
+    }
+
+    /* Pastikan text color tetap */
+    .text-white {
+        color: white !important;
+    }
+
+    .text-teal-700 {
+        color: #0f766e !important;
+    }
+
+    .text-teal-600 {
+        color: #0d9488 !important;
+    }
+
+    .text-gray-800 {
+        color: #1f2937 !important;
+    }
+
+    .text-gray-600 {
+        color: #4b5563 !important;
+    }
+
+    .text-red-600 {
+        color: #dc2626 !important;
+    }
+
+    .text-orange-500 {
+        color: #f97316 !important;
+    }
+
+    /* Page break optimization */
+    .container > div {
+        page-break-inside: avoid !important;
+    }
+
+    /* Hilangkan page margins default browser */
+    @@page {
+        margin: 0.5cm;
+    }
+}
+
+        /* Hover effects for interactive elements */
+        .hover\:scale-105:hover {
+            transform: scale(1.05);
+        }
+
+        /* Custom scrollbar for table */
+        .overflow-x-auto::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .overflow-x-auto::-webkit-scrollbar-thumb {
+            background: #0f766e;
+            border-radius: 10px;
+        }
+
+            .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+                background: #0d5f57;
+            }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            };
+
+            const observer = new IntersectionObserver(function (entries) {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.opacity = '1';
+                        entry.target.style.transform = 'translateY(0)';
+                    }
+                });
+            }, observerOptions);
+
+        });
+
+        function printInvoice() {
+            window.print();
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById("invoiceContent");
+
+            if (!element) {
+                console.error("Invoice content element not found!");
+                return;
+            }
+
+            const invoiceNumber = document.getElementById("invoiceNumber")?.innerText || "Invoice";
+
+            const opt = {
+                margin: [0.5, 0.5, 0.5, 0.5],
+
+                filename: invoiceNumber.replace(/\//g, "_") + ".pdf",
+
+                image: { type: 'jpeg', quality: 0.98 },
+
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    logging: true,
+                    allowTaint: false,
+                    ignoreElements: (element) => element.classList.contains('no-print')
+                },
+
+                jsPDF: {
+                    unit: 'in',
+                    format: 'a4',
+                    orientation: 'portrait'
+                }
+            };
+
+            html2pdf().from(element).set(opt).save();
+        }
+        function sendEmail() {
+            const subject = encodeURIComponent('Invoice #DZ0112 - KOPKAR SEJAHTERA');
+            const body = encodeURIComponent('Please find attached invoice #DZ0112.\n\nTotal Amount: Rp 819.130\nDue Date: 24 Oct, 2025\n\nThank you for your business!');
+            window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        }
+    </script>
+
+</body>
+</html>

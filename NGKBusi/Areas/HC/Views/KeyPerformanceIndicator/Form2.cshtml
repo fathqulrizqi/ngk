@@ -1,0 +1,638 @@
+﻿
+@using System.Security.Claims;
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Form";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var _currUser = ((ClaimsIdentity)User.Identity);
+    var currUserID = _currUser.GetUserId();
+    var currHeader = ViewBag.KPIHeader;
+    var currData = ViewBag.KPIData;
+    var currPerspectiveWeight = ViewBag.KPIPerspectiveWeight;
+
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="https://bossanova.uk/jspreadsheet/v4/jexcel.js"></script>
+    <script src="https://jsuites.net/v4/jsuites.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            //autosize($('textarea'));
+            $(document).on("keyup", ".tblKPIForm tbody td[data-progress='Act'] input,.tblKPIForm tbody td[data-progress='Plan'] input", function () {
+                $(this).val(accounting.formatNumber($(this).val()));
+                var perspective = $(this).closest("td").data("perspective");
+                var idx = $(this).closest("td").data("idx");
+                var mth = $(this).closest("td").data("month");
+                var calType = $(".tblKPIForm tbody .tdCalType[data-idx='" + idx + "'] .selCalType").find(":selected").val();
+                //$(this).val(accounting.formatNumber($(this).val().replace(/\D/g, '')));
+                var planVal = accounting.unformat($(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val());
+                var actVal = accounting.unformat($(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val());
+                var percentVal = calculatePercentage(planVal, actVal, calType);
+                $(".tblKPIForm tbody td[data-month='" + mth + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(accounting.formatNumber(isFinite(percentVal) && percentVal || 0) + "%");
+                var planValTotalArr = [];
+                var actValTotalArr = [];
+                var planValTotalAcu = 0;
+                var actValTotalAcu = 0;
+                var planValTotal = 0;
+                var actValTotal = 0;
+                var q = [["Apr", "May", "Jun"], ["Jul", "Aug", "Sep"], ["Oct", "Nov", "Des"], ["Jan", "Feb", "Mar"]];
+                for (var i = 0; i <= 3; i++) {
+                    var qPlanValArr = [];
+                    var qActValArr = [];
+                    var qPlanVal = 0;
+                    var qActVal = 0;
+                    var qPlanValAcu = 0;
+                    var qActValAcu = 0;
+                    var qPlanValTotal = 0;
+                    var qActValTotal = 0;
+                    var qPercentVal = [];
+                    q[i].forEach(function (e) {
+                        qPlanVal = parseInt(accounting.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0);
+                        qActVal = parseInt(accounting.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0);
+                        qPlanValAcu += qPlanVal;
+                        qActValAcu += qActVal;
+                        qPlanValArr.push(qPlanVal);
+                        qActValArr.push(qActVal);
+                        planValTotalArr.push(qPlanVal);
+                        actValTotalArr.push(qActVal);
+                        planValTotalAcu += qPlanVal;
+                        actValTotalAcu += qActVal;
+                        qPercentVal.push(parseInt(accounting.unformat($(".tblKPIForm tbody td[data-month='" + e + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val()) || 0));
+                    });
+                    qPlanValTotal = calType == "Project" ? Math.max.apply(Math, qPlanValArr) : (calType == "Demerit" ? Math.min.apply(Math, qPlanValArr) : qPlanValAcu);
+                    qActValTotal = calType == "Project" ? Math.max.apply(Math, qActValArr) : (calType == "Demerit" ? Math.min.apply(Math, qActValArr) : qActValAcu);
+
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Plan'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(accounting.formatNumber(qPlanValTotal));
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Act'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(accounting.formatNumber(qActValTotal));
+                    $(".tblKPIForm tbody td[data-month='Q" + (i + 1) + "'][data-progress='Percent'][data-perspective='" + perspective + "'][data-idx='" + idx + "'] input").val(accounting.formatNumber(calculatePercentage(qPlanValTotal, qActValTotal, calType)) + "%");
+                }
+                var currWeight = parseFloat($(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "']").attr("data-weight"));
+
+                planValTotal = calType == "Project" ? Math.max.apply(Math, planValTotalArr) : (calType == "Demerit" ? Math.min.apply(Math, planValTotalArr) : planValTotalAcu);
+                actValTotal = calType == "Project" ? Math.max.apply(Math, actValTotalArr) : (calType == "Demerit" ? Math.min.apply(Math, actValTotalArr) : actValTotalAcu);
+                var currTotal = parseFloat(calculatePercentage(planValTotal, actValTotal, calType, currWeight)).toFixed(0);
+                currTotal = currTotal > currWeight ? currWeight : currTotal;
+                $(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "'] input").val(accounting.formatNumber(currTotal) + "%");
+
+                countTotal();
+            });
+            $(".tblKPIForm tbody td[data-progress='Act'] input,.tblKPIForm tbody td[data-progress='Plan'] input").keyup();
+            $(document).on("change", ".tblKPIForm tbody .selCalType", function () {
+                var idx = $(this).closest("td").data("idx");
+                if ($(this).val() == "Demerit") {
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").val(100);
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").prop("readonly", true);
+                } else {
+                    $(".tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").prop("readonly", false);
+                }
+                $(".tblKPIForm tbody td[data-progress='Act'][data-idx='" + idx + "'] input,.tblKPIForm tbody td[data-progress='Plan'][data-idx='" + idx + "'] input").keyup();
+            });
+            $(".tblKPIForm tbody .selCalType").change();
+            $(document).on("keyup", ".tblKPIForm tbody .tdPercentage input", function () {
+                var idx = $(this).closest("td").data("idx");
+                $(".tblKPIForm tbody td.tdTotal[data-idx='" + idx + "']").attr("data-weight", accounting.formatNumber($(this).val()));
+                $(".tblKPIForm tbody td.tdNumber[data-idx='" + idx + "'][data-progress='Percent']").attr("data-weight", accounting.formatNumber($(this).val()));
+                $(".tblKPIForm tbody td[data-progress='Act'] input,.tblKPIForm tbody td[data-progress='Plan'] input").keyup();
+                countTotal();
+            });
+
+            function calculatePercentage(Plan, Actual, calType, Weight = 100) {
+                var calPercentVal = parseFloat(((Actual || 0) / (Plan || 0)) * Weight).toFixed(0);
+                if (calType == "Monthly (Lower)") {
+                    calPercentVal = Actual <= Plan ? 100 : 0;
+                    //calPercentVal = parseFloat(((Plan || 0) / (Actual || 0)) * Weight).toFixed(0);
+                } else if (calType == "Demerit") {
+                    calPercentVal = Actual;
+                }
+
+                return calPercentVal;
+            }
+
+            $(".tblKPIForm tbody td .txtKPIDataStatus").change(function () {
+                var currVal = $(this).find(":selected").val();
+                if (currVal == "Selesai") {
+                    $(this).css("background-color", "#00B050");
+                } else if (currVal == "Sedang Berjalan") {
+                    $(this).css("background-color", "#D9D9D9");
+                } else if (currVal == "Tertunda") {
+                    $(this).css("background-color", "#FFFF00");
+                } else if (currVal == "Batal") {
+                    $(this).css("background-color", "#000000");
+                }
+            });
+            $(".tblKPIForm tbody td .txtKPIDataStatus").change();
+            $(this).val(accounting.formatNumber($(this).val()));
+
+            $(".btnKPISubmit").click(function () {
+                var checkTotal = $(".tdTotalWeight").text();
+                if (checkTotal == "100%") {
+                    if (confirm('Are you sure want to save this data?')) {
+                        $(".btnKPIFormSubmit").click();
+                    }
+                } else {
+                    alert("Weight Total is Not 100%!")
+                }
+            });
+            $(".btnKPIFormSubmit").click(function () {
+                $(".tdNumber input").each(function () {
+                    $(this).val(accounting.unformat($(this).val().replace("%", "")));
+                });
+            });
+
+            $(document).on("keyup", ".tblKPIForm tbody .tdPercentage input", function (e) {
+                $(this).val($(this).val().replace("%", "") + "%");
+            });
+
+            var isAllowEdit = true;
+            $('.ulFiles').each(function () {
+                var currCTR = $(this);
+                var currHeaderID = $("#hfHeaderID").val();
+                //var currDataID = $(this).attr("data-id");
+                $.ajax({
+                    type: "POST",
+                    url: "/NGKBusi/HC/KeyPerformanceIndicator/getEvidence",
+                    data: {
+                        iHeaderID: currHeaderID
+                    },
+                    success: function (data) {
+                        var liFiles = "";
+                        currCTR.empty();
+                        $.each(data.files, function (k, v) {
+                            switch (v.ext) {
+                                case ".doc":
+                                case ".docx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-word' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".xls":
+                                case ".xlsx":
+                                case ".csv":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-excel' style='color: green; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li>";
+                                    break;
+                                case ".pdf":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-pdf' style='color: red; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".ppt":
+                                case ".pptx":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-powerpoint' style='color: chocolate; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                                case ".jpg":
+                                case ".jpeg":
+                                case ".png":
+                                case ".gif":
+                                    liFiles += "<li style = 'list-style: none; '><a href='" + window.location.origin + "/NGKbusi/files/HC/KPI/Evidence/" + currHeaderID + "/" + v.filename + "' target='_blank'><i class='fa fa-file-image' style='color: blue; '></i> " + v.filename + "</a><i data-id='" + v.id + "' class='ifileDelete " + (isAllowEdit ? "" : "d-none") + " fa fa-times ml-2'></i></li >";
+                                    break;
+                            }
+                        });
+                        currCTR.append(liFiles);
+                        if ($("li", currCTR).length < 1) {
+                            liFiles = "<li style = 'list-style: none; '>-</li>";
+                            currCTR.append(liFiles);
+                        }
+                    }, error: function () {
+                        alert("Error Occurred, Please try again !");
+                    }
+                });
+            });
+
+            $('.ulFiles').on('click', '.ifileDelete', function () {
+                var currLi = $(this).closest("li");
+                var currID = $(this).data("id");
+                if (confirm("Are you sure want to delete this file ?")) {
+                    $.ajax({
+                        type: "POST",
+                        url: "/NGKBusi/HC/KeyPerformanceIndicator/deleteEvidence",
+                        data: {
+                            iID: currID
+                        },
+                        success: function (data) {
+                            currLi.remove();
+                        }, error: function () {
+                            alert("Error Occurred, Please try again !");
+                        }
+                    });
+                }
+            });
+
+            //$.contextMenu({
+            //    selector: '.tblKPIForm tbody tr',
+            //    items: {
+            //        add: {
+            //            name: "Add",
+            //            icon: "fas fa-plus",
+            //            callback: function (key, opt) {
+            //                var currPerspective = opt.$trigger.data("perspective");
+            //                var currIdx = opt.$trigger.data("idx");
+            //                var currRowspan = parseInt($(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "'] .tdPerspective").attr("rowspan")) + 3;
+            //                $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "'] .tdPerspective").attr("rowspan", currRowspan);
+            //                var currTR = $(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "']").slice(0, 3);
+            //                var newTR = currTR.clone();
+            //                newTR.find(".tdPerspective").remove();
+            //                newTR.find("input[name='iDataID[]']").val(0);
+            //                newTR.insertAfter(".tblKPIForm tbody tr[data-perspective='" + currPerspective + "'][data-idx='" + currIdx + "']:last");
+
+            //                countTotal();
+            //            }
+            //        },
+            //        delete: {
+            //            name: "Delete",
+            //            icon: "fas fa-x",
+            //            callback: function (key, opt) {
+            //                var currPerspective = opt.$trigger.data("perspective");
+            //                var currIdx = opt.$trigger.data("idx");
+            //            }
+            //        }
+            //    }
+            //});
+
+            countTotal();
+            function countTotal() {
+                var totalWeightPercent = 0;
+                var totalScorePercent = 0;
+                $("input[name='iWeight[]']").each(function (e, v) {
+                    totalWeightPercent += parseFloat($(this).val().replace("%", ""));
+                });
+                $("input[name='iTotal[]']").each(function (e, v) {
+                    totalScorePercent += parseFloat($(this).val().replace("%", ""));
+                });
+                $(".tdTotalMonth").each(function () {
+                    var mth = $(this).data("month");
+                    var currTotalPercent = 0;
+                    $(".tdNumber[data-month='" + mth + "'][data-progress='Percent']").each(function () {
+                        var currWeight = $(this).data("weight");
+                        var currPercent = accounting.unformat($(this).find("input").val().replace("%", ""));
+                        currPercent = currPercent > 100 ? 100 : currPercent;
+
+                        var currTotal = (currPercent / 100) * currWeight;
+                        currTotal = currTotal > currWeight ? currWeight : currTotal;
+                        currTotalPercent += currTotal;
+                    });
+                    $(this).text(currTotalPercent + "%");
+                });
+
+                $(".tdTotalWeight").text(totalWeightPercent + "%");
+                $(".tdTotalScore").text(totalScorePercent + "%");
+            }
+            jspreadsheet($("#tblSpreadsheet"));
+        });
+    </script>
+}
+
+@section cssHead{
+    <link rel="stylesheet" href="https://bossanova.uk/jspreadsheet/v4/jexcel.css" type="text/css" />
+    <link rel="stylesheet" href="https://jsuites.net/v4/jsuites.css" type="text/css" />
+    <style type="text/css">
+        .tblKPIForm thead tr th, .tblKPIForm tbody tr td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblKPIForm tbody td {
+            position: relative;
+        }
+
+        .tblKPIForm tbody .tdText, .tblKPIForm tbody .tdFile {
+            text-align: left;
+            min-width: 250px;
+        }
+
+        .tblKPIForm tbody .tdNumber {
+            min-width: 100px;
+        }
+
+        .tblKPIForm tbody .tdSelect {
+            min-width: 150px;
+        }
+
+        .tblKPIForm tbody .tdNumber input:not([type='file']), .tblKPIForm tbody .tdPercentage input:not([type='file']) {
+            text-align: right;
+        }
+
+        .tblKPIForm tbody td input:not([type='file']), .tblKPIForm tbody td textarea, .tblKPIForm tbody td select {
+            position: absolute;
+            display: block;
+            top: 0;
+            left: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            border: none;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .tblKPIForm tfoot tr.trSign td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .tblKPIForm tfoot .tdTotalMonth {
+            text-align: right;
+            font-weight: bold;
+            background-color: goldenrod;
+        }
+
+        .ifileDelete {
+            cursor: pointer;
+            color: dimgrey;
+        }
+
+            .ifileDelete:hover {
+                opacity: .75;
+            }
+    </style>
+}
+
+<script>
+    jspreadsheet(document.getElementById('spreadsheet'));
+</script>
+<div id="divKPIFormWrapper">
+    <table id="tblHeader" border="1" style="width:100%;">
+        <tr>
+            <td rowspan="4" class="text-center" style="width:235px">
+                <img src="~/Images/niterra-logo.jpg" class="img-fluid p-3" />
+            </td>
+            <td rowspan="4" class="text-center"><h3>FORMULIR INTEGRASI</h3><h4>KEY PERFORMANCE INDICATOR</h4></td>
+            <td style="width:150px">No. Dok</td>
+            <td style="width:150px">PK-HRD-ALL-01/F2</td>
+        </tr>
+        <tr>
+            <td>Revisi</td>
+            <td>01</td>
+        </tr>
+        <tr>
+            <td>Tanggal</td>
+            <td>28 Juni 2023</td>
+        </tr>
+        <tr>
+            <td>Halaman</td>
+            <td>1 of 1</td>
+        </tr>
+    </table>
+    <div class="container-fluid">
+        <form action="@Url.Action("FormSubmit", "KeyPerformanceIndicator", new { area = "HC" })" method="post" enctype="multipart/form-data">
+            <div class="row p-3">
+                <div class="col-4">
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Nama: </label>
+                        <div class="col-10">
+                            <input type="hidden" id="hfHeaderID" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                            <input type="text" class="form-control" name="iName" placeholder="Nama" value="@(currHeader?.Name ?? _currUser.FindFirstValue("fullName"))" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">NIK: </label>
+                        <div class="col-10">
+                            <input type="text" class="form-control" name="iNIK" placeholder="NIK" value="@(currHeader?.NIK ?? currUserID)" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-2 text-right">Periode: </label>
+                        <div class="col-10">
+                            <select id="selKPIPeriod" class="form-control" name="iPeriodFY">
+                                @*<option value="">-Period-</option>*@
+                                @for (var i = 2023; i <= (DateTime.Now.Month < 3 ? DateTime.Now.Year - 1 : DateTime.Now.Year); i++)
+                                {
+                                    <option data-year="@(i)" value="@("FY1" + (i + 1).ToString().Substring(2, 2))" @("FY1" + (i + 1).ToString().Substring(2, 2) == ViewBag.PeriodFY ? "selected" : "")>@("FY1" + (i + 1).ToString().Substring(2, 2))</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="form-group row d-none">
+                        <label class="col-3 text-right">Position:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" name="iPosition" placeholder="Position" value="@(currHeader?.Position ?? _currUser.FindFirstValue("postName"))" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="col-3 text-right">Div/Dept./Sect.:</label>
+                        <div class="col-9">
+                            <input type="text" class="form-control" name="iDivDeptSect" placeholder="Div/Dept./Sect." value="@(currHeader?.Div_Dept_Sect ?? _currUser.FindFirstValue("deptName"))" />
+                        </div>
+                    </div>
+                    @if (currHeader != null)
+                    {
+                        <div class="form-group row">
+                            <label class="col-3 text-right">Data Pendukung:</label>
+                            <div class="col-9">
+                                <input type="file" name="iFiles" multiple="multiple" />
+                                <ul class="ulFiles pl-0">-</ul>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="col-4">
+                    <table class="table table-borderless table-sm">
+                        <tbody>
+                            <tr>
+                                <td rowspan="4" class="text-right">*)</td>
+                                <td>Selesai</td>
+                                <td style="background-color:#00B050;"></td>
+                                <td>Selesai 100% sesuai jadwal</td>
+                            </tr>
+                            <tr>
+                                <td>Sedang Berjalan</td>
+                                <td style="background-color:#D9D9D9;"></td>
+                                <td>Mencapai target (Q=25%) tetapi di bawah 100%</td>
+                            </tr>
+                            <tr>
+                                <td>Tertunda</td>
+                                <td style="background-color:#FFFF00;"></td>
+                                <td>Tidak mencapai target & tidak sesuai jadwal</td>
+                            </tr>
+                            <tr>
+                                <td>Batal</td>
+                                <td style="background-color:#000000;"></td>
+                                <td>Gagal mencapai target sepenuhnya</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </form>
+        <div style="overflow:auto;">
+            <table id="tblSpreadSheet">
+                <thead>
+                    <tr>
+                        <td colspan='4'>General</td>
+                    </tr>
+                    <tr>
+                        <td colspan='3'>Info</td>
+                        <td colspan='1'>Stats</td>
+                    </tr>
+                    <tr>
+                        <td id='pos'>POS</td>
+                        <td id='title'>TITLE</td>
+                        <td id='artist'>ARTIST</td>
+                        <td id='peak'>PEAK</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>DIVINELY UNINSPIRED TO A HELLISH EXTENT</td>
+                        <td>LEWIS CAPALDI</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>NO 6 COLLABORATIONS PROJECT</td>
+                        <td>ED SHEERAN</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>THE GREATEST SHOWMAN</td>
+                        <td>MOTION PICTURE CAST RECORDING</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>WHEN WE ALL FALL ASLEEP WHERE DO WE GO</td>
+                        <td>BILLIE EILISH</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>STAYING AT TAMARA'S</td>
+                        <td>GEORGE EZRA</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>BOHEMIAN RHAPSODY - OST</td>
+                        <td>QUEEN</td>
+                        <td>3</td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td>THANK U NEXT</td>
+                        <td>ARIANA GRANDE</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td>WHAT A TIME TO BE ALIVE</td>
+                        <td>TOM WALKER</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td>A STAR IS BORN</td>
+                        <td>MOTION PICTURE CAST RECORDING</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td>YOU'RE IN MY HEART</td>
+                        <td>ROD STEWART</td>
+                        <td>1</td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                        <td>=SUMCOL(TABLE(), 3)</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="form-group row mt-1">
+    <div class="offset-6 col col-6 text-right">
+
+        @if (currHeader?.Approval >= 14)
+        {
+            <table id="tblKPISign" class="table table-bordered">
+                <thead>
+                    <tr class="bg-info text-center">
+                        <th>Appoved By</th>
+                        <th>Checked By</th>
+                        <th>Created By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="height:125px;" class="align-middle text-center">
+                            @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 2))
+                            {
+                                if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 2))
+                                {
+                                    <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                        <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                        <input type="hidden" name="iApproval" value="@(15)" />
+                                        <input type="hidden" name="iApprovalSub" value="@(0)" />
+                                        <button type="submit" class="btn btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                }
+                            }
+                        </td>
+                        <td style="height:125px;" class="align-middle text-center">
+                            @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 1))
+                            {
+                                if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 1))
+                                {
+                                    <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                        <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                        <input type="hidden" name="iApproval" value="@(14)" />
+                                        <input type="hidden" name="iApprovalSub" value="@(2)" />
+                                        <button type="submit" class="btn btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                }
+                            }
+                        </td>
+                        <td style="height:125px;" class="align-middle text-center">
+                            @if (currHeader?.Approval > 14 || (currHeader?.Approval == 14 && currHeader?.Approval_Sub >= 0))
+                            {
+                                if ((currHeader?.Approval == 14 && currHeader?.Approval_Sub == 0))
+                                {
+                                    <form action="@Url.Action("KPISign", "KeyPerformanceIndicator", new { area = "HC" })" method="post">
+                                        <input type="hidden" name="iHeaderID" value="@(currHeader?.ID ?? 0)" />
+                                        <input type="hidden" name="iApproval" value="@(14)" />
+                                        <input type="hidden" name="iApprovalSub" value="@(1)" />
+                                        <button type="submit" class="btn btn-primary d-inline-block" name="btnType" value="Plan-Issuer-Sign" onclick="return confirm('Are you sure want to sign this data?')"><i class="fas fa-file-signature"></i></button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                }
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+<div class="form-group row">
+    <div class="col-12">
+        <button type="button" class="btn btnKPISubmit btn-primary form-control">Save</button>
+    </div>
+</div>

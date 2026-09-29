@@ -1,0 +1,104 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/dhtmlxscheduler/dhtmlxscheduler.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .dhx_scheduler_year .Event {
+            background-color: #008080 !important;
+            color: white !important;
+        }
+
+        .dhx_scheduler_year .Weekend {
+            background-color: yellow !important;
+            color: red !important;
+        }
+
+        .dhx_scheduler_year .National_Holiday {
+            background-color: red !important;
+            color: white !important;
+        }
+
+        .dhx_scheduler_year .Company_Holiday {
+            background-color: pink !important;
+            color: white !important;
+        }
+
+        .dhx_scheduler_year .Mass_Leave {
+            background-color: blue !important;
+            color: white !important;
+        }
+
+        .dhx_scheduler_year .Replacement_Day {
+            background-color: coral !important;
+            color: white !important;
+        }
+
+        .dhx_scheduler_year .Replacement_Day_Factory {
+            background-color: green !important;
+            color: white !important;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/dhtmlxscheduler/dhtmlxscheduler.js")"></script>
+    <script src="@Url.Content("~/Scripts/dhtmlxscheduler/ext/dhtmlxscheduler_year_view.js")"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            scheduler.config.readonly = $("#hfAllowedUpdate").val() == "true";
+            scheduler.config.start_on_monday = false;
+            scheduler.locale.labels.year_tab = "Year";
+            scheduler.init('scheduler_here', new Date(), "year");
+
+            scheduler.config.xml_date = "%Y-%m-%d %H:%i";
+
+            scheduler.load("Calendar/Data", "xml");
+
+            // Attach events supaya tabel ter-update saat view atau event berubah
+            scheduler.attachEvent("onViewChange", function () { updateEventTable(); return true; });
+            scheduler.attachEvent("onEventAdded", function (id) { updateEventTable(); });
+            scheduler.attachEvent("onEventChanged", function (id) { updateEventTable(); });
+            scheduler.attachEvent("onEventDeleted", function (id) { updateEventTable(); });
+
+            scheduler.config.lightbox.sections = [
+                { name: "text", map_to: "text", type: "textarea", focus: true },
+                {
+                    name: "type", type: "select", map_to: "type",
+                    options: [
+                        { key: 'Event', label: 'Event' },
+                        { key: 'Weekend', label: 'Weekend' },
+                        { key: 'National_Holiday', label: 'National Holiday' },
+                        { key: 'Company_Holiday', label: 'Company Holiday' },
+                        { key: 'Replacement_Day', label: 'Replacement Day' },
+                        { key: 'Replacement_Day_Factory', label: 'Replacement Day (Factory)' },
+                        { key: 'Mass_Leave', label: 'Mass Leave' }
+                    ]
+                },
+                { name: "time", height: 72, type: "time", map_to: "auto" }];
+            scheduler.templates.event_class = function (start, end, event) {
+                return event.type;
+            };
+            //marks dates
+            var dp = new dataProcessor("Calendar/Save");
+            dp.init(scheduler);
+            dp.setTransactionMode("POST", false);
+        });
+    </script>
+}
+<input type="hidden" id="hfAllowedUpdate" name="iAllowedUpdate" value="@(ViewBag.allowedUpdate == null ? "true" : (!ViewBag.allowedUpdate).ToString().ToLower())" />
+<div id="scheduler_here" class="dhx_cal_container" style='width:100%; height:650px; padding:10px;'>
+    <div class="dhx_cal_navline">
+        <div class="dhx_cal_prev_button">&nbsp;</div>
+        <div class="dhx_cal_next_button">&nbsp;</div>
+        <div class="dhx_cal_today_button"></div>
+        <div class="dhx_cal_date"></div>
+        <div class="dhx_cal_tab" name="month_tab" style="right:76px;"></div>
+        <div class="dhx_cal_tab" name="year_tab" style="right:280px;"></div>
+    </div>
+    <div class="dhx_cal_header"></div>
+    <div class="dhx_cal_data"></div>
+</div>

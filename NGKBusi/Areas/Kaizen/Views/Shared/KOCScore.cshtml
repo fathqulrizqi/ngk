@@ -1,0 +1,74 @@
+﻿@using NGKBusi.Models;
+
+@{
+    DefaultConnection db = new DefaultConnection();
+    Int32 i = 1;
+    string CurrentURL = Request.Url.AbsoluteUri;
+}
+<div id="KOCScoreModal" class="modal fade" role="dialog" data-allowedEdit="@(CurrentURL.Contains("KOC")?1: (CurrentURL.Contains("SC")?2:0))">
+    <div class="modal-dialog modal-lg">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">
+                    KOC Score
+                    <span id="spanKOCBy" style="display:none;">|| <label>Reviewed By :</label> <span></span></span>
+                    <span id="spanKOCReviser" style="display:none;">|| <label>Revised By :</label> <span></span></span>
+                </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formKOCScore" action="@Url.Action("Score","KOC",new { area = "Kaizen" })" class="form-horizontal" method="post" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <input type="hidden" id="hfDataID" name="iDataID" value="0" />
+                    @foreach (var item in ViewBag.KOCList)
+                    {
+                        Int32 childID = item.ID;
+                        var childRow = db.Kaizen_Score_Categories_Sub.Where(x => x.catID == childID).ToList();
+                        <div class="form-group row KOCScoreForm" data-catID="@(item.ID)">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#rbKOCScore" required>@(item.Name)</label>
+                            <div class="col-9">
+                                @foreach (var subItem in childRow)
+                                {
+                                    <div class="radio">
+                                        <label><input type="radio" required @(CurrentURL.Contains("KOC") || CurrentURL.Contains("SC") ? "" : "disabled") class="rbKOCScore" data-catID="@(item.ID)" data-subcatID="@(subItem.ID)" data-score="@(subItem.Score)" name="@("iKOCScore" + i )" value="@(subItem.ID + "||" + subItem.Score)">@(subItem.Question + " : ")<span style='font-weight:bold;'>@("(" + subItem.Score + ")")</span></label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        i++;
+                    }
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold" for="#txtKOCNote" required>Catatan & Saran Penilai : </label>
+                        <div class="col-9">
+                            <textarea id="txtKOCNote" rows="2" cols="20" name="iScoreNote" class="form-control" placeholder="Catatan & Saran Penilai"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="control-label col-3 text-right font-weight-bold" for="#txtScore" required>KOC Score : </label>
+                        <div class="col-3 text-right font-weight-bold">
+                            <input type="text" id="txtScore" name="iScore" value="0" />
+                        </div>
+                        <div class="col-6 row" id="divReward" style="display:none;">
+                            <label class="control-label col-3 text-right font-weight-bold" for="#txtReward" required>Reward : </label>
+                            <div class="col-9">
+                                <input type="text" id="txtReward" name="iReward" value="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                @if (CurrentURL.Contains("KOC") || CurrentURL.Contains("SC"))
+                {
+                    <div class="modal-footer">
+                        <button id="btnDataSubmit" type="submit" class="btn btn-default">Submit</button>
+                        <button type="reset" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                }
+            </form>
+        </div>
+    </div>
+</div>

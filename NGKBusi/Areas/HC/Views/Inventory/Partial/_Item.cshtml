@@ -1,0 +1,214 @@
+﻿
+@section cssHead {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.tailwindcss.css" />
+    <link href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6.3.7/dist/tippy.css" />
+    <link href="~/Content/bootstrap/css/bootstrap5.3.3/bootstrap.min.css" rel="stylesheet" />
+
+    <style>
+        .page-content {
+            padding-top: 0 !important;
+        }
+
+        .select2-container--default .select2-selection--single {
+            border-color: #DEE2E6 !important;
+            height: auto !important;
+        }
+
+        .select2-container--default .select2-selection--multiple {
+            min-height: 2rem;
+            border-color: #DEE2E6 !important;
+            padding: 0.25rem;
+            width: auto !important;
+            display: inline-block;
+        }
+
+        .select2-selection__rendered {
+            word-wrap: break-word !important;
+            text-overflow: inherit !important;
+            white-space: normal !important;
+        }
+
+        table.dataTable td,
+        table.dataTable th {
+            padding: 0.5rem 0.5rem !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+
+}
+
+
+@section scriptHead {
+    <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+    <script src="~/Content/bootstrap/js/bootstrap5.3.3/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.tailwindcss.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.print.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+}
+<table id="newItemTable" class="hidden w-full text-sm mt-4 border border-dashed border-gray-300 rounded-lg">
+    <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
+        <tr>
+            <th class="py-2 px-3 text-left">Category</th>
+            <th class="py-2 px-3 text-left">Subcategory</th>
+            <th class="py-2 px-3 text-left">Image</th>
+            <th class="py-2 px-3 text-left">Item Name</th>
+            <th class="py-2 px-3 text-center w-16">Qty</th>
+            <th class="py-2 px-3 text-center w-16">Unit</th>
+            <th class="py-2 px-3 text-center w-24">Price</th>
+            <th class="py-2 px-3 text-left">Location</th>
+            <th class="py-2 px-3 text-left">Ref Code</th>
+            <th class="py-2 px-3 text-center w-24">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="p-2 align-top">
+                <select id="categoryList" class="select2 w-full p-2 text-xs border border-gray-300 rounded">
+                    <option value="" selected disabled hidden>-- Select --</option>
+                    @foreach (var category in ViewBag.CategoryList)
+                    {
+                        <option value="@category.ID">@category.Category_Name</option>
+                    }
+                </select>
+            </td>
+            <td class="p-2 align-top">
+                <select id="newSubcategoryList" class="select2 w-full p-2 text-xs border border-gray-300 rounded" disabled>
+                    <option value="" selected disabled hidden>-- Select --</option>
+                </select>
+            </td>
+            <td class="p-2 align-top min-w-[180px]">
+                <div class="flex items-center gap-2 mb-2">
+                    <input type="text" class="w-full p-2 text-xs border border-gray-300 rounded" id="newImage" placeholder="Image URL">
+                    <button id="imageTooltipBtn" type="button" class="text-blue-500 hover:text-blue-700" data-bs-toggle="tooltip" title="Preview">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <label class="w-full cursor-pointer flex flex-col items-center justify-center border border-dashed border-gray-300 rounded py-2 hover:bg-blue-50 hover:border-blue-400 transition">
+                    <input type="file" accept="image/*" class="hidden" id="imageUpload">
+                    <div class="flex items-center gap-1 text-xs text-gray-500">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload
+                    </div>
+                </label>
+            </td>
+            <td class="p-2 align-top">
+                <input class="w-full p-2 text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newItem" placeholder="Item Name">
+            </td>
+            <td class="p-2 align-top">
+                <input type="number" min="1" value="1" class="w-full p-2 text-center text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newQty">
+            </td>
+            <td class="p-2 align-top">
+                <input class="w-full p-2 text-center text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newUnit" placeholder="Pcs">
+            </td>
+            <td class="p-2 align-top">
+                <input type="number" class="w-full p-2 text-right text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newPrice" placeholder="0">
+            </td>
+            <td class="p-2 align-top">
+                <input class="w-full p-2 text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newLocation" placeholder="Loc">
+            </td>
+            <td class="p-2 align-top">
+                <input class="w-full p-2 text-sm border border-gray-300 rounded outline-none focus:border-green-500" id="newRefCode" placeholder="Ref">
+            </td>
+            <td class="flex items-center justify-center gap-2 p-2 align-top h-full">
+                <button id="btnAddItem" title="Save" class="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200 transition"><i class="fa-solid fa-check"></i></button>
+                <button id="btnCancelItem" title="Cancel" class="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200 transition"><i class="fa-solid fa-xmark"></i></button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<div id="uploadXlsInput" class="hidden w-full bg-gray-100 rounded-xl p-4 border border-gray-300">
+    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/HC/Inventory/UploadPriceXls">
+        <label for="file_input" class="block text-sm font-medium text-gray-700 mb-2">
+            Upload Excel File 
+        </label>
+
+        <input id="file_input"
+               name="file"
+               type="file"
+               class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-white focus:outline-none dark:text-gray-300 dark:bg-gray-700 dark:border-gray-600">
+
+        <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Maximum file size: 5 MB
+        </p>
+
+        <button type="submit"
+                id="submitUpload"
+                class="mt-4 w-24 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+            Submit
+        </button>
+    </form>
+</div>
+
+<!-- Table list items -->
+<div class="w-full mt-2 p-2">
+    <table id="itemList" class="hover w-full text-sm border-collapse">
+        <thead class="text-xs text-gray-500 uppercase bg-gray-50">
+            <tr>
+                <th class="py-2 px-3">No</th>
+                <th class="py-2 px-3">Category</th>
+                <th class="py-2 px-3">Subcategory</th>
+                <th class="py-2 px-3">Image</th>
+                <th class="py-2 px-3">Item</th>
+                <th class="py-2 px-3">Qty</th>
+                <th class="py-2 px-3">Qty Order</th>
+                <th class="py-2 px-3">Unit</th>
+                <th class="py-2 px-3">Price</th>
+                <th class="py-2 px-3">Location</th>
+                <th class="py-2 px-3">Ref Code</th>
+                <th class="py-2 px-3">Action</th>
+            </tr>
+            <tr class="search-row caret-black">
+                <th></th>
+                <th>
+                    <select id="categoryFilter" class="select2 w-auto min-w-[8rem] border p-2 border-gray-300" multiple data-placeholder="Select category">
+                        @foreach (var category in ViewBag.CategoryList)
+                        {
+                            <option value="@category.Category_Name">@category.Category_Name</option>
+                        }
+                    </select>
+                </th>
+                <th>
+                    <select id="subcategoryFilter" class="select2 w-auto min-w-[8rem] border p-2 border-gray-300" multiple data-placeholder="Select subcategory">
+                        @foreach (var subcategory in ViewBag.SubcategoryList)
+                        {
+                            <option value="@subcategory.Subcategory_Name">@subcategory.Subcategory_Name</option>
+                        }
+                    </select>
+                </th>
+                <th>
+                    <input data-column="3" placeholder="Search Image" class="w-full p-2 border rounded caret-black">
+                </th>
+                <th><input data-column="4" placeholder="Search Item" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="5" placeholder="Search Qty" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="6" placeholder="Search Qty Order" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="7" placeholder="Search Unit" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="8" placeholder="Search Price" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="9" placeholder="Search Location" class="w-full p-2 border rounded caret-black"></th>
+                <th><input data-column="10" placeholder="Search Ref Code" class="w-full p-2 border rounded caret-black"></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+            <tr>
+                <th colspan="12" class="text-left text-xs text-gray-400 italic py-2 border-t" id="lastUpdateFooter">
+                    Last Price Update: <span>-</span>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>

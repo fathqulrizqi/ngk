@@ -1,0 +1,121 @@
+﻿@using NGKBusi.Models;
+@{
+    /**/
+
+    ViewBag.Title = "MPPStatus";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(Int32.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Year;
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/MPPStatus.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    MPP Status
+</h2>
+<form action="@Url.Action("MPPStatus", "LaborCost", new { area = "FA" })" method="post">
+    <select id="selLCMPPStatusPeriod" name="iLCMPPStatusPeriod" class="form-control" style="display:inline-block;">
+        @for (var z = beginYear; z <= endYear; z++)
+        {
+            <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+        }
+    </select>
+    <button type="submit" id="btnLCMPPStatusPeriod" style="display:none;">Submit</button>
+</form>
+<div id="tblLCMPPStatusWrapper" style="overflow-x:auto;">
+    <table id="tblLCMPPStatus" class="tablesorter">
+        <thead>
+            <tr>
+                <th class="filter-select" data-placeholder="-Section-">Section</th>
+                <th class="filter-select" data-placeholder="-Level 1-">Level 1</th>
+                <th class="filter-select" data-placeholder="-Level 2-">Level 2</th>
+                <th class="filter-select" data-placeholder="-Level 3-">Level 3</th>
+                <th class="filter-select" data-placeholder="-Level 4-">Level 4</th>
+                <th class="filter-select" data-placeholder="-Level 5-">Level 5</th>
+                <th class="filter-select" data-placeholder="-Level 6-">Level 6</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.MPPStatus)
+            {
+                string currSect = item.Section;
+                int currPeriod = item.Period;
+                var sect = db.FA_Section.Where(w => w.Section_Name == currSect && w.Period == currPeriod).FirstOrDefault();
+                var sign = sect?.sign?.Name;
+                var approval = sect?.approval?.Name;
+                var approval2 = sect?.approval2?.Name;
+                var approval3 = sect?.approval3?.Name;
+                <tr>
+                    <td class="text-nowrap">@(currSect)</td>
+                    <td class="text-center">
+                        <button class="@(item.Level_1 > 0 ? "btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(item.Level_1_User != null ? item.Level_1_User.Name:(sign != null? sign :"") )"><i class="@(item.Level_1 > 0 ? "fas fa-check":"fas fa-times")"></i></button>
+                        <span style="display:none;">@(item.Level_1 > 0 ? "Done" : "On Progress")</span>
+                    </td>
+                    <td class="text-center">
+                        @if (approval != null)
+                        {
+                            <button class="@(item.Level_2 > 0 ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_2_User != null ? item.Level_2_User.Name : (approval != null ? approval : ""))"><i class="@(item.Level_2 > 0 ? "fas fa-check" : "fas fa-times")"></i></button>
+                            <span style="display:none;">@(item.Level_2 > 0 ? "Done" : "On Progress")</span>
+                        }
+                    </td>
+                    <td class="text-center">
+                        @if (approval2 != null)
+                        {
+                            <button class="@(item.Level_3 > 0 ? "btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_3_User != null ? item.Level_3_User.Name : (approval2 != null ? approval2 : ""))"><i class="@(item.Level_3 > 0 ? "fas fa-check" : "fas fa-times")"></i></button>
+                            <span style="display:none;">@(item.Level_3 > 0 ? "Done" : "On Progress")</span>
+                        }
+                    </td>
+                    <td class="text-center">
+                        @if (approval3 != null)
+                        {
+                            <button class="@(item.Level_4 > 0 ? " btn btn-sm btn-success" : "btn btn-sm btn-danger")" title="@(item.Level_4_User != null ? item.Level_4_User.Name : (approval3 != null ? approval3 : ""))"><i class="@(item.Level_4 > 0 ? " fas fa-check" : "fas fa-times")"></i></button>
+                            <span style="display:none;">@(item.Level_4 > 0 ? "Done" : "On Progress")</span>
+                        }
+                    </td>
+                    <td class="text-center">
+                        <button class="@(item.Level_5 > 0 ? " btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(item.Level_5_User != null ? item.Level_5_User.Name:"HC Dept")"><i class="@(item.Level_5 > 0 ? " fas fa-check":"fas fa-times")"></i></button>
+                        <span style="display:none;">@(item.Level_5 > 0 ? "Done" : "On Progress")</span>
+                    </td>
+                    <td class="text-center">
+                        <button class="@(item.Level_6 > 0 ? " btn btn-sm btn-success":"btn btn-sm btn-danger")" title="@(item.Level_6_User != null ? item.Level_6_User.Name:"HC Dept")"><i class="@(item.Level_6 > 0 ? " fas fa-check":"fas fa-times")"></i></button>
+                        <span style="display:none;">@(item.Level_6 > 0 ? "Done" : "On Progress")</span>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr class="dark-row">
+                <th colspan="7">
+                    <div class="pager">
+                        <button type="button" class="first"><<</button>
+                        <button type="button" class="prev"><</button>
+                        <span class="pagedisplay"></span>
+                        <button type="button" class="next">></button>
+                        <button type="button" class="last">>></button>
+                        <select class="pagesize" title="Select page size" style="color:black;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                        </select>
+                        <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>

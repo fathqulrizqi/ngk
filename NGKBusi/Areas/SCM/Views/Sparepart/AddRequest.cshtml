@@ -1,0 +1,126 @@
+﻿
+@{
+    ViewBag.Title = "Request Sparepart";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+
+<div class="card  mb-6">
+    <div class="card-header">Request Sparetpart</div>
+    <div class="card-body">
+        <h5 class="card-title"></h5>
+        <form>
+
+            <table class='table table-bordered' id='TransTable'>
+
+                <tr>
+                    @*<th>#</th>*@
+                    <th>Sparepart</th>
+                    <th>Category</th>
+                    <th>Qty</th>
+                    <th><a href='#' id="addButton" class='btn btn-outline-primary'><i class='fa fa-add'></i> Add Data</a></th>
+                </tr>
+
+                <tr>
+                    <td id="col0">
+                        <select class="form-control select2" data-placeholder="Select Sparepart" name="ITEMID[]" id="SparepartId0">
+                            <option value=""></option>
+                            @foreach (var item in ViewBag.SparepartList)
+                            {
+                                <option value="@(item.ITEMID + "|" + item.ProductName )" data-category="@(item.ProductCategory)">@(item.ITEMID + " | " + item.ProductName)</option>
+                            }
+                        </select>
+                    </td>
+                    <td id="col2"><input type="text" name="category" class="form-control" readonly /></td>
+                    <td id="col3"><input type="number" class="form-control" /></td>
+                    <td id="col4"><button class='btn btn-danger' id='DeleteRow' style="display:none"><i class='fa fa-trash'></i></button></td>
+                </tr>
+
+            </table>
+            <div class="form-group row">
+                <div class="col-sm-10">
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                    <button type="reset" class="btn btn-danger">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        var counter = 0;
+        for (B = 1; B <= 1; B++) {
+            /*addRow();*/
+        }
+    });
+
+    $(document).on('click', '#DeleteRow', function (e) {
+        e.preventDefault();
+        $(this).parent().parent().remove();
+
+        var Numb = 1;
+        $('#TransTable tbody tr').each(function () {
+            $(this).find('td:nth-child(1)').html(Numb);
+            Numb++;
+        });
+
+    });
+
+    $(function () {
+        $("#TransTable").on('click', '#addButton', function () {
+
+            var $tr = $(this).closest('tr');
+            var allTrs = $tr.closest('table').find('tr');
+            var lastTr = allTrs[allTrs.length - 1];
+
+            var $clone = $(lastTr).clone();
+
+            console.log($clone);
+
+            $clone.find('td:nth-child(2) input')
+
+            $clone.find('td').each(function () {
+                var el = $(this).find(':first-child');
+
+                var id = el.attr('id') || null;
+
+                if (id) {
+                    var i = id.substr(id.length - 1);
+
+                    var prefix = id.substr(0, (id.length - 1));
+                    el.attr('id', prefix + (+i + 1));
+                    el.attr('name', prefix + (+i + 1));
+
+                }
+            });
+            $clone.find('input:text').val('');
+            $clone.find(".select2-container").remove();
+            $clone.find("select").select2({ width: '100%' });
+            $clone.find(':last-child');
+
+
+            $tr.closest('table').append($clone);
+
+        });
+
+        $("#TransTable").on('change', 'select', function () {
+            var val = $(this).val();
+            var cat = $(this).data();
+            var cate = $(this).find(':selected').data('category');
+            $(this).closest('tr').find('input[name="category"]').val(cate);
+        });
+    });
+
+    //$(".select2").select2();
+
+    //$("#TransTable").on('change', 'select', function () {
+    //    var val = $(this).val();
+    //    $(this).closest('tr').find('input:text').val(val);
+    //});
+</script>
+
+
+
+

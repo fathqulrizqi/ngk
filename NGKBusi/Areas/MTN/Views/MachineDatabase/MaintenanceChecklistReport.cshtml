@@ -1,0 +1,268 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.MTN.Models;
+@using Microsoft.AspNet.Identity;
+@using System.Security.Claims;
+@{
+    ViewBag.Title = "Maintenance Checklist Report";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(Request.Url.AbsoluteUri);
+    MachineDatabaseConnection db = new MachineDatabaseConnection();
+    DefaultConnection dbDef = new DefaultConnection();
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId().Trim();
+    var urlParameter = HttpUtility.ParseQueryString(myUri.Query);
+    var _currHeaderID = int.Parse(urlParameter.Get("iHeaderID"));
+    var currIntervalName = urlParameter.Get("iIntervalName");
+    var currMachineName = urlParameter.Get("iMachineName");
+    var currDate = urlParameter.Get("iDate");
+    var currCategory = "";
+    var z = 0;
+
+    var getHeader = db.MTN_MachineDatabase_Maintenance_Checklist_Header.Where(w => w.ID == _currHeaderID).FirstOrDefault();
+
+    var isAllowCheckerSign = false;
+    var isAllowApproverSign = false;
+    var isAllowEdit1 = false;
+    var isAllowEdit2 = false;
+    var isAllowEdit3 = false;
+    var isAllowEdit4 = false;
+    var checkerSign = dbDef.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 3 && w.Levels == 1 && w.Levels_Sub == 0 && w.User_NIK == currUserID).FirstOrDefault();
+    if (checkerSign != null)
+    {
+        isAllowCheckerSign = true;
+    }
+    var ApproverSign = dbDef.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 3 && w.Levels == 1 && w.Levels_Sub == 1 && w.User_NIK == currUserID).FirstOrDefault();
+    if (ApproverSign != null)
+    {
+        isAllowApproverSign = true;
+    }
+
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By1 == null) || (isAllowApproverSign && getHeader.Approved_By1 == null && getHeader.Checked_By1 != null))
+    {
+        isAllowEdit1 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By2 == null) || (isAllowApproverSign && getHeader.Approved_By2 == null && getHeader.Checked_By2 != null))
+    {
+        isAllowEdit2 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By3 == null) || (isAllowApproverSign && getHeader.Approved_By3 == null && getHeader.Checked_By3 != null))
+    {
+        isAllowEdit3 = true;
+    }
+    if (currUserID == "737.02.16" || (isAllowCheckerSign && getHeader.Checked_By4 == null) || (isAllowApproverSign && getHeader.Approved_By4 == null && getHeader.Checked_By4 != null))
+    {
+        isAllowEdit4 = true;
+    }
+
+}
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/MTN/MaintenanceSchedule.js?v=" + DateTime.Now.TimeOfDay)"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $(".reportImage").click(function () {
+                var cloneImage = $(this).clone();
+                $("#divZoomImage").empty();
+                $("#divZoomImage").append(cloneImage);
+                $("#reportImageZoomModal").modal();
+            });
+            $(".btnDeleteI").click(function () {
+                if (confirm("Are you sure want to delete this image ?")) {
+                    $(this).closest("form").find(".btnDelete").click();
+                }
+            });
+        });
+    </script>
+}
+@section cssHead{
+    <style type="text/css">
+        #tblMSData tbody td.ui-selecting {
+            background-color: #FECA40;
+        }
+
+        #tblMSData tbody td.ui-selected {
+            background-color: #F39814;
+            color: white;
+        }
+
+        #tblMSData tbody td:not(:nth-child(1)):not(:nth-child(2)):hover {
+            cursor: pointer;
+            background-color: #FECA40 !important;
+            color: white;
+        }
+
+        #tblMSData tbody td:not(:nth-child(1)):not(:nth-child(2)):active {
+            background-color: #ffdc81;
+            color: white;
+        }
+
+        .reportImage:hover {
+            cursor: pointer;
+            opacity: .75;
+        }
+
+        .btnDeleteI {
+            font-size: larger;
+            color: red;
+            cursor: pointer;
+        }
+
+            .btnDeleteI:hover {
+                color: orange;
+            }
+
+        .td3B {
+            color: white;
+            background-color: rgb(255, 193, 7);
+        }
+
+        .td6B {
+            color: white;
+            background-color: rgb(40, 167, 69);
+        }
+
+        .td1T {
+            color: white;
+            background-color: rgb(23, 162, 184);
+        }
+    </style>
+}
+
+<h2>Maintenance Checklist Report</h2>
+<table id="tblMScheduleHeader" border="1" style="width:100%">
+    <thead>
+        <tr>
+            <td rowspan="4" style="width:175px;" class="p-2">
+                <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+            </td>
+            <td rowspan="2" class="text-center">FORMULIR INTEGRASI</td>
+            <td>No. Dok</td>
+            <td class="text-center">PMLK3-MTN-01/L7</td>
+        </tr>
+        <tr>
+            <td style="width:75px;">Revisi</td>
+            <td style="width:125px;" class="text-center">00</td>
+        </tr>
+        <tr>
+            <td rowspan="2" class="text-center">LAPORAN PERAWATAN MESIN BERKALA</td>
+            <td>Tanggal</td>
+            <td class="text-center">05-Apr-2023</td>
+        </tr>
+        <tr>
+            <td>Halaman</td>
+            <td class="text-center">1</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td colspan="8">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td class="font-weight-bold text-right pl-5">Mesin :</td>
+                            <td>@(currMachineName)</td>
+                        </tr>
+                        <tr>
+                            <td class="font-weight-bold text-right pl-5">Periode :</td>
+                            <td>@(currIntervalName)</td>
+                        </tr>
+                        <tr>
+                            <td class="font-weight-bold text-right pl-5">Tanggal :</td>
+                            <td>@(currDate)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <table class="w-100 table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Item Perawatan Mesin Berkala</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.ReportList)
+                        {
+                            var isAllowEdit = false;
+
+                            switch (item.Interval)
+                            {
+                                case 1:
+                                    isAllowEdit = isAllowEdit1;
+                                    break;
+                                case 2:
+                                    isAllowEdit = isAllowEdit2;
+                                    break;
+                                case 3:
+                                    isAllowEdit = isAllowEdit3;
+                                    break;
+                                default:
+                                    isAllowEdit = isAllowEdit4;
+                                    break;
+                            }
+
+                            if (currCategory != item.Category)
+                            {
+                                currCategory = item.Category;
+                                <tr>
+                                    <td colspan="3" class="@("td" + currCategory)"><h5>@(currCategory)</h5></td>
+                                </tr>
+                            }
+                            z++;
+                            int currHeaderID = Int32.Parse(item.Header_ID.ToString());
+                            int currInterval = Int32.Parse(item.Interval.ToString());
+                            int currItemID = Int32.Parse(item.Item_ID.ToString());
+                            var reportImage = db.MTN_MachineDatabase_Maintenance_Checklist_Report.Where(w => w.Header_ID == currHeaderID && w.Interval == currInterval && w.Item_ID == currItemID).ToList();
+                            <tr>
+                                <td>@(z)</td>
+                                <td>
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <span class="font-weight-bold">@(item.Item_Master.Item)</span>
+                                        </div>
+                                        @foreach (var itemImage in reportImage)
+                                        {
+                                            <div class="col-3 text-center position-relative">
+                                                <img src="@(Url.Content("~" + itemImage.Image_URL))" alt="Alternate Text" class="img-fluid  reportImage" />
+                                                @if (isAllowEdit)
+                                                {
+                                                    <form class="position-absolute" style="top:0;right:0;" action="@Url.Action("deleteMaintenanceChecklistReport","MachineDatabase",new { area = "MTN" })" method="post">
+                                                        <input type="hidden" name="iReportID" value="@(itemImage.ID)" />
+                                                        <input type="hidden" name="iImageURL" value="@(itemImage.Image_URL)" />
+                                                        <i class="fas fa-backspace btnDeleteI" title="Delete"></i>
+                                                        <button type="submit" class="btnDelete d-none">Delete</button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </td>
+                                <td>@(item.Image_Note)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="modal fade" id="reportImageZoomModal" tabindex="-1" role="dialog" aria-labelledby="reportImageZoomModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="divZoomImage" class="text-center">
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

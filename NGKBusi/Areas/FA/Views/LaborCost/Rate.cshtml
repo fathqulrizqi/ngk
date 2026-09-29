@@ -1,0 +1,189 @@
+﻿
+@{
+    ViewBag.Title = "Rate";
+    ViewBag.SideMenuHeader = "Labor Cost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/Rate.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>Rate <button id="btnLCRateAdd" class="btnImplemented btn btn-success" title="Add" data-toggle="modal" data-target="#LCRateModal">Add New</button></h2>
+<div style="overflow-x:auto;">
+    <table id="tblLCRate" class="tablesorter">
+        <thead>
+            <tr>
+                <th class="filter-select" data-placeholder="-Period-">Period</th>
+                <th>BPJS_Kesehatan</th>
+                <th>BPJS_Kesehatan_Maks</th>
+                <th>BPJS (JKK + JK)</th>
+                <th>JSHK</th>
+                <th>tax_allowance</th>
+                <th>BPJS_JHT</th>
+                <th>BPJS_JP</th>
+                <th>BPJS_JP_Maks</th>
+                <th>THR</th>
+                <th>APLHA</th>
+                <th>TAT</th>
+                <th>PTKP</th>
+                <th>Promosi</th>
+                <th>Asst_Manager_Overtime</th>
+                <th class="filter-false sorter-false"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.Rate)
+            {
+            <tr data-id="@(item.ID)" data-period="@(item.Period)">
+                <td>@(item.Period)</td>
+                <td class="text-right">@(item.BPJS_Kesehatan.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.BPJS_Kesehatan_Max?.ToString("N0"))</td>
+                <td class="text-right">@(item.BPJS_JKK_JK?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.JSHK?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.Tax_Allowance?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.BPJS_JHT?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.BPJS_JP?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.BPJS_JP_Max?.ToString("N0"))</td>
+                <td class="text-right">@(item.THR?.ToString("F2"))</td>
+                <td class="text-right">@(item.ALPHA?.ToString("F2"))</td>
+                <td class="text-right">@(item.TAT?.ToString("F2"))</td>
+                <td class="text-right">@(item.PTKP?.ToString("N0"))</td>
+                <td class="text-right">@(item.Promosi?.ToString("F2") + "%")</td>
+                <td class="text-right">@(item.Asst_Manager_Overtime?.ToString("N0"))</td>
+                <td class="text-center text-nowrap">
+                    <button data-id="@(item.ID)" type="button" class="btn btn-warning btn-sm btnLCRateEdit"><i class="fas fa-edit"></i></button>
+                    <button data-id="@(item.ID)" type="button" class="btn btn-danger btn-sm btnLCRateDelete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<div id="LCRateModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        @Html.AntiForgeryToken()
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title">Labor Cost - Rate</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="formLCRate" action="@Url.Action("RateAdd", "LaborCost", new { area = "FA" })" class="form-horizontal" method="post">
+                <input type="hidden" name="iLCDataID" id="hfLCDataID" value="" />
+                <div class="modal-body">
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4">Period</label>
+                        <div class="col-sm-8">
+                            <select id="selLCPeriod" name="iLCPeriod" class="form-control" required>
+                                <option value="">-Select Period-</option>
+                            </select>
+                            <label id="lblLCPeriod" style="display:none;">-</label>
+                            <input type="hidden" name="iLCID" id="hfLCID" value="" />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSKes">BPJS Kesehatan</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSKes" name="iLCBPJSKes" class="form-control" placeholder="BPJS Kesehatan" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSKesMax">BPJS Kesehatan Maks</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSKesMax" name="iLCBPJSKesMax" class="form-control" placeholder="BPJS Kesehatan Maks" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSJKKJK">BPJS (JKK + JK)</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSJKKJK" name="iLCBPJSJKKJK" class="form-control" placeholder="BPJS (JKK + JK)" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCJSHK">JSHK</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCJSHK" name="iLCJSHK" class="form-control" placeholder="JSHK" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCTaxAllowance">Tax Allowance</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCTaxAllowance" name="iLCTaxAllowance" class="form-control" placeholder="Tax Allowance" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSJHT">BPJS JHT</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSJHT" name="iLCBPJSJHT" class="form-control" placeholder="BPJS JHT" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSJP">BPJS JP</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSJP" name="iLCBPJSJP" class="form-control" placeholder="BPJS JP" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCBPJSJPMax">BPJS JP Maks</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCBPJSJPMax" name="iLCBPJSJPMax" class="form-control" placeholder="BPJS JP Maks" style="display:inline-block;" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCTHR">THR</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCTHR" name="iLCTHR" class="form-control" placeholder="THR" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCALPHA">ALPHA</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCALPHA" name="iLCALPHA" class="form-control" placeholder="ALPHA" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCTAT">TAT</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCTAT" name="iLCTAT" class="form-control" placeholder="TAT" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCPTKP">PTKP</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCPTKP" name="iLCPTKP" class="form-control" placeholder="PTKP" style="display:inline-block;" required />
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCPromosi">Promosi</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCPromosi" name="iLCPromosi" class="form-control" placeholder="Promosi" style="width:175px;display:inline-block;" step=".01" required /> %
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label class="control-label text-right font-weight-bold col-sm-4" for="txtLCAsstManOvertime">Assistant Manager Overtime</label>
+                        <div class="col-sm-8">
+                            <input type="number" id="txtLCAsstManOvertime" name="iLCAsstManOvertime" class="form-control" placeholder="Assistant Manager Overtime" style="display:inline-block;" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnDataLCSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button type="reset" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

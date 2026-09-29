@@ -1,0 +1,637 @@
+
+@{
+    ViewBag.Title = "Adjustment Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css" />
+    <link href="@Url.Content("~/Content/sweetalert2/sweetalert2.min.css")" rel="stylesheet" />
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 0 !important;
+            margin-top: 0 !important;
+        }
+    </style>
+}
+
+
+@section scriptHead {
+    <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+    <script src="@Url.Content("~/Content/sweetalert2/sweetalert2.all.min.js")"></script>
+
+    <script>
+        var currUser = "@(ViewBag.CurrUser.NIK)"
+        console.log("currUser", currUser)
+
+    </script>
+    <script>
+        $(document).ready(function () {
+            document.getElementById("createAdjustmentBtn").onclick = function () {
+                window.location.href = '@Url.Action("CreateAdjustmentRequest", "Sparepart", new { area = "SCM" })';
+            };
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoOpenRequestId = urlParams.get("requestId");
+
+
+            const table = $("#STATable").DataTable({
+                orderCellsTop: true,
+                paging: true,
+
+                ajax: {
+                    url: "@Url.Action("GetAdjustmentRequest", "Sparepart", new { area = "SCM" })",
+                    type: "GET",
+                    dataSrc: json => json.data || []
+                },
+                order: [[0, "desc"]],
+                columns: [
+                    {
+                        data: "Date_Created",
+                        title: "Date",
+                        className: "text-sm w-32",
+                        render: function (data, type) {
+                            if (!data) return "-";
+
+                            const timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, "$1"));
+                            const d = new Date(timestamp);
+
+                            const formatted =
+                                d.getFullYear() + "/" +
+                                String(d.getMonth() + 1).padStart(2, "0") + "/" +
+                                String(d.getDate()).padStart(2, "0");
+
+                            if (type === "display") return formatted;
+                            if (type === "filter") return formatted;
+                            if (type === "sort") return timestamp;
+
+                            return formatted;
+                        }
+                    },
+
+                    // 2. Adjustment Request ID
+                    {
+                        data: "AdjustmentReqID",
+                        title: "Adjustment Req ID",
+                        render: data => `
+                            <span class="font-medium text-gray-800">${data}</span>
+                        `
+                    },
+
+                    // 3. Remark
+                    {
+                        data: "Remark",
+                        title: "Remark",
+                        render: data => `
+                            <span class="text-gray-600">${data ?? "-"}</span>
+                        `
+                    },
+
+                    // 4. Status
+                    {
+                        data: "isApproved",
+                        title: "Status",
+                        render: function (data, type, row) {
+                            if (data == 2) {
+                                return `
+                <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-red-100 text-red-700 border border-red-200">
+                    <i class="fas fa-times-circle mr-1"></i> Rejected
+                </span>`;
+                            }
+
+                            if (data == 1) {
+                                return `
+                <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-green-100 text-green-700 border border-green-200">
+                    <i class="fas fa-check-double mr-1"></i> Approved
+                </span>`;
+                            }
+
+                            if (data == 0) {
+                                if (row.Creator_Status == true) {
+                                    return `
+                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">
+                        <i class="fas fa-hourglass-half mr-1"></i> Waiting Manager Approval
+                    </span>`;
+                                } else {
+                                    return `
+                    <span class="px-2 py-1 text-[10px] font-bold uppercase rounded bg-yellow-100 text-yellow-700 border border-yellow-200">
+                        <i class="fas fa-pen-nib mr-1"></i> Waiting Creator Approval
+                    </span>`;
+                                }
+                            }
+
+                            return `<span class="text-gray-400">-</span>`;
+                        }
+                    },
+
+                    // 5. Action
+                    {
+                        data: null,
+                        title: "Action",
+                        orderable: false,
+                        className: "text-center w-32",
+                        render: (data, type, row) => `
+                            <button
+                                class="go-detail inline-flex items-center gap-1 px-3 py-2 text-sm
+                                       bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                data-headid="${row.AdjustmentReqID}">
+                                <i class="fas fa-file"></i> Open
+                            </button>
+                        `
+                    }
+                ],
+
+                initComplete: function () {
+                    const api = this.api();
+
+                    // text input filter
+                    $('#STATable thead tr.search-row input')
+                        .on('keyup change', function () {
+                            api.column($(this).data('column'))
+                               .search(this.value)
+                               .draw();
+                        });
+
+                    // select filter
+                    $('#STATable thead tr.search-row select').each(function () {
+                        const $select = $(this);
+
+                        toggleSelectColor($select);
+
+                        $select.on('change', function () {
+                            toggleSelectColor($(this));
+                            api.column($(this).data('column'))
+                               .search(this.value || '')
+                               .draw();
+                        });
+                    });
+
+                    $('#STATable thead tr.search-row th').off('click');
+
+                    if (autoOpenRequestId) {
+                        openDetailModal(autoOpenRequestId);
+                    }
+                }
+            });
+
+            // MODAL DETAIL REQUEST
+            $(document).on("click", ".go-detail", function () {
+                const headId = $(this).data("headid");
+
+                // (optional) simpan id untuk load detail nanti
+                $("#adjustmentDetail").data("headid", headId);
+
+                const url = new URL(window.location);
+                url.searchParams.set("requestId", headId);
+                window.history.pushState({}, "", url);
+
+
+                // show modal
+                $("#adjustmentDetail")
+                    .removeClass("opacity-0 pointer-events-none")
+                    .addClass("opacity-100 pointer-events-auto");
+
+                loadAdjustmentDetail(headId);
+
+            });
+
+            // CLOSE MODAL
+            $(document).on("click", "[data-dialog-close], [data-dialog-backdrop]", function () {
+                const url = new URL(window.location);
+                url.searchParams.delete("requestId");
+                window.history.pushState({}, "", url);
+
+                $("#adjustmentDetail")
+                    .addClass("opacity-0 pointer-events-none")
+                    .removeClass("opacity-100 pointer-events-auto");
+            });
+
+            // OPEN MODAL FROM URL
+            function openDetailModal(headId) {
+                $("#adjustmentDetail").data("headid", headId);
+
+                const url = new URL(window.location);
+                url.searchParams.set("requestId", headId);
+                window.history.replaceState({}, "", url);
+
+                $("#adjustmentDetail")
+                    .removeClass("opacity-0 pointer-events-none")
+                    .addClass("opacity-100 pointer-events-auto");
+
+                loadAdjustmentDetail(headId);
+            }
+
+
+            // FETCH DATA DETAIL
+            function loadAdjustmentDetail(headId) {
+                $.get("@Url.Action("GetAdjustmentItem", "Sparepart", new { area = "SCM" })", {
+                    requestId: headId,
+                }, function (res) {
+                    fillModalDetail(res)
+                    console.log(res);
+                });
+            }
+
+            // HELPER LOAD DETAIL DATA
+            function fillModalDetail(response) {
+                if (response.success) {
+                    // 1. Ambil data header (index ke-0)
+                    const header = response.header[0];
+                    const names = response.approvalnames;
+
+                    const rejectBanner = $('#rejectBanner');
+                    const rejectText = $('#detailRejectMessage');
+
+                    if (header.isApproved == 2) {
+                        rejectText.text(header.Approval_Message || "No reason provided.");
+                        rejectBanner.removeClass('hidden');
+                    } else {
+                        rejectBanner.addClass('hidden');
+                        rejectText.text("");
+                    }
+
+                    // 1. Mapping Approval
+                    const creatorInfo = names.find(u => u.NIK === header.Creator_NIK);
+                    const approverInfo = names.find(u => u.NIK === header.Approver_NIK);
+
+                    // 2. Mapping Teks (Nama & NIK)
+                    $('#detailCreatorName').text(creatorInfo ? creatorInfo.Name : '-');
+                    $('#detailCreatorNIK').text(header.Creator_NIK || '-');
+
+                    $('#detailApproverName').text(approverInfo ? approverInfo.Name : '-');
+                    $('#detailApproverNIK').text(header.Approver_NIK || '-');
+
+                    // 2. Mapping Tombol Creator
+                    if (header.Creator_Status) {
+                        let dateSignedCreator = "-";
+                        if (header.Creator_Date_Signed) {
+                            const ms = parseInt(header.Creator_Date_Signed.replace(/[^\d]/g, ''));
+                            dateSignedCreator = moment(ms).format('DD MMMM YYYY'); // Format: 08 January 2026
+                        }
+
+                        $('#containerSignCreator').html(`
+        <div class="text-center">
+            <i class="fas fa-check-double text-blue-600 text-xl"></i>
+            <p class="text-[10px] text-blue-600 font-bold uppercase">Signed</p>
+            <p class="text-[9px] text-gray-400 mt-1">${dateSignedCreator}</p>
+        </div>
+    `);
+                    } else {
+                        $('#containerSignCreator').html('<button id="btnSignCreator" class="px-4 py-1.5 text-xs bg-blue-600 text-white rounded">Sign</button>');
+                    }
+
+                    // 3. Mapping Tombol Approver
+                    if (header.isApproved == 1) { // 1 = Approved
+                        let dateSignedApprover = "-";
+                        if (header.Approver_Date_Signed) {
+                            const ms = parseInt(header.Approver_Date_Signed.replace(/[^\d]/g, ''));
+                            dateSignedApprover = moment(ms).format('DD MMMM YYYY');
+                        }
+
+                        $('#containerSignApprover').html(`
+        <div class="text-center">
+            <i class="fas fa-certificate text-green-600 text-xl"></i>
+            <p class="text-[10px] text-green-600 font-bold uppercase">Approved</p>
+            <p class="text-[9px] text-gray-400 mt-1">${dateSignedApprover}</p>
+        </div>
+    `);
+                    } else if (header.isApproved == 2) { // 2 = Rejected
+                        $('#containerSignApprover').html(`
+        <div class="text-center text-red-600">
+            <i class="fas fa-times-circle text-xl"></i>
+            <p class="text-[10px] font-bold uppercase">Rejected</p>
+        </div>
+    `);
+                    } else {
+                        $('#containerSignApprover').html('<button id="btnSignApprover" class="px-4 py-1.5 text-xs bg-green-600 text-white rounded">Sign</button>');
+                    }
+
+                    // Mapping Info Header
+                    $('#detailReqId').val(header.AdjustmentReqID);
+                    $('#detailRemark').val(header.Remark || '-');
+
+                    // Format tanggal dari /Date(ms)/ ke DD-MM-YYYY
+                    if (header.Date_Created) {
+                        const dateMs = parseInt(header.Date_Created.replace(/[^\d]/g, ''));
+                        $('#detailDate').val(moment(dateMs).format('DD-MM-YYYY'));
+                    }
+
+                    // Logic Tombol Approval (Creator)
+                    if (header.Creator_Status) {
+                        $('#btnSignCreator').replaceWith('<span class="text-green-600 text-sm italic"><i class="fas fa-check-circle"></i> Signed</span>');
+                    }
+
+                    // Logic Tombol Approval (Approver)
+                    if (header.isApproved) {
+                        $('#btnSignApprover').replaceWith('<span class="text-green-600 text-sm italic"><i class="fas fa-check-circle"></i> Approved</span>');
+                    }
+
+                    // 2. Mapping Data Table (Items)
+                    let tableHtml = '';
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach((item, index) => {
+                            // Beri warna merah jika qty minus (adjustment out)
+                            const qtyClass = item.Qty < 0 ? 'text-red-600' : 'text-green-600';
+
+                            tableHtml += `
+                    <tr>
+                        <td class="px-3 py-2 text-left">${index + 1}</td>
+                        <td class="px-3 py-2 text-left font-medium">${item.ItemID}</td>
+                        <td class="px-3 py-2 text-center font-bold ${qtyClass}">${item.Qty}</td>
+                    </tr>
+                `;
+                        });
+                    } else {
+                        tableHtml = '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-400">No items found</td></tr>';
+                    }
+
+                    $('#detailItemBody').html(tableHtml);
+
+                    // Tampilkan Modal (tergantung library yang Anda pakai, contoh: Tailwind CSS class toggle)
+                    $('#adjustmentDetail').removeClass('opacity-0 pointer-events-none').addClass('opacity-100');
+                } else {
+                    alert("Gagal mengambil data: " + response.message);
+                }
+            }
+
+            // APPROVAL
+            // --- EVENT HANDLER: SIGN CREATOR ---
+            $(document).on('click', '#btnSignCreator', function () {
+                const requestId = $('#detailReqId').val();
+                const nikTarget = $('#detailCreatorNIK').text().trim();
+                console.log("nikTarget", nikTarget)
+                if (currUser !== nikTarget) {
+                    Swal.fire('Not Allowed', 'Anda tidak memiliki otoritas untuk menandatangani request ini.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Sign Request',
+                    text: "Tanda tangani request ini sebagai Creator?",
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Sign',
+                    confirmButtonColor: '#2563eb'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeApproval(requestId, "SIGN_CREATOR", nikTarget, "");
+                    }
+                });
+            });
+
+            $(document).on('click', '#btnSignApprover', function () {
+                const requestId = $('#detailReqId').val();
+                const nikTarget = $('#detailApproverNIK').text().trim();
+
+                if (currUser !== nikTarget) {
+                    Swal.fire('Not Allowed', 'Anda bukan Approver yang ditunjuk untuk request ini.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Approval Adjustment',
+                    text: "Pilih tindakan untuk request ini:",
+                    icon: 'question',
+                    showCancelButton: true,
+                    showDenyButton: true,
+                    confirmButtonText: 'Approve',
+                    denyButtonText: 'Reject',
+                    cancelButtonText: 'Batal',
+                    confirmButtonColor: '#16a34a',
+                    denyButtonColor: '#dc2626',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        executeApproval(requestId, "SIGN_APPROVER", nikTarget, "");
+                    } else if (result.isDenied) {
+                        Swal.fire({
+                            title: 'Alasan Reject',
+                            input: 'textarea',
+                            inputPlaceholder: 'Tuliskan alasan penolakan...',
+                            showCancelButton: true,
+                            confirmButtonText: 'Kirim Reject',
+                            confirmButtonColor: '#dc2626',
+                            inputValidator: (value) => {
+                                if (!value) {
+                                    return 'Alasan harus diisi jika menolak!'
+                                }
+                            }
+                        }).then((rejectRes) => {
+                            if (rejectRes.isConfirmed) {
+                                executeApproval(requestId, "REJECT_APPROVER", nikTarget, rejectRes.value);
+                            }
+                        });
+                    }
+                });
+            });
+
+            function executeApproval(id, type, nik, message) {
+                $.post("@Url.Action("ApprovalAdjustmentRequest", "Sparepart", new { area = "SCM" })", {
+                    requestId: id,
+                    actionType: type,
+                    Creator_NIK: nik,
+                    Approver_NIK: nik,
+                    Approval_Message: message
+                }, function (res) {
+                    if (res.success) {
+                        Swal.fire('Berhasil', res.message, 'success').then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal', res.message, 'error');
+                    }
+                });
+            }
+
+            function confirmAndAction(id, type, nik, text) {
+                if (confirm(text)) {
+                    executeApproval(id, type, nik, "");
+                }
+            }
+
+        })
+    </script>
+}
+
+<div class="min-h-screen">
+    <div class="p-4 mb-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+            <div class="flex items-center space-x-4">
+                <div class="w-1 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full"></div>
+                <h1 class="text-2xl font-bold text-gray-50">Adjustment Requests</h1>
+
+            </div>
+            <button id="createAdjustmentBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-semibold rounded-lg text-white bg-gradient-to-r from-orange-500 to-yellow-600 hover:from-orange-500 hover:to-orange-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-all duration-200 transform hover:scale-105 shadow-lg">
+                <i class="fas fa-plus mr-2"></i>
+                Create Stock Adjustment
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div class="bg-white rounded-xl shadow-xl overflow-hidden">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-table mr-2 text-blue-600"></i>
+                Stock Adjustment Records
+            </h3>
+        </div>
+
+        <div class="overflow-x-auto p-2">
+            <table id="STATable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Issued</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doc No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dept</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Originator</th>
+                    </tr>
+
+                    <tr class="search-row bg-gray-25">
+                        <th class="px-6 py-2">
+                            <input data-column="0" placeholder="🔍 Search Date" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="1" placeholder="🔍 Search Req ID" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="2" placeholder="🔍 Search Remark" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+                        <th class="px-6 py-2">
+                            <input data-column="3" placeholder="🔍 Search Status" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </th>
+
+                        <th class="px-6 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer -->
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <span>Use search filters above to find specific records</span>
+                </div>
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <i class="fas fa-clock mr-1"></i>
+                    <span>Last updated: <span id="lastUpdated">Just now</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- MODAL DETAIL -->
+<div id="adjustmentDetail"
+     class="pointer-events-none fixed inset-0 z-[999] grid place-items-center
+            bg-black/60 backdrop-blur-sm opacity-0 transition-opacity duration-300">
+
+    <div class="w-3/4 bg-white rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                <i class="fas fa-file-alt mr-2 text-blue-600"></i>
+                Detail Adjustment Request
+            </h3>
+            <button data-dialog-close class="text-gray-500 hover:text-black">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+            <div id="rejectBanner" class="hidden">
+                <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                    <div class="flex items-start">
+                        <div class="shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-500 mt-0.5"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-xs font-bold text-red-800 uppercase tracking-wide">Request Rejected</h3>
+                            <p id="detailRejectMessage" class="text-sm text-red-700 mt-1 italic">
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">Date</label>
+                    <input id="detailDate" disabled class="px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-600 cursor-not-allowed" />
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">Request ID</label>
+                    <input id="detailReqId" disabled class="px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-600 font-mono cursor-not-allowed" />
+                </div>
+                <div class="flex flex-col col-span-2">
+                    <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 ml-1">Remark</label>
+                    <input id="detailRemark" disabled class="px-3 py-2 text-sm bg-gray-100 border border-gray-200 rounded-lg text-gray-600 cursor-not-allowed" />
+                </div>
+            </div>
+
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-500 mb-2 ml-1 block">Item Details</label>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100 text-xs uppercase text-gray-500 border-b">
+                            <tr>
+                                <th class="px-3 py-2 text-left">No</th>
+                                <th class="px-3 py-2 text-left">Item ID</th>
+                                <th class="px-3 py-2 text-center">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailItemBody" class="divide-y divide-gray-100">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="requestApproval" class="pt-2">
+                <div class="grid grid-cols-2 border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="bg-gray-50 border-b border-r py-2 text-center text-[10px] font-bold uppercase text-gray-400">Approved By</div>
+                    <div class="bg-gray-50 border-b py-2 text-center text-[10px] font-bold uppercase text-gray-400">Created By</div>
+
+                    <div class="h-24 border-r flex items-center justify-center p-2 bg-white">
+                        <div id="containerSignApprover">
+                            <button id="btnSignApprover" class="px-4 py-1.5 text-xs bg-green-600 text-white rounded shadow hover:bg-green-700 transition">Sign</button>
+                        </div>
+                    </div>
+                    <div class="h-24 flex items-center justify-center p-2 bg-white">
+                        <div id="containerSignCreator">
+                            <button id="btnSignCreator" class="px-4 py-1.5 text-xs bg-blue-600 text-white rounded shadow hover:bg-blue-700 transition">Sign</button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-r py-2 text-center bg-gray-50 flex flex-col justify-center gap-0.5">
+                        <span id="detailApproverName" class="text-[11px] font-semibold text-gray-800 leading-tight">-</span>
+                        <span id="detailApproverNIK" class="text-[10px] font-mono text-gray-500">-</span>
+                    </div>
+                    <div class="border-t py-2 text-center bg-gray-50 flex flex-col justify-center gap-0.5">
+                        <span id="detailCreatorName" class="text-[11px] font-semibold text-gray-800 leading-tight">-</span>
+                        <span id="detailCreatorNIK" class="text-[10px] font-mono text-gray-500">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 border-t flex justify-end gap-2 shrink-0 bg-gray-50 rounded-b-lg">
+            <button data-dialog-close class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-200 rounded-lg transition">
+                Close
+            </button>
+        </div>
+
+    </div>
+</div>

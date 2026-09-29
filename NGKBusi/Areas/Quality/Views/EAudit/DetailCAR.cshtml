@@ -1,0 +1,2847 @@
+﻿@{
+    ViewBag.Title = "Detail CAR (Corrective Action Request)";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+<style>
+    html, body {
+        background-image: linear-gradient(135deg, #2563eb 0%, #bae6fd 55%, #f8fafc 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+    }
+
+    .form-input-elegant {
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        outline: none;
+        transition: border-color 0.15s ease-in-out;
+    }
+
+        .form-input-elegant:focus {
+            border-color: #0f766e;
+            box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.2);
+        }
+
+    .print-only-layout {
+        display: none;
+    }
+
+    .excel-input {
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        outline: none;
+        border: none;
+        font-family: inherit;
+        font-size: inherit;
+        padding: 0.25rem;
+    }
+
+    textarea.excel-input {
+        resize: none;
+        padding: 0.5rem;
+    }
+
+    .vertical-text {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        text-align: center;
+        white-space: nowrap;
+        margin: auto;
+    }
+
+    /* Efek Cap Bulat (Circular Stamp) UI Modern */
+    .stamp-circle {
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        border: 2.5px solid;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(-12deg);
+        opacity: 0.85;
+        user-select: none;
+        pointer-events: none;
+        position: relative;
+    }
+
+        .stamp-circle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 50%;
+            border: 1px solid;
+        }
+
+        .stamp-circle .stamp-text {
+            font-size: 0.6rem;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .stamp-circle .stamp-date {
+            font-size: 0.45rem;
+            font-weight: 800;
+            border-top: 1px solid;
+            padding-top: 2px;
+            width: 80%;
+            text-align: center;
+        }
+
+    .stamp-approved-circle {
+        color: #059669;
+        border-color: #059669;
+    }
+
+        .stamp-approved-circle::before, .stamp-approved-circle .stamp-date {
+            border-color: #059669;
+        }
+
+    .stamp-rejected-circle {
+        color: #dc2626;
+        border-color: #dc2626;
+    }
+
+        .stamp-rejected-circle::before, .stamp-rejected-circle .stamp-date {
+            border-color: #dc2626;
+        }
+
+    @@media (max-width: 1023px) {
+        #desktop-content {
+            display: none !important;
+        }
+
+        #mobile-blocker {
+            display: flex !important;
+        }
+    }
+
+    /* Tabel Layout Fixed Global (Untuk Print Baru) */
+    table.print-table {
+        width: 100%;
+        table-layout: fixed;
+        border-collapse: collapse;
+        font-family: Arial, sans-serif;
+        color: black;
+        font-size: 10px;
+        word-wrap: break-word;
+    }
+
+        table.print-table th, table.print-table td {
+            border: 1px solid black;
+            padding: 2px;
+            vertical-align: middle;
+            text-align: center;
+            overflow: hidden;
+            line-height: 1.1;
+        }
+
+        table.print-table .header-cell {
+            font-weight: bold;
+        }
+
+    /* KONFIGURASI KETIKA DI-PRINT (CTRL + P) & PRINTTHIS */
+    @@media print {
+        @@page {
+            size: A4 portrait;
+            margin: 5mm;
+        }
+
+        body {
+            background: white !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+
+        table.print-table {
+            font-size: 9px !important;
+        }
+
+            table.print-table th, table.print-table td {
+                padding: 2px !important;
+            }
+        /* Sembunyikan Form Modern & Elemen Lainnya */
+        #elegant-section, .mb-4, #desktop-content > .min-h-screen {
+            display: none !important;
+        }
+        /* Tampilkan Layout Print */
+        .print-only-layout {
+            display: block !important;
+            width: 100% !important;
+            max-width: none !important;
+            background: white !important;
+            margin: 0 auto;
+            box-shadow: none !important;
+        }
+        /* Stamp versi Print (Lebih Kecil) */
+        .print-stamp {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: 2px solid;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transform: rotate(-15deg);
+            opacity: 0.9;
+            margin: 1px auto;
+        }
+
+            .print-stamp .s-text {
+                font-size: 0.45rem;
+                font-weight: bold;
+            }
+
+            .print-stamp .s-date {
+                font-size: 0.4rem;
+                border-top: 1px solid;
+                width: 80%;
+                text-align: center;
+                margin-top: 1px;
+            }
+
+        .print-approved {
+            color: #059669;
+            border-color: #059669;
+        }
+
+        .print-rejected {
+            color: #dc2626;
+            border-color: #dc2626;
+        }
+    }
+</style>
+
+<div id="mobile-blocker" class="hidden fixed inset-0 bg-slate-900 z-[9999] flex-col items-center justify-center text-center px-6">
+    <svg class="w-20 h-20 text-red-500 mb-6 drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+    </svg>
+    <h2 class="text-3xl font-extrabold text-white mb-2 tracking-wide">Access Denied</h2>
+    <p class="text-slate-300 text-lg mb-6 max-w-md leading-relaxed">
+        This CAR Form page is specifically optimized for large screens. Please open it using your <b>Laptop</b> or <b>Desktop PC</b>.
+    </p>
+    <a href="javascript:history.back()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all">
+        Go Back
+    </a>
+</div>
+
+<div id="desktop-content">
+    <div class="min-h-screen pt-3 sm:px-4 flex justify-center items-start">
+        <div class="w-full max-w-6xl">
+            <div class="mb-4">
+                <a href="javascript:history.back()" class="inline-flex items-center text-sm font-medium text-white hover:text-blue-400 transition-colors">
+                    <svg class="w-4 h-4 mr-1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5H1m0 0 4 4M1 5l4-4" />
+                    </svg>
+                    Back to CAR & OFI Management
+                </a>
+            </div>
+
+            <div id="elegant-section" class="bg-white rounded shadow-2xl overflow-hidden mb-12 hidden lg:block">
+                <div class="px-6 pt-6 pb-0 border-b border-gray-200 bg-gray-50">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="w-1/4">
+                            @if (ViewBag.IsAdministrator != null && (bool)ViewBag.IsAdministrator)
+                            {
+                                <button type="button" onclick="openReminderModal()" class="shrink-0 bg-amber-500 text-white px-4 py-2.5 rounded-lg shadow-md font-bold hover:bg-amber-600 transition flex items-center gap-2 text-sm cursor-pointer">
+                                    <svg class="w-5 h-5 animate-pulse-hover" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                                    </svg>
+                                    Send Reminder
+                                </button>
+                            }
+                        </div>
+                        <div class="w-2/4 text-center">
+                            <h2 class="text-xl font-bold uppercase underline">Formulir Integrasi</h2>
+                            <h3 class="text-lg font-bold uppercase mt-1 text-teal-800">Permintaan Tindakan Perbaikan</h3>
+                            <p class="text-sm italic text-gray-600">( Corrective Action Request )</p>
+                        </div>
+                        <div class="w-1/3 flex justify-end gap-3">
+                            <button type="button" onclick="printForm()" class="bg-gray-800 text-white px-4 py-2.5 rounded-lg shadow-md font-bold hover:bg-gray-700 transition flex items-center gap-2 text-sm cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Print PDF
+                            </button>
+                            <button type="button" onclick="exportExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-lg shadow-md font-bold hover:bg-green-700 transition flex items-center gap-2 text-sm cursor-pointer">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Export Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex space-x-2">
+                        <button type="button" id="btn-tab-1" onclick="switchTab(1)" class="px-6 py-2.5 bg-teal-700 text-white font-semibold rounded-t-lg focus:outline-none shadow-md cursor-pointer">Problem Identification</button>
+                        <button type="button" id="btn-tab-2" onclick="switchTab(2)" class="px-6 py-2.5 bg-gray-200 text-gray-600 hover:bg-gray-300 font-semibold rounded-t-lg focus:outline-none transition-colors shadow-inner cursor-pointer">Analysis & Corrective Actions</button>
+                        <button type="button" id="btn-tab-3" onclick="switchTab(3)" class="px-6 py-2.5 bg-gray-200 text-gray-600 hover:bg-gray-300 font-semibold rounded-t-lg focus:outline-none transition-colors shadow-inner cursor-pointer">Evidence</button>
+                    </div>
+                </div>
+
+                <form action="#" method="POST" id="carFormElegant" class="p-6">
+
+                    <div id="tab-1">
+                        <div id="auditor-section">
+                            <div class="grid grid-cols-1 md:grid-cols-[35%_30%_35%] border border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div class="md:col-start-1 md:row-start-1 border-b md:border-r border-gray-200 pb-5 pr-4 pt-2 pl-2 md:p-5 flex flex-col justify-center transition hover:bg-gray-50 focus-within:bg-teal-50">
+                                    <div class="flex items-end mb-3">
+                                        <span class="text-sm font-bold text-gray-800 whitespace-nowrap w-28">Kepada Dept. :</span>
+                                        <input type="text" id="to_Dept" name="to_Dept" class="flex-1 bg-transparent border-b border-gray-300 outline-none text-sm text-gray-800 focus:border-teal-600 transition px-1 pb-1 elegant-sync" placeholder="Ketik departemen...">
+                                    </div>
+                                    <div class="flex items-end">
+                                        <span class="text-sm text-gray-800 whitespace-nowrap w-28">Attention :</span>
+                                        <input type="text" id="attention" name="attention" class="flex-1 bg-transparent border-b border-gray-300 outline-none text-sm text-gray-800 focus:border-teal-600 transition px-1 pb-1 elegant-sync" placeholder="Ketik attention...">
+                                    </div>
+                                </div>
+
+                                <div class="md:col-start-2 md:row-start-1 border-b md:border-r border-gray-200 flex flex-col text-sm h-full">
+                                    <div class="flex border-b border-gray-200 flex-1 transition hover:bg-gray-50 focus-within:bg-teal-50">
+                                        <div class="w-28 px-3 bg-gray-50 text-gray-700 border-r border-gray-200 flex items-center">No. Laporan</div>
+                                        <div class="flex-1 px-3 py-1 flex items-center">
+                                            <input type="text" id="no_report" name="no_report" class="w-full bg-transparent outline-none text-gray-800 font-medium elegant-sync" placeholder="...">
+                                        </div>
+                                    </div>
+                                    <div class="flex border-b border-gray-200 flex-1 transition hover:bg-gray-50 focus-within:bg-teal-50">
+                                        <div class="w-28 px-3 bg-gray-50 text-gray-700 border-r border-gray-200 flex items-center">Tanggal</div>
+                                        <div class="flex-1 px-3 py-1 flex items-center">
+                                            <input type="date" id="date" name="date" class="w-full bg-transparent outline-none text-gray-800 font-medium elegant-sync cursor-pointer">
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-1 transition hover:bg-gray-50 focus-within:bg-teal-50">
+                                        <div class="w-[155px] px-3 bg-gray-50 font-bold text-gray-800 border-r border-gray-200 flex items-center leading-tight">Dept. Pembuat/Auditor</div>
+                                        <div class="flex-1 px-3 py-1 flex items-center">
+                                            <input type="text" id="from_auditor" name="from_auditor" class="w-full bg-transparent outline-none text-gray-800 font-medium elegant-sync" placeholder="...">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="md:col-start-1 md:col-span-2 md:row-start-2 bg-teal-50 border-b md:border-b-0 md:border-r border-gray-200 p-2.5 text-center font-bold text-teal-800 text-sm flex items-center justify-center">
+                                    Harap melakukan perbaikan terhadap problem di bawah ini
+                                </div>
+
+                                <div class="md:col-start-3 md:row-start-1 md:row-span-2 flex bg-white h-full text-center">
+                                    <div class="flex-1 border-r border-gray-200 flex flex-col h-full">
+                                        <div class="py-1.5 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[13px] h-[33px] flex items-center justify-center">Disetujui</div>
+                                        <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                            <input type="hidden" id="approval_id_disetujui_1" value="">
+                                            <input type="hidden" id="status_disetujui_1" name="status_disetujui_1" value="" class="elegant-sync">
+                                            <input type="hidden" id="problem_id" name="problem_id" value="">
+                                            <div id="btn-group-disetujui_1" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                <button type="button" onclick="setStamp('disetujui_1', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                <button type="button" onclick="setStamp('disetujui_1', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                            </div>
+                                            <div id="stamp-container-disetujui_1" onclick="resetStamp('disetujui_1')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                        </div>
+                                        <div class="p-1 bg-white h-[40px] flex items-center">
+                                            <input type="text" id="sign_name_disetujui_1" name="sign_name_disetujui_1" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                        </div>
+                                    </div>
+
+                                    <div class="flex-1 border-r border-gray-200 flex flex-col h-full">
+                                        <div class="py-1.5 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[13px] h-[33px] flex items-center justify-center">Diperiksa</div>
+                                        <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                            <input type="hidden" id="approval_id_diperiksa_1" value="">
+                                            <input type="hidden" id="status_diperiksa_1" name="status_diperiksa_1" value="" class="elegant-sync">
+                                            <div id="btn-group-diperiksa_1" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                <button type="button" onclick="setStamp('diperiksa_1', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                <button type="button" onclick="setStamp('diperiksa_1', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                            </div>
+                                            <div id="stamp-container-diperiksa_1" onclick="resetStamp('diperiksa_1')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                        </div>
+                                        <div class="p-1 bg-white h-[40px] flex items-center">
+                                            <input type="text" id="sign_name_diperiksa_1" name="sign_name_diperiksa_1" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                        </div>
+                                    </div>
+
+                                    <div class="flex-1 flex flex-col h-full">
+                                        <div class="py-1.5 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[13px] h-[33px] flex items-center justify-center">Dibuat</div>
+                                        <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                            <input type="hidden" id="approval_id_dibuat_1" value="">
+                                            <input type="hidden" id="status_dibuat_1" name="status_dibuat_1" value="" class="elegant-sync">
+                                            <div id="btn-group-dibuat_1" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                <button type="button" onclick="setStamp('dibuat_1', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                <button type="button" onclick="setStamp('dibuat_1', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                            </div>
+                                            <div id="stamp-container-dibuat_1" onclick="resetStamp('dibuat_1')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                        </div>
+                                        <div class="p-1 bg-white h-[40px] flex items-center">
+                                            <input type="text" id="sign_name_dibuat_1" name="sign_name_dibuat_1" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border border-gray-200 shadow-sm bg-white overflow-hidden mb-6 flex flex-col">
+                                <div class="overflow-x-auto border-b border-gray-200">
+                                    <table class="w-full text-sm text-center">
+                                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-800">
+                                            <tr>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">Nama masalah</th>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">Lokasi ditemukan</th>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">Part No./ Part Name</th>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">Lot number</th>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">Qty Problem</th>
+                                                <th class="p-3 border-r border-gray-200 font-semibold">QTY check/lot</th>
+                                                <th class="p-3 border-r border-gray-200 font-extrabold text-teal-700">NG Ratio(%)</th>
+                                                <th class="p-3 font-semibold min-w-[130px]">Status kejadian</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr class="transition hover:bg-gray-50 focus-within:bg-teal-50 group">
+                                                <td class="border-r border-gray-200 p-0"><input type="text" id="problem_name" name="problem_name" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="text" id="problem_location" name="problem_location" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="text" id="problem_part_name" name="problem_part_name" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="text" id="problem_lot_number" name="problem_lot_number" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="number" id="problem_qty" name="problem_qty" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="number" id="qty_check" name="qty_check" class="w-full h-12 bg-transparent outline-none text-center px-2 elegant-sync"></td>
+                                                <td class="border-r border-gray-200 p-0"><input type="text" id="ng_rasio" name="ng_rasio" class="w-full h-12 bg-transparent outline-none text-center px-2 font-bold text-teal-700 elegant-sync"></td>
+                                                <td class="p-2 text-[11px] text-left leading-tight bg-white group-hover:bg-gray-50 transition">
+                                                    <label class="flex items-center gap-1 cursor-pointer mb-1 text-gray-700 hover:text-teal-700"><input type="radio" id="incident_status_pertama" name="incident_status" value="Pertama" class="accent-teal-600 elegant-sync"> Pertama terjadi</label>
+                                                    <label class="flex items-center gap-1 cursor-pointer text-gray-700 hover:text-teal-700"><input type="radio" id="incident_status_pernah" name="incident_status" value="Pernah" class="accent-teal-600 elegant-sync"> Pernah terjadi</label>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="flex flex-col md:flex-row border-b border-gray-200 min-h-[250px] md:min-h-[300px]">
+                                    <div class="flex-1 p-3 border-b md:border-b-0 md:border-r border-gray-200 focus-within:bg-teal-50 transition flex flex-col">
+                                        <span class="text-sm font-bold text-gray-800 mb-3">Detail masalah :</span>
+                                        <textarea id="problem_detail" name="problem_detail" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[200px] bg-transparent outline-none resize-none overflow-hidden text-sm text-gray-800 elegant-sync" placeholder="Ketik deskripsi masalah secara mendetail di sini..."></textarea>
+                                    </div>
+                                    <div class="w-full md:w-[30%] p-3 flex flex-col bg-white hover:bg-gray-50 transition relative">
+                                        <span class="text-sm font-bold text-gray-800 mb-3">Ilustrasi Gambar</span>
+                                        <input type="hidden" id="ilustration_id" name="ilustration_id" value="">
+
+                                        <label class="w-full flex-1 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition group overflow-hidden relative">
+                                            <div id="upload-placeholder" class="flex flex-col items-center no-print">
+                                                <span class="text-3xl mb-2 group-hover:scale-110 transition-transform">📷</span>
+                                                <span class="text-sm font-semibold text-gray-500 group-hover:text-teal-600">Upload Gambar</span>
+                                            </div>
+                                            <img id="ilustration_preview" src="" class="absolute inset-0 w-full h-full object-cover hidden" alt="Preview Ilustrasi">
+                                            <input type="file" id="file_ilustration" name="file_ilustration" class="hidden" accept="image/*">
+                                        </label>
+                                        <button type="button" id="btn_remove_ilustration" class="hidden absolute top-10 right-4 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-md transition cursor-pointer no-print" title="Hapus Gambar">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-col md:flex-row">
+                                    <div class="flex-1 flex flex-col border-b md:border-b-0 md:border-r border-gray-200">
+                                        <div class="p-3 md:p-4 border-b border-gray-200 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                            <span class="text-sm font-bold text-gray-800 whitespace-nowrap w-40 shrink-0">Kategori asal masalah :</span>
+                                            <div class="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-700 w-full">
+                                                <div class="space-y-2">
+                                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_category_sarmut" name="problem_category" value="Sarmut" class="accent-teal-600 elegant-sync"> Sarmut/Sarling</label>
+                                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_category_proses" name="problem_category" value="Proses" class="accent-teal-600 elegant-sync"> Proses abnormal</label>
+                                                </div>
+                                                <div class="space-y-2">
+                                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_category_claim" name="problem_category" value="Claim" class="accent-teal-600 elegant-sync"> Customer claim</label>
+                                                    <label class="flex items-center gap-1.5 cursor-pointer font-bold text-gray-900"><input type="radio" id="problem_category_audit" name="problem_category" value="Audit" class="accent-teal-600 elegant-sync"> Audit (internal)</label>
+                                                </div>
+                                                <div class="space-y-2 flex flex-col justify-center">
+                                                    <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_category_produk" name="problem_category" value="Produk" class="accent-teal-600 elegant-sync"> Produk abnormal</label>
+                                                    <label class="flex items-center gap-1.5 hover:text-teal-700">
+                                                        <input type="radio" id="problem_category_lain_radio" name="problem_category" value="Lain" class="accent-teal-600 elegant-sync cursor-pointer"> Lain:
+                                                        <input type="text" id="problem_category_lain" name="problem_category_lain" class="border-b border-gray-300 outline-none bg-transparent w-full ml-1 focus:border-teal-600 transition elegant-sync">
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="p-3 md:p-4 hover:bg-gray-50 transition flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                                            <span class="text-sm font-bold text-gray-800 whitespace-nowrap w-40 shrink-0">Status problem :</span>
+                                            <div class="flex-1 flex flex-wrap gap-4 sm:gap-5 text-xs font-semibold text-gray-700">
+                                                <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_status_critical" name="problem_status" value="Critical" class="accent-teal-600 elegant-sync"> Critical</label>
+                                                <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_status_mayor" name="problem_status" value="Major" class="accent-teal-600 elegant-sync"> Major</label>
+                                                <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_status_medium" name="problem_status" value="Medium" class="accent-teal-600 elegant-sync"> Medium</label>
+                                                <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_status_minor" name="problem_status" value="Minor" class="accent-teal-600 elegant-sync"> Minor</label>
+                                                <label class="flex items-center gap-1.5 cursor-pointer hover:text-teal-700"><input type="radio" id="problem_status_ofi" name="problem_status" value="OFI" class="accent-teal-600 elegant-sync"> OFI</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="w-full md:w-[30%] p-4 md:p-5 hover:bg-gray-50 focus-within:bg-teal-50 transition flex flex-col justify-center">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-bold text-gray-800 whitespace-nowrap">Batas tanggal Jawab :</span>
+                                            <input type="date" id="reply_deadline" name="reply_deadline" class="w-full bg-transparent outline-none border-b border-gray-300 focus:border-teal-600 text-sm text-gray-800 py-1 transition elegant-sync cursor-pointer">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-4 border-t border-gray-200 no-print">
+                            <button type="button" id="btn-next-1" onclick="switchTab(2)" class="bg-teal-700 text-white px-8 py-2.5 rounded-lg shadow-md hover:bg-teal-800 transition font-bold cursor-pointer">Selanjutnya &rarr;</button>
+                        </div>
+
+                    </div>
+
+                    <div id="tab-2" class="hidden">
+                        <div class="border border-gray-200 shadow-sm bg-white overflow-hidden mb-6 flex flex-col text-sm">
+
+                            <div id="auditee-section">
+                                <div class="flex flex-col md:flex-row border-b border-gray-200 min-h-[80px]">
+                                    <div class="w-[30%]"><span> </span></div>
+                                    <div class="w-[70%] flex">
+                                        <div class="w-[30%] h-full border border-gray-200 p-2 flex flex-col focus-within:bg-teal-50 transition">
+                                            <div class="flex flex-col px-1 mb-1">
+                                                <div class="font-bold text-gray-800 text-[13px]">Departemen penanggung jawab</div>
+                                                <input type="hidden" id="action_id" name="action_id" value="">
+                                                <input type="text" id="PIC_dept" name="PIC_dept" class="w-full mt-1 bg-transparent border-b border-gray-300 outline-none focus:border-teal-600 transition text-sm text-gray-800 elegant-sync" placeholder="Ketik departemen...">
+                                            </div>
+                                            <div class="flex-1 flex flex-col items-center justify-end text-xs font-semibold pb-3 text-gray-700">
+                                                <span class="mb-1">Tanggal Action :</span>
+                                                <div class="flex items-end gap-2">
+                                                    <span class="flex items-end gap-1">Tgl: <input type="text" id="action_date_d" name="action_date_d" class="w-8 border-b border-gray-400 bg-transparent outline-none text-center focus:border-teal-600 transition elegant-sync"></span>
+                                                    <span class="flex items-end gap-1">Bln: <input type="text" id="action_date_m" name="action_date_m" class="w-8 border-b border-gray-400 bg-transparent outline-none text-center focus:border-teal-600 transition elegant-sync"></span>
+                                                    <span class="flex items-end gap-1">Th: <input type="text" id="action_date_y" name="action_date_y" class="w-10 border-b border-gray-400 bg-transparent outline-none text-center focus:border-teal-600 transition elegant-sync"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-[70%] flex bg-white text-center">
+                                            <div class="flex-1 border-r border-gray-200 flex flex-col h-full">
+                                                <div class="py-1 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[11px] h-[33px] flex items-center justify-center">Disetujui</div>
+                                                <div class="flex-1 min-h-[80px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                    <input type="hidden" id="approval_id_dept_disetujui" value="">
+                                                    <input type="hidden" id="status_dept_disetujui" name="status_dept_disetujui" value="" class="elegant-sync">
+                                                    <div id="btn-group-dept_disetujui" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                        <button type="button" onclick="setStamp('dept_disetujui', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                        <button type="button" onclick="setStamp('dept_disetujui', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                    </div>
+                                                    <div id="stamp-container-dept_disetujui" onclick="resetStamp('dept_disetujui')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                </div>
+                                                <div class="p-1 bg-white h-[35px] flex items-center">
+                                                    <input type="text" id="sign_name_dept_disetujui" name="sign_name_dept_disetujui" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                </div>
+                                            </div>
+
+                                            <div class="flex-1 border-r border-gray-200 flex flex-col h-full">
+                                                <div class="py-1 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[11px] h-[33px] flex items-center justify-center">Diperiksa</div>
+                                                <div class="flex-1 min-h-[80px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                    <input type="hidden" id="approval_id_dept_diperiksa" value="">
+                                                    <input type="hidden" id="status_dept_diperiksa" name="status_dept_diperiksa" value="" class="elegant-sync">
+                                                    <div id="btn-group-dept_diperiksa" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                        <button type="button" onclick="setStamp('dept_diperiksa', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                        <button type="button" onclick="setStamp('dept_diperiksa', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                    </div>
+                                                    <div id="stamp-container-dept_diperiksa" onclick="resetStamp('dept_diperiksa')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                </div>
+                                                <div class="p-1 bg-white h-[35px] flex items-center">
+                                                    <input type="text" id="sign_name_dept_diperiksa" name="sign_name_dept_diperiksa" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                </div>
+                                            </div>
+
+                                            <div class="flex-1 flex flex-col h-full">
+                                                <div class="py-1 bg-gray-50 font-bold text-gray-700 border-b border-gray-200 text-[11px] h-[33px] flex items-center justify-center">Dibuat</div>
+                                                <div class="flex-1 min-h-[80px] bg-white transition hover:bg-gray-50 p-2 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                    <input type="hidden" id="approval_id_dept_dibuat" value="">
+                                                    <input type="hidden" id="status_dept_dibuat" name="status_dept_dibuat" value="" class="elegant-sync">
+                                                    <div id="btn-group-dept_dibuat" class="flex flex-col gap-1.5 w-full px-1 no-print">
+                                                        <button type="button" onclick="setStamp('dept_dibuat', 'Approved')" class="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                        <button type="button" onclick="setStamp('dept_dibuat', 'Rejected')" class="text-[10px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                    </div>
+                                                    <div id="stamp-container-dept_dibuat" onclick="resetStamp('dept_dibuat')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                </div>
+                                                <div class="p-1 bg-white h-[35px] flex items-center">
+                                                    <input type="text" id="sign_name_dept_dibuat" name="sign_name_dept_dibuat" class="w-full text-center text-xs outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white border-b border-gray-200 px-4 py-1.5 text-xs text-gray-600">Jika kolom dibawah tidak cukup dapat menggunakan kertas lain</div>
+                                <div class="bg-gray-200 border-b border-gray-300 p-2 px-4 font-bold text-gray-800 text-[13px]">[Penyebab] &gt;&gt; Analisa Penyebab dapat menggunakan Fish Bone atau 5-Why</div>
+
+                                <div class="flex flex-col md:flex-row border-b border-gray-300">
+                                    <div class="hidden md:flex w-10 bg-white border-r border-gray-300 items-center justify-center p-1 text-center">
+                                        <span class="vertical-text text-[10px] font-bold text-gray-800">Dept. yg bertanggung jawab</span>
+                                    </div>
+                                    <div class="w-full">
+                                        <div class="flex border-b border-gray-300">
+                                            <div class="w-full md:w-[35%] border-b md:border-b-0 md:border-r border-gray-300 p-4 flex items-center justify-center bg-white">
+                                                <img src="@Url.Content("~/Images/Fish bone.png")" alt="Diagram Fishbone" class="max-w-full h-auto object-contain opacity-80">
+                                            </div>
+
+                                            <div class="w-full md:w-[65%] flex flex-col bg-white">
+                                                <div class="p-2 border-b border-gray-300 text-gray-800">Analisa Why-Why :</div>
+
+                                                <div class="flex border-b border-gray-300 transition hover:bg-gray-50 focus-within:bg-teal-50 min-h-[36px]">
+                                                    <div class="w-16 px-2 font-bold text-gray-800 border-r border-gray-300 flex pt-2 text-[13px]">Why 1 :</div>
+                                                    <div class="flex-1 px-2 py-1 flex flex-col justify-center">
+                                                        <input type="hidden" id="why_id_1" value="">
+                                                        <textarea id="why_1" name="why_1" rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full bg-transparent outline-none resize-none overflow-hidden elegant-sync leading-tight"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex border-b border-gray-300 transition hover:bg-gray-50 focus-within:bg-teal-50 min-h-[36px]">
+                                                    <div class="w-16 px-2 font-bold text-gray-800 border-r border-gray-300 flex pt-2 text-[13px]">Why 2 :</div>
+                                                    <div class="flex-1 px-2 py-1 flex flex-col justify-center">
+                                                        <input type="hidden" id="why_id_2" value="">
+                                                        <textarea id="why_2" name="why_2" rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full bg-transparent outline-none resize-none overflow-hidden elegant-sync leading-tight"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex border-b border-gray-300 transition hover:bg-gray-50 focus-within:bg-teal-50 min-h-[36px]">
+                                                    <div class="w-16 px-2 font-bold text-gray-800 border-r border-gray-300 flex pt-2 text-[13px]">Why 3 :</div>
+                                                    <div class="flex-1 px-2 py-1 flex flex-col justify-center">
+                                                        <input type="hidden" id="why_id_3" value="">
+                                                        <textarea id="why_3" name="why_3" rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full bg-transparent outline-none resize-none overflow-hidden elegant-sync leading-tight"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex border-b border-gray-300 transition hover:bg-gray-50 focus-within:bg-teal-50 min-h-[36px]">
+                                                    <div class="w-16 px-2 font-bold text-gray-800 border-r border-gray-300 flex pt-2 text-[13px]">Why 4 :</div>
+                                                    <div class="flex-1 px-2 py-1 flex flex-col justify-center">
+                                                        <input type="hidden" id="why_id_4" value="">
+                                                        <textarea id="why_4" name="why_4" rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full bg-transparent outline-none resize-none overflow-hidden elegant-sync leading-tight"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex border-b border-gray-300 transition hover:bg-gray-50 focus-within:bg-teal-50 min-h-[36px]">
+                                                    <div class="w-16 px-2 font-bold text-gray-800 border-r border-gray-300 flex pt-2 text-[13px]">Why 5 :</div>
+                                                    <div class="flex-1 px-2 py-1 flex flex-col justify-center">
+                                                        <input type="hidden" id="why_id_5" value="">
+                                                        <textarea id="why_5" name="why_5" rows="1" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full bg-transparent outline-none resize-none overflow-hidden elegant-sync leading-tight"></textarea>
+                                                    </div>
+                                                </div>
+
+                                                <div class="p-1 px-2 border-b border-gray-300 text-[11px] italic font-bold text-gray-800 bg-white">Note : Pastikan Analisa Why-Why terisi penuh</div>
+
+                                                <div class="flex flex-col transition hover:bg-gray-50 focus-within:bg-teal-50 p-2 min-h-[60px]">
+                                                    <div class="text-gray-800 mb-1 font-bold">Review PFMEA</div>
+                                                    <textarea id="review_PFMEA" name="review_PFMEA" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[40px] bg-transparent outline-none resize-none overflow-hidden text-gray-800 elegant-sync"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex-1 flex flex-col">
+                                            <div class="flex flex-col md:flex-row border-b border-gray-300 min-h-[120px]">
+                                                <div class="flex-1 p-2 flex flex-col focus-within:bg-teal-50 transition border-b md:border-b-0 md:border-r border-gray-300">
+                                                    <div class="font-bold text-gray-800 text-[13px] italic mb-1">Containment Action for Defective Products / Tindakan Penahanan Produk Cacat :</div>
+                                                    <textarea id="containment_action" name="containment_action" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[60px] bg-transparent outline-none resize-none overflow-hidden text-gray-800 elegant-sync"></textarea>
+                                                </div>
+                                                <div class="w-full md:w-48 flex flex-row">
+                                                    <div class="flex-1 border-r border-gray-300 flex flex-col focus-within:bg-teal-50 transition">
+                                                        <div class="border-b border-gray-300 text-center text-[11px] py-1 text-gray-800">PIC</div>
+                                                        <input type="text" id="PIC_containment" name="PIC_containment" class="w-full flex-1 bg-transparent outline-none text-center px-1 py-1 elegant-sync">
+                                                    </div>
+                                                    <div class="flex-1 flex flex-col focus-within:bg-teal-50 transition">
+                                                        <div class="border-b border-gray-300 text-center text-[11px] py-1 text-gray-800">Kapan</div>
+                                                        <input type="date" id="date_containment" name="date_containment" class="w-full flex-1 bg-transparent outline-none text-center text-[10px] px-0.5 elegant-sync cursor-pointer">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex flex-col md:flex-row border-b border-gray-300 min-h-[120px]">
+                                                <div class="flex-1 p-2 flex flex-col focus-within:bg-teal-50 transition border-b md:border-b-0 md:border-r border-gray-300">
+                                                    <div class="font-bold text-gray-800 text-[13px] mb-1">[Tindakan perbaikan]<br><span class="italic">Details of Correction :</span></div>
+                                                    <textarea id="detail_correction" name="detail_correction" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[60px] bg-transparent outline-none resize-none overflow-hidden text-gray-800 elegant-sync"></textarea>
+                                                </div>
+                                                <div class="hidden md:flex w-48 flex-row">
+                                                    <div class="flex-1 border-r border-gray-300 focus-within:bg-teal-50 transition"><input type="text" id="PIC_detail_correction" name="PIC_detail_correction" class="w-full h-full bg-transparent outline-none text-center elegant-sync"></div>
+                                                    <div class="flex-1 flex items-center justify-center focus-within:bg-teal-50 transition h-full">
+                                                        <input type="date" id="date_detail_correction" name="date_detail_correction" class="w-full bg-transparent outline-none text-center text-[10px] px-0.5 elegant-sync cursor-pointer">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex flex-col md:flex-row border-b border-gray-300 min-h-[120px]">
+                                                <div class="flex-1 p-2 flex flex-col focus-within:bg-teal-50 transition border-b md:border-b-0 md:border-r border-gray-300">
+                                                    <div class="font-bold italic text-gray-800 text-[13px] mb-1">Details of Corrective action :</div>
+                                                    <textarea id="detail_corrective_action" name="detail_corrective_action" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'" class="w-full min-h-[80px] bg-transparent outline-none resize-none overflow-hidden text-gray-800 elegant-sync"></textarea>
+                                                </div>
+                                                <div class="hidden md:flex w-48 flex-row">
+                                                    <div class="flex-1 border-r border-gray-300 focus-within:bg-teal-50 transition"><input type="text" id="PIC_detail_corrective_action" name="PIC_detail_corrective_action" class="w-full h-full bg-transparent outline-none text-center elegant-sync"></div>
+                                                    <div class="flex-1 flex items-center justify-center focus-within:bg-teal-50 transition h-full">
+                                                        <input type="date" id="date_detail_corrective_action" name="date_detail_corrective_action" class="w-full bg-transparent outline-none text-center text-[10px] px-0.5 elegant-sync cursor-pointer">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex flex-col md:flex-row border-b border-gray-300 min-h-[60px]">
+                                                <div class="flex-1 p-2 flex flex-col focus-within:bg-teal-50 transition border-b md:border-b-0 md:border-r border-gray-300 justify-center">
+                                                    <div class="flex items-center text-[13px] mb-2">
+                                                        <span class="text-gray-800 mr-2">Yokotenkai ( Perbaikan Horizontal )</span>
+                                                        <input type="text" id="yokotenkai" name="yokotenkai" class="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-teal-600 transition elegant-sync">
+                                                    </div>
+                                                    <div class="flex items-center text-[13px]">
+                                                        <span class="text-gray-800 mr-2">Lot Awal setelah perbaikan :</span>
+                                                        <input type="text" id="initial_lot_after_repair" name="initial_lot_after_repair" class="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-teal-600 transition elegant-sync">
+                                                    </div>
+                                                </div>
+                                                <div class="hidden md:flex w-48 flex-row">
+                                                    <div class="flex-1 border-r border-gray-300 focus-within:bg-teal-50 transition"><input type="text" id="PIC_yokotenkai" name="PIC_yokotenkai" class="w-full h-full bg-transparent outline-none text-center elegant-sync"></div>
+                                                    <div class="flex-1 flex items-center justify-center focus-within:bg-teal-50 transition h-full">
+                                                        <input type="date" id="date_yokotenkai" name="date_yokotenkai" class="w-full bg-transparent outline-none text-center text-[10px] px-0.5 elegant-sync cursor-pointer">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex flex-col md:flex-row min-h-[50px]">
+                                                <div class="w-full md:w-56 p-2 border-b md:border-b-0 md:border-r border-gray-300 focus-within:bg-teal-50 transition flex flex-col justify-center">
+                                                    <span class="text-gray-800 text-[13px]">Dokumen yang diperbaharui</span>
+                                                    <div class="flex gap-4 text-xs mt-1">
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" id="is_document_updated_ya" name="is_document_updated" value="Ya" class="accent-teal-600 elegant-sync"> Ya</label>
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" id="is_document_updated_tidak" name="is_document_updated" value="Tidak" class="accent-teal-600 elegant-sync"> Tidak</label>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1 p-2 focus-within:bg-teal-50 transition flex flex-col justify-center">
+                                                    <div class="flex gap-6 text-[11px] mb-1">
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="doc_type_sop" name="document_type_updated" class="accent-teal-600 elegant-sync" value="SOP"> SOP/WI</label>
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="doc_type_check_sheet" name="document_type_updated" class="accent-teal-600 elegant-sync" value="Check Sheet"> Check sheet</label>
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="doc_type_control_plan" name="document_type_updated" class="accent-teal-600 elegant-sync" value="Control Plan"> Control Plan</label>
+                                                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" id="doc_type_lain" name="document_type_updated" class="accent-teal-600 elegant-sync" value="Lain"> Lain-lain</label>
+                                                    </div>
+                                                    <div class="flex items-end text-[13px]">
+                                                        <span class="text-gray-800 mr-2">Dokumen Number :</span>
+                                                        <input type="text" id="document_number" name="document_number" class="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-teal-600 transition elegant-sync">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="verification-section">
+                                <div class="flex border-t-2 border-gray-400 min-h-[120px]">
+                                    <div class="hidden md:flex w-10 bg-white border-r border-gray-300 items-center justify-center p-1 text-center">
+                                        <span class="vertical-text text-[10px] text-gray-800 leading-tight">Auditor/<br>Mgr/<br>MR</span>
+                                    </div>
+
+                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-[1.3fr_1fr_1.2fr_1.5fr_1.2fr]">
+                                        <div class="border-b md:border-b-0 md:border-r border-gray-300 p-2 flex flex-col focus-within:bg-teal-50 transition">
+                                            <div class="text-[13px] text-gray-800 mb-2">Verifikasi-1 CAR</div>
+                                            <input type="hidden" id="verification_id_v1" value="">
+                                            <input type="hidden" id="verification_id_v2" value="">
+                                            <div class="flex flex-col gap-2 text-[11px] text-gray-700">
+                                                <label class="flex items-start gap-1 cursor-pointer">
+                                                    <input type="radio" id="v1_status_selesai" name="v1_status" value="Selesai" class="mt-0.5 accent-teal-600 elegant-sync cursor-pointer">
+                                                    <span>Corrective actions sudah dilakukan(Selesai)</span>
+                                                </label>
+                                                <label class="flex items-start gap-1 cursor-pointer">
+                                                    <input type="radio" id="v1_status_belum" name="v1_status" value="Belum Selesai" class="mt-0.5 accent-teal-600 elegant-sync cursor-pointer">
+                                                    <span>Status belum selesai (<br>lihat comment )</span>
+                                                </label>
+                                            </div>
+                                            <div class="text-[9px] mt-auto pt-2 italic text-gray-500">* Pilih Salah Satu</div>
+                                        </div>
+
+                                        <div class="border-b md:border-b-0 md:border-r border-gray-300 p-2 flex flex-col focus-within:bg-teal-50 transition">
+                                            <div class="text-[13px] text-gray-800 mb-1">[Comments]</div>
+                                            <textarea id="v1_comment" name="v1_comment" class="w-full flex-1 bg-transparent outline-none resize-none text-gray-800 elegant-sync text-xs"></textarea>
+                                        </div>
+
+                                        <div class="border-b md:border-b-0 md:border-r border-gray-300 flex flex-col">
+                                            <div class="text-center text-[12px] border-b border-gray-300 py-1 text-gray-800">Diverifikasi oleh</div>
+                                            <div class="flex flex-1">
+                                                <div class="flex-1 border-r border-gray-300 flex flex-col h-full">
+                                                    <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-1 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                        <input type="hidden" id="status_v1_auditor" name="status_v1_auditor" value="" class="elegant-sync">
+                                                        <div id="btn-group-v1_auditor" class="flex flex-col gap-1 w-full px-1 no-print">
+                                                            <button type="button" onclick="setVerificationStamp('v1_auditor', 'Approved')" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                            <button type="button" onclick="setVerificationStamp('v1_auditor', 'Rejected')" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                        </div>
+                                                        <div id="stamp-container-v1_auditor" onclick="resetVerificationStamp('v1_auditor')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                    </div>
+                                                    <div class="p-0.5 bg-white h-[28px] flex items-center border-b border-gray-300">
+                                                        <input type="text" id="sign_name_v1_auditor" name="sign_name_v1_auditor" class="w-full text-center text-[10px] outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                    </div>
+                                                    <div class="text-[10px] text-center bg-gray-50 py-0.5 text-gray-800">Auditor/Mgr</div>
+                                                </div>
+
+                                                <div class="flex-1 flex flex-col h-full">
+                                                    <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-1 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                        <input type="hidden" id="status_v1_mr" name="status_v1_mr" value="" class="elegant-sync">
+                                                        <div id="btn-group-v1_mr" class="flex flex-col gap-1 w-full px-1 no-print">
+                                                            <button type="button" onclick="setVerificationStamp('v1_mr', 'Approved')" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                            <button type="button" onclick="setVerificationStamp('v1_mr', 'Rejected')" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                        </div>
+                                                        <div id="stamp-container-v1_mr" onclick="resetVerificationStamp('v1_mr')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                    </div>
+                                                    <div class="p-0.5 bg-white h-[28px] flex items-center border-b border-gray-300">
+                                                        <input type="text" id="sign_name_v1_mr" name="sign_name_v1_mr" class="w-full text-center text-[10px] outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                    </div>
+                                                    <div class="text-[10px] text-center bg-gray-50 py-0.5 text-gray-800">MR</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="border-b md:border-b-0 md:border-r border-gray-300 p-2 flex flex-col focus-within:bg-teal-50 transition">
+                                            <div class="text-[11px] text-gray-800 leading-tight mb-2 text-center">Verifikasi ke-2, CAR ( 3bln setelah<br>pelaksanaan perbaikan ).</div>
+                                            <div class="flex justify-center gap-6 text-[12px] mb-3">
+                                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" id="v2_status_effektif" name="v2_status" value="Effektif" class="accent-teal-600 elegant-sync cursor-pointer"> Effektif</label>
+                                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" id="v2_status_tidak_effektif" name="v2_status" value="Tidak Effektif" class="accent-teal-600 elegant-sync cursor-pointer"> Tdk Effektif</label>
+                                            </div>
+                                            <div class="text-[12px] text-gray-800 mb-1">Comments:</div>
+                                            <textarea id="v2_comment" name="v2_comment" class="w-full flex-1 bg-transparent outline-none resize-none text-gray-800 elegant-sync text-xs"></textarea>
+                                        </div>
+
+                                        <div class="flex flex-col">
+                                            <div class="text-center text-[12px] border-b border-gray-300 py-1 text-gray-800">Diverifikasi oleh</div>
+                                            <div class="text-[11px] border-b border-gray-300 px-2 py-0.5 flex items-center focus-within:bg-teal-50 transition">
+                                                Date : <input type="date" id="v2_date" name="v2_date" class="flex-1 bg-transparent outline-none px-1 text-[10px] elegant-sync cursor-pointer">
+                                            </div>
+                                            <div class="flex flex-1">
+                                                <div class="flex-1 border-r border-gray-300 flex flex-col h-full">
+                                                    <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-1 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                        <input type="hidden" id="status_v2_auditor" name="status_v2_auditor" value="" class="elegant-sync">
+                                                        <div id="btn-group-v2_auditor" class="flex flex-col gap-1 w-full px-1 no-print">
+                                                            <button type="button" onclick="setVerificationStamp('v2_auditor', 'Approved')" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                            <button type="button" onclick="setVerificationStamp('v2_auditor', 'Rejected')" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                        </div>
+                                                        <div id="stamp-container-v2_auditor" onclick="resetVerificationStamp('v2_auditor')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                    </div>
+                                                    <div class="p-0.5 bg-white h-[28px] flex items-center border-b border-gray-300">
+                                                        <input type="text" id="sign_name_v2_auditor" name="sign_name_v2_auditor" class="w-full text-center text-[10px] outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                    </div>
+                                                    <div class="text-[10px] text-center bg-gray-50 py-0.5 text-gray-800">Auditor/Mgr</div>
+                                                </div>
+
+                                                <div class="flex-1 flex flex-col h-full">
+                                                    <div class="flex-1 min-h-[75px] bg-white transition hover:bg-gray-50 p-1 flex flex-col items-center justify-center relative overflow-hidden border-b border-gray-200">
+                                                        <input type="hidden" id="status_v2_mr" name="status_v2_mr" value="" class="elegant-sync">
+                                                        <div id="btn-group-v2_mr" class="flex flex-col gap-1 w-full px-1 no-print">
+                                                            <button type="button" onclick="setVerificationStamp('v2_mr', 'Approved')" class="text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 py-1 rounded hover:bg-emerald-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Approve</button>
+                                                            <button type="button" onclick="setVerificationStamp('v2_mr', 'Rejected')" class="text-[9px] font-bold bg-red-50 text-red-700 border border-red-300 py-1 rounded hover:bg-red-600 hover:text-white transition uppercase shadow-sm cursor-pointer">Reject</button>
+                                                        </div>
+                                                        <div id="stamp-container-v2_mr" onclick="resetVerificationStamp('v2_mr')" class="absolute inset-0 flex items-center justify-center hidden cursor-pointer group bg-white hover:bg-gray-50 transition" title="Klik untuk mengubah pilihan"></div>
+                                                    </div>
+                                                    <div class="p-0.5 bg-white h-[28px] flex items-center border-b border-gray-300">
+                                                        <input type="text" id="sign_name_v2_mr" name="sign_name_v2_mr" class="w-full text-center text-[10px] outline-none bg-transparent font-semibold text-gray-800 focus:bg-teal-50 rounded transition h-full elegant-sync" placeholder="Nama Terang">
+                                                    </div>
+                                                    <div class="text-[10px] text-center bg-gray-50 py-0.5 text-gray-800">MR</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between pt-2 no-print">
+                            <button type="button" id="btn-prev-2" onclick="switchTab(1)" class="bg-gray-500 text-white px-6 py-2.5 rounded-lg shadow-md hover:bg-gray-600 transition font-bold cursor-pointer">&larr; Kembali</button>
+                            <button type="button" id="btn-next-2" onclick="switchTab(3)" class="bg-teal-700 text-white px-8 py-2.5 rounded-lg shadow-md hover:bg-teal-800 transition font-bold cursor-pointer">Upload Bukti Perbaikan &rarr;</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-3" class="hidden">
+                        <div class="border border-gray-200 shadow-sm bg-white overflow-hidden mb-6 p-6 flex flex-col text-sm rounded">
+                            <div class="font-bold text-gray-800 mb-2 text-lg border-b pb-2">Upload Evidence (Bukti Perbaikan)</div>
+                            <p class="text-xs text-gray-500 mb-4">Lampirkan foto atau dokumen bukti perbaikan. Anda bisa mengunggah lebih dari satu file secara bersamaan.</p>
+
+                            <div class="mb-6 no-print" id="upload-evidence-container">
+                                <label class="w-full border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center p-8 cursor-pointer hover:border-teal-500 hover:bg-teal-50 transition group overflow-hidden relative">
+                                    <span class="text-4xl mb-3 group-hover:scale-110 transition-transform">📁</span>
+                                    <span class="text-sm font-semibold text-gray-500 group-hover:text-teal-600">Pilih atau Tarik File Evidence Kesini</span>
+                                    <input type="file" id="file_evidence_multiple" name="file_evidence_multiple" class="hidden" accept="image/*,.pdf" multiple>
+                                </label>
+                            </div>
+
+                            <div id="evidence_gallery" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between pt-2 no-print">
+                            <button type="button" id="btn-prev-3" onclick="switchTab(2)" class="bg-gray-500 text-white px-6 py-2.5 rounded-lg shadow-md hover:bg-gray-600 transition font-bold cursor-pointer">&larr; Kembali</button>
+                            <button type="button" id="btn-submit" onclick="submitForm()" class="flex items-center justify-center gap-2 bg-teal-700 text-white px-10 py-2.5 rounded-lg shadow-xl hover:bg-teal-800 transition font-bold text-lg cursor-pointer">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Simpan Laporan
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <div id="print-section-container" class="print-only-layout bg-white p-4 mx-auto mb-8 shadow-2xl border border-gray-200" style="max-width: 250mm;">
+                <table class="print-table w-full">
+                    <colgroup>
+                        <col style="width: 6px;" />
+                        <col span="37" style="width: 4px;" />
+                    </colgroup>
+
+                    <tr>
+                        <td rowspan="4" class="text-center" style="border: 1px solid black; padding: 2px;">
+                            Diisi <br /> Oleh :
+                        </td>
+                        <td colspan="6" rowspan="4" class="header-cell text-center" style="border: 1px solid black; padding: 5px;">
+                            <img src="@Url.Content("~/Images/niterra-logo.jpg")" alt="Niterra-Logo" style="max-height: 50px; max-width: 100%; object-fit: contain;" />
+                        </td>
+                        <td rowspan="2" colspan="22" style="font-size: 16px; font-weight: bold; border-bottom: 1px solid black; padding: 10px;">
+                            FORMULIR INTEGRASI
+                        </td>
+
+                        <td colspan="3" style="border-bottom: 1px solid black; padding: 2px 4px; text-align: left;">No. Dok</td>
+                        <td colspan="6" style="border-bottom: 1px solid black; border-left: 1px solid black; padding: 2px 4px; text-align: left;">PMLK3-MR-11/L1</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="border-bottom: 1px solid black; padding: 2px 4px; text-align: left;">Revisi</td>
+                        <td colspan="6" style="border-bottom: 1px solid black; border-left: 1px solid black; padding: 2px 4px; text-align: left;">01</td>
+                    </tr>
+                    <tr>
+                        <td rowspan="2" colspan="22" style="font-size: 12px; font-weight: bold; padding: 8px;">
+                            PERMINTAAN TINDAKAN PERBAIKAN<br>
+                            <span style="font-style: italic; font-size: 10px; font-weight: normal;">( Corrective Action Request )</span>
+                        </td>
+                        <td colspan="3" style="border-bottom: 1px solid black; padding: 2px 4px; text-align: left;">Tanggal</td>
+                        <td colspan="6" style="border-bottom: 1px solid black; border-left: 1px solid black; padding: 2px 4px; text-align: left;">04-Aug-25</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="padding: 2px 4px; text-align: left;">Halaman</td>
+                        <td colspan="6" style="border-left: 1px solid black; padding: 2px 4px; text-align: left;">1 / 1</td>
+                    </tr>
+
+                    <tr>
+                        <td rowspan="11" style="border: 1px solid black;" class="vertical-text">Dept. yg menemukan atau Auditor</td>
+                        <td colspan="11" rowspan="3" style="border: 1px solid black; border-top: none; border-left: none; text-align: left; vertical-align: top; padding: 4px;">
+                            <strong>Kepada Dept. :</strong> <span id="p_to_Dept"></span><br>
+                            <span style="font-style: italic;">Attention :</span> <span id="p_attention"></span>
+                        </td>
+                        <td colspan="5" style="height: 20px; border: 1px solid black; border-top: none; text-align: left; padding-left: 4px;">No.Laporan</td>
+                        <td colspan="9" style="height: 20px; border: 1px solid black; border-top: none; text-align: left; padding-left: 4px;"><span id="p_no_report"></span></td>
+                        <td colspan="4" class="header-cell" style="height: 20px; border: 1px solid black; border-top: none;">Disetujui</td>
+                        <td colspan="4" class="header-cell" style="height: 20px; border: 1px solid black; border-top: none;">Diperiksa</td>
+                        <td colspan="4" class="header-cell" style="height: 20px; border: 1px solid black; border-top: none;">Dibuat</td>
+                    </tr>
+                    <tr style="height: 20px;">
+                        <td colspan="5" style="border: 1px solid black; text-align: left; padding-left: 4px;">Tanggal</td>
+                        <td colspan="9" style="border: 1px solid black; text-align: left; padding-left: 4px;"><span id="p_date"></span></td>
+                        <td rowspan="2" colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_stamp_disetujui_1"></div></td>
+                        <td rowspan="2" colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_stamp_diperiksa_1"></div></td>
+                        <td rowspan="2" colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_stamp_dibuat_1"></div></td>
+                    </tr>
+                    <tr style="height: 20px;">
+                        <td colspan="5" style="border: 1px solid black; text-align: left; padding-left: 4px;">Dept. Pembuat/Auditor</td>
+                        <td colspan="11" style="border: 1px solid black; text-align: left; padding-left: 4px;"><span id="p_from_auditor"></span></td>
+                    </tr>
+                    <tr style="height: 20px;">
+                        <td colspan="25" class="header-cell text-center">Harap melakukan perbaikan terhadap problem di bawah ini</td>
+                        <td colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_sign_name_disetujui_1"></div></td>
+                        <td colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_sign_name_diperiksa_1"></div></td>
+                        <td colspan="4" class="header-cell" style="border: 1px solid black;"><div id="p_sign_name_dibuat_1"></div></td>
+                    </tr>
+                    <tr style="background-color: #f3f4f6; height: 20px;">
+                        <td colspan="5" style="border: 1px solid black; border-left: none;">Nama Masalah</td>
+                        <td colspan="5" style="border: 1px solid black;">Lokasi ditemukan</td>
+                        <td colspan="6" style="border: 1px solid black;">Part No./Part Name</td>
+                        <td colspan="4" style="border: 1px solid black;">Lot Number</td>
+                        <td colspan="5" style="border: 1px solid black;">Qty Problem</td>
+                        <td colspan="4" style="border: 1px solid black;">Qty Check/Lot</td>
+                        <td colspan="3" style="border: 1px solid black;">NG Ratio(%)</td>
+                        <td colspan="5" style="border: 1px solid black;">Status Kejadian</td>
+                    </tr>
+                    <tr style="height: 30px;">
+                        <td colspan="5" style="border: 1px solid black; border-left: none;"><span id="p_problem_name"></span></td>
+                        <td colspan="5" style="border: 1px solid black;"><span id="p_problem_location"></span></td>
+                        <td colspan="6" style="border: 1px solid black;"><span id="p_problem_part_name"></span></td>
+                        <td colspan="4" style="border: 1px solid black;"><span id="p_problem_lot_number"></span></td>
+                        <td colspan="5" style="border: 1px solid black;"><span id="p_problem_qty"></span></td>
+                        <td colspan="4" style="border: 1px solid black;"><span id="p_qty_check"></span></td>
+                        <td colspan="3" style="border: 1px solid black;"><span id="p_ng_rasio"></span></td>
+                        <td colspan="5" style="text-align: left; font-size: 9px; border: 1px solid black; padding-left: 4px;">
+                            <span id="p_inc_1">&#9744;</span> Pertama terjadi<br>
+                            <span id="p_inc_2">&#9744;</span> Pernah terjadi
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="26" style="border: 1px solid black; border-left: none; padding: 5px; text-align: left; vertical-align: top;">
+                            <div style="min-height: 100px;">
+                                Detail masalah :<br>
+                                <p style="white-space: pre-wrap; word-break: break-word;" id="p_problem_detail"></p>
+                            </div>
+                        </td>
+
+                        <td colspan="11" style="border: 1px solid black; padding: 5px; text-align: left; vertical-align: top;">
+                            <div style="min-height: 100px;">
+                                Ilustrasi Gambar<br>
+                                <img id="p_ilustration_preview" src="" style="max-height: 70px; max-width: 100%; display: none;" />
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="6" style="height: 30px; text-align: left; border: 1px solid black; border-right: none; border-bottom: none; border-left: none;">
+                            Kategori Asal Masalah
+                        </td>
+                        <td colspan="17" style="text-align: left; border-left: none;">
+                            <span id="p_cat_sarmut">&#9744;</span> Sarmut/Sarling &nbsp;
+                            <span id="p_cat_claim">&#9744;</span> Customer claim &nbsp;
+                            <span id="p_cat_produk">&#9744;</span> Produk abnormal<br>
+                            <span id="p_cat_proses">&#9744;</span> Proses abnormal &nbsp;
+                            <span id="p_cat_audit">&#9744;</span> Audit (internal) &nbsp;
+                            <span id="p_cat_lain">&#9744;</span> Lain-lain <span id="p_cat_lain_text"></span>
+                        </td>
+                        <td colspan="6" style="text-align: left; border: 1px solid black; border-bottom: none; border-right: none;">
+                            <b>Batas Jawab :</b>
+                        </td>
+                        <td colspan="8" style="border-right: 1px solid black; border-left: none; text-align: left;">
+                            <span id="p_reply_deadline"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="16" style="border: 1px solid black; border-bottom: none; border-left: none; text-align: left; padding-left: 4px;">Status problem</td>
+                        <td colspan="2" style="border: 1px solid black; border-bottom: none; border-right: none;"> </td>
+                        <td colspan="19" style="border: 1px solid black; border-left: none;"> </td>
+                    </tr>
+                    <tr>
+                        <td colspan="16" rowspan="2" style="border: 1px solid black; border-left: none; border-top: none; text-align: left; vertical-align: top; padding-left: 4px;">
+                            <span id="p_stat_critical">&#9744;</span> Critical &nbsp;
+                            <span id="p_stat_major">&#9744;</span> Major &nbsp;
+                            <span id="p_stat_medium">&#9744;</span> Medium &nbsp;
+                            <span id="p_stat_minor">&#9744;</span> Minor &nbsp;
+                            <span id="p_stat_ofi">&#9744;</span> OFI
+                        </td>
+                        <td colspan="2" style="border: 1px solid black; border-bottom: none; border-right: none; border-top: none;"> </td>
+                        <td colspan="10" style="border: 1px solid black; border-bottom: none; text-align: left;">Dept penanggung jawab</td>
+                        <td colspan="3" style="border: 1px solid black;">Disetujui</td>
+                        <td colspan="3" style="border: 1px solid black;">Diperiksa</td>
+                        <td colspan="3" style="border: 1px solid black;">Dibuat</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="border-top: none; border-bottom: none;"> </td>
+                        <td colspan="10" style="border: 1px solid black; border-top: none; height: 25px;"><span id="p_PIC_dept"></span></td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black;"><div style="min-height:45px;padding:2px" id="p_stamp_dept_disetujui"></div> </td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black;"><div style="min-height:45px;padding:2px" id="p_stamp_dept_diperiksa"></div></td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black;"><div style="min-height:45px;padding:2px" id="p_stamp_dept_dibuat"></div></td>
+                    </tr>
+                    <tr>
+                        <td colspan="19" style="border-left: 1px solid black;border-top : none; border-bottom:none;"> </td>
+                        <td colspan="10" style="border: 1px solid black; border-bottom: none;">Tanggal Action :</td>
+                    </tr>
+                    <tr>
+                        <td colspan="19" style="border-left: 1px solid black; border-bottom: 1px solid black;border-top:none; text-align: left;">Jika kolom dibawah tidak cukup dapat menggunakan kertas lain</td>
+                        <td colspan="10" style="border: 1px solid black; border-top: none;">Tgl: <span id="p_action_d">_</span> Bln: <span id="p_action_m">_</span> Th: <span id="p_action_y">_</span></td>
+                        <td colspan="3" style="border: 1px solid black;"><div id="p_sign_by_dept_disetujui"></div> </td>
+                        <td colspan="3" style="border: 1px solid black;"><div id="p_sign_by_dept_diperiksa"></div></td>
+                        <td colspan="3" style="border: 1px solid black;"><div id="p_sign_by_dept_dibuat"></div></td>
+                    </tr>
+                    <tr>
+                        <td rowspan="17" class="vertical-text" style="border: 1px solid black;">Dept. yg bertanggung jawab</td>
+                        <td colspan="37" class="header-cell" style="border: 1px solid black; background-color: #e5e7eb; text-align: left; padding-left: 6px; height: 20px;">[Penyebab] >> Analisa Penyebab menggunakan Fish Bone / 5-Why</td>
+                    </tr>
+                    <tr>
+                        <td colspan="10" rowspan="8" style="padding: 2px; border: 1px solid black;">
+                            <img src="@Url.Content("~/Images/Fish bone.png")"
+                                 alt="Fishbone"
+                                 style="width: 100%; height: auto; display: block;" />
+                        </td>
+                        <td colspan="27" style="border: 1px solid black; height: 25px; text-align: left; vertical-align: top; padding: 4px;">
+                            Analisa Why-Why :<br>
+                            <span id="p_why_problem"></span>
+                        </td>
+                    </tr>
+                    <tr style="height: 25px;">
+                        <td colspan="2" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <strong>Why 1 :</strong>
+                        </td>
+                        <td colspan="25" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <p id="p_why_1" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr style="height: 25px;">
+                        <td colspan="2" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <strong>Why 2 :</strong>
+                        </td>
+                        <td colspan="25" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <p id="p_why_2" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr style="height: 25px;">
+                        <td colspan="2" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <strong>Why 3 :</strong>
+                        </td>
+                        <td colspan="25" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <p id="p_why_3" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr style="height: 25px;">
+                        <td colspan="2" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <strong>Why 4 :</strong>
+                        </td>
+                        <td colspan="25" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <p id="p_why_4" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr style="height: 25px;">
+                        <td colspan="2" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <strong>Why 5 :</strong>
+                        </td>
+                        <td colspan="25" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            <p id="p_why_5" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="27" style="border: 1px solid black; padding: 2px 5px; text-align: left;">
+                            Note : Pastikan Analisa Why-Why terisi penuh
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="27" style="border: 1px solid black; padding: 5px; height: 35px; text-align: left; vertical-align: top;">
+                            <strong>Review PFMEA :</strong> <br>
+                            <p style="white-space: pre-wrap; word-break: break-word;" id="p_review_PFMEA" style="margin: 0;"></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; border-bottom: none; text-align: left; padding-left: 4px;">
+                            Containment Action / Tindakan Penahanan :
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">PIC</td>
+                        <td colspan="3" style="border: 1px solid black;">Kapan</td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; border-top: none;">
+                            <div style="min-height:60px; text-align:left; padding:4px;">
+                                <p style="white-space: pre-wrap; word-break: break-word;" id="p_containment_action"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black; height: 40px;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_PIC_containment"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black; height: 40px;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_date_containment"></p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; text-align: left; vertical-align: top; padding: 4px;">
+                            <strong>[Tindakan perbaikan]</strong><br>
+                            <span style="font-style: italic;">Details of Correction :</span><br>
+                            <div style="min-height:60px;">
+                                <p style="white-space: pre-wrap; word-break: break-word;" id="p_detail_correction"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_PIC_detail_correction"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_date_detail_correction"></p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; text-align: left; vertical-align: top; padding: 4px;">
+                            <span style="font-style: italic; font-weight: bold;">Details of Corrective action :</span><br>
+                            <div style="min-height:60px;">
+                                <p style="white-space: pre-wrap; word-break: break-word;" id="p_detail_corrective_action"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_PIC_detail_corrective_action"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div style="min-height: 60px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <p id="p_date_detail_corrective_action"></p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; border-bottom: none; text-align: left; vertical-align: top; padding: 4px;">
+                            Yokotenkai ( Perbaikan Horizontal ) : <br />
+                            <div style="min-height:40px;">
+                                <p style="white-space: pre-wrap; word-break: break-word;" id="p_yokotenkai"></p>
+                            </div>
+                        </td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black; ">
+                            <div style="min-height: 40px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <span id="p_PIC_yokotenkai"></span>
+                            </div>
+                        </td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black;">
+                            <div style="min-height: 40px; display: flex; justify-content: center; align-items: center; text-align: center;">
+                                <span id="p_date_yokotenkai"></span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="31" style="border: 1px solid black; border-top: none; text-align: left; vertical-align: top; padding: 4px;">
+                            Lot Awal setelah perbaikan : <span id="p_initial_lot_after_repair"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="10" style="border: 1px solid black; border-bottom: none; text-align: left; vertical-align: top; padding: 4px;">Dokumen diperbaharui</td>
+                        <td colspan="27" style="border: 1px solid black; border-bottom: none; text-align: left; vertical-align: top; padding: 4px;">
+                            <span id="p_dtype_sop">&#9744;</span> SOP/WI &nbsp;
+                            <span id="p_dtype_check">&#9744;</span> Check sheet &nbsp;
+                            <span id="p_dtype_control">&#9744;</span> Control Plan &nbsp;
+                            <span id="p_dtype_lain">&#9744;</span> Lain-lain <br>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="10" style="border: 1px solid black; border-top: none; text-align: left; vertical-align: top; padding: 4px;">
+                            <span id="p_doc_ya">&#9744;</span> Ya &nbsp;&nbsp;&nbsp; <span id="p_doc_tidak">&#9744;</span> Tidak
+                        </td>
+                        <td colspan="27" style="border: 1px solid black; border-top: none; text-align: left; vertical-align: top; padding: 4px;">
+                            Dokumen Number : <span id="p_document_number"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black;" rowspan="5" class="vertical-text">Auditor/Mgr/MR</td>
+                        <td style="border: 1px solid black; border-bottom: none; font-weight:bold; background-color: #f3f4f6;" colspan="6">
+                            Verifikasi-1 CAR
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; vertical-align: top; padding: 4px;" colspan="10" rowspan="5">
+                            [Comments]<br />
+                            <p style="white-space: pre-wrap; word-break: break-word;" id="p_v1_comment"></p>
+                        </td>
+                        <td style="border: 1px solid black; font-weight:bold; background-color: #f3f4f6;" colspan="6">Diverifikasi oleh</td>
+                        <td style="border: 1px solid black; border-bottom: none; font-weight:bold; background-color: #f3f4f6;" colspan="9" rowspan="2">Verifikasi ke-2,<br />CAR ( 3bln setelah perbaikan ), </td>
+                        <td style="border: 1px solid black; font-weight:bold; background-color: #f3f4f6;" colspan="6">Diverifikasi oleh</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid black;border-top: none; text-align: left; padding: 4px; " colspan="6" rowspan="4">
+                            <span id="p_v1_selesai">&#9744;</span> Corrective actions sudah dilakukan(Selesai)<br /><br />
+                            <span id="p_v1_belum">&#9744;</span> Status belum selesai ( lihat comment )
+                        </td>
+                        <td style="border: 1px solid black;" colspan="3" rowspan="3">
+                            <div id="p_stamp_v1_auditor"></div>
+                        </td>
+                        <td style="border: 1px solid black;" colspan="3" rowspan="3">
+                            <div id="p_stamp_v1_mr"></div>
+                        </td>
+                        <td style="border: 1px solid black; text-align: left; padding: 4px;" colspan="6">
+                            Date: <span id="p_v2_date"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="9" style="height: 20px; border-bottom: none; border-top: none; text-align:left; padding-left:4px;">
+                            <span id="p_v2_effektif">&#9744;</span> Effektif &nbsp; <span id="p_v2_tidak">&#9744;</span> Tdk Effektif<br>
+                        </td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black; height: 35px;">
+                            <div id="p_stamp_v2_auditor"></div>
+                        </td>
+                        <td colspan="3" rowspan="2" style="border: 1px solid black; height: 35px;">
+                            <div id="p_stamp_v2_mr"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="9" rowspan="2" style="border-bottom: 1px solid black;border-top: none; text-align: left; vertical-align: top; padding: 4px;">
+                            Comments: <br /> <p style="white-space: pre-wrap; word-break: break-word;" id="p_v2_comment"></p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div>* Auditor /<br /> Mgr</div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div>MR</div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div>* Auditor /<br /> Mgr</div>
+                        </td>
+                        <td colspan="3" style="border: 1px solid black;">
+                            <div>MR</div>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Background Overlay -->
+<div id="reminderModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center no-print transition-opacity">
+
+    <!-- Modal Card (Sesuai dengan tema elegant-section) -->
+    <div class="bg-white rounded shadow-2xl w-full max-w-md transform transition-all overflow-hidden flex flex-col max-h-[90vh] border border-gray-200">
+
+        <!-- Modal Header -->
+        <div class="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
+            <div>
+                <h3 class="text-sm font-bold text-teal-800 uppercase tracking-wide">Send Reminder</h3>
+                <p class="text-[11px] text-gray-500 mt-0.5">Select recipients and add an optional message.</p>
+            </div>
+            <button type="button" onclick="closeReminderModal()" class="text-gray-400 hover:text-red-600 transition cursor-pointer p-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-3 overflow-y-auto flex-1 space-y-4">
+
+            <!-- Checkbox List User -->
+            <div>
+                <label class="block text-[13px] font-bold text-gray-800 mb-2">Pilih Penerima :</label>
+
+                <!-- Kotak Scrollable -->
+                <div class="max-h-48 overflow-y-auto border border-gray-200 rounded bg-white p-2 space-y-3 shadow-inner">
+
+                    <!-- Looping List Auditee -->
+                    @if (ViewBag.ListAuditee != null)
+                    {
+                        <div>
+                            <div class="text-[10px] font-bold text-gray-500 mb-1 px-1 uppercase border-b border-gray-100 pb-1">Auditee</div>
+                            <div class="space-y-0.5">
+                                @foreach (var auditee in ViewBag.ListAuditee)
+                                {
+                                    <label class="flex items-center p-2 hover:bg-teal-50 rounded cursor-pointer transition">
+                                        <input type="checkbox" name="reminderUsers" value="@auditee.Email" class="w-3.5 h-3.5 accent-teal-600 cursor-pointer">
+                                        <div class="ml-2 flex flex-col leading-tight">
+                                            <span class="text-[13px] font-semibold text-gray-800">@auditee.Name</span>
+                                            <span class="text-[10px] text-gray-500">NIK: @auditee.NIK</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Looping List Auditor -->
+                    @if (ViewBag.ListAuditor != null)
+                    {
+                        <div>
+                            <div class="text-[10px] font-bold text-gray-500 mb-1 px-1 uppercase border-b border-gray-100 pb-1 mt-2">Auditor</div>
+                            <div class="space-y-0.5">
+                                @foreach (var auditor in ViewBag.ListAuditor)
+                                {
+                                    <label class="flex items-center p-2 hover:bg-teal-50 rounded cursor-pointer transition">
+                                        <input type="checkbox" name="reminderUsers" value="@auditor.Email" class="w-3.5 h-3.5 accent-teal-600 cursor-pointer">
+                                        <div class="ml-2 flex flex-col leading-tight">
+                                            <span class="text-[13px] font-semibold text-gray-800">@auditor.Name</span>
+                                            <span class="text-[10px] text-gray-500">NIK: @auditor.NIK</span>
+                                        </div>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Input Pesan Tambahan -->
+            <div>
+                <label for="reminderMessage" class="block text-[13px] font-bold text-gray-800 mb-2">Message :</label>
+                <textarea id="reminderMessage" rows="3" placeholder="Type your reminder message here..." class="w-full text-[13px] border border-gray-300 rounded bg-transparent p-2.5 outline-none focus:border-teal-600 transition text-gray-800 resize-none shadow-sm"></textarea>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-2 py-2 border-t border-gray-200 flex justify-end gap-2">
+            <button type="button" onclick="closeReminderModal()" class="text-xs px-5 py-2 font-bold bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition cursor-pointer shadow-sm">Cancel</button>
+            <button type="button" onclick="processReminder('CAR', '@ViewBag.CARID')" class="text-xs px-5 py-2 font-bold bg-teal-700 text-white rounded-lg hover:bg-teal-800 transition shadow-md flex items-center gap-1.5 cursor-pointer">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                Send Reminder
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // =============================================================
+    // 1. VARIABEL GLOBAL & FUNGSI UTILITY
+    // =============================================================
+    let currentTtdId = '';
+    let signaturePadInstance;
+    const currentUserName = '@ViewBag.Name';
+
+    const isAuditor = @((ViewBag.isAuditor != null && (bool)ViewBag.isAuditor) ? "true" : "false");
+    const isAuditee = @((ViewBag.isAuditee != null && (bool)ViewBag.isAuditee) ? "true" : "false");
+
+    function parseDotNetDate(jsonDate) {
+        if (!jsonDate) return null;
+        if (typeof jsonDate === 'string' && jsonDate.indexOf('/Date(') !== -1) {
+            return new Date(parseInt(jsonDate.replace(/\/Date\((-?\d+)\)\//, '$1')));
+        }
+        return new Date(jsonDate);
+    }
+
+    function formatDateToInput(jsonDate) {
+        let d = parseDotNetDate(jsonDate);
+        if (!d || isNaN(d)) return "";
+        let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+        return [year, month, day].join('-');
+    }
+
+    function generateGUID() {
+        return 'PRB-' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function debounce(func, delay) {
+        let timer;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    function lockSection(selector) {
+        $(selector).find('input[type="text"], input[type="number"], textarea').prop('readOnly', true).addClass('bg-gray-50 text-gray-500');
+        $(selector).find('input[type="radio"], input[type="checkbox"], input[type="date"], input[type="file"]').prop('disabled', true);
+        $(selector).find('[onclick^="set"], [onclick^="reset"], [onclick^="openSignature"], [onclick^="deleteEvidence"]').removeAttr('onclick').removeClass('cursor-pointer').addClass('opacity-60 cursor-not-allowed');
+        $(selector).find('label').css('pointer-events', 'none');
+    }
+
+    function applyRoleAccess() {
+        $('#btn-tab-1, #btn-tab-2, #btn-tab-3').prop('disabled', false).css('pointer-events', 'auto').removeClass('opacity-50 opacity-60 cursor-not-allowed').addClass('cursor-pointer');
+
+        if (!isAuditor) {
+            lockSection('#tab-1');
+            lockSection('#verification-section');
+            $('#btn-next-1').prop('disabled', false).css('pointer-events', 'auto').removeClass('opacity-60 cursor-not-allowed');
+        }
+
+        if (!isAuditee) {
+            lockSection('#auditee-section');
+            lockSection('#tab-3');
+            $('#btn-next-2').prop('disabled', false).css('pointer-events', 'auto').removeClass('opacity-60 cursor-not-allowed');
+        }
+
+        if (!isAuditor && !isAuditee) {
+            $('#btn-submit').prop('disabled', true).addClass('opacity-50 cursor-not-allowed');
+        }
+    }
+
+    // =============================================================
+    // 2. INISIALISASI & LOAD DATA
+    // =============================================================
+    $(document).ready(function () {
+        applyRoleAccess();
+        checkTab1Lock();
+        checkTab2Lock();
+        checkVerification();
+
+        function validateDeviceAccess() {
+            if (window.innerWidth < 1024) {
+                $('#elegant-section').addClass('hidden');
+                Swal.fire({
+                    title: 'Layar Terlalu Kecil!',
+                    html: 'Halaman ini dioptimalkan untuk perangkat Laptop atau Desktop.',
+                    icon: 'warning', allowOutsideClick: false, showConfirmButton: false, background: '#fef2f2'
+                });
+            } else {
+                $('#elegant-section').removeClass('hidden');
+                if (Swal.isVisible()) Swal.close();
+            }
+        }
+        validateDeviceAccess();
+        $(window).resize(validateDeviceAccess);
+
+        const reportId = '@Html.Raw(ViewBag.CARID)';
+        console.log(reportId);
+        if(reportId) {
+            loadDataCAR(reportId);
+        }
+
+        function loadDataCAR(id) {
+            $.ajax({
+                url: '@Url.Action("GetDetailCAR", "EAudit")',
+                type: 'GET',
+                data: { id: id },
+                success: function(res) {
+                    if(res.success && res.data) {
+                        populateForm(res.data);
+                    } else {
+                        Swal.fire('Error', res.message || 'Gagal memuat data CAR', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Terjadi kesalahan koneksi server saat menarik data.', 'error');
+                }
+            });
+        }
+
+        function populateForm(data) {
+            $('#no_report').val(data.no_report);
+            if(data.date) $('#date').val(formatDateToInput(data.date));
+            $('#to_Dept').val(data.to_Dept);
+            $('#attention').val(data.attention);
+            $('#from_auditor').val(data.from_auditor);
+            $('#qty_check').val(data.qty_check);
+            $('#ng_rasio').val(data.ng_rasio);
+            if(data.reply_deadline) $('#reply_deadline').val(formatDateToInput(data.reply_deadline));
+
+            if(data.incident_status) {
+                $(`input[name="incident_status"][value="${data.incident_status}"]`).prop('checked', true);
+            }
+
+            if(data.Problem) {
+                let p = data.Problem;
+                $('#problem_id').val(p.problem_id);
+                $('#problem_name').val(p.problem_name);
+                $('#problem_location').val(p.problem_location);
+                $('#problem_part_name').val(p.problem_part_name);
+                $('#problem_lot_number').val(p.problem_lot_number);
+                $('#problem_qty').val(p.problem_qty);
+                $('#problem_detail').val(p.problem_detail).trigger('input');
+
+                if(p.problem_category) {
+                    let matched = false;
+                    $(`input[name="problem_category"]`).each(function() {
+                        let val = $(this).val();
+                        if(val.toLowerCase() === p.problem_category.toLowerCase() || (val === "Audit" && p.problem_category === "Internal Audit")) {
+                            $(this).prop('checked', true);
+                            matched = true;
+                        }
+                    });
+                    if(!matched && p.problem_category) {
+                        $('#problem_category_lain_radio').prop('checked', true);
+                        $('#problem_category_lain').val(p.problem_category);
+                    }
+                }
+
+                if(p.problem_status) {
+                    $(`input[name="problem_status"]`).each(function() {
+                        if($(this).val().toUpperCase() === p.problem_status.toUpperCase()) $(this).prop('checked', true);
+                    });
+                }
+            }
+
+            if(data.Action) {
+                let a = data.Action;
+                $('#PIC_dept').val(a.PIC_dept);
+                $('#action_id').val(a.action_id);
+                $('#review_PFMEA').val(a.review_PFMEA).trigger('input');
+                $('#containment_action').val(a.containment_action).trigger('input');
+                $('#PIC_containment').val(a.PIC_containment_action);
+                if(a.date_containment_action) $('#date_containment').val(formatDateToInput(a.date_containment_action));
+
+                $('#detail_correction').val(a.detail_correction).trigger('input');
+                $('#PIC_detail_correction').val(a.PIC_detail_correction);
+                if(a.date_detail_correction) $('#date_detail_correction').val(formatDateToInput(a.date_detail_correction));
+
+                $('#detail_corrective_action').val(a.detail_corrective_action).trigger('input');
+                $('#PIC_detail_corrective_action').val(a.PIC_detail_corrective_action);
+                if(a.date_detail_corrective_action) $('#date_detail_corrective_action').val(formatDateToInput(a.date_detail_corrective_action));
+
+                $('#yokotenkai').val(a.yokotenkai);
+                $('#initial_lot_after_repair').val(a.initial_lot_after_repair);
+                $('#PIC_yokotenkai').val(a.PIC_yokotenkai);
+                if(a.date_yokotenkai) $('#date_yokotenkai').val(formatDateToInput(a.date_yokotenkai));
+
+                if(a.is_document_updated) {
+                    $(`input[name="is_document_updated"][value="${a.is_document_updated}"]`).prop('checked', true);
+                }
+
+                if(a.document_type_updated) {
+                    let docs = a.document_type_updated.split(',').map(item => item.trim());
+                    $(`input[name="document_type_updated"]`).each(function() {
+                        if(docs.includes($(this).val())) $(this).prop('checked', true);
+                    });
+                }
+                $('#document_number').val(a.document_number);
+
+                if(a.action_date) {
+                    let d = parseDotNetDate(a.action_date);
+                    if(!isNaN(d)) {
+                        $('#action_date_d').val(String(d.getDate()).padStart(2, '0'));
+                        $('#action_date_m').val(String(d.getMonth() + 1).padStart(2, '0'));
+                        $('#action_date_y').val(d.getFullYear());
+                    }
+                }
+            }
+
+            if (data.FiveWhy && data.FiveWhy.length > 0) {
+                data.FiveWhy.forEach(fw => {
+                    if (fw.why_number >= 1 && fw.why_number <= 5) {
+                        $(`#why_id_${fw.why_number}`).val(fw.why_id);
+                        $(`#why_${fw.why_number}`).val(fw.why_problem);
+                    }
+                });
+            }
+
+            if (data.Verification && data.Verification.length > 0) {
+                let v1List = data.Verification.filter(v => v.verification_name === 'Verifikasi 1');
+                let v2List = data.Verification.filter(v => v.verification_name === 'Verifikasi 2');
+
+                let v1 = v1List.length > 0 ? v1List[v1List.length - 1] : null;
+                let v2 = v2List.length > 0 ? v2List[v2List.length - 1] : null;
+
+                if (v1) {
+                    $('#verification_id_v1').val(v1.verification_id);
+                    if (v1.verification_status) $(`input[name="v1_status"][value="${v1.verification_status}"]`).prop('checked', true);
+                    $('#v1_comment').val(v1.verification_comment).trigger('input');
+                    $('#sign_name_v1_auditor').val(v1.verification_auditor_sign_by);
+                    renderExistingVerificationStamp('v1_auditor', v1.verification_auditor_status, v1.verification_auditor_date);
+                    $('#sign_name_v1_mr').val(v1.verification_mr_sign_by);
+                    renderExistingVerificationStamp('v1_mr', v1.verification_mr_status, v1.verification_mr_date);
+                }
+
+                if (v2) {
+                    $('#verification_id_v2').val(v2.verification_id);
+                    if (v2.verification_status) $(`input[name="v2_status"][value="${v2.verification_status}"]`).prop('checked', true);
+                    $('#v2_comment').val(v2.verification_comment).trigger('input');
+                    if (v2.verification_mr_date) $('#v2_date').val(formatDateToInput(v2.verification_mr_date));
+                    $('#sign_name_v2_auditor').val(v2.verification_auditor_sign_by);
+                    renderExistingVerificationStamp('v2_auditor', v2.verification_auditor_status, v2.verification_auditor_date);
+                    $('#sign_name_v2_mr').val(v2.verification_mr_sign_by);
+                    renderExistingVerificationStamp('v2_mr', v2.verification_mr_status, v2.verification_mr_date);
+                }
+            }
+
+            if(data.Approval && data.Approval.length > 0) {
+                data.Approval.forEach(ap => {
+                    let targetId = null;
+                    let group = ap.group_type || "";
+                    let role = (ap.role_type || "").toLowerCase();
+
+                    if(group === "Auditor Approval") {
+                        if(role === "disetujui") targetId = "disetujui_1";
+                        else if(role === "diperiksa") targetId = "diperiksa_1";
+                        else if(role === "dibuat") targetId = "dibuat_1";
+                    } else if(group === "Auditee Approval") {
+                        if(role === "disetujui") targetId = "dept_disetujui";
+                        else if(role === "diperiksa") targetId = "dept_diperiksa";
+                        else if(role === "dibuat") targetId = "dept_dibuat";
+                    }
+                    if (targetId) {
+                        $('#approval_id_' + targetId).val(ap.approval_id);
+                        $('#sign_name_' + targetId).val(ap.sign_by);
+                        if(ap.status) renderExistingStamp(targetId, ap.status, ap.sign_date);
+                    }
+                });
+            }
+
+            if (data.Ilustration && data.Ilustration.length > 0) {
+                let img = data.Ilustration[0];
+                $('#ilustration_id').val(img.ilustration_id);
+                if (img.file_url) {
+                    $('#ilustration_preview').attr('src', img.file_url).removeClass('hidden');
+                    $('#upload-placeholder').addClass('hidden');
+                    $('#btn_remove_ilustration').removeClass('hidden');
+                }
+            }
+
+            if (data.Evidence && data.Evidence.length > 0) {
+                data.Evidence.forEach(ev => {
+                    renderEvidenceItem(ev.evidence_id, ev.evidence_name, ev.evidence_url);
+                });
+            }
+            checkTab1Lock();
+            checkTab2Lock();
+            checkVerification();
+        }
+
+        // ==============================================================
+        // AUTO-SAVE HANDLERS
+        // ==============================================================
+        const autoSaveHeader = debounce(function () {
+            if (!isAuditor) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            const payload = {
+                no_report: noReport,
+                to_Dept: $('#to_Dept').val(),
+                attention: $('#attention').val(),
+                date: $('#date').val() ? $('#date').val() : null,
+                from_auditor: $('#from_auditor').val(),
+                qty_check: $('#qty_check').val() ? parseInt($('#qty_check').val()) : null,
+                ng_rasio: $('#ng_rasio').val(),
+                incident_status: $('input[name="incident_status"]:checked').val(),
+                reply_deadline: $('#reply_deadline').val() ? $('#reply_deadline').val() : null
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpdateHeader", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: 'Header auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#to_Dept, #attention, #date, #from_auditor, #qty_check, #ng_rasio, #reply_deadline').on('input change', autoSaveHeader);
+        $('input[name="incident_status"]').on('change', autoSaveHeader);
+
+        const autoSaveProblem = debounce(function () {
+            if (!isAuditor) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            let probId = $('#problem_id').val();
+            if (!probId) { probId = generateGUID(); $('#problem_id').val(probId); }
+
+            let category = $('input[name="problem_category"]:checked').val();
+            if (category === "Lain") category = $('#problem_category_lain').val();
+
+            const payload = {
+                problem_id: probId, no_report: noReport, problem_name: $('#problem_name').val(), problem_location: $('#problem_location').val(),
+                problem_part_name: $('#problem_part_name').val(), problem_lot_number: $('#problem_lot_number').val(),
+                problem_qty: $('#problem_qty').val() ? parseInt($('#problem_qty').val()) : null, problem_detail: $('#problem_detail').val(),
+                problem_category: category, problem_status: $('input[name="problem_status"]:checked').val()
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpsertProblem", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: 'Problem auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#problem_name, #problem_location, #problem_part_name, #problem_lot_number, #problem_qty, #problem_detail, #problem_category_lain').on('input change', autoSaveProblem);
+        $('input[name="problem_category"], input[name="problem_status"]').on('change', autoSaveProblem);
+
+        const autoSaveAction = debounce(function () {
+            if (!isAuditee) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            let actId = $('#action_id').val();
+            if (!actId) { actId = generateGUID().replace('PRB-', 'ACT-'); $('#action_id').val(actId); }
+
+            let aDateD = $('#action_date_d').val(); let aDateM = $('#action_date_m').val(); let aDateY = $('#action_date_y').val();
+            let actionDateFull = null;
+            if (aDateD && aDateM && aDateY) actionDateFull = `${aDateY}-${aDateM.padStart(2, '0')}-${aDateD.padStart(2, '0')}`;
+
+            let docTypes = [];
+            $('input[name="document_type_updated"]:checked').each(function() { docTypes.push($(this).val()); });
+            let docTypeStr = docTypes.length > 0 ? docTypes.join(', ') : null;
+
+            const payload = {
+                action_id: actId, no_report: noReport, PIC_dept: $('#PIC_dept').val(), action_date: actionDateFull, review_PFMEA: $('#review_PFMEA').val(),
+                containment_action: $('#containment_action').val(), PIC_containment_action: $('#PIC_containment').val(), date_containment_action: $('#date_containment').val() ? $('#date_containment').val() : null,
+                detail_correction: $('#detail_correction').val(), PIC_detail_correction: $('#PIC_detail_correction').val(), date_detail_correction: $('#date_detail_correction').val() ? $('#date_detail_correction').val() : null,
+                detail_corrective_action: $('#detail_corrective_action').val(), PIC_detail_corrective_action: $('#PIC_detail_corrective_action').val(), date_detail_corrective_action: $('#date_detail_corrective_action').val() ? $('#date_detail_corrective_action').val() : null,
+                yokotenkai: $('#yokotenkai').val(), initial_lot_after_repair: $('#initial_lot_after_repair').val(), PIC_yokotenkai: $('#PIC_yokotenkai').val(), date_yokotenkai: $('#date_yokotenkai').val() ? $('#date_yokotenkai').val() : null,
+                is_document_updated: $('input[name="is_document_updated"]:checked').val(), document_type_updated: docTypeStr, document_number: $('#document_number').val()
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpsertAction", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: 'Action auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#PIC_dept, #action_date_d, #action_date_m, #action_date_y, #review_PFMEA, #containment_action, #PIC_containment, #date_containment, #detail_correction, #PIC_detail_correction, #date_detail_correction, #detail_corrective_action, #PIC_detail_corrective_action, #date_detail_corrective_action, #yokotenkai, #initial_lot_after_repair, #PIC_yokotenkai, #date_yokotenkai, #document_number').on('input change', autoSaveAction);
+        $('input[name="is_document_updated"], input[name="document_type_updated"]').on('change', autoSaveAction);
+
+        const autoSaveFiveWhy = debounce(function () {
+            if (!isAuditee) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            let payload = [];
+            for (let i = 1; i <= 5; i++) {
+                let whyText = $(`#why_${i}`).val() || ""; let whyId = $(`#why_id_${i}`).val();
+                if (whyText.trim() !== "" || whyId !== "") {
+                    if (!whyId) { whyId = generateGUID().replace('PRB-', 'WHY-'); $(`#why_id_${i}`).val(whyId); }
+                    payload.push({ why_id: whyId, no_report: noReport, why_number: i, why_problem: whyText });
+                }
+            }
+
+            if (payload.length === 0) return;
+
+            $.ajax({
+                url: '@Url.Action("UpsertFiveWhy", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: '5 Why auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#why_1, #why_2, #why_3, #why_4, #why_5').on('input change', autoSaveFiveWhy);
+
+        const autoSaveVerificationV1 = debounce(function () {
+            if (!isAuditor) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            let radioStatus = $('input[name="v1_status"]:checked').val() || null; let commentText = $('#v1_comment').val() || null;
+            let auditorSign = $('#sign_name_v1_auditor').val() || null; let auditorStamp = $('#status_v1_auditor').val() || null;
+            let mrSign = $('#sign_name_v1_mr').val() || null; let mrStamp = $('#status_v1_mr').val() || null;
+
+            let verifId = $('#verification_id_v1').val();
+            if (!verifId && !radioStatus && !commentText && !auditorSign && !auditorStamp && !mrSign && !mrStamp) return;
+            if (!verifId) { verifId = generateGUID().replace('PRB-', 'VRF1-'); $('#verification_id_v1').val(verifId); }
+
+            const payload = {
+                verification_id: verifId, no_report: noReport, verification_name: "Verifikasi 1", verification_status: radioStatus, verification_comment: commentText,
+                verification_auditor_sign_by: auditorSign, verification_auditor_status: auditorStamp, verification_auditor_date: auditorStamp ? new Date().toISOString() : null,
+                verification_mr_sign_by: mrSign, verification_mr_status: mrStamp, verification_mr_date: mrStamp ? new Date().toISOString() : null
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpsertVerification", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: 'Verifikasi 1 auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#v1_comment, #sign_name_v1_auditor, #sign_name_v1_mr').on('input change', autoSaveVerificationV1);
+        $('input[name="v1_status"], #status_v1_auditor, #status_v1_mr').on('change', autoSaveVerificationV1);
+
+        const autoSaveVerificationV2 = debounce(function () {
+            if (!isAuditor) return;
+            const noReport = $('#no_report').val();
+            if (!noReport) return;
+
+            let radioStatus = $('input[name="v2_status"]:checked').val() || null; let commentText = $('#v2_comment').val() || null;
+            let mrDate = $('#v2_date').val() ? $('#v2_date').val() : null; let auditorSign = $('#sign_name_v2_auditor').val() || null;
+            let auditorStamp = $('#status_v2_auditor').val() || null; let mrSign = $('#sign_name_v2_mr').val() || null; let mrStamp = $('#status_v2_mr').val() || null;
+
+            let verifId = $('#verification_id_v2').val();
+            if (!verifId && !radioStatus && !commentText && !mrDate && !auditorSign && !auditorStamp && !mrSign && !mrStamp) return;
+            if (!verifId) { verifId = generateGUID().replace('PRB-', 'VRF2-'); $('#verification_id_v2').val(verifId); }
+
+            const payload = {
+                verification_id: verifId, no_report: noReport, verification_name: "Verifikasi 2", verification_status: radioStatus, verification_comment: commentText,
+                verification_mr_date: mrDate, verification_auditor_sign_by: auditorSign, verification_auditor_status: auditorStamp, verification_auditor_date: auditorStamp ? new Date().toISOString() : null,
+                verification_mr_sign_by: mrSign, verification_mr_status: mrStamp
+            };
+
+            $.ajax({
+                url: '@Url.Action("UpsertVerification", "EAudit")',
+                type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+                success: function (response) {
+                    if (response.status === "success") Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire({ icon: 'success', title: 'Verifikasi 2 auto-saved' });
+                }
+            });
+        }, 1000);
+
+        $('#v2_comment, #v2_date, #sign_name_v2_auditor, #sign_name_v2_mr').on('input change', autoSaveVerificationV2);
+        $('input[name="v2_status"], #status_v2_auditor, #status_v2_mr').on('change', autoSaveVerificationV2);
+
+        // ------------------ SINGLE IMAGE UPLOAD (ILUSTRASI) ------------------
+        $('#file_ilustration').on('change', function(e) {
+            if (!isAuditor) return;
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const noReport = $('#no_report').val();
+            if (!noReport) { Swal.fire('Oops...', 'Silakan isi No. Laporan terlebih dahulu!', 'warning'); $(this).val(''); return; }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                $('#ilustration_preview').attr('src', event.target.result).removeClass('hidden');
+                $('#upload-placeholder').addClass('hidden');
+                $('#btn_remove_ilustration').removeClass('hidden');
+            };
+            reader.readAsDataURL(file);
+
+            let illusId = $('#ilustration_id').val();
+            if (!illusId) { illusId = generateGUID().replace('PRB-', 'IMG-'); $('#ilustration_id').val(illusId); }
+
+            let formData = new FormData();
+            formData.append("ilustration_id", illusId);
+            formData.append("no_report", noReport);
+            formData.append("file", file);
+
+            $.ajax({
+                url: '@Url.Action("UpsertIlustrationImage", "EAudit")',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    if (response.status === "success") {
+                        Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire('success', 'Gambar disimpan');
+                    } else {
+                        Swal.fire('Error', response.message, 'error');
+                        clearImageUI();
+                    }
+                },
+                error: function() {
+                    Swal.fire('Error', 'Gagal mengunggah file ke server.', 'error');
+                    clearImageUI();
+                }
+            });
+        });
+
+        $('#btn_remove_ilustration').click(function() {
+            if (!isAuditor) return;
+            const illusId = $('#ilustration_id').val();
+            const noReport = $('#no_report').val();
+            if (!illusId || !noReport) { clearImageUI(); return; }
+
+            Swal.fire({ title: 'Hapus Gambar?', text: "Gambar ilustrasi dihapus permanen.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let formData = new FormData();
+                    formData.append("ilustration_id", illusId);
+                    formData.append("no_report", noReport);
+                    formData.append("is_delete", "true");
+
+                    $.ajax({
+                        url: '@Url.Action("UpsertIlustrationImage", "EAudit")',
+                        type: 'POST',
+                        data: formData,
+                        contentType: false,
+                        processData: false,
+                        success: function(response) {
+                            if (response.status === "success") {
+                                clearImageUI();
+                                Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire('success', 'Gambar dihapus');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        function clearImageUI() {
+            $('#ilustration_preview').attr('src', '').addClass('hidden');
+            $('#upload-placeholder').removeClass('hidden');
+            $('#btn_remove_ilustration').addClass('hidden');
+            $('#file_ilustration').val(''); $('#ilustration_id').val('');
+        }
+
+        // ------------------ MULTIPLE EVIDENCE UPLOAD (TAB 3) ------------------
+        $('#file_evidence_multiple').on('change', function(e) {
+            if (!isAuditee) return;
+            const files = e.target.files;
+            if (files.length === 0) return;
+
+            const noReport = $('#no_report').val();
+            if (!noReport) {
+                Swal.fire('Oops...', 'Silakan isi No. Laporan terlebih dahulu!', 'warning');
+                $(this).val('');
+                return;
+            }
+
+            Array.from(files).forEach(file => {
+                let formData = new FormData();
+                formData.append("evidence_id", "");
+                formData.append("no_report", noReport);
+                formData.append("file", file);
+
+                $.ajax({
+                    url: '@Url.Action("UpsertEvidence", "EAudit")',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if (response.status === "success") {
+                            renderEvidenceItem(response.evidence_id, file.name, response.file_url);
+                            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire('success', file.name + ' diupload');
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    }
+                });
+            });
+            $(this).val('');
+        });
+    });
+
+    function renderEvidenceItem(id, name, url) {
+        if (!url) return;
+
+        let rootPath = '@Url.Content("~/")';
+        let finalUrl = url;
+
+        if (url.startsWith('/')) {
+            if (rootPath.endsWith('/')) {
+                finalUrl = rootPath + url.substring(1);
+            } else {
+                finalUrl = rootPath + url;
+            }
+        }
+
+        let isImage = finalUrl.startsWith('data:image') || /\.(jpeg|jpg|gif|png|webp|bmp)(\?.*)?$/i.test(finalUrl);
+
+        let previewHtml = isImage
+            ? `<img src="${finalUrl}" class="w-full h-32 object-cover rounded-md mb-2 border">`
+            : `<div class="w-full h-32 flex items-center justify-center bg-gray-100 rounded-md mb-2 border"><span class="text-4xl text-gray-400">📄</span></div>`;
+
+        let deleteBtn = isAuditee
+            ? `<button type="button" onclick="window.deleteEvidence('${id}')" class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition shadow hover:bg-red-600 cursor-pointer z-10" title="Hapus Evidence">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+           </button>` : '';
+
+        let html = `
+        <div id="evd_${id}" class="border border-gray-200 shadow-sm rounded-lg p-3 relative group flex flex-col bg-white hover:bg-teal-50 transition">
+            <div class="cursor-pointer evd-clickable flex-1 flex flex-col" data-url="${finalUrl}" data-name="${name}" title="Klik untuk lihat/download">
+                ${previewHtml}
+                <span class="text-xs text-center truncate w-full font-semibold text-gray-700 mt-auto pt-1 block" title="${name}">${name}</span>
+            </div>
+            ${deleteBtn}
+        </div>
+        `;
+
+        $('#evidence_gallery').append(html);
+    }
+
+    // =============================================================
+    // FUNGSI VIEW & DOWNLOAD EVIDENCE
+    // =============================================================
+   $(document).on('click', '.evd-clickable', function () {
+        let url = $(this).attr('data-url');
+        let name = $(this).attr('data-name');
+        let isImage = url.startsWith('data:image') || url.match(/\.(jpeg|jpg|gif|png|webp|bmp)(\?.*)?$/i) != null;
+
+        if (isImage) {
+            Swal.fire({
+                title: name, imageUrl: url, imageAlt: name, showCancelButton: true,
+                confirmButtonText: 'Download', cancelButtonText: 'Tutup', confirmButtonColor: '#0f766e',
+                customClass: { image: 'max-h-[60vh] object-contain' }
+            }).then((result) => {
+                if (result.isConfirmed) forceDownloadFile(url, name);
+            });
+        } else {
+            Swal.fire({
+                title: 'Download File?', text: name, icon: 'info', showCancelButton: true,
+                confirmButtonText: 'Ya, Download', cancelButtonText: 'Batal', confirmButtonColor: '#0f766e'
+            }).then((result) => {
+                if (result.isConfirmed) forceDownloadFile(url, name);
+            });
+        }
+    });
+
+    async function forceDownloadFile(url, name) {
+        if (!url) return;
+        console.log('[forceDownloadFile] url:', url, 'name:', name);
+
+        // Handle inline data URIs quickly
+        if (url.startsWith('data:')) {
+            const a = document.createElement('a');
+            a.href = url;
+            let ext = ".bin";
+            if (url.includes('image/jpeg')) ext = ".jpg";
+            else if (url.includes('image/png')) ext = ".png";
+            else if (url.includes('application/pdf')) ext = ".pdf";
+            const filename = (name || 'file') + ext;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            return;
+        }
+
+        // Resolve relative URL against application root
+        let rootPath = '@Url.Content("~/")';
+        let finalUrl = url;
+        /*try {
+            if (url.startsWith('/')) {
+                // Ensure single slash between rootPath and url
+                finalUrl = (rootPath.endsWith('/') ? rootPath.replace(/\/$/, '') : rootPath) + url;
+            } else if (!/^https?:\/\//i.test(url) && !url.startsWith('//')) {
+                // relative path (not starting with /) -> assume app-root relative
+                finalUrl = (rootPath.endsWith('/') ? rootPath : rootPath + '/') + url;
+            }
+        } catch (e) {
+            console.warn('[forceDownloadFile] Url resolution failed, fallback to original url', e);
+            finalUrl = url;
+        }*/
+
+        console.log('[forceDownloadFile] finalUrl:', finalUrl);
+
+        // Try HEAD first to check availability (best-effort - may fail on some servers)
+        let ok = false;
+        try {
+            const headResp = await fetch(finalUrl, { method: 'HEAD', credentials: 'same-origin' });
+            ok = headResp && headResp.ok;
+            console.log('[forceDownloadFile] HEAD status:', headResp.status);
+        } catch (headErr) {
+            console.warn('[forceDownloadFile] HEAD request failed (server may not allow). Will try GET. Error:', headErr);
+        }
+
+        try {
+            // Fetch the file as blob (will include cookies for same-origin)
+            const resp = await fetch(finalUrl, { method: 'GET', credentials: 'same-origin' });
+            if (!resp.ok) throw new Error('HTTP ' + resp.status + ' - ' + resp.statusText);
+
+            const blob = await resp.blob();
+
+            // Try to get filename from Content-Disposition or fallback to provided name or URL segment
+            const cd = resp.headers.get('content-disposition') || '';
+            let filename = name || null;
+            if (!filename) {
+                const match = /filename\*?=(?:UTF-8'')?\"?([^\";]+)/i.exec(cd);
+                if (match && match[1]) filename = decodeURIComponent(match[1]);
+            }
+            if (!filename) {
+                filename = finalUrl.substring(finalUrl.lastIndexOf('/') + 1) || 'download';
+            }
+
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = filename;
+            // For some browsers/hosts, opening in new tab helps for cross-origin PDFs:
+            a.target = '_blank';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            // release memory later
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+
+            console.log('[forceDownloadFile] downloaded as:', filename);
+        } catch (err) {
+            console.error('[forceDownloadFile] download failed', err);
+            Swal.fire('Error', 'File wasn\'t available on site. See console / Network tab for details: ' + (err && err.message ? err.message : ''), 'error');
+        }
+    }
+
+    window.deleteEvidence = function(id) {
+        if (!isAuditee) return;
+        Swal.fire({
+            title: 'Hapus Evidence?', text: "File bukti perbaikan akan dihapus permanen.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc2626'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                let formData = new FormData();
+                formData.append("evidence_id", id);
+                formData.append("no_report", $('#no_report').val());
+                formData.append("is_delete", "true");
+
+                $.ajax({
+                    url: '@Url.Action("UpsertEvidence", "EAudit")',
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if (response.status === "success") {
+                            $(`#evd_${id}`).fadeOut(300, function() { $(this).remove(); });
+                            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 1500 }).fire('success', 'File dihapus');
+                        } else {
+                            Swal.fire('Error', response.message, 'error');
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    // =============================================================
+    // 4. FUNGSI UI / EVENT POPUP / PRINT
+    // =============================================================
+    function switchTab(num) {
+        [1, 2, 3].forEach(i => {
+            if (i === num) {
+                $(`#tab-${i}`).removeClass('hidden');
+                $(`#btn-tab-${i}`).removeClass('bg-gray-200 text-gray-600 shadow-inner').addClass('bg-teal-700 text-white shadow-md');
+            } else {
+                $(`#tab-${i}`).addClass('hidden');
+                $(`#btn-tab-${i}`).removeClass('bg-teal-700 text-white shadow-md').addClass('bg-gray-200 text-gray-600 shadow-inner');
+            }
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        $(`#tab-${num}`).find('textarea').each(function () {
+            if ($(this).val().trim() !== '') {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            }
+        });
+    }
+
+    function printForm() {
+        const isTab1Active = !$('#tab-1').hasClass('hidden');
+        const isTab2Active = !$('#tab-2').hasClass('hidden');
+
+        $('#tab-1, #tab-2, #tab-3').removeClass('hidden');
+
+        $('#p_to_Dept').text($('#to_Dept').val());
+        $('#p_attention').text($('#attention').val());
+        $('#p_no_report').text($('#no_report').val());
+        $('#p_date').text($('#date').val());
+        $('#p_from_auditor').text($('#from_auditor').val());
+
+        $('#p_problem_name').text($('#problem_name').val());
+        $('#p_problem_location').text($('#problem_location').val());
+        $('#p_problem_part_name').text($('#problem_part_name').val());
+        $('#p_problem_lot_number').text($('#problem_lot_number').val());
+        $('#p_problem_qty').text($('#problem_qty').val());
+        $('#p_qty_check').text($('#qty_check').val());
+        $('#p_ng_rasio').text($('#ng_rasio').val());
+
+        let incStatus = $('input[name="incident_status"]:checked').val();
+        $('#p_inc_1').html(incStatus === 'Pertama' ? '&#9745;' : '&#9744;');
+        $('#p_inc_2').html(incStatus === 'Pernah' ? '&#9745;' : '&#9744;');
+
+        $('#p_problem_detail').text($('#problem_detail').val());
+        if($('#ilustration_preview').attr('src')) {
+            $('#p_ilustration_preview').attr('src', $('#ilustration_preview').attr('src')).show();
+        } else {
+            $('#p_ilustration_preview').hide();
+        }
+
+        let pCat = $('input[name="problem_category"]:checked').val();
+        $('#p_cat_sarmut').html(pCat === 'Sarmut' ? '&#9745;' : '&#9744;');
+        $('#p_cat_proses').html(pCat === 'Proses' ? '&#9745;' : '&#9744;');
+        $('#p_cat_claim').html(pCat === 'Claim' ? '&#9745;' : '&#9744;');
+        $('#p_cat_audit').html(pCat === 'Audit' ? '&#9745;' : '&#9744;');
+        $('#p_cat_produk').html(pCat === 'Produk' ? '&#9745;' : '&#9744;');
+        $('#p_cat_lain').html(pCat === 'Lain' ? '&#9745;' : '&#9744;');
+        if(pCat === 'Lain') $('#p_cat_lain_text').text($('#problem_category_lain').val());
+
+        let pStat = $('input[name="problem_status"]:checked').val();
+        $('#p_stat_critical').html(pStat === 'Critical' ? '&#9745;' : '&#9744;');
+        $('#p_stat_major').html(pStat === 'Major' ? '&#9745;' : '&#9744;');
+        $('#p_stat_medium').html(pStat === 'Medium' ? '&#9745;' : '&#9744;');
+        $('#p_stat_minor').html(pStat === 'Minor' ? '&#9745;' : '&#9744;');
+        $('#p_stat_ofi').html(pStat === 'OFI' ? '&#9745;' : '&#9744;');
+
+        $('#p_reply_deadline').text($('#reply_deadline').val());
+        $('#p_PIC_dept').text($('#PIC_dept').val());
+        $('#p_action_d').text($('#action_date_d').val() || '___');
+        $('#p_action_m').text($('#action_date_m').val() || '___');
+        $('#p_action_y').text($('#action_date_y').val() || '___');
+
+        $('#p_why_1').text($('#why_1').val());
+        $('#p_why_2').text($('#why_2').val());
+        $('#p_why_3').text($('#why_3').val());
+        $('#p_why_4').text($('#why_4').val());
+        $('#p_why_5').text($('#why_5').val());
+        $('#p_review_PFMEA').text($('#review_PFMEA').val());
+
+        $('#p_containment_action').text($('#containment_action').val());
+        $('#p_PIC_containment').text($('#PIC_containment').val());
+        $('#p_date_containment').text($('#date_containment').val());
+
+        $('#p_detail_correction').text($('#detail_correction').val());
+        $('#p_PIC_detail_correction').text($('#PIC_detail_correction').val());
+        $('#p_date_detail_correction').text($('#date_detail_correction').val());
+
+        $('#p_detail_corrective_action').text($('#detail_corrective_action').val());
+        $('#p_PIC_detail_corrective_action').text($('#PIC_detail_corrective_action').val());
+        $('#p_date_detail_corrective_action').text($('#date_detail_corrective_action').val());
+
+        $('#p_yokotenkai').text($('#yokotenkai').val());
+        $('#p_initial_lot_after_repair').text($('#initial_lot_after_repair').val());
+        $('#p_PIC_yokotenkai').text($('#PIC_yokotenkai').val());
+        $('#p_date_yokotenkai').text($('#date_yokotenkai').val());
+
+        let docUpdate = $('input[name="is_document_updated"]:checked').val();
+        $('#p_doc_ya').html(docUpdate === 'Ya' ? '&#9745;' : '&#9744;');
+        $('#p_doc_tidak').html(docUpdate === 'Tidak' ? '&#9745;' : '&#9744;');
+
+        $('#p_dtype_sop').html($('#doc_type_sop').is(':checked') ? '&#9745;' : '&#9744;');
+        $('#p_dtype_check').html($('#doc_type_check_sheet').is(':checked') ? '&#9745;' : '&#9744;');
+        $('#p_dtype_control').html($('#doc_type_control_plan').is(':checked') ? '&#9745;' : '&#9744;');
+        $('#p_dtype_lain').html($('#doc_type_lain').is(':checked') ? '&#9745;' : '&#9744;');
+        $('#p_document_number').text($('#document_number').val());
+
+        let v1Stat = $('input[name="v1_status"]:checked').val();
+        $('#p_v1_selesai').html(v1Stat === 'Selesai' ? '&#9745;' : '&#9744;');
+        $('#p_v1_belum').html(v1Stat === 'Belum Selesai' ? '&#9745;' : '&#9744;');
+        $('#p_v1_comment').text($('#v1_comment').val());
+
+        let v2Stat = $('input[name="v2_status"]:checked').val();
+        $('#p_v2_effektif').html(v2Stat === 'Effektif' ? '&#9745;' : '&#9744;');
+        $('#p_v2_tidak').html(v2Stat === 'Tidak Effektif' ? '&#9745;' : '&#9744;');
+        $('#p_v2_comment').text($('#v2_comment').val());
+        $('#p_v2_date').text($('#v2_date').val());
+
+        // UPDATE UNTUK STAMP & NAMA PADA LAYOUT BARU
+        const stampIds = ['disetujui_1', 'diperiksa_1', 'dibuat_1', 'dept_disetujui', 'dept_diperiksa', 'dept_dibuat', 'v1_auditor', 'v1_mr', 'v2_auditor', 'v2_mr'];
+        stampIds.forEach(id => {
+            let originalContainer = $('#stamp-container-' + id);
+            let printContainer = $('#p_stamp_' + id);
+            printContainer.empty();
+
+            let hasStamp = originalContainer.children().length > 0 && !originalContainer.hasClass('hidden');
+            if (hasStamp) {
+                let clonedStamp = originalContainer.children().first().clone();
+                clonedStamp.removeClass('stamp-circle stamp-approved-circle stamp-rejected-circle').addClass('print-stamp');
+                if(clonedStamp.text().includes('APPROVED')) clonedStamp.addClass('print-approved');
+                else clonedStamp.addClass('print-rejected');
+                clonedStamp.find('.stamp-text').removeClass('stamp-text').addClass('s-text');
+                clonedStamp.find('.stamp-date').removeClass('stamp-date').addClass('s-date');
+                printContainer.append(clonedStamp);
+            }
+
+            let textName = $('#sign_name_' + id).val() || "";
+            let explicitNameContainer;
+
+            // Cari target container teks nama sesuai ID di HTML Layout Baru
+            if ($('#p_sign_name_' + id).length) explicitNameContainer = $('#p_sign_name_' + id);
+            else if ($('#p_sign_by_' + id).length) explicitNameContainer = $('#p_sign_by_' + id);
+
+            if (explicitNameContainer) {
+                explicitNameContainer.text(textName);
+            } else {
+                // Fallback untuk Auditor/MR yang tidak ada cell khusus namanya
+                if (!hasStamp && textName) {
+                    printContainer.append('<div style="margin-top:15px; font-weight:bold; font-size:9px;">' + textName + '</div>');
+                }
+            }
+        });
+
+        // Copy Gallery Gambar Bukti
+        let evidenceClone = $('#evidence_gallery').clone();
+        evidenceClone.find('button').remove();
+        evidenceClone.find('img').css({'max-height': '150px', 'width': 'auto', 'object-fit': 'contain', 'border': '1px solid black', 'margin-bottom':'5px'});
+        evidenceClone.find('.text-xs').css({'font-size': '10px', 'word-wrap': 'break-word', 'white-space': 'normal'});
+        evidenceClone.removeClass('grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4').css({'display': 'flex', 'flex-wrap': 'wrap', 'gap': '15px'});
+        $('#p_evidence_gallery').html(evidenceClone.html());
+
+        // Jalankan Print Plugin
+        $('#print-section-container').printThis({
+            importCSS: true,
+            importStyle: true,
+            pageTitle: "CAR_" + ($('#no_report').val() || "Laporan"),
+            removeScripts: true
+        });
+
+        setTimeout(() => {
+            if (isTab1Active) switchTab(1);
+            else if (isTab2Active) switchTab(2);
+            else switchTab(3);
+        }, 800);
+    }
+
+    function exportExcel() {
+        // Ambil No Laporan dari input form
+        const noReport = $('#no_report').val();
+
+        // Validasi jika No Laporan kosong (berarti data belum disave/tidak ada)
+        if (!noReport) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Oops...',
+                text: 'Nomor Laporan kosong. Data belum bisa di-export.',
+                confirmButtonColor: '#0f766e'
+            });
+            return;
+        }
+
+        // Munculkan notifikasi loading (Opsional, agar terlihat interaktif)
+        Swal.fire({
+            title: 'Memproses Excel...',
+            text: 'Mohon tunggu, file Excel sedang dibuat.',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        const url = '@Url.Action("ExportExcelCAR", "EAudit")' + '?id=' + encodeURIComponent(noReport);
+
+        setTimeout(() => {
+            Swal.close();
+            window.location.href = url;
+        }, 1000);
+    }
+
+    function submitForm() {
+        Swal.fire({ icon: 'success', title: 'Laporan Selesai', text: 'Semua data telah tersimpan otomatis di sistem.', confirmButtonColor: '#0f766e'
+        }).then(() => { window.location.href = '@Url.Action("CAROFIManagement", "EAudit")'; });
+    }
+
+    function setStamp(id, status) {
+        const noReport = document.getElementById('no_report').value;
+        if (!noReport) {
+            Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Silakan isi No. Laporan terlebih dahulu!' });
+            return;
+        }
+
+        // 1. Validasi hanya dijalankan saat Approve/Reject (bukan saat Reset/"")
+        if (status !== "") {
+            if (id === 'disetujui_1' || id === 'diperiksa_1' || id === 'dibuat_1') {
+                let missingFields = [];
+                if (!$('#to_Dept').val()) missingFields.push("Kepada Dept.");
+                if (!$('#attention').val()) missingFields.push("Attention");
+                if (!$('#date').val()) missingFields.push("Tanggal Laporan");
+                if (!$('#from_auditor').val()) missingFields.push("Dept. Pembuat/Auditor");
+                if (!$('#problem_name').val()) missingFields.push("Nama Masalah");
+                if (!$('#problem_location').val()) missingFields.push("Lokasi Ditemukan");
+                if (!$('input[name="incident_status"]:checked').val()) missingFields.push("Status Kejadian (Pertama/Pernah)");
+                if (!$('#problem_detail').val()) missingFields.push("Detail Masalah");
+
+                let category = $('input[name="problem_category"]:checked').val();
+                if (!category) {
+                    missingFields.push("Kategori Asal Masalah");
+                } else if (category === "Lain" && !$('#problem_category_lain').val()) {
+                    missingFields.push("Penjelasan Kategori Lain-lain");
+                }
+
+                if (!$('input[name="problem_status"]:checked').val()) missingFields.push("Status Problem");
+                if (!$('#reply_deadline').val()) missingFields.push("Batas Tanggal Jawab");
+
+                if (missingFields.length > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Data Tab 1 Belum Lengkap!',
+                        html: '<div class="text-sm text-left mb-2">Mohon lengkapi data Tab 1 berikut sebelum Approval:</div>' +
+                              '<ul class="text-left text-sm text-red-600 bg-red-50 p-3 rounded list-disc list-inside">' +
+                              missingFields.map(f => `<li>${f}</li>`).join('') +
+                              '</ul>',
+                        confirmButtonColor: '#0f766e'
+                    });
+                    return;
+                }
+            }
+            else if (id === 'dept_disetujui' || id === 'dept_diperiksa' || id === 'dept_dibuat') {
+                let missingFieldsTab2 = [];
+                if (!$('#PIC_dept').val().trim()) missingFieldsTab2.push("Departemen Penanggung Jawab");
+                if (!$('#action_date_d').val().trim() || !$('#action_date_m').val().trim() || !$('#action_date_y').val().trim()) {
+                    missingFieldsTab2.push("Tanggal Action (Hari, Bulan, & Tahun wajib diisi)");
+                }
+                if (!$('#why_1').val().trim()) missingFieldsTab2.push("Analisa Why 1");
+                if (!$('#why_2').val().trim()) missingFieldsTab2.push("Analisa Why 2");
+                if (!$('#why_3').val().trim()) missingFieldsTab2.push("Analisa Why 3");
+                if (!$('#why_4').val().trim()) missingFieldsTab2.push("Analisa Why 4");
+                if (!$('#why_5').val().trim()) missingFieldsTab2.push("Analisa Why 5");
+                if (!$('#review_PFMEA').val().trim()) missingFieldsTab2.push("Review PFMEA");
+
+                if (!$('#containment_action').val().trim()) missingFieldsTab2.push("Tindakan Penahanan (Containment Action)");
+                if (!$('#PIC_containment').val().trim()) missingFieldsTab2.push("PIC Containment");
+                if (!$('#date_containment').val()) missingFieldsTab2.push("Tanggal Tindakan Penahanan");
+
+                if (!$('#detail_correction').val().trim()) missingFieldsTab2.push("Details of Correction");
+                if (!$('#PIC_detail_correction').val().trim()) missingFieldsTab2.push("PIC Correction");
+                if (!$('#date_detail_correction').val()) missingFieldsTab2.push("Tanggal Correction");
+
+                if (!$('#detail_corrective_action').val().trim()) missingFieldsTab2.push("Details of Corrective Action");
+                if (!$('#PIC_detail_corrective_action').val().trim()) missingFieldsTab2.push("PIC Corrective Action");
+                if (!$('#date_detail_corrective_action').val()) missingFieldsTab2.push("Tanggal Corrective Action");
+
+                if (!$('#yokotenkai').val().trim()) missingFieldsTab2.push("Yokotenkai (Perbaikan Horizontal)");
+                if (!$('#initial_lot_after_repair').val().trim()) missingFieldsTab2.push("Lot Awal Setelah Perbaikan");
+                if (!$('#PIC_yokotenkai').val().trim()) missingFieldsTab2.push("PIC Yokotenkai");
+                if (!$('#date_yokotenkai').val()) missingFieldsTab2.push("Tanggal Yokotenkai");
+
+                let isDocUpdated = $('input[name="is_document_updated"]:checked').val();
+                if (!isDocUpdated) {
+                    missingFieldsTab2.push("Status Dokumen yang diperbaharui (Ya/Tidak)");
+                } else if (isDocUpdated === "Ya") {
+                    if ($('input[name="document_type_updated"]:checked').length === 0) {
+                        missingFieldsTab2.push("Tipe Dokumen yang diperbaharui (Minimal pilih 1 Checkbox)");
+                    }
+                    if (!$('#document_number').val().trim()) {
+                        missingFieldsTab2.push("Dokumen Number");
+                    }
+                }
+
+                if (missingFieldsTab2.length > 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Data Jawaban Belum Lengkap!',
+                        html: '<div class="text-sm text-left mb-2">Mohon lengkapi data Analisa & Perbaikan berikut sebelum melakukan Approval:</div>' +
+                              '<ul class="text-left text-sm text-red-600 bg-red-50 p-3 rounded list-disc list-inside max-h-60 overflow-y-auto leading-relaxed">' +
+                              missingFieldsTab2.map(f => `<li>${f}</li>`).join('') +
+                              '</ul>',
+                        confirmButtonColor: '#0f766e'
+                    });
+                    return;
+                }
+            }
+        }
+
+        const signInput = document.getElementById('sign_name_' + id);
+        if (!signInput.value && currentUserName) signInput.value = currentUserName;
+        const signName = signInput.value;
+
+        if (!signName && status !== "") {
+            Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Nama Terang tidak ditemukan. Silakan isi manual.' });
+            return;
+        }
+
+        let roleTypeStr = "";
+        if (id.includes("disetujui")) roleTypeStr = "Disetujui";
+        else if (id.includes("diperiksa")) roleTypeStr = "Diperiksa";
+        else if (id.includes("dibuat")) roleTypeStr = "Dibuat";
+
+        let groupTypeStr = id.includes("dept_") ? "Auditee Approval" : "Auditor Approval";
+        let approvalId = $('#approval_id_' + id).val();
+        if (!approvalId) {
+            const generateUUID = () => {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            };
+            approvalId = `APV-${generateUUID()}`;
+        }
+
+        const payload = { approval_id: approvalId, no_report: noReport, group_type: groupTypeStr, role_type: roleTypeStr, sign_by: signName, sign_date: new Date().toISOString(), status: status };
+
+        $.ajax({
+            url: '@Url.Action("UpsertApproval", "EAudit")',
+            type: 'POST', contentType: 'application/json', data: JSON.stringify(payload),
+            success: function (response) {
+                if (response.status === "success") {
+                    document.getElementById('status_' + id).value = status;
+                    const btnGroup = document.getElementById('btn-group-' + id);
+                    const stampContainer = document.getElementById('stamp-container-' + id);
+
+                    // 2. Perbaikan pada logic Update DOM berdasarkan value status
+                    if (status === "") {
+                        // RESET STATE: Hapus cap, kembalikan tombol Approve/Reject
+                        btnGroup.classList.remove('hidden');
+                        stampContainer.classList.add('hidden');
+                        stampContainer.innerHTML = '';
+
+                    } else {
+                        // APPROVE / REJECT STATE: Tampilkan cap
+                        btnGroup.classList.add('hidden');
+                        stampContainer.classList.remove('hidden');
+
+                        const dateObj = new Date();
+                        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+                        if (status === 'Approved') {
+                            stampContainer.innerHTML = `<div class="stamp-circle stamp-approved-circle group-hover:opacity-30 transition"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`;
+                        } else {
+                            stampContainer.innerHTML = `<div class="stamp-circle stamp-rejected-circle group-hover:opacity-30 transition"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+                        }
+
+                        Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 }).fire({ icon: 'success', title: `${roleTypeStr} berhasil disimpan!` });
+                    }
+
+                    checkTab1Lock();
+                    checkTab2Lock();
+                    checkVerification();
+
+                } else {
+                    signInput.value = "";
+                    Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: response.message });
+                }
+            },
+            error: function () {
+                signInput.value = "";
+                Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: 'Tidak dapat terhubung ke server.' });
+            }
+        });
+    }
+
+    function resetStamp(id) {
+        setStamp(id, "");
+    }
+
+    function setVerificationStamp(id, status) {
+
+
+        if (id === 'v1_auditor' || id === 'v1_mr') {
+            let missingV1 = [];
+
+            if ($('#status_disetujui_1').val() !== 'Approved') {
+                missingV1.push("Approval Auditor (Disetujui) di Tab 1 belum di-Approve");
+            }
+            if ($('#status_dept_disetujui').val() !== 'Approved') {
+                missingV1.push("Approval Auditee (Disetujui) di Tab 2 belum di-Approve");
+            }
+            if (!$('input[name="v1_status"]:checked').val()) {
+                missingV1.push("Status Verifikasi-1 (Selesai / Belum Selesai) belum dipilih");
+            }
+            if (!$('#v1_comment').val() || !$('#v1_comment').val().trim()) {
+                missingV1.push("Kolom Comments Verifikasi-1 belum diisi");
+            }
+
+            // MR tidak bisa jalan duluan sebelum Auditor approve
+            if (id === 'v1_mr' && $('#status_v1_auditor').val() !== 'Approved') {
+                missingV1.push("Verifikasi-1 Auditor/Mgr belum di-Approve (MR tidak bisa verifikasi sebelum Auditor)");
+            }
+
+
+
+
+            if (missingV1.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Verifikasi-1 Belum Bisa Dilakukan!',
+                    html: '<div class="text-sm text-left mb-2">Mohon lengkapi hal berikut terlebih dahulu:</div>' +
+                        '<ul class="text-left text-sm text-red-600 bg-red-50 p-3 rounded list-disc list-inside">' +
+                        missingV1.map(f => `<li>${f}</li>`).join('') +
+                        '</ul>',
+                    confirmButtonColor: '#0f766e'
+                });
+                return;
+            }
+        }
+
+        // ------------------ VALIDASI VERIFIKASI-2 (Auditor & MR) ------------------
+        if (id === 'v2_auditor' || id === 'v2_mr') {
+            let missingV2 = [];
+
+            if ($('#status_v1_auditor').val() !== 'Approved') {
+                missingV2.push("Verifikasi-1 Auditor/Mgr belum di-Approve");
+            }
+            if ($('#status_v1_mr').val() !== 'Approved') {
+                missingV2.push("Verifikasi-1 MR belum di-Approve");
+            }
+            if (!$('input[name="v2_status"]:checked').val()) {
+                missingV2.push("Status Verifikasi-2 (Effektif / Tidak Effektif) belum dipilih");
+            }
+            if (!$('#v2_comment').val() || !$('#v2_comment').val().trim()) {
+                missingV2.push("Kolom Comments Verifikasi-2 belum diisi");
+            }
+
+            if (id === 'v2_mr' && $('#status_v2_auditor').val() !== 'Approved') {
+                missingV2.push("Verifikasi-2 Auditor/Mgr belum di-Approve (MR tidak bisa verifikasi sebelum Auditor)");
+            }
+
+            if (missingV2.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Verifikasi-2 Belum Bisa Dilakukan!',
+                    html: '<div class="text-sm text-left mb-2">Mohon lengkapi hal berikut terlebih dahulu:</div>' +
+                        '<ul class="text-left text-sm text-red-600 bg-red-50 p-3 rounded list-disc list-inside">' +
+                        missingV2.map(f => `<li>${f}</li>`).join('') +
+                        '</ul>',
+                    confirmButtonColor: '#0f766e'
+                });
+                return;
+            }
+        }
+
+        const signInput = document.getElementById('sign_name_' + id);
+        if (!signInput.value && currentUserName) signInput.value = currentUserName;
+        if (!signInput.value) { Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Nama Terang tidak ditemukan.' }); return; }
+
+        document.getElementById('status_' + id).value = status;
+        document.getElementById('btn-group-' + id).classList.add('hidden');
+
+        const stampContainer = document.getElementById('stamp-container-' + id);
+        stampContainer.classList.remove('hidden');
+
+        const dateObj = new Date();
+        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+        if (status === 'Approved') stampContainer.innerHTML = `<div class="stamp-circle stamp-approved-circle group-hover:opacity-30 transition" style="transform: rotate(-12deg) scale(0.85);"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`;
+        else stampContainer.innerHTML = `<div class="stamp-circle stamp-rejected-circle group-hover:opacity-30 transition" style="transform: rotate(-12deg) scale(0.85);"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+
+        $(signInput).trigger('change');
+        $('#status_' + id).trigger('change');
+
+        if (id === 'v1_mr' && $('#status_v1_mr').val() !== 'Approved') {
+            resetVerificationStamp('v1_auditor')
+            resetStamp('dept_disetujui')
+            resetStamp('dept_diperiksa')
+            resetStamp('dept_dibuat')
+        }else if (id === 'v1_auditor' && $('#status_v1_mr').val() !== 'Approved' && $('#status_v1_auditor').val() == 'Approved') {
+            resetVerificationStamp('v1_mr')
+        }
+
+        checkTab1Lock();
+        checkTab2Lock()
+        checkVerification()
+    }
+
+    function resetVerificationStamp(id) {
+        document.getElementById('status_' + id).value = '';
+        document.getElementById('btn-group-' + id).classList.remove('hidden');
+        document.getElementById('stamp-container-' + id).classList.add('hidden');
+        document.getElementById('stamp-container-' + id).innerHTML = '';
+        $('#status_' + id).trigger('change');
+        checkTab1Lock();
+        checkTab2Lock()
+        checkVerification()
+    }
+
+    function renderExistingStamp(id, status, dateStr) {
+        if (!status) return;
+        document.getElementById('status_' + id).value = status;
+        let btnGroup = document.getElementById('btn-group-' + id);
+        if (btnGroup) btnGroup.classList.add('hidden');
+
+        const stampContainer = document.getElementById('stamp-container-' + id);
+        if (!stampContainer) return;
+        stampContainer.classList.remove('hidden');
+
+        const dateObj = parseDotNetDate(dateStr) || new Date();
+        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+        if (status.toLowerCase() === 'approved') stampContainer.innerHTML = `<div class="stamp-circle stamp-approved-circle group-hover:opacity-30 transition"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`;
+        else if (status.toLowerCase() === 'rejected') stampContainer.innerHTML = `<div class="stamp-circle stamp-rejected-circle group-hover:opacity-30 transition"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+    }
+
+    function renderExistingVerificationStamp(id, status, dateStr) {
+        if (!status) return;
+        document.getElementById('status_' + id).value = status;
+        let btnGroup = document.getElementById('btn-group-' + id);
+        if (btnGroup) btnGroup.classList.add('hidden');
+
+        const stampContainer = document.getElementById('stamp-container-' + id);
+        if (!stampContainer) return;
+        stampContainer.classList.remove('hidden');
+
+        const dateObj = parseDotNetDate(dateStr) || new Date();
+        const dateString = `${String(dateObj.getDate()).padStart(2, '0')} ${["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+
+        if (status.toLowerCase() === 'approved') stampContainer.innerHTML = `<div class="stamp-circle stamp-approved-circle group-hover:opacity-30 transition" style="transform: rotate(-12deg) scale(0.85);"><span class="stamp-text">APPROVED</span><span class="stamp-date">${dateString}</span></div>`;
+        else if (status.toLowerCase() === 'rejected') stampContainer.innerHTML = `<div class="stamp-circle stamp-rejected-circle group-hover:opacity-30 transition" style="transform: rotate(-12deg) scale(0.85);"><span class="stamp-text">REJECTED</span><span class="stamp-date">${dateString}</span></div>`;
+    }
+
+    function checkTab2Lock() {
+        const isTab1Approved = $('#status_disetujui_1').val() === 'Approved';
+        if (!isTab1Approved) {
+            $('#auditee-section').addClass('pointer-events-none opacity-50 grayscale');
+
+            if ($('#tab2-lock-warning').length === 0) {
+                $('#tab-2').prepend('<div id="tab2-lock-warning" class="bg-amber-50 border border-amber-300 text-amber-800 p-3 rounded mb-4 font-semibold text-sm text-center shadow-sm flex items-center justify-center gap-2"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> <span><b>Tab 2 Terkunci.</b> Mohon selesaikan dan "Approve" kolom <b>Disetujui</b> (Auditor/Mgr) di Tab 1 terlebih dahulu.</span></div>');
+            }
+        }
+        else {
+            $('#auditee-section').removeClass('pointer-events-none opacity-50 grayscale');
+            $('#tab2-lock-warning').remove();
+        }
+    }
+
+    function checkTab1Lock(){
+        const isTab2Approved = $('#status_dept_disetujui').val() === 'Approved';
+        if (isTab2Approved) {
+            $('#auditor-section').addClass('pointer-events-none opacity-50 grayscale');
+            if ($('#tab1-lock-warning').length === 0) {
+                $('#tab-1').prepend('<div id="tab1-lock-warning" class="bg-amber-50 border border-amber-300 text-amber-800 p-3 rounded mb-4 font-semibold text-sm text-center shadow-sm flex items-center justify-center gap-2"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> <span><b>Tab 1 Terkunci.</b> Tindak perbaikan telah di <b>Approve</b> oleh <b>Auditee</b>.</span></div>');
+            }
+        }
+        else {
+            $('#auditor-section').removeClass('pointer-events-none opacity-50 grayscale');
+            $('#tab1-lock-warning').remove();
+        }
+
+    }
+
+    function checkVerification(){
+         const isVerificationApproved = $('#status_v1_auditor').val() === 'Approved';
+
+        const isTab2Approved = $('#status_dept_disetujui').val() === 'Approved';
+
+        const isTab1Approved = $('#status_disetujui_1').val() === 'Approved';
+
+         if(isVerificationApproved){
+            $('#auditee-section').addClass('pointer-events-none opacity-50 grayscale');
+            if ($('#tab2-lock-warning').length === 0) {
+                $('#tab-2').prepend('<div id="tab2-lock-warning" class="bg-amber-50 border border-amber-300 text-amber-800 p-3 rounded mb-4 font-semibold text-sm text-center shadow-sm flex items-center justify-center gap-2"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> <span><b>Tab 2 Terkunci.</b> Verifikasi 1 telah di <b>Approve</b> oleh <b>Auditor</b>.</span></div>');
+            }
+            $('#auditor-section').addClass('pointer-events-none opacity-50 grayscale');
+            if ($('#tab1-lock-warning').length === 0) {
+                $('#tab-1').prepend('<div id="tab1-lock-warning" class="bg-amber-50 border border-amber-300 text-amber-800 p-3 rounded mb-4 font-semibold text-sm text-center shadow-sm flex items-center justify-center gap-2"><svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg> <span><b>Tab 1 Terkunci.</b> Tindak perbaikan telah di <b>Approve</b> oleh <b>Auditee</b>.</span></div>');
+            }
+        }
+
+   if(!isTab1Approved || !isTab2Approved){
+        // 1. Tambahkan efek visual redup
+        $('#verification-section').addClass('pointer-events-none opacity-50 grayscale');
+
+        $('#verification-section').find('input, textarea, button').prop('disabled', true);
+
+    } else {
+        $('#verification-section').removeClass('pointer-events-none opacity-50 grayscale');
+
+        $('#verification-section').find('input, textarea, button').prop('disabled', false);
+    }
+    }
+
+    function openReminderModal() {
+        const modal = document.getElementById('reminderModal');
+        modal.classList.remove('hidden');
+    }
+
+    function closeReminderModal() {
+        const modal = document.getElementById('reminderModal');
+        modal.classList.add('hidden');
+
+        // Reset form saat ditutup
+        document.getElementById('reminderMessage').value = "";
+        const checkboxes = document.querySelectorAll('input[name="reminderUsers"]');
+        checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    function processReminder(jenisReminder, docId) {
+        // 1. Tutup modal terlebih dahulu agar layar fokus ke loading alert
+
+
+        // 2. Ambil semua checkbox yang dicentang
+        const selectedCheckboxes = document.querySelectorAll('input[name="reminderUsers"]:checked');
+        const selectedEmails = Array.from(selectedCheckboxes).map(cb => cb.value);
+        const message = document.getElementById('reminderMessage').value;
+
+        // 3. Validasi: pastikan user sudah dipilih minimal 1
+        if (selectedEmails.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Penerima Kosong',
+                text: 'Silakan pilih minimal satu penerima (Auditee atau Auditor).',
+                confirmButtonColor: '#0f766e'
+            }).then(() => {
+                // Buka kembali modal jika validasi gagal
+                openReminderModal();
+            });
+            return;
+        }
+        closeReminderModal();
+        // 4. Tampilkan loading (menunggu respon server)
+        Swal.fire({
+            title: 'Mengirim Reminder...',
+            text: 'Mohon tunggu sebentar, email sedang dikirim.',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        // 5. Setup data (payload) yang akan dikirim ke Controller
+        const payload = {
+            emails: selectedEmails,
+            message: message,
+            id: docId,
+            jenisReminder: jenisReminder
+        };
+
+        // 6. Eksekusi AJAX ke Backend (Menggunakan Razor Url.Action)
+        $.ajax({
+            url: '@Url.Action("SendReminderEmail", "EAudit")', // URL Dinamis Razor
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(payload),
+            success: function (response) {
+                if (response.status === "success") {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: response.message,
+                        confirmButtonColor: '#0f766e'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: response.message,
+                        confirmButtonColor: '#dc2626'
+                    });
+                }
+            },
+            error: function () {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Koneksi',
+                    text: 'Terjadi kesalahan saat menghubungi server untuk mengirim email.',
+                    confirmButtonColor: '#dc2626'
+                });
+            }
+        });
+    }
+</script>

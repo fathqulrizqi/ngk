@@ -1,0 +1,339 @@
+﻿@{
+    ViewBag.Title = "Index";
+    int count = 0;
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/IT/MasterList.css?v=" + DateTime.Now.TimeOfDay)" rel="stylesheet" type="text/css" />
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-reflow.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/IT/MasterList.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+<table id="mlReportTable" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="23" class="sorter-false">
+                <h2 class="table-title" style="display:inline-block;">Master List</h2>
+                <input id="btnAdd" type="button" value="Add" class="btn btn-primary btnAdd" style="z-index:98;" />
+                <button id="btnDownload" class="btn btn-default btnDownload" style="z-index:99;">Download</button>
+            </th>
+        </tr>
+        <tr>
+            <th class="filter-select text-center" data-placeholder="Dept">Dept</th>
+            <th class="text-center">Asset No</th>
+            <th class="text-center">Brand</th>
+            <th class="text-center">Model</th>
+            <th class="text-center">Computer Name</th>
+            <th class="text-center">Processor</th>
+            <th class="text-center">MSOffice</th>
+            <th class="text-center">MSOffice User</th>
+            <th class="filter-select text-center" data-placeholder="RAM">RAM</th>
+            <th class="filter-select text-center" data-placeholder="HDD">HDD</th>
+            <th class="filter-select text-center" data-placeholder="OS">OS</th>
+            <th class="text-center">IP</th>
+            <th class="text-center">Mac Address</th>
+            <th class="text-center">AnyDesk</th>
+            <th class="filter-select text-center" data-placeholder="Year">Purchase</th>
+            <th class="filter-select text-center" data-placeholder="Month">Month</th>
+            <th>NIK</th>
+            <th class="text-center">User</th>
+            <th class="filter-select text-center" data-placeholder="Type">Type</th>
+            <th>Remark</th>
+            <th class="filter-select text-center" data-placeholder="Status">Status</th>
+            <th class="filter-select text-center" data-placeholder="Used">Used</th>
+            <th class="text-center filter-false">Action</th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="23">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+        @foreach (var item in ViewBag.MasterList)
+        {
+        <tr data-id="@(item.id)" data-nik="@(item.NIK)" class="@((DateTime.Now.Year - item.purchase > 4?"trDanger":(DateTime.Now.Year - item.purchase == 4 ? "trWarning":"")))">
+            <td>@(((item.User?.SectionName != "" ? item.User?.SectionName : (item.User?.DeptName != "" ? item.User?.DeptName : item.User?.DivisionName))))</td>
+            <td class="tdAssetNo">@(item.Asset_No)</td>
+            <td class="tdBrand">@(item.brand)</td>
+            <td class="tdModel">@(item.model)</td>
+            <td class="tdComputerName">@(item.computerName)</td>
+            <td class="tdProcessor">@(item.processor)</td>
+            <td class="tdMSOffice">@(item.MSOffice)</td>
+            <td class="tdMSOfficeUser">@(item.MSOffice_User)</td>
+            <td class="tdRAM">@(item.RAM)</td>
+            <td class="tdHDD">@(item.HDD)</td>
+            <td class="tdOS">@(item.OS)</td>
+            <td class="tdIP">@(item.IP)</td>
+            <td class="tdMacAddress">@(item.Mac_Address)</td>
+            <td class="tdAnydesk">@(item.Anydesk)</td>
+            <td class="tdPurchase text-center">@(item.purchase)</td>
+            <td class="tdMonth text-center">@(item.month)</td>
+            <td>@(item.User?.NIK)</td>
+            <td>@(item.User?.Name)</td>
+            <td class="tdType">@(item.type)</td>
+            <td class="tdRemark">@(item.Remark)</td>
+            <td>@((DateTime.Now.Year - item.purchase > 4 ? "Expired Asset" : (DateTime.Now.Year - item.purchase == 4 ? "Warning Asset" : "Asset")))</td>
+            <td class="tdIsUsed">@(item.is_used ? "Used" : "Not Used")</td>
+            <td class="text-center">
+                <button class="btnEdit btn btn-warning"><i class="fa fa-edit"></i></button>
+                <button class="btnDelete btn btn-danger"><i class="fa fa-trash"></i></button>
+            </td>
+        </tr>
+        }
+    </tbody>
+</table>
+
+
+<div id="mlModal" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <!-- Modal content-->
+        <form id="mlForm" action="@Url.Action("insertList","MasterList",new { area = "IT" })" method="post">
+            <input id="hfDataID" name="iDataID" type="hidden" />
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Add Master List</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-horizontal">
+                        <div class="form-group row">
+                            <label for="selNIK" class="col-3 text-right font-weight-bold text-right font-weight-bold">User</label>
+                            <div class="col-9">
+                                <select id="selNIK" name="iNIK" class="select2" style="width:100%;" required>
+                                    <option value="">-Select Employee-</option>
+                                    @foreach (var item in ViewBag.Users)
+                                    {
+                                        <option data-div="@(item.DivisionName)" data-dept="@(item.DeptName)" data-sect="@(item.SectionName)" data-subsection="@(item.SubSectionName)" value="@(item.NIK)">@(item.NIK + " || " + item.Name)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="spanDiv" class="col-3 text-right font-weight-bold">Division</label>
+                            <div class="col-9">
+                                <span id="spanDiv">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="spanDept" class="col-3 text-right font-weight-bold">Department</label>
+                            <div class="col-9">
+                                <span id="spanDept">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="spanSect" class="col-3 text-right font-weight-bold">Section</label>
+                            <div class="col-9">
+                                <span id="spanSect">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="spanSubSect" class="col-3 text-right font-weight-bold">Sub Section</label>
+                            <div class="col-9">
+                                <span id="spanSubSect">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtAssetNo" class="col-3 text-right font-weight-bold">Asset No.</label>
+                            <div class="col-9">
+                                <input id="txtAssetNo" name="iAssetNo" type="text" class="form-control" placeholder="Asset No." />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selType" class="col-3 text-right font-weight-bold">Type</label>
+                            <div class="col-9">
+                                <select id="selType" name="iType" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select Type-</option>
+                                    <option value="Desktop">Desktop</option>
+                                    <option value="Notebook">Notebook</option>
+                                    <option value="Printer">Printer</option>
+                                    <option value="Server">Server</option>
+                                    <option value="Wifi">Wifi</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtBrand" class="col-3 text-right font-weight-bold">Brand</label>
+                            <div class="col-9">
+                                <input id="txtBrand" name="iBrand" type="text" class="form-control" placeholder="Brand" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtModel" class="col-3 text-right font-weight-bold">Model</label>
+                            <div class="col-9">
+                                <input id="txtModel" name="iModel" type="text" class="form-control" placeholder="Model" />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtComputerName" class="col-3 text-right font-weight-bold">Computer Name</label>
+                            <div class="col-9">
+                                <input id="txtComputerName" name="iComputerName" type="text" class="form-control" placeholder="Computer Name" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtProcessor" class="col-3 text-right font-weight-bold">Processor</label>
+                            <div class="col-9">
+                                <input id="txtProcessor" name="iProcessor" type="text" class="form-control" placeholder="Processor" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selRAM" class="col-3 text-right font-weight-bold">RAM</label>
+                            <div class="col-9">
+                                <select id="selRAM" name="iRAM" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select RAM-</option>
+                                    <option value="1 GB">1 GB</option>
+                                    <option value="2 GB">2 GB</option>
+                                    <option value="3 GB">3 GB</option>
+                                    <option value="4 GB">4 GB</option>
+                                    <option value="6 GB">6 GB</option>
+                                    <option value="8 GB">8 GB</option>
+                                    <option value="16 GB">16 GB</option>
+                                    <option value="32 GB">32 GB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selHDD" class="col-3 text-right font-weight-bold">Hard Disk</label>
+                            <div class="col-9">
+                                <select id="selHDD" name="iHDD" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select HDD-</option>
+                                    <option value="80 GB">80 GB</option>
+                                    <option value="160 GB">160 GB</option>
+                                    <option value="250 GB">250 GB</option>
+                                    <option value="500 GB">500 GB</option>
+                                    <option value="700 GB">700 GB</option>
+                                    <option value="1 TB">1 TB</option>
+                                    <option value="2 TB">2 TB</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selOS" class="col-3 text-right font-weight-bold">Operating System</label>
+                            <div class="col-9">
+                                <select id="selOS" name="iOS" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select OS-</option>
+                                    <option value="MAC OS 10">MAC OS 10</option>
+                                    <option value="Windows XP">Windows XP</option>
+                                    <option value="Windows 7 32bit">Windows 7 32bit</option>
+                                    <option value="Windows 7 64bit">Windows 7 64bit</option>
+                                    <option value="Windows 8 32bit">Windows 8 32bit</option>
+                                    <option value="Windows 8 64bit">Windows 8 64bit</option>
+                                    <option value="Windows 10 32bit">Windows 10 32bit</option>
+                                    <option value="Windows 10 64bit">Windows 10 64bit</option>
+                                    <option value="Windows 11 32bit">Windows 11 32bit</option>
+                                    <option value="Windows 11 64bit">Windows 11 64bit</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selMSOffice" class="col-3 text-right font-weight-bold">MSOffice</label>
+                            <div class="col-9">
+                                <select id="selMSOffice" name="iMSOffice" class="form-control" style="width:100%;">
+                                    <option value="">-Select MSOffice-</option>
+                                    <option value="Microsoft Office 365">Microsoft Office 365</option>
+                                    <option value="Microsoft Office 2003">Microsoft Office 2003</option>
+                                    <option value="Microsoft Office 2007">Microsoft Office 2007</option>
+                                    <option value="Microsoft Office 2010">Microsoft Office 2010</option>
+                                    <option value="Microsoft Office 2013">Microsoft Office 2013</option>
+                                    <option value="Microsoft Office 2016">Microsoft Office 2016</option>
+                                    <option value="Microsoft Office 2019">Microsoft Office 2019</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtMSOfficeUser" class="col-3 text-right font-weight-bold">MS Office User</label>
+                            <div class="col-9">
+                                <input id="txtMSOfficeUser" name="iMSOfficeUser" type="text" class="form-control" placeholder="MS Office User" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtIP" class="col-3 text-right font-weight-bold">IP Address</label>
+                            <div class="col-9">
+                                <input id="txtIP" name="iIP" type="text" class="form-control" placeholder="IP Address" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtMacAddress" class="col-3 text-right font-weight-bold">Mac Address</label>
+                            <div class="col-9">
+                                <input id="txtMacAddress" name="iMacAddress" type="text" class="form-control" placeholder="Mac Address" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtAnydesk" class="col-3 text-right font-weight-bold">AnyDesk</label>
+                            <div class="col-9">
+                                <input id="txtAnydesk" name="iAnydesk" type="text" class="form-control" placeholder="AnyDesk" required />
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selPurchase" class="col-3 text-right font-weight-bold">Purchase</label>
+                            <div class="col-9">
+                                <select id="selPurchase" name="iPurchase" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select Year-</option>
+                                    @for (int i = DateTime.Now.Year; i >= 2008; i--)
+                                    {
+                                        <option value="@(i)">@(i)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selMonth" class="col-3 text-right font-weight-bold">Month</label>
+                            <div class="col-9">
+                                <select id="selMonth" name="iMonth" class="form-control" style="width:100%;" required>
+                                    <option value="">-Select Month-</option>
+                                    @for (int i = 1; i <= 12; i++)
+                                    {
+                                        <option value="@(i)">@(i)</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="txtRemark" class="col-3 text-right font-weight-bold">Remark</label>
+                            <div class="col-9">
+                                <textarea id="txtRemark" rows="3" class="form-control" placeholder="Remark"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="selPurchase" class="col-3 text-right font-weight-bold">Is Used :</label>
+                            <div class="col-9">
+                                <label class="radio-inline"><input type="radio" name="iUsed" value="1">Used</label>
+                                <label class="radio-inline"><input type="radio" name="iUsed" value="0">Not Used</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnSRSubmit" type="submit" class="btn btn-default">Submit</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

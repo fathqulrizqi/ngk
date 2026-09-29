@@ -1,0 +1,579 @@
+﻿@{
+    ViewBag.Title = "FG Tag Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section scriptHead{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.0/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.14.0/jquery-ui.min.js"></script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@9.0.3/dist/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+}
+
+@{
+    var fgTag = ViewBag.FGTag as NGKBusi.Areas.Production.Models.Production_PlugCap_TagFG_Generator_Tag_FG;
+    var partList = ViewBag.PartTagList as List<NGKBusi.Areas.Production.Models.Production_PlugCap_TagFG_Generator_Tag_Part> ?? new List<NGKBusi.Areas.Production.Models.Production_PlugCap_TagFG_Generator_Tag_Part>();
+
+    // Siapkan list BN yang sudah ada di database untuk validasi duplikasi di frontend
+    var existingBNs = string.Join(",", partList.Select(p => $"'{p.BN}'"));
+}
+
+<style>
+    .datatable-input {
+        border: 1px solid #d1d5db;
+        background-color: white;
+        border-radius: 0.5rem;
+        outline: none;
+    }
+
+        .datatable-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+    /* Custom Scrollbar untuk Modal Table */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+    }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+</style>
+
+<body class="min-h-screen font-sans text-gray-800 bg-gray-50">
+
+    @if (fgTag != null)
+    {
+        <div class="p-6">
+            <!-- Header Section -->
+            <div class="mb-6 flex justify-between items-center border-b border-gray-200 pb-4">
+                <h1 class="text-3xl font-extrabold text-blue-700">
+                    <i class="fa-solid fa-file-invoice mr-2"></i>FG Tag Detail
+                </h1>
+                <a href="@Url.Action("Index", "PlugCapTagFGGenerator")" class="text-sm text-gray-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-white border border-gray-300 px-4 py-2 rounded-lg shadow-sm hover:bg-gray-50">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Generator
+                </a>
+            </div>
+
+            <!-- FG Header Card -->
+            <div class="bg-white p-6 rounded-xl shadow-sm mb-8 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-700 flex items-center gap-2">
+                        <i class="fa-solid fa-tag text-blue-500"></i> FG Tag Summary
+                    </h2>
+                    <span class="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded border border-green-200">
+                        Generated Automatically
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="flex flex-col bg-blue-50 p-4 rounded-lg border border-blue-100 md:col-span-2">
+                        <span class="text-xs font-semibold text-blue-600 uppercase tracking-wider">BN</span>
+                        <span class="text-2xl font-extrabold text-blue-900 mt-1">@fgTag.BN</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Created At</span>
+                        <span class="text-lg font-bold text-gray-800 mt-1">@(fgTag.created_at?.ToString("dd MMM yyyy HH:mm") ?? "-")</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Inspector</span>
+                        <span class="text-lg font-bold text-gray-800 mt-1">@fgTag.inspector</span>
+                    </div>
+
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Part No</span>
+                        <span class="text-lg font-bold text-gray-800 mt-1" id="lblFgPartNo">@fgTag.part_no</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Product Name</span>
+                        <span class="text-lg font-bold text-gray-800 mt-1 truncate" title="@fgTag.product_name">@fgTag.product_name</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Lot FG</span>
+                        <span class="text-lg font-bold text-gray-800 mt-1" id="lblFgLot">@fgTag.lot</span>
+                    </div>
+                    <div class="flex flex-col p-4 bg-green-50 rounded-lg border border-green-100 relative overflow-hidden">
+                        <span class="text-xs font-semibold text-green-700 uppercase tracking-wider relative z-10">Total Quantity</span>
+                        <span class="text-2xl font-extrabold text-green-700 mt-1 relative z-10">
+                            @fgTag.qty
+                        </span>
+                        <i class="fa-solid fa-layer-group absolute -right-2 -bottom-2 text-5xl text-green-200 opacity-50 z-0"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parts List Table -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-center border-b border-gray-100 pb-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-700 flex items-center gap-2">
+                            <i class="fa-solid fa-boxes-stacked text-blue-500"></i> Parts Compiled in this FG
+                        </h2>
+                        <span class="text-sm font-semibold text-gray-500 mt-1 block">
+                            Total Items: @partList.Count
+                        </span>
+                    </div>
+                    <!-- BUTTON ADD PART -->
+                    <button onclick="openScanModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Tambah Part
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table id="partTable" class="w-full text-sm text-left bg-white border">
+                        <thead class="bg-blue-50 text-blue-800 font-semibold uppercase text-xs">
+                            <tr>
+                                <th class="p-3 w-12 text-center">No</th>
+                                <th class="p-3">Part No</th>
+                                <th class="p-3">Product Name</th>
+                                <th class="p-3">Lot</th>
+                                <th class="p-3">Gimzcode</th>
+                                <th class="p-3">BN</th>
+                                <th class="p-3 text-right">Qty</th>
+                                <th class="p-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            @{ var rowNumber = 1; }
+                            @if (partList.Any())
+                            {
+                                foreach (var item in partList)
+                                {
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <td class="p-3 font-medium text-gray-500 text-center">@(rowNumber++)</td>
+                                        <td class="p-3 font-semibold text-gray-800">@item.part_no</td>
+                                        <td class="p-3 text-gray-600">@item.product_name</td>
+                                        <td class="p-3">
+                                            <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-bold border border-gray-200">
+                                                @item.lot
+                                            </span>
+                                        </td>
+                                        <td class="p-3 text-gray-600">@item.gimzcode</td>
+                                        <td class="p-3 text-gray-500">@item.BN</td>
+                                        <td class="p-3 font-bold text-green-700 text-right">@item.qty</td>
+                                        <td class="p-3 flex justify-center">
+                                            <button onclick="confirmDelete('@item.id')" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="Delete Part">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="8" class="p-8 text-center text-gray-400 italic">
+                                        <i class="fa-solid fa-box-open text-3xl mb-2 text-gray-300 block"></i>
+                                        No parts found in this FG Tag.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW MODAL SCAN PART -->
+        <div id="scanModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-80 transition-opacity backdrop-blur-sm"></div>
+
+            <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+                <div class="flex min-h-full items-center justify-center p-4">
+
+                    <div class="relative transform overflow-hidden rounded-xl bg-white text-left shadow-2xl transition-all w-full max-w-7xl">
+
+                        <div class="flex justify-between items-center bg-gray-50 px-6 py-4 border-b border-gray-100">
+                            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                <i class="fa-solid fa-qrcode text-blue-600"></i> Rapid Scan Part
+                            </h3>
+                            <button onclick="closeScanModal()" class="text-gray-400 hover:text-red-500 transition-colors">
+                                <i class="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+
+                        <div class="px-6 py-6">
+
+                            <div class="mb-5">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Scan Part QR Here:</label>
+                                <div class="flex flex-col md:flex-row gap-2">
+                                    <div class="relative w-full">
+                                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                            <i class="fa-solid fa-keyboard text-gray-400"></i>
+                                        </div>
+                                        <input type="text" id="qrInput"
+                                               class="block w-full pl-10 pr-3 py-2.5 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono"
+                                               placeholder="Siap untuk scan..." autocomplete="off">
+                                    </div>
+                                    <button onclick="processQr()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm whitespace-nowrap flex items-center gap-2 justify-center">
+                                        <i class="fa-solid fa-plus"></i> Add
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-3">
+                                    <i class="fa-solid fa-info-circle text-blue-500"></i>
+                                    Pastikan format Part sesuai dengan <b>Gimzcode (@fgTag.gimzcode)</b> dan <b>Lot (@fgTag.lot)</b>.
+                                </p>
+                            </div>
+
+                            <div class="flex justify-between items-end mb-2 mt-4">
+                                <h4 class="font-bold text-gray-700 flex items-center gap-2">
+                                    <i class="fa-solid fa-boxes-stacked text-blue-500"></i> Part Ter-Scan (Belum Disimpan)
+                                </h4>
+                                <span id="scanCounter" class="text-blue-700 bg-blue-100 border border-blue-200 text-xs font-bold px-2 py-1 rounded">
+                                    0 Item
+                                </span>
+                            </div>
+
+                            <div class="border shadow-sm bg-white overflow-y-auto overflow-x-auto custom-scrollbar min-h-[30vh] max-h-[40vh] rounded-lg">
+                                <table class="w-full text-sm text-left bg-white border whitespace-nowrap">
+                                    <thead class="bg-gray-50 text-gray-700 font-semibold uppercase sticky top-0 shadow-sm z-10 text-xs">
+                                        <tr>
+                                            <th class="px-4 py-3 border-b text-center">No</th>
+                                            <th class="px-4 py-3 border-b">Sequence (BN)</th>
+                                            <th class="px-4 py-3 border-b">Part No</th>
+                                            <th class="px-4 py-3 border-b">Product Name</th>
+                                            <th class="px-4 py-3 border-b text-center">Gimz Code</th>
+                                            <th class="px-4 py-3 border-b text-center">Lot</th>
+                                            <th class="px-4 py-3 border-b text-center">Inspector</th>
+                                            <th class="px-4 py-3 border-b text-center">Qty</th>
+                                            <th class="px-4 py-3 border-b text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cacheTableBody" class="divide-y divide-gray-100">
+                                        <tr>
+                                            <td colspan="9" class="text-center py-8 text-gray-400 italic">Belum ada part yang di-scan.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+
+                        <div class="bg-gray-50 px-6 py-3 flex justify-end gap-3 border-t border-gray-100">
+                            <button type="button" onclick="closeScanModal()" class="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 font-medium text-sm transition-colors">
+                                Cancel
+                            </button>
+                            <button id="btnGenerate" onclick="generateTagFG()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium text-sm transition-colors flex items-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                                <i class="fa-solid fa-file-circle-check"></i>
+                                Simpan & Generate Tag FG
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- 404 Error State -->
+        <div class="p-6">
+            <div class="text-center text-red-600 bg-white p-8 rounded-xl shadow border border-red-100">
+                <i class="fa-solid fa-triangle-exclamation text-5xl mb-4 text-red-500"></i>
+                <h1 class="text-2xl font-bold text-gray-800">Error 404: FG Tag Not Found</h1>
+                <p class="text-gray-500 mt-2 mb-6">The requested Finished Good Tag record could not be found or has been deleted.</p>
+                <a href="@Url.Action("Index", "PlugCapTagFGGenerator")" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                    Return to List
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- SCRIPT JAVASCRIPT -->
+    <script>
+        // Init table datautama
+        document.addEventListener("DOMContentLoaded", function () {
+            if (document.getElementById("partTable") && @partList.Any().ToString().ToLower()) {
+                new simpleDatatables.DataTable("#partTable", {
+                    searchable: true,
+                    fixedHeight: false,
+                    perPage: 10
+                });
+            }
+
+            // Init input enter behavior
+            const qrInputEl = document.getElementById('qrInput');
+            if(qrInputEl){
+                qrInputEl.addEventListener("keypress", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        processQr();
+                    }
+                });
+            }
+        });
+
+        // ==========================================
+        // SCAN MULTIPLE PARTS LOGIC (MODAL BARU)
+        // ==========================================
+        let draftParts = [];
+
+        // Data master untuk validasi
+        const fgGimzcode = '@(fgTag?.gimzcode?.Trim())';
+        const fgLot = '@(fgTag?.lot?.Trim())';
+        const existingBNsInDb = [@Html.Raw(existingBNs)];
+
+        function openScanModal() {
+            document.getElementById('scanModal').classList.remove('hidden');
+            focusQrInput();
+        }
+
+        function closeScanModal() {
+            if(draftParts.length > 0) {
+                Swal.fire({
+                    title: 'Batal Menambahkan?',
+                    text: "Ada data part yang belum disimpan. Anda yakin ingin menutup?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya, Tutup & Hapus Draft',
+                    cancelButtonText: 'Kembali'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        draftParts = [];
+                        renderCacheTable();
+                        document.getElementById('scanModal').classList.add('hidden');
+                        document.getElementById('qrInput').value = '';
+                    } else {
+                        focusQrInput();
+                    }
+                });
+            } else {
+                document.getElementById('scanModal').classList.add('hidden');
+                document.getElementById('qrInput').value = '';
+            }
+        }
+
+        function focusQrInput() {
+            setTimeout(() => {
+                const el = document.getElementById('qrInput');
+                if(el){
+                    el.value = '';
+                    el.focus();
+                }
+            }, 100);
+        }
+
+        function processQr() {
+            const rawCode = document.getElementById('qrInput').value;
+            if (!rawCode) {
+                focusQrInput();
+                return;
+            }
+
+            const code = rawCode.padEnd(252, ' ');
+            if (code.length < 200) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Format QR tidak sesuai (Bukan format 252 Karakter)!',
+                    didClose: () => focusQrInput()
+                });
+                return;
+            }
+
+            let newPart = {
+                BN: code.substring(0, 49).trim() || "-",
+                inspector: code.substring(49, 74).trim() || "-",
+                product_name: code.substring(74, 153).trim() || "-",
+                part_no: code.substring(153, 188).trim() || "-",
+                gimzcode: code.substring(188, 206).trim() || "-",
+                lot: code.substring(206, 216).trim() || "-",
+                qty: parseInt(code.substring(216, 239).trim(), 10) || 0
+            };
+
+            // 1. Validasi Kesamaan Gimzcode dan Lot Number dengan FG Tag
+            if (newPart.gimzcode !== fgGimzcode || newPart.lot !== fgLot) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validasi Gagal',
+                    html: `Gimzcode atau Lot tidak sesuai!<br/>Scanned: <b>${newPart.gimzcode}</b> (Lot: ${newPart.lot})<br/>Dibutuhkan: <b>${fgGimzcode}</b> (Lot: ${fgLot})`,
+                    didClose: () => focusQrInput()
+                });
+                return;
+            }
+
+            // 2. Validasi Duplikasi di Database
+            if (existingBNsInDb.includes(newPart.BN)) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Duplikasi Database',
+                    text: `Part dengan Sequence (BN) ${newPart.BN} sudah pernah dimasukkan ke dalam sistem!`,
+                    didClose: () => focusQrInput()
+                });
+                return;
+            }
+
+            // 3. Validasi Duplikasi di Session/Draft Array
+            if (draftParts.some(p => p.BN === newPart.BN)) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Duplikasi Draft',
+                    text: `Part ini baru saja Anda scan dan sudah ada di tabel bawah!`,
+                    didClose: () => focusQrInput()
+                });
+                return;
+            }
+
+            // Lolos Validasi -> Masukkan ke draft
+            draftParts.push(newPart);
+            renderCacheTable();
+            focusQrInput();
+        }
+
+        function removeDraftPart(index) {
+            draftParts.splice(index, 1);
+            renderCacheTable();
+            focusQrInput();
+        }
+
+        function renderCacheTable() {
+            const tbody = document.getElementById('cacheTableBody');
+            const badge = document.getElementById('scanCounter');
+            const btnSubmit = document.getElementById('btnGenerate');
+
+            tbody.innerHTML = '';
+            badge.innerText = draftParts.length + " Item";
+
+            if (draftParts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-8 text-gray-400 italic">Belum ada part yang di-scan.</td></tr>`;
+                btnSubmit.disabled = true;
+                btnSubmit.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btnSubmit.disabled = false;
+                btnSubmit.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                draftParts.forEach((part, index) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-100 transition-colors";
+
+                    // Menampilkan 9 Kolom sesuai desain modal baru
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 border-b text-center text-gray-500 font-medium">${draftParts.length - index}</td>
+                        <td class="px-4 py-3 border-b text-gray-500 font-mono text-xs truncate max-w-[150px]" title="${part.BN}">
+                            ${part.BN.length > 20 ? part.BN.substring(0, 20) + '...' : part.BN}
+                        </td>
+                        <td class="px-4 py-3 border-b font-semibold text-gray-800">${part.part_no}</td>
+                        <td class="px-4 py-3 border-b text-gray-600 truncate max-w-[200px]" title="${part.product_name}">${part.product_name}</td>
+                        <td class="px-4 py-3 border-b text-center text-blue-700 font-medium">${part.gimzcode}</td>
+                        <td class="px-4 py-3 border-b text-center">
+                            <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-bold border border-gray-200">${part.lot}</span>
+                        </td>
+                        <td class="px-4 py-3 border-b text-center text-gray-600 text-sm">${part.inspector}</td>
+                        <td class="px-4 py-3 border-b text-center font-bold text-green-700">${part.qty}</td>
+                        <td class="px-4 py-3 border-b text-center">
+                            <button onclick="removeDraftPart(${index})" class="text-red-400 hover:text-red-600 bg-white hover:bg-red-50 p-1.5 rounded transition-colors" title="Hapus Part">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.prepend(tr); // Memasukkan baris di paling atas
+                });
+            }
+        }
+
+        function generateTagFG() {
+            if (draftParts.length === 0) return;
+
+            const fgId = '@(fgTag != null ? fgTag.id.ToString() : "0")';
+
+            Swal.fire({
+                title: 'Menyimpan Data...',
+                text: `Memproses ${draftParts.length} parts.`,
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading() }
+            });
+
+            $.ajax({
+                url: '@Url.Action("AddMultiplePartsToExistingFG", "PlugCapTagFGGenerator")',
+                type: 'POST',
+                contentType: "application/json",
+                data: JSON.stringify({ fgId: fgId, newParts: draftParts }),
+                success: function (response) {
+                    if (response.success) {
+                        draftParts = []; // Clear session
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: response.message,
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire('Gagal', response.message, 'error').then(() => {
+                            focusQrInput();
+                        });
+                    }
+                },
+                error: function () {
+                    Swal.fire('Error', 'Gagal menghubungi server.', 'error').then(() => {
+                        focusQrInput();
+                    });
+                }
+            });
+        }
+
+        // ==========================================
+        // DELETE EXISTING PART
+        // ==========================================
+        function confirmDelete(id) {
+            Swal.fire({
+                title: 'Hapus Part dari FG Tag?',
+                text: "Part akan dihapus dan Total Qty pada FG Tag akan dikurangi.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        allowOutsideClick: false,
+                        didOpen: () => { Swal.showLoading() }
+                    });
+
+                    $.ajax({
+                        url: '@Url.Action("deletePartTag", "PlugCapTagFGGenerator")',
+                        type: 'POST',
+                        data: { id: id },
+                        success: function (response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success', title: 'Terhapus!', text: response.message, timer: 1500, showConfirmButton: false
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Gagal', response.message, 'error');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>

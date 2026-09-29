@@ -1,0 +1,1104 @@
+﻿
+@{
+    ViewBag.Title = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.bootstrap_4.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <style type="text/css">
+        .tblIReporterWeekly thead th {
+            text-align: center;
+        }
+
+        .tblIReporterWeekly tbody td:not(:first-child) {
+            text-align: right;
+            vertical-align: middle;
+        }
+    </style>
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/accounting.min.js")"></script>
+    <script src="~/Scripts/highcharts/7.1.2/highcharts.js"></script>
+    <script src="~/Scripts/highcharts/7.1.2/modules/pareto.js"></script>
+    <script src="~/Scripts/highcharts/7.1.2/modules/data.js"></script>
+    <script src="~/Scripts/highcharts/7.1.2/modules/exporting.js"></script>
+    <script src="~/Scripts/highcharts/7.1.2/modules/accessibility.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function () {
+            $("#btnReport").click(function () {
+                $(".divIReporterWrapperWeekly").LoadingOverlay("show");
+                var reportType = $(".selReportType option:selected").val();
+
+                if (reportType == "Weekly EFF") {
+                    tableEFF();
+                } else if (reportType == "Weekly OEE") {
+                    tableOEE();
+                } else if (reportType == "Weekly KOUSU") {
+                    tableKOUSU();
+                } else if (reportType == "Weekly PPM") {
+                    tablePPM();
+                }
+
+            });
+            var jsonData;
+            var excludeNG = ["Terminal Stud Renggang", "Mizo Sempit (Cm)", "Lain-Lain NG Material", "Finding Bending (Assy Line)", "NG Material", "NG QC Test", "Terminal Stud Renggang", "Kerusakan Material"];
+
+
+            $(".dIRFrom").datepicker({ dateFormat: "yy-mm-dd", onSelect: function () { var selDate = $(this).datepicker("getDate"); $(".dIRTo").datepicker("option", "minDate", selDate); } });
+            $(".dIRTo").datepicker({ dateFormat: "yy-mm-dd", onSelect: function () { var selDate = $(this).datepicker("getDate"); $(".dIRFrom").datepicker("option", "maxDate", selDate); } });
+
+            function getWeek(date) {
+                var onejan = new Date(date.getFullYear(), 0, 1);
+                var today = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                var dayOfYear = ((today - onejan + 1) / 86400000);
+                return Math.ceil(dayOfYear / 7);
+            }
+
+
+            function GroupBy(array, columns) {
+                if (!array.length || !columns.length)
+                    return;
+                var array = array;
+                var columns = columns;
+                var retArr = {};
+
+                var initialize = function (type) {
+                    if (type == 'sum' || type == 'avg') {
+                        for (var str of columns) {
+                            retArr[str] = 0;
+                        }
+                    } else if (type == 'min' || type == 'max') {
+                        for (var str of columns) {
+                            retArr[str] = array[0][str];
+                        }
+                    }
+                    else if (type == 'distinctCount') {
+                        for (var str of columns) {
+                            retArr[str] = {};
+                        }
+                    }
+                }
+
+                return {
+                    sum: function () {
+                        initialize('sum');
+                        return array.reduce(function (a, item) {
+                            for (var str of columns) {
+                                retArr[str] += parseFloat(item[str].replace(/-/g, "") || 0);
+                            }
+                            return retArr
+                        }, columns);
+                    },
+                    min: function () {
+                        initialize('min');
+                        return array.reduce(function (a, item) {
+                            for (var str of columns) {
+                                if (item[str] < retArr[str])
+                                    retArr[str] = parseFloat(item[str].replace(/-/g, "") || 0);
+                            }
+                            return retArr
+                        }, columns);
+                    },
+                    max: function () {
+                        initialize('max');
+                        return array.reduce(function (a, item) {
+                            for (var str of columns) {
+                                if (item[str] > retArr[str])
+                                    retArr[str] = parseFloat(item[str].replace(/-/g, "") || 0);
+                            }
+                            return retArr
+                        }, columns);
+                    },
+                    avg: function () {
+                        initialize('avg');
+                        var retObj = array.reduce(function (a, item) {
+                            for (var str of columns) {
+                                retArr[str] += parseFloat(item[str].replace(/-/g, "") || 0);
+                            }
+                            return retArr
+                        }, columns);
+
+                        for (var str of columns) {
+                            retArr[str] /= array.length;
+                        }
+                        return retArr;
+                    },
+                    distinctCount: function () {
+                        initialize('distinctCount');
+                        var retObj = array.reduce(function (a, item) {
+                            for (var str of columns) {
+                                if (!retArr.hasOwnProperty(str)) retArr[str] = {};
+                                retArr[str][item[str]] = 1;
+                            }
+                            return retArr;
+                        }, columns);
+
+                        for (var str of columns) {
+                            retArr[str] = Object.keys(retArr[str]).length;
+                        }
+                        return retArr;
+                    }
+                }
+            }
+
+            function tableEFF() {
+                var formType = $(".selForm option:selected").val();
+                var sDate = $(".dIRFrom").val();
+                var eDate = $(".dIRTo").val();
+                $(".tblIReporterWeekly, #iReporterGraph, #iReporterGraph2").hide();
+                $(".tblIReporterWeekly thead tr th:not(:first-child),.tblIReporterWeekly tbody tr td:not(:first-child)").remove();
+                $.ajax({
+                    url: "/NGKBusi/IReporter/IReporter/getIreporterData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    dataType: "json",
+                    data: {
+                        iRepName: formType,
+                        iStartDate: sDate,
+                        iEndDate: eDate,
+                    }, success: function (data) {
+                        if ($.parseJSON(data).length > 0) {
+                            var columns = ["PT_Standart", "PT_Aktual", "Total_JK", "Operating_Time_DS", "Planed_Time", "Planed_Loss_Shalat", "Planed_Loss_PM", "Planed_Loss_Istirahat", "Planed_Loss_Brefing", "Unplaned_LossTime", "Total_OK+NG", "Operating_Time", "Speed_Operating_Rate", "Net_Operating_Rate", "Aktual_Produksi_OK", "Avaibility", "Performance", "Quality", "Aktual_Jumlah_NG", "Aktual_Total_MP", "Effisiensi", "Effisiensi Target"];
+                            jsonData = $.parseJSON(data);
+
+                            var getWeekList = [];
+                            var getWeekListEFF = [];
+                            var getWeekListTarget = [];
+                            var getMachineLists = [];
+                            var getMachineListsEFF = [];
+                            var getMachineListsTarget = [];
+                            $.each(jsonData, function (index, element) {
+                                element.Tanggal = new Date(element.Tanggal);
+                                element.Week = getWeek(new Date(element.Tanggal));
+                            });
+                            $.each(jsonData, function () {
+                                if ($.inArray(this.Week, getWeekList) < 0) {
+                                    getWeekList.push(this.Week);
+                                }
+                            });
+                            getWeekList = getWeekList.sort();
+
+                            var totalAVG = 0;
+                            var PTMonthly = 0, ProdOKMonthly = 0, ProdNGMonthly = 0, JKMonthly = 0, LTMonthly = 0;
+                            $.each(getWeekList, function (e, v) {
+                                var getMachineList = [];
+                                var filteredDataByWeek = jsonData.filter(function (obj) {
+                                    return (obj.Week === v);
+                                });
+                                console.log(filteredDataByWeek);
+                                $.each(filteredDataByWeek, function (e2, v2) {
+                                    if ($.inArray(this.No_Mesin, getMachineList) < 0) {
+                                        getMachineList.push(this.No_Mesin);
+                                    }
+                                });
+                                getMachineList = getMachineList.sort();
+                                getMachineLists = getMachineList.filter(function (item, i, sites) {
+                                    return i == sites.indexOf(item);
+                                });
+
+                                $(".tblEFF .trWeek").append("<th colspan='" + getMachineList.length + "'>Week " + v + "</th>");
+                                var totalEFF = 0;
+                                var totalEFFTarget = 0;
+                                $.each(getMachineList, function (e3, v3) {
+                                    totalAVG++;
+                                    $(".tblEFF .trMachine").append("<th>" + v3 + "</th>");
+                                    var fData = jsonData.filter(function (obj) {
+                                        return (obj.Week === v && obj.No_Mesin === v3);
+                                    });
+                                    var gb1 = new GroupBy(fData, columns);
+                                    var gb2 = new GroupBy(fData, columns);
+                                    var gbSUM = gb1.sum();
+                                    var gbAVG = gb2.avg();
+                                    var PT = gbAVG.PT_Aktual.toFixed(2);
+                                    PTMonthly += parseFloat(PT);
+                                    var ProdOK = gbSUM.Aktual_Produksi_OK;
+                                    ProdOKMonthly += parseFloat(ProdOK);
+                                    var ProdNG = gbSUM.Aktual_Jumlah_NG;
+                                    ProdNGMonthly += parseFloat(ProdNG);
+                                    var JK = gbSUM.Operating_Time_DS;
+                                    JKMonthly += parseFloat(JK);
+                                    var LT = gbSUM.Planed_Loss_Shalat + gbSUM.Planed_Loss_PM + gbSUM.Planed_Loss_Istirahat + gbSUM.Planed_Loss_Brefing;
+                                    LTMonthly += parseFloat(LT);
+                                    var EFF = ((PT * (ProdOK + ProdNG) / (60 * (JK - LT))) * 100).toFixed(2);
+                                    totalEFF += parseFloat(EFF);
+                                    totalEFFTarget += parseFloat(gbAVG["Effisiensi Target"] * 100);
+                                    $(".tblEFF .trPT").append("<td>" + PT + "</td>");
+                                    $(".tblEFF .trProdOK").append("<td>" + accounting.formatNumber(ProdOK) + "</td>");
+                                    $(".tblEFF .trProdNG").append("<td>" + accounting.formatNumber(ProdNG) + "</td>");
+                                    $(".tblEFF .trJK").append("<td>" + accounting.formatNumber(JK) + "</td>");
+                                    $(".tblEFF .trLT").append("<td>" + accounting.formatNumber(LT) + "</td>");
+                                    $(".tblEFF .trEFF").append("<td>" + EFF + "%" + "</td>");
+                                    $(".tblEFF .trTarget").append("<td>" + (gbAVG["Effisiensi Target"] * 100).toFixed(2) + "%" + "</td>");
+                                });
+                                getWeekListEFF.push(parseFloat((totalEFF / getMachineList.length).toFixed(2)));
+                                getWeekListTarget.push(parseFloat((totalEFFTarget / getMachineList.length).toFixed(2)))
+                                $(".tblEFF .trTotalEFF").append("<td class='text-center' colspan='" + getMachineList.length + "'>" + (totalEFF / getMachineList.length).toFixed(2) + "%" + "</td>");
+                            });
+                            $.each(getMachineLists, function (e3, v3) {
+                                var fData = jsonData.filter(function (obj) {
+                                    return (obj.No_Mesin === v3);
+                                });
+                                var gb1 = new GroupBy(fData, columns);
+                                var gbAVG = gb1.avg();
+                                getMachineListsEFF.push(parseFloat((gbAVG["Effisiensi"] * 100).toFixed(2)));
+                                getMachineListsTarget.push(parseFloat((gbAVG["Effisiensi Target"] * 100).toFixed(2)));
+                            });
+                            var EFFMonthly = (((PTMonthly / totalAVG) * (ProdOKMonthly + ProdNGMonthly) / (60 * (JKMonthly - LTMonthly))) * 100).toFixed(2);
+                            $(".tblEFF .trWeek").append("<th rowspan='2'>Monthly</th>");
+                            $(".tblEFF .trPT").append("<td>" + (PTMonthly / totalAVG).toFixed(2) + "</td>");
+                            $(".tblEFF .trProdOK").append("<td>" + accounting.formatNumber(ProdOKMonthly) + "</td>");
+                            $(".tblEFF .trProdNG").append("<td>" + accounting.formatNumber(ProdNGMonthly) + "</td>");
+                            $(".tblEFF .trJK").append("<td>" + accounting.formatNumber(JKMonthly) + "</td>");
+                            $(".tblEFF .trLT").append("<td>" + accounting.formatNumber(LTMonthly) + "</td>");
+                            $(".tblEFF .trEFF").append("<td>" + EFFMonthly + "%" + "</td>");
+                        }
+                        $(".tblEFF").fadeIn();
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+
+                        getWeekList = getWeekList.map(function (e) {
+                            return "Week " + e;
+                        });
+                        $("#iReporterGraph, #iReporterGraph2").show();
+                        generateGraph("iReporterGraph", "Weekly Efficiency", "iReporter", getWeekList, getWeekListEFF, getWeekListTarget, false);
+                        generateGraph("iReporterGraph2", "Machine Efficiency", "iReporter", getMachineLists, getMachineListsEFF, getMachineListsTarget, true);
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+
+            function tableOEE() {
+                var formType = $(".selForm option:selected").val();
+                var sDate = $(".dIRFrom").val();
+                var eDate = $(".dIRTo").val();
+                $(".tblIReporterWeekly, #iReporterGraph, #iReporterGraph2").hide();
+                $(".tblIReporterWeekly thead tr th:not(:first-child),.tblIReporterWeekly tbody tr td:not(:first-child)").remove();
+                $.ajax({
+                    url: "/NGKBusi/IReporter/IReporter/getIreporterData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    dataType: "json",
+                    data: {
+                        iRepName: formType,
+                        iStartDate: sDate,
+                        iEndDate: eDate,
+                    }, success: function (data) {
+                        if ($.parseJSON(data).length > 0) {
+                            var columns = ["Avaibility", "Performance", "Quality", "OEE", "OEE Target"];
+                            jsonData = $.parseJSON(data);
+
+                            var getWeekList = [];
+                            var getWeekListOEE = [];
+                            var getWeekListTarget = [];
+                            var getMachineLists = [];
+                            var getMachineListsOEE = [];
+                            var getMachineListsTarget = [];
+                            $.each(jsonData, function (index, element) {
+                                element.Tanggal = new Date(element.Tanggal);
+                                element.Week = getWeek(new Date(element.Tanggal));
+                            });
+                            $.each(jsonData, function () {
+                                if ($.inArray(this.Week, getWeekList) < 0) {
+                                    getWeekList.push(this.Week);
+                                }
+                            });
+
+                            var totalAVG = 0;
+                            var availabilityMonthly = 0, performanceMonthly = 0, qualityRateMonthly = 0, OEEMonthly = 0;
+                            $.each(getWeekList, function (e, v) {
+                                var getMachineList = [];
+                                var filteredDataByWeek = jsonData.filter(function (obj) {
+                                    return (obj.Week === v);
+                                });
+                                $.each(filteredDataByWeek, function (e2, v2) {
+                                    if ($.inArray(this.No_Mesin, getMachineList) < 0) {
+                                        getMachineList.push(this.No_Mesin);
+                                    }
+                                });
+                                getMachineList = getMachineList.sort();
+                                getMachineLists = getMachineList.filter(function (item, i, sites) {
+                                    return i == sites.indexOf(item);
+                                });
+                                $(".tblOEE .trWeek").append("<th colspan='" + getMachineList.length + "'>Week " + v + "</th>");
+                                var totalOEE = 0;
+                                var totalOEETarget = 0;
+                                $.each(getMachineList, function (e3, v3) {
+                                    totalAVG++;
+                                    $(".tblOEE .trMachine").append("<th>" + v3 + "</th>");
+                                    var fData = jsonData.filter(function (obj) {
+                                        return (obj.Week === v && obj.No_Mesin === v3);
+                                    });
+                                    var gb1 = new GroupBy(fData, columns);
+                                    var gb2 = new GroupBy(fData, columns);
+                                    var gbSUM = gb1.sum();
+                                    var gbAVG = gb2.avg();
+                                    var availability = gbAVG.Avaibility.toFixed(3);
+                                    availabilityMonthly += parseFloat(availability);
+                                    var performance = gbAVG.Performance.toFixed(3);
+                                    performanceMonthly += parseFloat(performance);
+                                    var qualityRate = gbAVG.Quality.toFixed(3);
+                                    qualityRateMonthly += parseFloat(qualityRate);
+                                    var OEE = gbAVG.OEE.toFixed(3);
+                                    OEEMonthly += parseFloat(OEE);
+                                    totalOEE += parseFloat(OEE);
+                                    totalOEETarget += parseFloat(gbAVG["OEE Target"] * 100);
+                                    $(".tblOEE .trAvailability").append("<td>" + availability + "</td>");
+                                    $(".tblOEE .trPerformance").append("<td>" + performance + "</td>");
+                                    $(".tblOEE .trQualityRate").append("<td>" + qualityRate + "</td>");
+                                    $(".tblOEE .trOEE").append("<td>" + (OEE * 100).toFixed(2) + "%" + "</td>");
+                                    $(".tblOEE .trTarget").append("<td>" + (gbAVG["OEE Target"] * 100).toFixed(2) + "%" + "</td>");
+                                });
+                                getWeekListOEE.push(parseFloat(((totalOEE / getMachineList.length) * 100).toFixed(2)));
+                                getWeekListTarget.push(parseFloat((totalOEETarget / getMachineList.length).toFixed(2)));
+                                $(".tblOEE .trTotalOEE").append("<td class='text-center' colspan='" + getMachineList.length + "'>" + (totalOEE / getMachineList.length).toFixed(3) + "</td>");
+                            });
+                            $.each(getMachineLists, function (e3, v3) {
+                                var fData = jsonData.filter(function (obj) {
+                                    return (obj.No_Mesin === v3);
+                                });
+                                var gb1 = new GroupBy(fData, columns);
+                                var gbAVG = gb1.avg();
+                                getMachineListsOEE.push(parseFloat((gbAVG["OEE"] * 100).toFixed(2)));
+                                getMachineListsTarget.push(parseFloat((gbAVG["OEE Target"] * 100).toFixed(2)));
+                            });
+
+                            $(".tblOEE .trWeek").append("<th rowspan='2'>Monthly</th>");
+                            $(".tblOEE .trAvailability").append("<td>" + (availabilityMonthly / totalAVG).toFixed(3) + "</td>");
+                            $(".tblOEE .trPerformance").append("<td>" + (performanceMonthly / totalAVG).toFixed(3) + "</td>");
+                            $(".tblOEE .trQualityRate").append("<td>" + (qualityRateMonthly / totalAVG).toFixed(3) + "</td>");
+                            $(".tblOEE .trOEE").append("<td>" + (OEEMonthly / totalAVG).toFixed(3) + "</td>");
+                        }
+                        $(".tblOEE").fadeIn();
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+                        getWeekList = getWeekList.map(function (e) {
+                            return "Week " + e;
+                        });
+                        $("#iReporterGraph, #iReporterGraph2").show();
+                        generateGraph("iReporterGraph", "Weekly OEE", "iReporter", getWeekList, getWeekListOEE, getWeekListTarget, false);
+                        generateGraph("iReporterGraph2", "Machine OEE", "iReporter", getMachineLists, getMachineListsOEE, getMachineListsTarget, true);
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+
+            function tableKOUSU() {
+                var formType = $(".selForm option:selected").val();
+                var sDate = $(".dIRFrom").val();
+                var eDate = $(".dIRTo").val();
+                $(".tblIReporterWeekly, #iReporterGraph, #iReporterGraph2").hide();
+                $(".tblIReporterWeekly thead tr th:not(:first-child),.tblIReporterWeekly tbody tr td:not(:first-child)").remove();
+                $.ajax({
+                    url: "/NGKBusi/IReporter/IReporter/getIreporterData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    dataType: "json",
+                    data: {
+                        iRepName: formType,
+                        iStartDate: sDate,
+                        iEndDate: eDate,
+                    }, success: function (data) {
+                        if ($.parseJSON(data).length > 0) {
+                            var columns = ["Kousu", "Kousu Target", "Total_JK", "Aktual_Total_MP", "Aktual_Produksi_OK"];
+                            jsonData = $.parseJSON(data);
+                            jsonData = $.each(jsonData, function (i, o) {
+                                o.Nama_NG_1 = ($.inArray(o.Nama_NG_1, excludeNG) >= 0 ? "" : o.Nama_NG_1)
+                                o.Qty_NG_1 = ($.inArray(o.Nama_NG_1, excludeNG) >= 0 ? 0 : o.Qty_NG_1)
+                                o.Nama_NG_2 = ($.inArray(o.Nama_NG_2, excludeNG) >= 0 ? "" : o.Nama_NG_2)
+                                o.Qty_NG_2 = ($.inArray(o.Nama_NG_2, excludeNG) >= 0 ? 0 : o.Qty_NG_2)
+                                o.Nama_NG_3 = ($.inArray(o.Nama_NG_3, excludeNG) >= 0 ? "" : o.Nama_NG_3)
+                                o.Qty_NG_3 = ($.inArray(o.Nama_NG_3, excludeNG) >= 0 ? 0 : o.Qty_NG_3)
+                                o.Nama_NG_4 = ($.inArray(o.Nama_NG_4, excludeNG) >= 0 ? "" : o.Nama_NG_4)
+                                o.Qty_NG_4 = ($.inArray(o.Nama_NG_4, excludeNG) >= 0 ? 0 : o.Qty_NG_4)
+                                o.Nama_NG_5 = ($.inArray(o.Nama_NG_5, excludeNG) >= 0 ? "" : o.Nama_NG_5)
+                                o.Qty_NG_5 = ($.inArray(o.Nama_NG_5, excludeNG) >= 0 ? 0 : o.Qty_NG_5)
+                            });
+
+                            var getWeekList = [];
+                            var getWeekListKOUSU = [];
+                            var getWeekListTarget = [];
+                            var getMachineLists = [];
+                            var getMachineListsKOUSU = [];
+                            var getMachineListsTarget = [];
+                            $.each(jsonData, function (index, element) {
+                                element.Tanggal = new Date(element.Tanggal);
+                                element.Week = getWeek(new Date(element.Tanggal));
+                            });
+                            $.each(jsonData, function () {
+                                if ($.inArray(this.Week, getWeekList) < 0) {
+                                    getWeekList.push(this.Week);
+                                }
+                            });
+
+                            var totalAVG = 0;
+                            var KOUSUMonthly = 0;
+                            $.each(getWeekList, function (e, v) {
+                                var getMachineList = [];
+                                var filteredDataByWeek = jsonData.filter(function (obj) {
+                                    return (obj.Week === v);
+                                });
+                                $.each(filteredDataByWeek, function (e2, v2) {
+                                    if ($.inArray(this.No_Mesin, getMachineList) < 0) {
+                                        getMachineList.push(this.No_Mesin);
+                                    }
+                                });
+                                getMachineList = getMachineList.sort();
+                                getMachineLists = getMachineList.filter(function (item, i, sites) {
+                                    return i == sites.indexOf(item);
+                                });
+                                $(".tblKOUSU .trWeek").append("<th colspan='" + getMachineList.length + "'>Week " + v + "</th>");
+                                var totalKOUSU = 0;
+                                var totalKOUSUTarget = 0;
+                                $.each(getMachineList, function (e3, v3) {
+                                    totalAVG++;
+                                    $(".tblKOUSU .trMachine").append("<th>" + v3 + "</th>");
+                                    var fData = jsonData.filter(function (obj) {
+                                        return (obj.Week === v && obj.No_Mesin === v3);
+                                    });
+                                    var gb1 = new GroupBy(fData, columns);
+                                    var gb2 = new GroupBy(fData, columns);
+                                    var gbSUM = gb1.sum();
+                                    var gbAVG = gb2.avg();
+                                    var KOUSU = gbAVG["Kousu"];
+                                    KOUSUMonthly += parseFloat(KOUSU);
+                                    totalKOUSU += parseFloat(KOUSU);
+                                    totalKOUSUTarget += parseFloat(gbAVG["Kousu Target"].toFixed(3));
+                                    $(".tblKOUSU .trKOUSU").append("<td>" + KOUSU.toFixed(3) + "</td>");
+                                    $(".tblKOUSU .trTarget").append("<td>" + gbAVG["Kousu Target"].toFixed(3) + "</td>");
+                                });
+                                getWeekListKOUSU.push(parseFloat((totalKOUSU / getMachineList.length).toFixed(3)));
+                                getWeekListTarget.push(parseFloat((totalKOUSUTarget / getMachineList.length).toFixed(3)));
+                                $(".tblKOUSU .trTotalKOUSU").append("<td class='text-center' colspan='" + getMachineList.length + "'>" + (totalKOUSU / getMachineList.length).toFixed(3) + "</td>");
+                            });
+                            $.each(getMachineLists, function (e3, v3) {
+                                var fData = jsonData.filter(function (obj) {
+                                    return (obj.No_Mesin === v3);
+                                });
+                                var gb1 = new GroupBy(fData, columns);
+                                var gbAVG = gb1.avg();
+                                getMachineListsKOUSU.push(parseFloat(gbAVG["Kousu"].toFixed(3)));
+                                getMachineListsTarget.push(parseFloat(gbAVG["Kousu Target"].toFixed(3)));
+                            });
+
+                            $(".tblKOUSU .trWeek").append("<th rowspan='2'>Monthly</th>");
+                            $(".tblKOUSU .trKOUSU").append("<td>" + (KOUSUMonthly / totalAVG).toFixed(3) + "</td>");
+                        }
+                        $(".tblKOUSU").fadeIn();
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+
+                        $("#iReporterGraph, #iReporterGraph2").show();
+                        generateGraph("iReporterGraph", "Weekly KOUSU", "iReporter", getWeekList, getWeekListKOUSU, getWeekListTarget, false);
+                        generateGraph("iReporterGraph2", "Machine KOUSU", "iReporter", getMachineLists, getMachineListsKOUSU, getMachineListsTarget, true);
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+
+            function tablePPM() {
+                var formType = $(".selForm option:selected").val();
+                var sDate = $(".dIRFrom").val();
+                var eDate = $(".dIRTo").val();
+                $(".tblIReporterWeekly, #iReporterGraph, #iReporterGraph2").hide();
+                $(".tblIReporterWeekly thead tr th:not(:first-child),.tblIReporterWeekly tbody tr td:not(:first-child)").remove();
+                $.ajax({
+                    url: "/NGKBusi/IReporter/IReporter/getIreporterData",
+                    method: "POST",
+                    tryCount: 0,
+                    tryLimit: 3,
+                    dataType: "json",
+                    data: {
+                        iRepName: formType,
+                        iStartDate: sDate,
+                        iEndDate: eDate,
+                    }, success: function (data) {
+                        if ($.parseJSON(data).length > 0) {
+                            var columns = ["PPM", "PPM Target", "Qty_NG_1", "Qty_NG_2", "Qty_NG_3", "Qty_NG_4", "Qty_NG_5","Total_OK+NG"];
+                            jsonData = $.parseJSON(data);
+                            jsonData = $.each(jsonData, function (i, o) {
+                                o.Nama_NG_1 = ($.inArray(o.Nama_NG_1, excludeNG) >= 0 ? "" : o.Nama_NG_1)
+                                o.Qty_NG_1 = ($.inArray(o.Nama_NG_1, excludeNG) >= 0 ? 0 : o.Qty_NG_1)
+                                o.Nama_NG_2 = ($.inArray(o.Nama_NG_2, excludeNG) >= 0 ? "" : o.Nama_NG_2)
+                                o.Qty_NG_2 = ($.inArray(o.Nama_NG_2, excludeNG) >= 0 ? 0 : o.Qty_NG_2)
+                                o.Nama_NG_3 = ($.inArray(o.Nama_NG_3, excludeNG) >= 0 ? "" : o.Nama_NG_3)
+                                o.Qty_NG_3 = ($.inArray(o.Nama_NG_3, excludeNG) >= 0 ? 0 : o.Qty_NG_3)
+                                o.Nama_NG_4 = ($.inArray(o.Nama_NG_4, excludeNG) >= 0 ? "" : o.Nama_NG_4)
+                                o.Qty_NG_4 = ($.inArray(o.Nama_NG_4, excludeNG) >= 0 ? 0 : o.Qty_NG_4)
+                                o.Nama_NG_5 = ($.inArray(o.Nama_NG_5, excludeNG) >= 0 ? "" : o.Nama_NG_5)
+                                o.Qty_NG_5 = ($.inArray(o.Nama_NG_5, excludeNG) >= 0 ? 0 : o.Qty_NG_5)
+                            });
+
+                            var getWeekList = [];
+                            var getWeekListPPM = [];
+                            var getWeekListTarget = [];
+                            var getMachineLists = [];
+                            var getMachineListsPPM = [];
+                            var getMachineListsTarget = [];
+                            $.each(jsonData, function (index, element) {
+                                element.Tanggal = new Date(element.Tanggal);
+                                element.Week = getWeek(new Date(element.Tanggal));
+                            });
+                            $.each(jsonData, function () {
+                                if ($.inArray(this.Week, getWeekList) < 0) {
+                                    getWeekList.push(this.Week);
+                                }
+                            });
+
+                            var totalAVG = 0;
+                            var PPMMonthly = 0;
+                            $.each(getWeekList, function (e, v) {
+                                var getMachineList = [];
+                                var filteredDataByWeek = jsonData.filter(function (obj) {
+                                    return (obj.Week === v);
+                                });
+                                $.each(filteredDataByWeek, function (e2, v2) {
+                                    if ($.inArray(this.No_Mesin, getMachineList) < 0) {
+                                        getMachineList.push(this.No_Mesin);
+                                    }
+                                });
+                                getMachineList = getMachineList.sort();
+                                getMachineLists = getMachineList.filter(function (item, i, sites) {
+                                    return i == sites.indexOf(item);
+                                });
+                                $(".tblPPM .trWeek").append("<th colspan='" + getMachineList.length + "'>Week " + v + "</th>");
+                                var totalPPM = 0;
+                                var totalPPMTarget = 0;
+                                $.each(getMachineList, function (e3, v3) {
+                                    totalAVG++;
+                                    $(".tblPPM .trMachine").append("<th>" + v3 + "</th>");
+                                    var fData = jsonData.filter(function (obj) {
+                                        return (obj.Week === v && obj.No_Mesin === v3);
+                                    });
+                                    var gb1 = new GroupBy(fData, columns);
+                                    var gb2 = new GroupBy(fData, columns);
+                                    var gbSUM = gb1.sum();
+                                    var gbAVG = gb2.avg();
+                                    var TotalNG = parseFloat(gbSUM["Qty_NG_1"]) + parseFloat(gbSUM["Qty_NG_2"]) + parseFloat(gbSUM["Qty_NG_3"]) + parseFloat(gbSUM["Qty_NG_4"]) + parseFloat(gbSUM["Qty_NG_5"]) ;
+                                    var TotalOKNG = parseFloat(gbSUM["Total_OK+NG"]);
+                                    var PPM = ((TotalNG / TotalOKNG) * 1000000).toFixed(3);
+                                    PPMMonthly += parseFloat(PPM);
+                                    totalPPM += parseFloat(PPM);
+                                    totalPPMTarget += parseFloat(gbAVG["PPM Target"].toFixed(3));
+                                    $(".tblPPM .trPPM").append("<td>" + PPM + "</td>");
+                                    $(".tblPPM .trTarget").append("<td>" + parseFloat(gbAVG["PPM Target"].toFixed(3)) + "</td>");
+                                });
+                                getWeekListPPM.push(parseFloat((totalPPM / getMachineList.length).toFixed(3)));
+                                getWeekListTarget.push(parseFloat((totalPPMTarget / getMachineList.length).toFixed(3)));
+                                $(".tblPPM .trTotalPPM").append("<td class='text-center' colspan='" + getMachineList.length + "'>" + parseFloat(totalPPM).toFixed(3) + "</td>");
+                            });
+
+                            $.each(getMachineLists, function (e3, v3) {
+                                var fData = jsonData.filter(function (obj) {
+                                    return (obj.No_Mesin === v3);
+                                });
+                                var gb1 = new GroupBy(fData, columns);
+                                var gb2 = new GroupBy(fData, columns);
+                                var gbSUM = gb2.sum();
+                                var gbAVG = gb1.avg();
+                                var TotalNG = parseFloat(gbSUM["Qty_NG_1"]) + parseFloat(gbSUM["Qty_NG_2"]) + parseFloat(gbSUM["Qty_NG_3"]) + parseFloat(gbSUM["Qty_NG_4"]) + parseFloat(gbSUM["Qty_NG_5"]);
+                                var TotalOKNG = parseFloat(gbSUM["Total_OK+NG"]);
+                                var PPM = ((TotalNG / TotalOKNG) * 1000000).toFixed(3);
+                                getMachineListsPPM.push(parseFloat(PPM));
+                                getMachineListsTarget.push(parseFloat((gbAVG["PPM Target"]).toFixed(3)));
+                            });
+                            $(".tblPPM .trWeek").append("<th rowspan='2'>Monthly</th>");
+                            $(".tblPPM .trPPM").append("<td>" + (PPMMonthly / totalAVG).toFixed(3) + "</td>");
+                        }
+                        $(".tblPPM").fadeIn();
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+
+                        $("#iReporterGraph, #iReporterGraph2").show();
+                        generateGraph("iReporterGraph", "Weekly PPM", "iReporter", getWeekList, getWeekListPPM, getWeekListTarget, false);
+                        generateGraph("iReporterGraph2", "Machine PPM", "iReporter", getMachineLists, getMachineListsPPM, getMachineListsTarget, true);
+                    }, error: function (xhr, textStatus, errorThrown) {
+                        if (textStatus === "timeout") {
+                            this.tryCount++;
+                            if (this.tryCount <= this.tryLimit) {
+                                $.ajax(this);
+                                return;
+                            }
+                        }
+                        $(".divIReporterWrapperWeekly").LoadingOverlay("hide");
+                        alert("Error Occurred, Please Try Again.");
+                    }
+                });
+            }
+
+            Highcharts.SVGRenderer.prototype.symbols['c-rect'] = function (x, y, w, h) {
+                return ['M', x, y + h / 2, 'L', x + w, y + h / 2];
+            };
+
+            function generateGraph(graphContainer, graphTitle, graphSubtitle, graphXAxis, graphSeries1, graphSeries2, enableClick) {
+                var colorPallete = graphContainer == "iReporterGraph" ? ["#264653", "#2A9D8F", "#E9C46A", "#F4A261", "#E76F51"] : ["#713E5A", "#63A375", "#EDC79B", "#D57A66", "#CA6680"];
+                var labelFormat = graphTitle == "Weekly KOUSU" || graphTitle == "Machine KOUSU" || graphTitle == "Weekly PPM" || graphTitle == "Machine PPM" ? "" : " %";
+                Highcharts.chart(graphContainer, {
+                    title: {
+                        text: graphTitle
+                    },
+                    subtitle: {
+                        text:
+                            graphSubtitle
+                    },
+                    xAxis: {
+                        categories: graphXAxis
+                    },
+                    credits: {
+                        enabled: false
+                    },
+                    legend: {
+                        shadow: false
+                    },
+                    tooltip: {
+                        shared: true,
+                        valueSuffix: labelFormat
+                    },
+                    plotOptions: {
+                        column: {
+                            shadow: false,
+                            borderWidth: 0
+                        },
+                        line: {
+                            lineWidth: 0,
+                            states: {
+                                hover: {
+                                    enabled: false
+                                }
+                            }
+                        },
+                        series: {
+                            point: {
+                                events: {
+                                    click() {
+                                        if (enableClick) {
+                                            var currMachine = this.category;
+                                            var currDateFrom = $(".dIRFrom").val();
+                                            var currDateTo = $(".dIRTo").val();
+                                            var currForm = $(".selForm option:selected").val();
+                                            var currReport = $(".selReportType  option:selected").val();
+                                           
+                                            if (graphTitle.indexOf("KOUSU") < 0) {
+                                                getParetoData(graphTitle, currMachine);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    series: [{
+                        name: 'Target',
+                        type: 'line',
+                        marker: {
+                            symbol: 'c-rect',
+                            lineWidth: 5,
+                            lineColor: '#C3423F',
+                            radius: 25
+                        },
+                        data: graphSeries2,
+                        zIndex: 1,
+                        dataLabels: {
+                            enabled: true,
+                            format: '{y}' + labelFormat
+                        }
+                    },
+                    {
+                        name: 'Actual',
+                        type: 'column',
+                        colors: colorPallete,
+                        colorByPoint: true,
+                        data: graphSeries1,
+                        zIndex: 0,
+                        dataLabels: {
+                            inside: true,
+                            enabled: true,
+                            format: '{y}' + labelFormat
+                        }
+                    }]
+                });
+            }
+            function getParetoData(reportType = "", currMachine) {
+
+                var NGList = [];
+                var graphType = "Loss Time";
+                if (reportType == "Weekly PPM" || reportType == "Machine PPM") {
+                    graphType = "NG";
+                    currMachineData = jsonData.filter(function (obj) {
+                        return obj.No_Mesin === currMachine && (obj.Nama_NG_1 != "" || obj.Nama_NG_2 != "" || obj.Nama_NG_3 != "" || obj.Nama_NG_4 != "" || obj.Nama_NG_5 != "");
+                    });
+                    $.each(currMachineData, function (e, v) {
+                        if (v.Nama_NG_1 != "") {
+                            NGList.push({
+                                NG_Name: v.Nama_NG_1,
+                                NG_Qty: v.Qty_NG_1
+                            })
+                        }
+                        if (v.Nama_NG_2 != "") {
+                            NGList.push({
+                                NG_Name: v.Nama_NG_2,
+                                NG_Qty: v.Qty_NG_2
+                            })
+                        }
+                        if (v.Nama_NG_3 != "") {
+                            NGList.push({
+                                NG_Name: v.Nama_NG_3,
+                                NG_Qty: v.Qty_NG_3
+                            })
+                        }
+                        if (v.Nama_NG_4 != "") {
+                            NGList.push({
+                                NG_Name: v.Nama_NG_4,
+                                NG_Qty: v.Qty_NG_4
+                            })
+                        }
+                        if (v.Nama_NG_5 != "") {
+                            NGList.push({
+                                NG_Name: v.Nama_NG_5,
+                                NG_Qty: v.Qty_NG_5
+                            })
+                        }
+                    });
+                } else {
+                    graphType = "Loss Time";
+                    currMachineData = jsonData.filter(function (obj) {
+                        return obj.No_Mesin === currMachine && (obj.Mesin_Problem_1 != "" || obj.Mesin_Problem_2 != "" || obj.Mesin_Problem_3 != "" || obj.Mesin_Problem_4 != "" || obj.Mesin_Problem_5 != "");
+                    });
+                    $.each(currMachineData, function (e, v) {
+                        if (v.Nama_NG_1 != "") {
+                            NGList.push({
+                                NG_Name: v.Mesin_Problem_1,
+                                NG_Qty: v.Waktu_Mesin_1
+                            })
+                        }
+                        if (v.Nama_NG_2 != "") {
+                            NGList.push({
+                                NG_Name: v.Mesin_Problem_2,
+                                NG_Qty: v.Waktu_Mesin_2
+                            })
+                        }
+                        if (v.Nama_NG_3 != "") {
+                            NGList.push({
+                                NG_Name: v.Mesin_Problem_3,
+                                NG_Qty: v.Waktu_Mesin_3
+                            })
+                        }
+                        if (v.Nama_NG_4 != "") {
+                            NGList.push({
+                                NG_Name: v.Mesin_Problem_4,
+                                NG_Qty: v.Waktu_Mesin_4
+                            })
+                        }
+                        if (v.Nama_NG_5 != "") {
+                            NGList.push({
+                                NG_Name: v.Mesin_Problem_5,
+                                NG_Qty: v.Waktu_Mesin_5
+                            })
+                        }
+                    });
+                }
+                var graphCategories = getNGSum(sumMachineNG(NGList), 0);
+                var graphValues = getNGSum(sumMachineNG(NGList), 1);
+                $("#paretoModal").modal("show");
+                $("#paretoModal .modal-title").text(graphType + " Pareto");
+                generateParetoGraph(currMachine, graphCategories, graphValues, graphType);
+            }
+
+            function sumMachineNG(jsonData) {
+                function sumQuantities(data) {
+                    var sums = {};
+                    $.each(data, function (index, item) {
+                        var name = item.NG_Name;
+                        var qty = parseInt(item.NG_Qty);
+
+                        if (isNaN(qty)) {
+                            qty = 0;
+                        }
+
+                        if (sums[name] === undefined) {
+                            sums[name] = qty;
+                        } else {
+                            sums[name] += qty;
+                        }
+                    });
+                    return sums;
+                }
+
+                // Call the function and display the results sorted by quantity
+                var sums = sumQuantities(jsonData);
+                var sortedSums = [];
+
+                for (var name in sums) {
+                    sortedSums.push({ name: name, qty: sums[name] });
+                }
+
+                sortedSums.sort(function (a, b) {
+                    return b.qty - a.qty;
+                });
+
+                var resultArray = [];
+                for (var i = 0; i < sortedSums.length; i++) {
+                    resultArray.push([sortedSums[i].name, sortedSums[i].qty]);
+                }
+                return resultArray;
+            }
+            function getNGSum(arr, index) {
+                var names = [];
+                for (var i = 0; i < arr.length; i++) {
+                    names.push(arr[i][index]);
+                }
+                return names;
+            }
+            function generateParetoGraph(graphTitle, graphCategories, graphValues, graphType) {
+                Highcharts.chart('divParetoChart', {
+                    chart: {
+                        renderTo: 'divParetoChart',
+                        type: 'column'
+                    },
+                    title: {
+                        text: graphTitle
+                    },
+                    tooltip: {
+                        shared: true
+                    },
+                    xAxis: {
+                        categories: graphCategories,
+                        crosshair: true
+                    },
+                    yAxis: [{
+                        title: {
+                            text: ''
+                        }
+                    }, {
+                        title: {
+                            text: ''
+                        },
+                        minPadding: 0,
+                        maxPadding: 0,
+                        max: 100,
+                        min: 0,
+                        opposite: true,
+                        labels: {
+                            format: '{value}%'
+                        }
+                    }],
+                    series: [{
+                        type: 'pareto',
+                        name: 'Pareto',
+                        yAxis: 1,
+                        zIndex: 10,
+                        baseSeries: 1,
+                        tooltip: {
+                            valueDecimals: 2,
+                            valueSuffix: '%'
+                        }
+                    }, {
+                        name: graphType,
+                        type: 'column',
+                        zIndex: 2,
+                        data: graphValues,
+                        dataLabels: {
+                            enabled: true
+                        }
+                    }]
+                });
+            }
+        });
+    </script>
+}
+<h2>iReporter</h2>
+<hr />
+
+<div class="container">
+    <div class="form-group row">
+        <label class="col-3">Tanggal :</label>
+        <div class="col-9 row">
+            @*<div class="col-5"><input type="text" class="form-control dIRFrom" name="iDateFrom" placeholder="From" autocomplete="off" value="@(DateTime.Now.ToString("yyyy-MM-dd"))" /></div>*@
+            <div class="col-5"><input type="text" class="form-control dIRFrom" name="iDateFrom" placeholder="From" autocomplete="off" value="@(new DateTime(DateTime.Now.Year,DateTime.Now.Month,1).ToString("yyyy-MM-dd"))" /></div>
+            <div class="col-1 text-center">To</div>
+            @*<div class="col-5"><input type="text" class="form-control dIRTo" name="iDateTo" placeholder="To" autocomplete="off" value="@(DateTime.Now.ToString("yyyy-MM-dd"))" /></div>*@
+            <div class="col-5"><input type="text" class="form-control dIRTo" name="iDateTo" placeholder="To" autocomplete="off" value="@(DateTime.Now.ToString("yyyy-MM-dd"))" /></div>
+            <div class="col-1 text-center"><button type="button" id="btnReport" class="btn btn-success">Report</button></div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-3">Form :</label>
+        <div class="col-9 row">
+            <select class="selForm form-control">
+                <option selected value="LHP-Bending">LHP-Bending</option>
+                <option value="LHP-Auto Assy">LHP-Auto Assy</option>
+                <option value="LHP-Assembly Manual">LHP-Assembly Manual</option>
+                <option value="LHP-Auto Packing">LHP-Auto Packing</option>
+                <option value="LHP DQP Assy Insulator">LHP DQP Assy Insulator</option>
+                <option value="LHP DQP Cold Forming">LHP DQP Cold Forming</option>
+                <option value="LHP DQP Chucking Machine">LHP DQP Chucking Machine</option>
+                <option value="LHP DQP Welding Threading">LHP DQP Welding Threading</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label class="col-3">Report :</label>
+        <div class="col-9 row">
+            <select class="selReportType form-control">
+                <option selected value="Weekly EFF">Weekly EFF</option>
+                <option value="Weekly OEE">Weekly OEE</option>
+                <option value="Weekly KOUSU">Weekly KOUSU</option>
+                <option value="Weekly PPM">Weekly PPM</option>
+            </select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div id="iReporterGraph"></div>
+            <div id="iReporterGraph2"></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+
+            <div class="divIReporterWrapperWeekly" style="overflow:auto;">
+                <table class="table table-bordered table-striped tblIReporterWeekly tblEFF" style="display:none;">
+                    <thead>
+                        <tr class="trWeek bg-primary"><th>Week-</th></tr>
+                        <tr class="trMachine bg-info"><th>Mesin</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="trPT">
+                            <td>PT</td>
+                        </tr>
+                        <tr class="trProdOK">
+                            <td>Prod OK</td>
+                        </tr>
+                        <tr class="trProdNG">
+                            <td>Prod NG</td>
+                        </tr>
+                        <tr class="trJK">
+                            <td>JK (Menit)</td>
+                        </tr>
+                        <tr class="trLT">
+                            <td>LT (Menit)</td>
+                        </tr>
+                        <tr class="trEFF">
+                            <td>EFF</td>
+                        </tr>
+                        <tr class="trTarget">
+                            <td>Target</td>
+                        </tr>
+                        <tr class="trTotalEFF">
+                            <td>Total EFF</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @*====================================================================================================*@
+                <table class="table table-bordered table-striped tblIReporterWeekly tblOEE" style="display:none;">
+                    <thead>
+                        <tr class="trWeek bg-primary"><th>Week-</th></tr>
+                        <tr class="trMachine bg-info"><th>Mesin</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="trAvailability">
+                            <td>Availability</td>
+                        </tr>
+                        <tr class="trPerformance">
+                            <td>Performance</td>
+                        </tr>
+                        <tr class="trQualityRate">
+                            <td>Quality Rate</td>
+                        </tr>
+                        <tr class="trOEE">
+                            <td>OEE</td>
+                        </tr>
+                        <tr class="trTarget">
+                            <td>Target</td>
+                        </tr>
+                        <tr class="trTotalOEE">
+                            <td>Total OEE</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @*====================================================================================================*@
+                <table class="table table-bordered table-striped tblIReporterWeekly tblKOUSU" style="display:none;">
+                    <thead>
+                        <tr class="trWeek bg-primary"><th>Week-</th></tr>
+                        <tr class="trMachine bg-info"><th>Mesin</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="trKOUSU">
+                            <td>KOUSU</td>
+                        </tr>
+                        <tr class="trTarget">
+                            <td>Target</td>
+                        </tr>
+                        <tr class="trTotalKOUSU">
+                            <td>Total KOUSU</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @*====================================================================================================*@
+                <table class="table table-bordered table-striped tblIReporterWeekly tblPPM" style="display:none;">
+                    <thead>
+                        <tr class="trWeek bg-primary"><th>Week-</th></tr>
+                        <tr class="trMachine bg-info"><th>Mesin</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="trPPM">
+                            <td>PPM</td>
+                        </tr>
+                        <tr class="trTarget">
+                            <td>Target</td>
+                        </tr>
+                        <tr class="trTotalPPM">
+                            <td>Total PPM</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paretoModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">NG Pareto</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="divParetoChart">...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

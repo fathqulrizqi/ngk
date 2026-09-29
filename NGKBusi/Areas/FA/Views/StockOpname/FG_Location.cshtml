@@ -1,0 +1,316 @@
+﻿@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+@{
+    ViewBag.Title = "Counting";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId();
+}
+@section cssHead{
+    @*<link href="~/Scripts/QRScanner/css/qrcode-reader.min.css" rel="stylesheet" />*@
+    <style type="text/css">
+        .modal-lg {
+            max-width: 90% !important;
+        }
+    </style>
+
+    @* Select2 CSS for searchable select *@
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* make select2 match bootstrap form-control height */
+        .select2-container--default .select2-selection--single {
+            height: calc(1.5em + .75rem + 2px);
+            padding: .375rem .75rem;
+        }
+
+            .select2-container--default .select2-selection--single .select2-selection__rendered {
+                line-height: 1.5;
+            }
+    </style>
+}
+@section scriptHead{
+    <meta name="viewport" content="width=device-width, initial-scale=.5, maximum-scale=12.0, user-scalable=yes" />
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/StockOpname/Counting.js?v=" + DateTime.Now.TimeOfDay)"></script>
+
+    @* Select2 JS for searchable select *@
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+}
+@*<script src="@Url.Content("~/Scripts/QRScanner/js/qrcode-reader.min.js")"></script>*@
+<script src="@Url.Content("~/Scripts/QRBarcodeScanner/minified/html5-qrcode.min.js")"></script>
+<script type="text/javascript">
+    $(function () {
+        // initialize Select2 on the updated-location select (after DOM ready)
+        if ($.fn.select2) {
+            $('#txtUpdatedLocation').select2({
+                placeholder: 'Select new rack location',
+                width: '100%',
+                allowClear: true,
+                // keep dropdown attached to form container
+                dropdownParent: $('#formSOCounting')
+            });
+        }
+
+        // helper to show bootstrap alerts inside .alertContainer
+        function showAlert(message, type /* 'success'|'warning'|'danger' */, timeoutMs) {
+            $("#qr-alert").remove();
+            var alertHtml = '<div id="qr-alert" class="alert alert-' + type + ' alert-dismissible fade show" role="alert" style="margin:10px;">' +
+                $('<div>').text(message).html() +
+                '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>' +
+                '</div>';
+            $(".alertContainer").prepend(alertHtml);
+            if (timeoutMs && timeoutMs > 0) {
+                setTimeout(function () { $("#qr-alert").alert('close'); }, timeoutMs);
+            }
+        }
+
+        // enable/disable update button depending on current + updated location presence
+        function updateButtonState() {
+            var current = $.trim($("#txtCurrentLocation").val());
+            var updated = $.trim($("#txtUpdatedLocation").val());
+            var btn = $("#btnUpdateLocation");
+            if (current !== "" && updated !== "") {
+                btn.prop("disabled", false).removeClass("disabled");
+            } else {
+                btn.prop("disabled", true).addClass("disabled");
+            }
+        }
+
+        // run at startup
+        updateButtonState();
+
+        // trigger when select2 selection changes
+        $('#txtUpdatedLocation').on('change', function () {
+            updateButtonState();
+        });
+
+        // If txtCurrentLocation changed programmatically, call updateButtonState after setting values.
+        // (already called after scan success below)
+
+        var html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 30, qrbox: { width: 500, height: 375 } });
+        function onScanSuccess(decodedText, decodedResult) {
+            // Handle on success condition with the decoded text or result.
+            var QR;
+            if (decodedText && decodedText.length === 252) {
+                QR = [decodedText.substring(1, 15)];
+            } else if (decodedText && decodedText.length === 22) {
+                QR = [decodedText];
+            } else {
+                QR = decodedText.split(" ").filter(item => item);
+            }
+
+            $("#formSOCounting")[0].reset();
+
+            var itemID = QR[0];
+            html5QrcodeScanner.clear();
+            $('#QRBarcodeScannerModal').modal('hide');
+            $.ajax({
+                type: "POST",
+                url: "/NGKBusi/FA/StockOpname/getQrLocation",
+                dataType: "json",
+                tryCount: 0,
+                tryLimit: 3,
+                data: {
+                    iQR: itemID
+                },
+                success: function (resp) {
+
+                    // If server returned found + data -> set location and qty
+                    if (resp && resp.message === "found" && resp.data) {
+                        var rackNo = resp.data.RackNo || resp.data.RackNo;
+                        var lastSegment = "";
+                        if (rackNo) {
+                            var idx = rackNo.lastIndexOf("-");
+                            lastSegment = (idx !== -1) ? rackNo.substring(idx + 1) : rackNo;
+                        }
+                        $("#txtCurrentLocation").val(lastSegment);
+                        $("#txtBN").val(QR);
+                        $("#hdnCurrentLocation").val(rackNo);
+                        $("#hdnItemId").val(resp.data.PM);
+                        // set Qty from QtyReal
+                        $("#txtQty").val(resp.data.QtyReal != null ? resp.data.QtyReal : "");
+
+                        // update button enabled state
+                        updateButtonState();
+                    }
+                    else {
+                        var msg = (resp && resp.message) ? resp.message : "rack not found";
+                        showAlert(msg, "warning", 4000);
+                        // ensure button disabled
+                        updateButtonState();
+                    }
+
+                    html5QrcodeScanner.clear();
+                    $('#QRBarcodeScannerModal').modal('hide');
+                }, error: function (textStatus) {
+                    if (textStatus === "timeout") {
+                        this.tryCount++;
+                        if (this.tryCount <= this.tryLimit) {
+                            $.ajax(this);
+                            return;
+                        }
+                    }
+                    alert("Error Occurred, Please Try Again.");
+                    html5QrcodeScanner.clear();
+                    $('#QRBarcodeScannerModal').modal('hide');
+                }
+            });
+        }
+
+        $('#QRBarcodeScannerModal').on('shown.bs.modal', function (e) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader", { fps: 30, qrbox: { width: 500, height: 375 } });
+            html5QrcodeScanner.render(onScanSuccess);
+        });
+        $('#QRBarcodeScannerModal').on('hidden.bs.modal', function (e) {
+            html5QrcodeScanner.clear();
+        });
+
+        // click handler: confirmation then ajax submit
+        $("#btnUpdateLocation").on("click", function (ev) {
+            ev.preventDefault();
+            var $btn = $(this);
+            if ($btn.prop("disabled")) return;
+
+            var bn = $("#txtBN").val();
+            var currentLoc = $("#hdnCurrentLocation").val();
+            var updatedLoc = $("#txtUpdatedLocation").val();
+            var itemId = $("#hdnItemId").val()// this is full value (e.g. "FG-0407-B111")
+            if (!bn || !currentLoc || !updatedLoc) {
+                showAlert("Current and updated locations are required.", "warning", 4000);
+                updateButtonState();
+                return;
+            }
+
+            var confirmMsg = "Confirm update location?\n\nCurrent: " + currentLoc + "\nNew: " + updatedLoc + "\nItemId:" + itemId;
+            if (!window.confirm(confirmMsg)) return;
+
+            $btn.prop("disabled", true).text("Updating...");
+
+            $.ajax({
+                type: "POST",
+                url: "/NGKBusi/FA/StockOpname/UpdateRackLocation",
+                dataType: "json",
+                method: "POST",
+                tryCount: 0,
+                tryLimit: 3,
+                data: {
+                    ItemID: itemId,
+                    RackFrom: currentLoc,
+                    RackTo: updatedLoc
+                },
+                success: function (resp) {
+                    if (resp) {
+                        showAlert(resp || "Location updated.", "success", 4000);
+                        // reset form or update UI as needed
+                        $("#formSOCounting")[0].reset();
+                        // clear select2 selection
+                        if ($.fn.select2) { $('#txtUpdatedLocation').val(null).trigger('change'); }
+                        updateButtonState();
+                    } else {
+                        var msg = (resp && resp.message) ? resp.message : "Update failed.";
+                        showAlert(msg, "danger", 5000);
+                        updateButtonState();
+                    }
+                },
+                error: function (textStatus) {
+                    if (textStatus === "timeout") {
+                        this.tryCount++;
+                        if (this.tryCount <= this.tryLimit) {
+                            $.ajax(this);
+                            return;
+                        }
+                    }
+                    showAlert("Error Occurred, Please Try Again.", "danger", 5000);
+                },
+                complete: function () {
+                    $btn.prop("disabled", false).text("Confirm Update Location");
+                }
+            });
+        });
+
+    });
+</script>
+<div class="container">
+    <div class="row">
+        <div class="offset-lg-4 col-lg-4">
+            <div class="border p-2">
+                <form id="formSOCounting">
+                    <div class="alertContainer">
+
+                    </div>
+                    <div class="form-group p-3">
+                        <img src="~/Images/niterra-logo.jpg" class="img-fluid" />
+                    </div>
+                    <div class="form-group d-none">
+                        <label for="Product">Product:</label>
+                        <select id="selProduct" name="iProduct" class="form-control">
+                            <option value="">-Product-</option>
+                        </select>
+                        <div class="checkbox">
+                            <label><input id="cbIgnoreProduct" type="checkbox" checked> Ignore Product</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="Product">click to open camera scanner</label>@*<button id="btnQRScan" type="button" class="btn btn-sm btn-info btnQRScan ml-2"><i class="fas fa-qrcode"></i></button>*@<button id="btnQRBarcodeScan" type="button" class="btn btn-sm btn-info btnQRBarcodeScan ml-2" data-toggle="modal" data-target="#QRBarcodeScannerModal"><i class="fas fa-qrcode"></i></button>
+                        <input type="text" id="txtBN" value="" placeholder="Scan Box Label" class="form-control" readonly />
+                        @*<input type="hidden" id="hfItemID" name="iItemID" value="" placeholder="Item ID" class="form-control" required />
+                            <input type="hidden" id="hfItemName" name="iItemName" value="" placeholder="Item Name" class="form-control" required />
+                            <input type="hidden" id="hfItemProduct" name="iItemProduct" value="" placeholder="Item Product" class="form-control" required />*@
+                    </div>
+                    <div class="form-group">
+                        <label for="Dimension">Current Location</label>
+                        <input id="txtCurrentLocation" type="text" name="iUnit" value="" placeholder="Current Location" class="form-control" readonly required />
+                        <input id="hdnCurrentLocation" type="hidden" class="form-control" required />
+                        <input id="hdnItemId" type="hidden" class="form-control" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Quantity On Rack:</label>
+                        <input id="txtQty" type="number" name="iQuantity" value="" step=".01" placeholder="Quantity On Rack" class="form-control" readonly />
+                    </div>
+                    <div class="form-group">
+                        <label for="Quantity">Updated Location</label>
+                        @* Select populated from ViewBag.MasterLocation. Display only text after the last '-' *@
+                        <select id="txtUpdatedLocation" name="iUpdatedLocation" class="form-control" required>
+                            <option value=""></option>
+                            @{
+                                var master = ViewBag.MasterLocation as IEnumerable<dynamic>;
+                                if (master != null)
+                                {
+                                    foreach (var opt in master)
+                                    {
+                                        string fd = opt.FDescription ?? "";
+                                        int idx = fd.LastIndexOf("-");
+                                        string display = idx >= 0 ? fd.Substring(idx + 1) : fd;
+                                        <text>
+                                            <option value="@fd">@display</option>
+                                        </text>
+                                    }
+                                }
+                            }
+                        </select>
+                    </div>
+                    <button id="btnUpdateLocation" type="button" class="btn btn-success form-control" disabled>Confirm Update Location</button>
+                </form>
+            </div>
+            @*<a href="@Url.Action("CountingList", "StockOpname", new { area = "FA" })" target="_blank" class="btn btn-primary form-control">Counting List</a>*@
+        </div>
+    </div>
+</div>
+
+<div id="QRBarcodeScannerModal" class="modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div style="width: 100%;height: auto;" id="reader"></div>
+            </div>
+        </div>
+    </div>
+</div>

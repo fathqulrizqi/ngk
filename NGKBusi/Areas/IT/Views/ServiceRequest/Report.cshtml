@@ -1,0 +1,314 @@
+﻿
+@{
+    ViewBag.Title = "Report";
+    ViewBag.SideMenuHeader = "Service Request";
+}
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/IT/ServiceRequest.css?v=" + DateTime.Now.TimeOfDay)" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/IT/ServiceRequest.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartial")
+}
+<table id="srReportTable" class="tablesorter">
+    <thead>
+        <tr class="dark-row">
+            <th colspan="5" class="sorter-false">
+                <h2 class="table-title">Service Request Report<img class="pointer" src="@Url.Content("~/Content/Images/add-white.png")" width="55" height="55" data-toggle="modal" data-target="#srCreateDialog" /></h2>
+            </th>
+        </tr>
+        <tr>
+            <th class="text-center">Doc Number</th>
+            <th class="text-center">Created Date</th>
+            <th class="filter-select text-center" data-placeholder="Select Member">Created By</th>
+            <th class="text-center">Item Count</th>
+            <th class="text-center filter-select" data-placeholder="Select Status">Status</th>
+        </tr>
+    </thead>
+    <tfoot>
+        <tr class="dark-row">
+            <th colspan="5">
+                <div class="pager">
+                    <button type="button" class="first"><<</button>
+                    <button type="button" class="prev"><</button>
+                    <span class="pagedisplay"></span>
+                    <button type="button" class="next">></button>
+                    <button type="button" class="last">>></button>
+                    <select class="pagesize" title="Select page size" style="color:black;">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                    </select>
+                    <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                </div>
+            </th>
+        </tr>
+    </tfoot>
+    <tbody>
+        @foreach (var item in ViewBag.ReportList)
+        {
+            <tr>
+                <td class="text-center"><span class="srReportDisplay" data-id="@(item.id)">@(item.DocNo)</span></td>
+                <td class="text-center">@(item.CreatedDate.ToString("dd-MMM-yyyy"))</td>
+                <td class="text-center">@(item.UsersCreatedBy.Name)</td>
+                <td class="text-center">
+                    @{
+                        var cnt = 0;
+                        foreach (var item2 in item.IT_Service_Request_Data)
+                        {
+                            cnt++;
+                        }
+                    }
+                    @(cnt)
+                </td>
+                <td class="text-center">
+                    @{ int currStat = (item.Status == null ? 0 : item.Status);}
+                    @switch (currStat)
+                    {
+                        case 1:
+                            <span>Created</span>
+                            break;
+                        case 2:
+                            <span>Checked</span>
+                            break;
+                        default:
+                            <span>Approved</span>
+                            break;
+                    }
+
+                </td>
+            </tr>
+                        }
+    </tbody>
+</table>
+
+<div id="srCreateDialog" class="modal fade" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <!-- Modal content-->
+        <form action="@Url.Action("insertList","ServiceRequest",new { area = "IT" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Create Report</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table id="srCreateReportTable" class="tablesorter">
+                        <thead>
+                            <tr>
+                                <th class="filter-false sorter-false text-center"><input id="cbSelectAll" type="checkbox" /></th>
+                                <th>Issued Date</th>
+                                <th>Issued By</th>
+                                <th class="filter-select" data-placeholder="Select Category">Category</th>
+                                <th>Detail</th>
+                                <th>IT Remark</th>
+                                <th>Action Start</th>
+                                <th>Action End</th>
+                            </tr>
+                        </thead>
+                        <tfoot>
+                            <tr class="dark-row">
+                                <th colspan="8">
+                                    <div class="pager">
+                                        <button type="button" class="first"><<</button>
+                                        <button type="button" class="prev"><</button>
+                                        <span class="pagedisplay"></span>
+                                        <button type="button" class="next">></button>
+                                        <button type="button" class="last">>></button>
+                                        <select class="pagesize" title="Select page size" style="color:black;">
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                            <option value="30">30</option>
+                                            <option value="40">40</option>
+                                        </select>
+                                        <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                                    </div>
+                                </th>
+                            </tr>
+                        </tfoot>
+                        <tbody>
+                            @foreach (var item in ViewBag.CreateList)
+                            {
+                                <tr>
+                                    <td class="text-center"><input id="cbCreateList" class="cbCreateList" type="checkbox" data-id="@(item.id)" /></td>
+                                    <td class="text-center">@(item.IssuedDate.ToString("dd-MMM-yyyy"))</td>
+                                    <td>@(item.UsersIssuedFor.Name)</td>
+                                    <td>@((item.IT_Service_Request_Categories == null ? "" : item.IT_Service_Request_Categories.Name))</td>
+                                    <td>@(item.Detail)</td>
+                                    <td>@(item.Action)</td>
+                                    <td>
+                                        <span class="srJobstart">@(item.JobStart != null ? item.JobStart.ToString("dd-MMM-yyyy HH:mm") : "")</span><br />
+                                    </td>
+                                    <td>
+                                        <span class="srJobend">@(item.JobEnd != null ? item.JobEnd.ToString("dd-MMM-yyyy HH:mm") : "")</span><br />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button id="btnCreate" type="button" class="btn btn-default">Create</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="srReportFormDialog" class="modal fade" role="dialog">
+    <div class="modal-dialog clearfix">
+        <!-- Modal content-->
+        <form action="@Url.Action("insertList","ServiceRequest",new { area = "IT" })" method="post">
+            @Html.AntiForgeryToken()
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Report Form <span id="btnReportPrint" class="btn btn-primary">Print</span></h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="srReportForm" style="border: 1px solid black;font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;font-size: 14px;line-height: 1.42857143;color: #333;">
+                        <table id="tblSRHeader" border="1" cellpadding="3" cellspacing="0" style="width:100%;border-top:none;border-left:none;border-right:none; border-spacing: 0;border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th rowspan="4" style="width:120px;text-align:center;border-right: 1px solid;">
+                                        <img src="@Url.Content("~/Content/Images/ngk-logo.png")" width="115" height="75" />
+                                    </th>
+                                    <th rowspan="2" style="text-align:center;border-right: 1px solid;">FORMULIR INTEGRASI</th>
+                                    <th style="width:75px; padding-left:5px;border-right: 1px solid;">No.Dok</th>
+                                    <th style="width:125px; padding-left:5px;">PML-IT-01/L5</th>
+                                </tr>
+                                <tr>
+                                    <th style="padding-left:5px;border-right: 1px solid;">Revisi</th>
+                                    <th style="padding-left:5px;">02</th>
+                                </tr>
+                                <tr>
+                                    <th rowspan="2" style="text-align:center;border-right: 1px solid;">KARTU PERAWATAN MESIN / INFRASTRUKTUR</th>
+                                    <th style="padding-left:5px;border-right: 1px solid;">Tanggal</th>
+                                    <th style="padding-left:5px;">01-Feb-2017</th>
+                                </tr>
+                                <tr>
+                                    <th style="padding-left:5px;border-right: 1px solid;">Halaman</th>
+                                    <th style="padding-left:5px;">1 of 1</th>
+                                </tr>
+                            </thead>
+                        </table>
+                        <div style="padding-left:15px;padding-right:15px;">
+                            <table id="tblSRDetail" cellpadding="3" cellspacing="0" style="margin-top:15px;border-spacing: 0;border-collapse: collapse;">
+                                <thead>
+                                    <tr><th colspan="3"></th><th colspan="3" style="text-align:left;">Mesin / Infrastruktur</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="width:100px;">Dept.</td>
+                                        <td>:</td>
+                                        <td style="width:245px;padding-left:5px;">INFORMATION TECHNOLOGY</td>
+                                        <td style="width:210px;">Nama / No</td>
+                                        <td>:</td>
+                                        <td style="width:245px;padding-left:5px;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sect.</td>
+                                        <td>:</td>
+                                        <td style="padding-left:5px;">WEB APPLICATION</td>
+                                        <td>Spesifikasi</td>
+                                        <td>:</td>
+                                        <td style="padding-left:5px;"></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="3"></td>
+                                        <td>Tahun Mulai Pemakaian</td>
+                                        <td>:</td>
+                                        <td style="padding-left:5px;"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <table id="tblSRItem" border="1" cellpadding="3" cellspacing="0" style="width:100%;margin-top:15px;font-size: 0.8em;border-spacing: 0;border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2" style="text-align:center;">Tanggal</th>
+                                        <th rowspan="2" style="text-align:center;">Uraian Masalah</th>
+                                        <th rowspan="2" style="text-align:center;">Penyampaian<br />(Tlp,ERP,Email,Web)</th>
+                                        <th rowspan="2" style="text-align:center;">Tindakan Perbaikan</th>
+                                        <th colspan="3" style="text-align:center;">Pekerjaan</th>
+                                        <th colspan="2" style="text-align:center;">Pelaksana</th>
+                                        <th colspan="2" style="text-align:center;">Penanggung Jawab</th>
+                                    </tr>
+                                    <tr>
+                                        <th style="text-align:center;">Mulai</th>
+                                        <th style="text-align:center;">Selesai</th>
+                                        <th style="text-align:center;">Total</th>
+                                        <th style="text-align:center;">Ttd</th>
+                                        <th style="text-align:center;">Nama</th>
+                                        <th style="text-align:center;">Ttd</th>
+                                        <th style="text-align:center;">Nama</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <table id="tblSRSign" border="1" cellpadding="3" cellspacing="0" style="margin-top:15px;margin-bottom:20px;margin-right:0;margin-left:auto;border-spacing: 0;border-collapse: collapse;">
+                                <thead>
+                                    <tr>
+                                        <th style="width:175px;text-align:center;">Disetujui</th>
+                                        <th style="width:175px;text-align:center;">Diperiksa</th>
+                                        <th style="width:175px;text-align:center;">Dibuat</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="height:75px;text-align:center;">
+                                            <div id="approvedSign" style="width:175px;height:75px;"></div>
+                                            <img id="imgApprove" src="@Url.Content("~/Content/Images/checklist.png")" width="40" height="40" style="display:none;" />
+                                            <span id="lblApprovedBy"></span>
+                                        </td>
+                                        <td style="height:75px;text-align:center;">
+                                            <div id="checkedSign" style="width:175px;height:75px;"></div>
+                                            <img id="imgCheck" src="@Url.Content("~/Content/Images/checklist.png")" width="40" height="40" style="display:none;" />
+                                            <span id="lblCheckedBy"></span>
+                                        </td>
+                                        <td style="height:75px;text-align:center;">
+                                            <div id="createdSign" style="width:175px;height:75px;"></div>
+                                            <span id="lblCreatedBy"></span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="text-align:center;"><span id="lblApprovedDate">../../....</span></td>
+                                        <td style="text-align:center;"><span id="lblCheckedDate">../../....</span></td>
+                                        <td style="text-align:center;"><span id="lblCreatedDate">../../....</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <span style="font-weight:bold;">FH-04-MR-01-01-16</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

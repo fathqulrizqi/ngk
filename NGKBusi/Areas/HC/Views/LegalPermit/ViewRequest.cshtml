@@ -1,0 +1,801 @@
+@using Microsoft.AspNet.Identity
+@{
+    ViewBag.Title = "View Request";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var approvalList = ViewBag.ApprovalList as List<NGKBusi.Areas.HC.Models.ApprovalTimelineViewModel>;
+    int currentHeaderLevel = ViewBag.CurrentLevel ?? 0; // Level dari Header
+
+    var item = ViewBag.Data;
+    // Tidak perlu role admin disini, karena ini file khusus User
+    string status = item.Status;
+    string docStatus = item.Status;
+
+    // current user / requestor check
+    var currUser = User.Identity.GetUserId();
+    bool isRequestor = !string.IsNullOrEmpty(currUser) && currUser.Equals(item.CreatedBy, System.StringComparison.OrdinalIgnoreCase);
+
+
+    // PATH Handling
+    string basePath = "/Files/HC/LegalPermit/Drafting/";
+    string fileName = item.AgreementFilePath;
+    string pdfUrl = "";
+    if (!string.IsNullOrEmpty(fileName))
+    {
+        pdfUrl = Url.Content("~" + basePath + fileName);
+    }
+}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/viima/jquery-comments@1.5.0/css/jquery-comments.css">
+
+<style>
+    /* Responsive images inside details content container */
+    .card-body img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .form-control-plaintext {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        padding: 8px 12px;
+        border-radius: 4px;
+        color: #333;
+        font-weight: 500;
+        min-height: 38px;
+    }
+
+    .label-view {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .section-header {
+        color: #00747f;
+        font-weight: 800;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 8px;
+        margin-bottom: 20px;
+        margin-top: 30px;
+        font-size: 1rem;
+    }
+
+    .status-badge {
+        font-size: 1rem;
+        padding: 10px 20px;
+        border-radius: 30px;
+    }
+
+    .pdf-viewer-box {
+        background: #525659;
+        min-height: 500px;
+        max-height: 700px;
+        overflow: auto;
+        border: 1px solid #ccc;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    canvas.pdf-page {
+        margin: 0 auto 15px auto;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        display: block;
+        max-width: none;
+        width: auto;
+    }
+
+    /* --- MODERN TIMELINE CSS --- */
+    .timeline-modern {
+        position: relative;
+        padding-left: 20px;
+    }
+
+        /* Garis Vertikal */
+        .timeline-modern::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 5px;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+
+    .timeline-step {
+        position: relative;
+        margin-bottom: 25px;
+        padding-left: 35px; /* Jarak dari garis */
+    }
+
+    /* Titik / Icon Status */
+    .timeline-marker {
+        position: absolute;
+        left: 4px; /* Sesuaikan agar pas di tengah garis */
+        top: 0;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 34px; /* Center icon vertikal */
+        font-size: 14px;
+        color: white;
+        z-index: 2;
+        box-shadow: 0 0 0 4px #fff; /* Border putih tebal agar garis tidak nempel */
+    }
+
+    /* Warna Status */
+    .marker-success {
+        background-color: #28a745;
+    }
+
+    .marker-warning {
+        background-color: #ffc107;
+        color: #fff !important;
+    }
+
+    .marker-danger {
+        background-color: #dc3545;
+    }
+
+    .marker-muted {
+        background-color: #e9ecef;
+        color: #adb5bd;
+    }
+
+    /* Content Box */
+    .timeline-card {
+        background: #fff;
+        border: 1px solid #eef2f7;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        transition: transform 0.2s;
+    }
+
+        /* Highlight jika aktif */
+        .timeline-card.active {
+            border-left: 4px solid #ffc107;
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.15);
+        }
+
+    /* Animasi Pulse untuk yang sedang menunggu */
+    @@keyframes pulse-yellow {
+        0% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+        }
+    }
+
+    .marker-pulse {
+        animation: pulse-yellow 2s infinite;
+    }
+
+    /* Styling Komentar */
+    .comment-box {
+        background-color: #f8f9fa;
+        border-left: 3px solid #6c757d;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 0.85rem;
+        color: #555;
+        border-radius: 0 4px 4px 0;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white p-4 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 font-weight-bold text-dark">AGREEMENT DETAILS</h5>
+                    @if (status == "Submitted")
+                    {<span class="badge badge-primary status-badge">New Request</span> }
+                    else if (status == "Returned")
+                    { <span class="badge badge-danger status-badge">Returned (Revisi)</span> }
+                    else if (status == "Review")
+                    { <span class="badge badge-warning text-white status-badge">Under Review (L2)</span> }
+                    else if (status == "Approved" && isRequestor)
+                    { <span class="badge badge-info text-white status-badge">Waiting Your Approval</span> }
+                    else if (status == "Approved" && !isRequestor)
+                    { <span class="badge badge-info text-white status-badge">Waiting Requestor Approval</span> }
+                    else if (status == "Completed")
+                    { <span class="badge badge-success status-badge">Completed</span>}
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="section-header"><i class="fa fa-info-circle"></i> I. GENERAL & SUPPLIER INFORMATION</div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Request Date</label>
+                            <div class="form-control-plaintext">@(item.RequestDate != null ? ((DateTime)item.RequestDate).ToString("dd MMMM yyyy") : "-")</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Ref Quotation No</label>
+                            <div class="form-control-plaintext">@item.RefQuotationNo</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Supplier Name</label>
+                            <div class="form-control-plaintext font-weight-bold">@item.SupplierName</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">President Director</label>
+                            <div class="form-control-plaintext">@item.PresidentDirector</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="label-view">Address</label>
+                            <div class="form-control-plaintext">@item.Address</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Telp No</label>
+                            <div class="form-control-plaintext">@item.TelpNo</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Fax No</label>
+                            <div class="form-control-plaintext">@item.EmailAddress</div>
+                        </div>
+                    </div>
+
+                    <div class="section-header"><i class="fa fa-project-diagram"></i> II. PROJECT DETAILS</div>
+                    <div class="form-group mb-3">
+                        <label class="label-view">Project Name</label>
+                        <div class="form-control-plaintext font-weight-bold">@item.ProjectName</div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label class="label-view">Detail Description</label>
+                        <div style="border: 1px solid #e9ecef; background: #fff; padding: 15px; border-radius: 4px; max-height: 400px; overflow-y: auto;">
+                            @Html.Raw(item.ProjectDetails)
+                        </div>
+                    </div>
+
+                    <div class="section-header"><i class="fa fa-money-bill-wave"></i> III. COMMERCIAL TERMS</div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="label-view">Price (IDR)</label>
+                            <div class="form-control-plaintext text-right">@string.Format("{0:N0}", item.Price)</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="label-view">Discount (IDR)</label>
+                            <div class="form-control-plaintext text-right text-danger">@string.Format("{0:N0}", item.Discount)</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="label-view text-primary">FINAL PRICE (IDR)</label>
+                            <div class="form-control-plaintext text-right bg-money">@string.Format("{0:N0}", item.FinalPrice)</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="label-view">Term of Payment</label>
+                            <div class="form-control-plaintext" style="white-space: pre-wrap;">@item.TermOfPayment</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="label-view">Bank Account</label>
+                            <div class="form-control-plaintext" style="background-color: #fffbf2; white-space: pre-wrap;">@item.BankAccount</div>
+                        </div>
+                    </div>
+
+                    <div class="section-header"><i class="fa fa-gavel"></i> IV. TECHNICAL & LEGAL</div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Lead Time</label>
+                            <div class="form-control-plaintext" style="white-space: pre-wrap;">@item.LeadTimeWorks</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Warranty</label>
+                            <div class="form-control-plaintext" style="white-space: pre-wrap;">@item.Warranty</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="label-view text-danger">Penalty Clause</label>
+                            <div class="form-control-plaintext bg-penalty" style="white-space: pre-wrap;">@item.PenaltyClause</div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Plan Start Date</label>
+                            <div class="form-control-plaintext text-center font-weight-bold">
+                                @(item.PlanStartDate != null ? ((DateTime)item.PlanStartDate).ToString("dd MMM yyyy") : "-")
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="label-view">Plan End Date</label>
+                            <div class="form-control-plaintext text-center font-weight-bold">
+                                @(item.PlanEndDate != null ? ((DateTime)item.PlanEndDate).ToString("dd MMM yyyy") : "-")
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section-header mt-5"><i class="fa fa-file-pdf"></i> V. AGREEMENT DOCUMENT</div>
+                    <div class="d-flex justify-content-center mb-2 sticky-top bg-white py-2" style="z-index:10">
+                        <div class="btn-group shadow-sm">
+                            <button type="button" class="btn btn-light border" id="btnZoomOut" title="Zoom Out"><i class="fa fa-minus"></i></button>
+                            <button type="button" class="btn btn-light border disabled font-weight-bold" id="zoomLabel" style="width: 80px;">100%</button>
+                            <button type="button" class="btn btn-light border" id="btnZoomIn" title="Zoom In"><i class="fa fa-plus"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="pdf-viewer-box" id="pdfContainer" oncontextmenu="return false;">
+                        @if (string.IsNullOrEmpty(fileName))
+                        {
+                            <div class="text-white pt-5" id="emptyMsg"><i class="fa fa-file-pdf fa-3x mb-3"></i><br>Belum ada file.</div>
+                        }
+                        else
+                        {
+                            <div class="text-white pt-5 loading-msg">Memuat Preview PDF...</div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4" style="z-index: 100;">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 font-weight-bold text-dark">ACTION PANEL</h6>
+                </div>
+                <div class="card-body">
+
+                    @if (status == "Approved" && isRequestor)
+                    {
+                        <div class="alert alert-warning text-center border-warning">
+                            <i class="fa fa-exclamation-circle fa-2x mb-2 text-warning"></i><br />
+                            <strong>Konfirmasi Diperlukan</strong><br />
+                            Department Legal telah menyetujui Aggrement. Silakan cek dan pilih tindakan di bawah.
+                        </div>
+
+                        <button type="button" class="btn btn-success btn-block btn-lg font-weight-bold shadow mb-3" id="btnUserApprove">
+                            <i class="fa fa-check-double mr-2"></i> Approve Agreement
+                        </button>
+
+                        <button type="button" class="btn btn-outline-danger btn-block font-weight-bold" id="btnUserRevision">
+                            <i class="fa fa-undo mr-2"></i> Request Revision
+                        </button>
+                    }
+                    else if (status == "Completed")
+                    {
+                        <div class="alert alert-success text-center mb-3">
+                            <i class="fa fa-check-circle mr-1"></i> Request Selesai (Final).
+                        </div>
+                        <label class="font-weight-bold text-muted small text-uppercase">File Document</label>
+                        if (!string.IsNullOrEmpty(fileName))
+                        {
+                            <a href="@pdfUrl" download target="_blank" class="btn btn-dark btn-block font-weight-bold shadow-sm">
+                                <i class="fa fa-file-download mr-2"></i> Download Signed PDF
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="alert alert-info text-center">
+                            Request sedang diproses oleh Admin.<br>Status: <strong>@status</strong>
+                        </div>
+                    }
+
+                    <div class="mt-3 text-center"><a href="@Url.Action("DraftingRequest", "LegalPermit")" class="btn btn-outline-secondary btn-sm">Kembali</a></div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-white border-bottom"><h6 class="mb-0 font-weight-bold">DISCUSSION</h6></div>
+                <div class="card-body p-0"><div id="comments-container" style="min-height: 300px;"></div></div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 font-weight-bold text-dark">
+                        <i class="fa fa-user-shield"></i> Approval
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-modern mt-4">
+                        @if (approvalList != null)
+                        {
+                            foreach (var step in approvalList)
+                            {
+                                // --- LOGIC PENENTUAN STATUS (VISUAL) ---
+                                string markerClass = "marker-muted";
+                                string iconClass = "fa-circle";
+                                string cardClass = "";
+                                string badgeClass = "badge-secondary";
+                                string statusLabel = "Pending";
+
+                                // 1. Rejected / Returned
+                                if (step.Status == "Rejected" || (docStatus == "Returned" && step.Levels == currentHeaderLevel))
+                                {
+                                    markerClass = "marker-danger";
+                                    iconClass = "fa-times";
+                                    statusLabel = "Returned / Rejected";
+                                    badgeClass = "badge-danger";
+                                }
+                                // 2. Approved / Passed
+                                else if (step.Levels < currentHeaderLevel || step.Status == "Approved")
+                                {
+                                    markerClass = "marker-success";
+                                    iconClass = "fa-check";
+                                    statusLabel = "Approved";
+                                    badgeClass = "badge-success";
+                                }
+                                // 3. Active / Waiting (Current Turn)
+                                else if (step.Levels == currentHeaderLevel && docStatus.Contains("Waiting"))
+                                {
+                                    markerClass = "marker-warning marker-pulse"; // Pakai animasi
+                                    iconClass = "fa-clock";
+                                    cardClass = "active";
+                                    statusLabel = "Waiting Review";
+                                    badgeClass = "badge-warning text-white";
+                                }
+                                // 4. Approved/Completed
+                                else if (step.Levels == currentHeaderLevel || docStatus == "Approved" || docStatus == "Completed")
+                                {
+                                    markerClass = "marker-success";
+                                    iconClass = "fa-check";
+                                    statusLabel = "Approved";
+                                    badgeClass = "badge-success";
+                                }
+                                // 5. Pending (Future)
+                                else
+                                {
+                                    markerClass = "marker-muted";
+                                    iconClass = "fa-hourglass-start"; // Icon jam pasir
+                                    statusLabel = "Pending";
+                                    badgeClass = "badge-light text-muted border";
+                                }
+
+                                // --- HTML TIMELINE ITEM ---
+                                <div class="timeline-step">
+                                    <div class="timeline-marker @markerClass">
+                                        <i class="fa @iconClass"></i>
+                                    </div>
+
+                                    <div class="timeline-card @cardClass">
+
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <div>
+                                                <h6 class="font-weight-bold text-dark mb-0" style="font-size: 0.95rem;">@step.Title</h6>
+                                                <small class="text-muted text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.5px;">@step.Dept_Name</small>
+                                            </div>
+                                            <span class="badge @badgeClass px-2 py-1">@statusLabel</span>
+                                        </div>
+
+                                        <div class="d-flex align-items-center mt-2 mb-1">
+                                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center mr-2" style="width: 28px; height: 28px;">
+                                                <i class="fa fa-user text-secondary" style="font-size: 12px;"></i>
+                                            </div>
+                                            <div>
+                                                <span class="text-dark font-weight-bold" style="font-size: 0.85rem;">
+                                                    @(!string.IsNullOrEmpty(step.User_Name) ? step.User_Name : "Assignee")
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        @if (step.ActionDate != null)
+                                        {
+                                            <div class="text-muted small mt-1 ml-1">
+                                                <i class="fa fa-calendar-check mr-1 text-success"></i>
+                                                Processed: @step.ActionDate.Value.ToString("dd MMM yyyy, HH:mm")
+                                            </div>
+                                        }
+
+                                        @if (!string.IsNullOrEmpty(step.Comments))
+                                        {
+                                            <div class="comment-box">
+                                                <i class="fa fa-quote-left mr-2 text-muted"></i>
+                                                @step.Comments
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';</script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/viima/jquery-comments@1.5.0/css/jquery-comments.css">
+    <script src="https://cdn.jsdelivr.net/gh/viima/jquery-comments@1.5.0/js/jquery-comments.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        var currentPdfPath = '@pdfUrl';
+        var agreementId = @item.ID;
+        var pdfState = { pdf: null, currentScale: 1.0, zoomStep: 0.2 };
+
+        $(document).ready(function () {
+
+             var urlUpload = '@Url.Action("UploadCommentAttachment", "LegalPermit", new { area = "HC" })';
+             var urlPost   = '@Url.Action("PostComment", "LegalPermit", new { area = "HC" })?agreementId=' + agreementId + '&source=drafting';
+             var urlGet    = '@Url.Action("GetComments", "LegalPermit", new { area = "HC" })';
+
+             if ($('#comments-container').length === 0) return;
+
+             // --- FUNGSI SIMPAN KOMENTAR KE DB (Dipanggil setelah upload atau jika tanpa file) ---
+             function saveCommentToDB(data, validAttachments, success, error) {
+                 var payload = {
+                     parent: data.parent,
+                     content: data.content,
+                     attachments: validAttachments
+                 };
+
+                 $.ajax({
+                     type: 'POST',
+                     url: urlPost,
+                     data: JSON.stringify(payload),
+                     contentType: 'application/json',
+                     success: function (res) {
+                         if (res.success === false) {
+                             Swal.fire('Gagal', res.message, 'error');
+                             error();
+                         } else {
+                             // ============================================================
+                             // FIX: MAPPING DATA AGAR LIBRARY TIDAK CRASH (ERROR SPLIT)
+                             // ============================================================
+
+                             // Cek apakah response memiliki attachment
+                             if (res.attachments && res.attachments.length > 0) {
+
+                                 // Kita format ulang attachment di response agar punya properti 'file'
+                                 res.attachments = res.attachments.map(function (att) {
+
+                                     // Fallback: Jika server mengembalikan 'url', kita copy ke 'file'
+                                     var safeUrl = att.url || att.Url || att.file_url;
+
+                                     return {
+                                         id: att.id,
+                                         name: att.name || att.Name,
+                                         mime_type: att.mime_type || att.MimeType,
+
+                                         // PROPERTI KRUSIAL YANG DIBUTUHKAN LIBRARY:
+                                         url: safeUrl,
+                                         file: safeUrl,      // <--- INI OBATNYA (Library cari ini buat split)
+                                         file_url: safeUrl   // Cadangan
+                                     };
+                                 });
+                             }
+
+                             // Berikan data yang sudah "sehat" ke library
+                             success(res);
+                         }
+                     },
+                     error: function () {
+                         Swal.fire('Error', 'Gagal koneksi database.', 'error');
+                         error();
+                     }
+                 });
+             }
+
+             // --- INISIALISASI ---
+             $('#comments-container').comments({
+                 profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+                 roundProfilePictures: true,
+                 textareaRows: 2,
+                 enableAttachments: true, // Wajib True
+
+                 // HAPUS BAGIAN uploadAttachments DISINI (KARENA TIDAK DIPANGGIL)
+
+                 // 1. GET COMMENTS
+                 getComments: function(success, error) {
+                     $.ajax({
+                         type: 'GET',
+                         url: '@Url.Action("GetComments", "LegalPermit", new { area = "HC" })',
+                         data: { agreementId: agreementId, source: 'drafting' },
+                         success: function(ArrayComment) {
+
+                             // --- PERBAIKAN: Mapping Data Sebelum Render ---
+                             // Kita pastikan setiap attachment memiliki property 'file' dan 'file_url'
+                             // yang isinya sama dengan 'url'.
+
+                             var fixedComments = ArrayComment.map(function(comment) {
+                                 // Cek jika komentar punya attachment
+                                 if (comment.attachments && comment.attachments.length > 0) {
+
+                                     comment.attachments = comment.attachments.map(function(att) {
+                                         return {
+                                             id: att.id,
+                                             mime_type: att.mime_type,
+                                             name: att.name,
+
+                                             // MAGIC FIX: Isi semua kemungkinan nama property
+                                             url: att.url,
+                                             file: att.url,      // Library sering cari ini buat split extension
+                                             file_url: att.url   // Cadangan
+                                         };
+                                     });
+                                 }
+                                 return comment;
+                             });
+
+                             // Serahkan data yang sudah "diperbaiki" ke library
+                             success(fixedComments);
+                         },
+                         error: error
+                     });
+                 },
+
+                 // 2. POST COMMENT (LOGIKA UPLOAD PINDAH KESINI)
+                 postComment: function(data, success, error) {
+                     console.log("► MEMPROSES KOMENTAR:", data);
+
+                     // Cek apakah ada file mentah yang perlu diupload
+                     var rawFile = null;
+                     if (data.attachments.length > 0) {
+                         // Ambil file pertama (asumsi single upload per komen)
+                         // Library menyimpan file asli di property .file
+                         rawFile = data.attachments[0].file;
+                     }
+
+                     // --- SKENARIO A: ADA FILE -> UPLOAD DULU ---
+                     if (rawFile) {
+                         console.log("► Mendeteksi File. Memulai Upload Manual...", rawFile.name);
+
+                         var formData = new FormData();
+                         formData.append("file", rawFile);
+
+                         $.ajax({
+                             url: urlUpload,
+                             type: 'POST',
+                             data: formData,
+                             contentType: false,
+                             processData: false,
+                             success: function(res) {
+                                 console.log("► Upload Response:", res);
+
+                                 // Tangkap URL (Case Insensitive)
+                                 var finalUrl = res.url || res.Url;
+
+                                 if (res.success && finalUrl) {
+                                     // BENTUK DATA ATTACHMENT YANG SUDAH JADI
+                                     var validAttachments = [{
+                                         url: finalUrl,
+                                         name: res.name || rawFile.name,
+                                         mime_type: res.mime_type || rawFile.type
+                                     }];
+
+                                     // LANJUT SIMPAN KE DB
+                                     saveCommentToDB(data, validAttachments, success, error);
+                                 } else {
+                                     Swal.fire('Upload Gagal', 'Server tidak mengembalikan URL valid.', 'error');
+                                     error();
+                                 }
+                             },
+                             error: function(xhr) {
+                                 console.error("Upload Error:", xhr.responseText);
+                                 Swal.fire('Error', 'Gagal mengupload file ke server.', 'error');
+                                 error();
+                             }
+                         });
+                     }
+                     // --- SKENARIO B: TIDAK ADA FILE -> LANGSUNG SIMPAN ---
+                     else {
+                         console.log("► Tidak ada file. Langsung simpan teks.");
+                         saveCommentToDB(data, [], success, error);
+                     }
+                 }
+             });
+
+            // --- PDF VIEWER LOGIC ---
+            if(currentPdfPath && currentPdfPath.length > 5) loadPdf(currentPdfPath);
+
+            function loadPdf(url) {
+                $('#emptyMsg').hide(); $('.loading-msg').show(); $('#pdfContainer canvas').remove();
+                pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                    pdfState.pdf = pdf; $('.loading-msg').hide(); renderAllPages();
+                }).catch(function(error){ $('.loading-msg').text('Gagal memuat PDF.'); });
+            }
+
+            function renderAllPages() {
+                if (!pdfState.pdf) return;
+                $('#pdfContainer canvas').remove();
+                $('#zoomLabel').text(Math.round(pdfState.currentScale * 100) + "%");
+                for (var i = 1; i <= pdfState.pdf.numPages; i++) { renderPage(i); }
+            }
+
+            function renderPage(pageNumber) {
+                pdfState.pdf.getPage(pageNumber).then(function(page) {
+                    var viewport = page.getViewport({scale: pdfState.currentScale});
+                    var canvas = document.createElement('canvas'); canvas.className = 'pdf-page';
+                    var context = canvas.getContext('2d'); canvas.height = viewport.height; canvas.width = viewport.width;
+                    document.getElementById('pdfContainer').appendChild(canvas);
+                    page.render({canvasContext: context, viewport: viewport});
+                });
+            }
+
+            $('#btnZoomIn').click(function() { if(pdfState.currentScale < 3.0) { pdfState.currentScale = parseFloat((pdfState.currentScale + pdfState.zoomStep).toFixed(1)); renderAllPages(); } });
+            $('#btnZoomOut').click(function() { if(pdfState.currentScale > 0.4) { pdfState.currentScale = parseFloat((pdfState.currentScale - pdfState.zoomStep).toFixed(1)); renderAllPages(); } });
+
+            // --- LOGIC TOMBOL APPROVE USER ---
+            $('#btnUserApprove').click(function() {
+                 Swal.fire({
+                     title: 'Konfirmasi Approval',
+                     text: "Apakah Anda yakin menyetujui dokumen Agreement ini?",
+                     icon: 'question',
+                     showCancelButton: true,
+                     confirmButtonColor: '#28a745',
+                     cancelButtonColor: '#6c757d',
+                     confirmButtonText: 'Ya, Saya Setuju',
+                     cancelButtonText: 'Batal'
+                 }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+                        $.post('@Url.Action("UserApproveAgreement", "LegalPermit", new { area = "HC" })', { id: agreementId }, function(res){
+                            if(res.success) {
+                                Swal.fire({ title: 'Berhasil!', text: 'Dokumen telah disetujui.', icon: 'success' }).then(() => { location.reload(); });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        }).fail(function() { Swal.fire('Error', 'Koneksi gagal.', 'error'); });
+                    }
+                });
+            });
+
+            // --- [BARU] LOGIC TOMBOL REQUEST REVISION USER ---
+            $('#btnUserRevision').click(function() {
+                 Swal.fire({
+                     title: 'Permintaan Revisi',
+                     text: "Silakan masukkan alasan kenapa dokumen ini perlu direvisi:",
+                     input: 'textarea', // Input Text Area
+                     inputPlaceholder: 'Tuliskan catatan revisi di sini...',
+                     icon: 'warning',
+                     showCancelButton: true,
+                     confirmButtonColor: '#dc3545', // Merah
+                     confirmButtonText: 'Kirim Permintaan Revisi',
+                     cancelButtonText: 'Batal',
+                     inputValidator: (value) => {
+                         if (!value) {
+                             return 'Anda harus menuliskan alasan revisi!'
+                         }
+                     }
+                 }).then((result) => {
+                    if (result.isConfirmed) {
+                        var reason = result.value;
+
+                        Swal.fire({ title: 'Mengirim Request...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
+                        // AJAX POST ke Controller Revision
+                        $.post('@Url.Action("RequestRevision", "LegalPermit", new { area = "HC" })', { id: agreementId, reason: reason }, function(res){
+                            if(res.success) {
+                                Swal.fire({
+                                    title: 'Terkirim!',
+                                    text: 'Status dokumen dikembalikan untuk revisi.',
+                                    icon: 'success'
+                                }).then(() => { location.reload(); });
+                            } else {
+                                Swal.fire('Gagal', res.message, 'error');
+                            }
+                        }).fail(function() { Swal.fire('Error', 'Koneksi gagal.', 'error'); });
+                    }
+                });
+            });
+
+        });
+    </script>
+}

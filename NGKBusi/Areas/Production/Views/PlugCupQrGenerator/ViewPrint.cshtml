@@ -1,0 +1,151 @@
+﻿@{
+    ViewBag.Title = "ViewPrint";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var data = ViewBag.Data as NGKBusi.Areas.Production.Models.Production_PlugCup_QrGenerator_History;
+
+    // Tentukan kondisi berdasarkan nama customer
+    string customerName = data != null && data.Customer != null ? data.Customer.ToUpper() : "";
+
+    bool isYamahaOemPartisi = customerName.Contains("YAMAHA-OEM PARTISI") || customerName.Contains("YAMAHA - OEM PARTISI");
+    bool isYamahaOemExp = customerName.Contains("YAMAHA-OEM EXP") || customerName.Contains("YAMAHA - OEM EXP");
+    bool isYamahaOem = customerName.Contains("YAMAHA-OEM") || customerName.Contains("YAMAHA - OEM");
+    bool isKawasakiOem = customerName.Contains("KAWASAKI-OEM") || customerName.Contains("KAWASAKI - OEM");
+    bool isSuzukiOem = customerName.Contains("SUZUKI-OEM") || customerName.Contains("SUZUKI - OEM");
+
+
+    // Fallback Front_QR
+    string fallbackFrontQr = $"{data.Part_No}|1202402|{data.Qty}|{data.Lot_No}";
+    ViewBag.DisplayFrontQr = !string.IsNullOrEmpty(data.Front_QR) ? data.Front_QR : fallbackFrontQr;
+}
+
+@section scriptHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/printThis/1.15.0/printThis.min.js"></script>
+
+    <style>
+        .main-barcode, .hanko-barcode {
+            width: 100%;
+            height: auto;
+        }
+
+        td {
+            padding: 0;
+        }
+        .page-content{
+            width : 100vw !important;
+        }
+
+        @@media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+
+            #qr-info {
+                display: none !important;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+}
+
+<body class="bg-gray-50 flex flex-col justify-content-center align-items-center">
+
+    <!-- Area UI -->
+    <div class="text-center mb-3 mt-4 flex justify-center gap-4">
+        <a href="@Url.Action("Index", "PlugCupQrGenerator")" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded shadow-lg no-underline hover:no-underline">
+            ⬅️ Kembali
+        </a>
+        <button id="print-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg">
+            🖨️ Cetak Label
+        </button>
+    </div>
+
+    <div class="mb-3 text-center" id="qr-info">
+        <p class="text-lg bg-yellow-100 p-2 rounded inline-block">
+            Information Front QR: <b>@(ViewBag.DisplayFrontQr)</b>
+        </p>
+    </div>
+
+    <!-- Area Print: Panggil Partial View sesuai kondisi -->
+    <div id="print-area" class="flex flex-col gap-8 align-items-center mb-5 w-full">
+        @if (isYamahaOemPartisi || isYamahaOemExp)
+        {
+            @Html.Partial("_TemplateYamahaOemPartisi")
+        }
+        else if (isYamahaOem)
+        {
+            @Html.Partial("_TemplateYamahaOem")
+        }
+        else if (isKawasakiOem)
+        {
+            @Html.Partial("_TemplateKawasakiOem")
+        }
+        else if (isSuzukiOem)
+        {
+            @Html.Partial("_TemplateSuzukiOem")
+        }
+        else
+        {
+            @Html.Partial("_TemplateHondaOem")
+        }
+    </div>
+
+    @section scripts {
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var qrCodeContainers = document.querySelectorAll('.qrcode-container');
+                var qrCodePage2Containers = document.querySelectorAll('.qrcode-page2-container');
+                var qrCodePartisiContainers = document.querySelectorAll('.qrcode-partisi-container');
+
+                qrCodeContainers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        new QRCode(container, { text: textQr, width: 81, height: 81, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+                    }
+                });
+
+                qrCodePage2Containers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        new QRCode(container, { text: textQr, width: 400, height: 400, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+                        setTimeout(() => {
+                            var img = container.querySelector('img');
+                            var cvs = container.querySelector('canvas');
+                            if (img) {
+                                img.style.width = '100%'; img.style.maxWidth = '35%'; img.style.height = 'auto'; img.style.aspectRatio = '1 / 1'; img.style.imageRendering = 'pixelated';
+                            }
+                            if (cvs) { cvs.style.display = 'none'; }
+                        }, 50);
+                    }
+                });
+                qrCodePartisiContainers.forEach(function (container) {
+                    var textQr = container.getAttribute('data-qr-text');
+                    if (textQr) {
+                        new QRCode(container, { text: textQr, width: 400, height: 400, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+                        setTimeout(() => {
+                            var img = container.querySelector('img');
+                            var cvs = container.querySelector('canvas');
+                            if (img) {
+                                img.style.width = '100%'; img.style.maxWidth = '89%'; img.style.height = 'auto'; img.style.aspectRatio = '1 / 1'; img.style.imageRendering = 'pixelated';
+                            }
+                            if (cvs) { cvs.style.display = 'none'; }
+                        }, 50);
+                    }
+                });
+
+                // Print Trigger
+                $('#print-button').on('click', function () {
+                    $('#print-area').printThis({ importCSS: true, importStyle: true, pageTitle: "Parts Contents Card", printDelay: 800 });
+                });
+            });
+        </script>
+    }
+</body>

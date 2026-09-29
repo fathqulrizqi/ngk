@@ -1,0 +1,681 @@
+@{
+    ViewBag.Title = "Create Drafting";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currUser = ViewBag.CurrUser;
+}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+
+    .excel-header-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #fff;
+        margin-bottom: 0;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+        .excel-header-table td {
+            vertical-align: middle;
+            padding: 15px;
+        }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #999;
+        padding: 4px 8px;
+        font-size: 12px;
+    }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+    .info-label {
+        color: #555;
+        font-weight: 600;
+    }
+
+    .info-value {
+        font-weight: bold;
+        color: #000;
+    }
+
+    body {
+        background-color: #f4f6f9;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .card-modern {
+        border: 1px solid #cbd5e0;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        background: white;
+        overflow: hidden;
+    }
+
+    .form-control-modern {
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        height: auto;
+    }
+
+        .form-control-modern:focus {
+            background-color: #fff;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+        }
+
+    .label-modern {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.9rem;
+        padding-top: calc(0.375rem + 3px);
+    }
+
+    .form-title {
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.25rem;
+        color: #000;
+        margin-bottom: 30px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-decoration: underline;
+        text-underline-offset: 5px;
+    }
+
+    .section-title {
+        text-align: left;
+        color: #00747f;
+        font-weight: 800;
+        font-size: 1rem;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        margin-top: 30px;
+        letter-spacing: 0.5px;
+    }
+
+    .price-input {
+        font-family: monospace;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .bg-readonly {
+        background-color: #e9ecef !important;
+    }
+
+    .form-row-separator {
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+    /* Style Override Select2 */
+    .select2-container .select2-selection--multiple {
+        min-height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+        background-color: #f8f9fa;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #4a90e2;
+        background-color: #fff;
+    }
+
+    /* Responsive images inside project editor / wrapper */
+    #projectEditorWrapper img, .card-modern img {
+        max-width: 100%;
+        height: auto;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="card card-modern">
+
+                <table class="excel-header-table">
+                    <tr>
+                        <td style="width: 20%; text-align: center;">
+                            <img src="~/Images/niterra-logo.jpg" style="width:210px" />
+                        </td>
+                        <td style="width: 60%; text-align: center;">
+                            <h3 style="margin: 0; font-weight: 900; font-size: 26px; letter-spacing: 1.5px; color: #555;">
+                                PT. Niterra Mobility Indonesia
+                            </h3>
+                            <div style="font-size:0.9em; margin-top:5px; color:#333;">
+                                JL. Raya Jakarta - Bogor, KM 26,6 Ciracas, Pasar Rebo, Jakarta Timur, 13740 <br />
+                                Indonesia <br /> Tel : +62 21 8710 974 | Fax : +62 21 8710 965 <br />
+                            </div>
+                        </td>
+                        <td style="width: 20%; text-align: center;">
+                            <img src="~/Images/niterra-logo.jpg" style="width:210px" />
+                        </td>
+                        @*<td style="width: 30%; padding: 0;">
+                                <div class="info-row"><span class="info-label">Doc. No</span><span class="info-value">MNB-FRM-001</span></div>
+                                <div class="info-row"><span class="info-label">Revision</span><span class="info-value">02</span></div>
+                                <div class="info-row"><span class="info-label">Effective Date</span><span class="info-value">@DateTime.Now.ToString("dd/MM/yyyy")</span></div>
+                                <div class="info-row"><span class="info-label">Page</span><span class="info-value">1 of 1</span></div>
+                            </td>*@
+                    </tr>
+                </table>
+
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="form-title">GENERAL DATA FOR DRAFT AGREEMENT</div>
+
+                    <form id="agreementForm">
+
+                        <div class="section-title">I. GENERAL INFORMATION</div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Request Date <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="date" id="txtRequestDate" class="form-control form-control-modern text-center font-weight-bold" style="max-width: 200px;" value="">
+                                <small id="errRequestDate" class="text-danger font-weight-bold" style="display:none;">Tanggal request wajib diisi</small>
+                            </div>
+                        </div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Reference Quotation No <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtRefNo" class="form-control form-control-modern" value="">
+                                <small id="errRefNo" class="text-danger font-weight-bold" style="display:none;">No. Quotation wajib diisi</small>
+                            </div>
+                        </div>
+
+                        <div class="section-title">II. SUPPLIER DATA</div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Supplier Name <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtSupplierName" class="form-control form-control-modern" placeholder="Masukkan nama supplier">
+                                <small id="errSupplierName" class="text-danger font-weight-bold" style="display:none;">Nama Supplier wajib diisi</small>
+                            </div>
+                        </div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">President Director <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtPresDir" class="form-control form-control-modern" placeholder="Masukkan nama direktur utama supplier">
+                                <small id="errPresDir" class="text-danger font-weight-bold" style="display:none;">Nama Presdir wajib diisi</small>
+                            </div>
+                        </div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Address <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtAddress" class="form-control form-control-modern" placeholder="Masukkan alamat lengkap supplier">
+                                <small id="errAddress" class="text-danger font-weight-bold" style="display:none;">Alamat wajib diisi</small>
+                            </div>
+                        </div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Contact Info</label>
+                            <div class="col-md-9">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <input type="text" id="txtTelNo" class="form-control form-control-modern" placeholder="Tel No">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="text" id="txtEmail" class="form-control form-control-modern" placeholder="Email Address *">
+
+                                        <small id="errEmail" class="text-danger font-weight-bold" style="display:none;">Email wajib diisi</small>
+
+                                        <small id="errEmailFormat" class="text-danger font-weight-bold" style="display:none;">Format email tidak valid (contoh: user@email.com)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-title">III. PROJECT DETAILS</div>
+                        <div class="form-group row">
+                            <label class="col-md-3 col-form-label label-modern pt-2">Project Name & Detail <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtProjectName" class="form-control form-control-modern" placeholder="Masukkan nama project">
+                                <small id="errProjectName" class="text-danger font-weight-bold" style="display:none;">project name tidak boleh kosong</small>
+                            </div>
+                        </div>
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern pt-2"> <span class="text-danger"></span></label>
+                            <div class="col-md-9">
+                                <div id="projectEditorWrapper" style="border: 1px solid #ced4da; border-radius: 6px; overflow: hidden;">
+                                    <textarea id="projectEditor"></textarea>
+                                </div>
+                                <small id="errProjectDetails" class="text-danger font-weight-bold" style="display:none;">Detail project tidak boleh kosong</small>
+                                <small class="text-muted mt-1 d-block">* Gunakan fitur tabel untuk rincian pekerjaan.</small>
+                            </div>
+                        </div>
+
+                        <div class="section-title">IV. COMMERCIAL TERMS</div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Price (IDR) <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtPrice" class="form-control form-control-modern price-input" value="0">
+                                <small id="errPrice" class="text-danger font-weight-bold" style="display:none;">Harga wajib diisi (minimal 0)</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Discount (IDR)</label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtDiscount" class="form-control form-control-modern price-input text-danger" value="0">
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator" style="background-color: #f0f9ff; margin-left: -15px; margin-right: -15px; padding: 15px;">
+                            <label class="col-md-3 col-form-label label-modern text-primary">FINAL PRICE (IDR)</label>
+                            <div class="col-md-9">
+                                <input type="text" id="txtFinalPrice" class="form-control form-control-modern price-input bg-white" value="0" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Term of Payment <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <textarea id="txtPaymentTerm" class="form-control form-control-modern" rows="2"></textarea>
+                                <small id="errPaymentTerm" class="text-danger font-weight-bold" style="display:none;">Payement term wajib diisi</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Bank Account Details <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <textarea id="txtBankAccount" class="form-control form-control-modern" rows="2" placeholder="Nama Bank, No Rekening, A/N" style="resize: none; overflow-y: hidden;"></textarea>
+                                <small id="errBankAccount" class="text-danger font-weight-bold" style="display:none;">Bank account wajib diisi</small>
+                            </div>
+                        </div>
+
+                        <div class="section-title">V. TECHNICAL & LEGAL</div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Lead Time Works</label>
+                            <div class="col-md-9">
+                                <textarea id="txtLeadTime" class="form-control form-control-modern" rows="3" placeholder="Masukkan jangka waktu pengerjaan / lead time" style="resize: none; overflow-y: hidden;"></textarea>
+                                @*<input type="text" id="txtLeadTime" class="form-control form-control-modern" placeholder="DI ISI OLEH SUPPLIER">*@
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Warranty Product and Services / Install</label>
+                            <div class="col-md-9">
+                                <textarea id="txtWarranty" class="form-control form-control-modern" rows="3" placeholder="Masukkan ketentuan garansi produk atau jasa" style="resize: none; overflow-y: hidden;"></textarea>
+                                @*<input type="text" id="txtWarranty" class="form-control form-control-modern" placeholder="DI ISI OLEH SUPPLIER">*@
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern text-danger">Penalty Clause</label>
+                            <div class="col-md-9">
+                                <textarea id="txtPenalty" class="form-control form-control-modern text-danger" style="background-color: #fef2f2; border-color: #fecaca;" rows="3"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Plan Start Date <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="date" id="txtStartDate" class="form-control form-control-modern text-center font-weight-bold" style="max-width: 200px;" value="">
+                                <small id="errStartDate" class="text-danger font-weight-bold" style="display:none;">Tanggal Mulai wajib diisi</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row ">
+                            <label class="col-md-3 col-form-label label-modern">Plan End Date <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <input type="date" id="txtEndDate" class="form-control form-control-modern text-center font-weight-bold" style="max-width: 200px;" value="">
+                                <small id="errEndDate" class="text-danger font-weight-bold" style="display:none;">Tanggal Berakhir wajib diisi</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group row form-row-separator">
+                            <label class="col-md-3 col-form-label label-modern">Reviewers <span class="text-danger">*</span></label>
+                            <div class="col-md-9">
+                                <select id="ddlReviewers" class="form-control select2" multiple="multiple" style="width: 100%;">
+                                    @if (ViewBag.ListUser != null)
+                                    {
+                                        foreach (var item in ViewBag.ListUser)
+                                        {
+                                            <option value="@item.NIK">@item.Name - @item.DeptName - @item.Email</option>
+                                        }
+                                    }
+                                </select>
+                                <small id="errReviewers" class="text-danger font-weight-bold" style="display:none;">Minimal satu reviewer wajib dipilih</small>
+                            </div>
+                        </div>
+
+                        <div class="text-right mt-4 pt-3 border-top">
+                            <a href="@Url.Action("DraftingRequest")" id="backToList" class="btn btn-warning px-5 font-weight-bold">Back To List</a>
+                            <button type="button" class="btn btn-danger px-4 mr-2" onclick="resetForm()">Reset</button>
+                            <button type="button" id="btnDraft" class="btn btn-primary px-5 font-weight-bold">Save As Draft</button>
+                            <button type="button" id="btnSubmit" class="btn btn-success px-5 font-weight-bold">Submit</button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    tinymce.init({
+        selector: '#projectEditor',
+        base_url: 'https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3',
+        suffix: '.min',
+        height: 300,
+        menubar: false,
+        promotion: false,
+        plugins: 'table lists advlist autolink link image',
+        toolbar: 'undo redo | blocks | bold italic | bullist numlist | table | image',
+        image_title: true,
+        automatic_uploads: true,
+        file_picker_types: 'image',
+        file_picker_callback: function (cb, value, meta) {
+            var input = document.createElement('input');
+            input.setAttribute('type', 'file');
+            input.setAttribute('accept', 'image/*');
+
+            input.onchange = function () {
+                var file = this.files[0];
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var id = 'blobid' + (new Date()).getTime();
+                    var blobCache =  tinymce.activeEditor.editorUpload.blobCache;
+                    var base64 = reader.result.split(',')[1];
+                    var blobInfo = blobCache.create(id, file, base64);
+                    blobCache.add(blobInfo);
+
+                    cb(blobInfo.blobUri(), { title: file.name });
+                };
+                reader.readAsDataURL(file);
+            };
+
+            input.click();
+        },
+        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size:14px; color:#495057; } img { max-width: 100%; height: auto; }'
+    });
+</script>
+
+<script>
+    // Fungsi Reset Form & Error
+    function resetForm() {
+        document.getElementById("agreementForm").reset();
+        $('small.text-danger').hide();
+        $('.form-control').removeClass('is-invalid');
+        $('#projectEditorWrapper').css('border', '1px solid #ced4da');
+        $('#txtPrice').val('0');
+        $('#txtDiscount').val('0');
+        $('#txtFinalPrice').val('0');
+        // RESET SELECT2
+        $('#ddlReviewers').val(null).trigger('change');
+        // Reset textarea heights
+        $('#txtBankAccount, #txtLeadTime, #txtWarranty').css('height', 'auto');
+    }
+
+    $(document).ready(function () {
+
+        // 1. INISIALISASI SELECT2
+        $('.select2').select2({
+            placeholder: " Pilih Reviewer...",
+            allowClear: true
+        });
+
+        // 1b. AUTO RESIZE TEXTAREAS
+        function autoResizeTextarea(textarea) {
+            $(textarea).css('height', 'auto');
+            $(textarea).css('height', textarea.scrollHeight + 'px');
+        }
+
+        $('#txtBankAccount, #txtLeadTime, #txtWarranty').on('input', function () {
+            autoResizeTextarea(this);
+        });
+
+        // Run initially on page load
+        $('#txtBankAccount, #txtLeadTime, #txtWarranty').each(function () {
+            autoResizeTextarea(this);
+        });
+
+        // Hapus error saat user mulai memilih
+        $('#ddlReviewers').on('change', function () {
+            if ($(this).val().length > 0) {
+                $('#errReviewers').hide();
+                // Hapus border merah (Select2 container classnya agak beda)
+                $(this).next('.select2-container').find('.select2-selection').css('border-color', '#ced4da');
+            }
+        });
+
+        // --- HELPER FUNCTIONS ---
+        function formatCurrency(val) {
+            var value = val.toString().replace(/[^0-9]/g, '');
+            return value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // Fungsi Cek Format Email
+        function isValidEmail(email) {
+            // Regex standar untuk email
+            var regex = /^([a-zA-Z0-9_.+-])+\@@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+            return regex.test(email);
+        }
+
+        function cleanCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.toString().replace(/,/g, '')) || 0;
+        }
+
+        function calculateFinalPrice() {
+            var price = cleanCurrency($('#txtPrice').val());
+            var discount = cleanCurrency($('#txtDiscount').val());
+            var finalPrice = price - discount;
+            $('#txtFinalPrice').val(formatCurrency(finalPrice));
+        }
+
+        function validateField(inputId, errorId) {
+            var value = $(inputId).val();
+            if (!value || value.toString().trim() === "") {
+                $(inputId).addClass('is-invalid');
+                $(errorId).show();
+                return false;
+            } else {
+                $(inputId).removeClass('is-invalid');
+                $(errorId).hide();
+                return true;
+            }
+        }
+
+        // --- EVENT LISTENER INPUT ---
+        $('#txtPrice, #txtDiscount').on('input', function() {
+            var originalVal = $(this).val();
+            $(this).val(formatCurrency(originalVal));
+            calculateFinalPrice();
+        });
+
+        // --- LOGIC PENYIMPANAN UTAMA ---
+        // statusInput: String ('Draft' atau 'Submitted')
+        function processSaving(statusInput) {
+
+            // 1. Reset State Validasi
+            $('small.text-danger').hide();
+            $('.form-control').removeClass('is-invalid');
+            $('#projectEditorWrapper').css('border', '1px solid #ced4da');
+
+            var isValid = true;
+
+            // 2. VALIDASI INPUT FIELD (Wajib untuk kedua status)
+            if (!validateField('#txtRequestDate', '#errRequestDate')) isValid = false;
+            if (!validateField('#txtRefNo', '#errRefNo')) isValid = false;
+            if (!validateField('#txtSupplierName', '#errSupplierName')) isValid = false;
+            if (!validateField('#txtPresDir', '#errPresDir')) isValid = false;
+            if (!validateField('#txtAddress', '#errAddress')) isValid = false;
+            if (!validateField('#txtProjectName', '#errProjectName')) isValid = false;
+            if (!validateField('#txtPrice', '#errPrice')) isValid = false;
+            if (!validateField('#txtPaymentTerm', '#errPaymentTerm')) isValid = false;
+            if (!validateField('#txtBankAccount', '#errBankAccount')) isValid = false;
+            if (!validateField('#txtStartDate', '#errStartDate')) isValid = false;
+            if (!validateField('#txtEndDate', '#errEndDate')) isValid = false;
+
+            // VALIDASI REVIEWERS (MULTIPLE)
+            var selectedReviewers = $('#ddlReviewers').val(); // Mengembalikan Array ['NIK1', 'NIK2']
+
+            if (!selectedReviewers || selectedReviewers.length === 0) {
+                $('#errReviewers').show();
+                // Merahkan border Select2
+                $('#ddlReviewers').next('.select2-container').find('.select2-selection').css('border-color', '#dc3545');
+                isValid = false;
+            }
+
+            // 1. Validasi Email Wajib Diisi (Mandatory)
+            if (!validateField('#txtEmail', '#errEmail')) {
+                isValid = false;
+            } else {
+                // 2. Jika sudah diisi, baru cek Validasi Format Email
+                var emailVal = $('#txtEmail').val();
+                if (!isValidEmail(emailVal)) {
+                    $('#txtEmail').addClass('is-invalid'); // Merahkan kotak
+                    $('#errEmailFormat').show();           // Munculkan pesan format salah
+                    isValid = false;
+                } else {
+                    // Jika format benar, sembunyikan error format
+                    $('#errEmailFormat').hide();
+                }
+            }
+
+            // Validasi TinyMCE
+            var projectHtml = tinymce.get('projectEditor').getContent().trim();
+            if (projectHtml.length === 0) {
+                $('#projectEditorWrapper').css('border', '1px solid #dc3545');
+                $('#errProjectDetails').show();
+                isValid = false;
+            } else {
+                $('#projectEditorWrapper').css('border', '1px solid #ced4da');
+                $('#errProjectDetails').hide();
+            }
+
+            if (!isValid) {
+                Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mohon lengkapi field yang berwarna merah.', confirmButtonColor: '#d33' });
+                return;
+            }
+
+            // 3. PERSIAPAN DATA
+            var projectContent = tinymce.get('projectEditor').getContent();
+
+            var formData = {
+                // Tambahkan Status ke object data
+                Status: statusInput,
+
+                RequestDate: $('#txtRequestDate').val(),
+                RefQuotationNo: $('#txtRefNo').val(),
+                SupplierName: $('#txtSupplierName').val(),
+                PresidentDirector: $('#txtPresDir').val(),
+                Address: $('#txtAddress').val(),
+                TelpNo: $('#txtTelNo').val(),
+                EmailAddress: $('#txtEmail').val(),
+                ProjectName: $('#txtProjectName').val(),
+                ProjectDetails: projectContent,
+                Price: cleanCurrency($('#txtPrice').val()),
+                Discount: cleanCurrency($('#txtDiscount').val()),
+                FinalPrice: cleanCurrency($('#txtFinalPrice').val()),
+                TermOfPayment: $('#txtPaymentTerm').val(),
+                BankAccount: $('#txtBankAccount').val(),
+                LeadTimeWorks: $('#txtLeadTime').val(),
+                Warranty: $('#txtWarranty').val(),
+                PenaltyClause: $('#txtPenalty').val(),
+                PlanStartDate: $('#txtStartDate').val(),
+                PlanEndDate: $('#txtEndDate').val(),
+                Reviewers: selectedReviewers // Array of Strings (NIK)
+            };
+
+            // Loading
+            Swal.fire({
+                title: statusInput === 'Draft' ? 'Menyimpan Draft...' : 'Mengirim Data...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // 4. AJAX POST
+            $.ajax({
+                url: '@Url.Action("SaveDrafting", "LegalPermit", new { area = "HC"})',
+                type: 'POST',
+                data: JSON.stringify(formData),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Data berhasil disimpan sebagai ' + statusInput,
+                            confirmButtonColor: '#3085d6'
+                        }).then(() => {
+                            // --- LOGIC REDIRECT BERBEDA DISINI ---
+                            if (statusInput === 'Draft') {
+                                // Redirect ke halaman Edit (Butuh ID dari response)
+                                // Pastikan controller mengembalikan ID data baru
+                                if(response.id) {
+                                    window.location.href = '@Url.Action("EditDraftingForm", "LegalPermit", new { area = "HC" })?id=' + response.id;
+                                } else {
+                                    // Fallback jika ID tidak dikembalikan controller
+                                    window.location.href = '@Url.Action("DraftingRequest", "LegalPermit", new { area = "HC" })';
+                                }
+                            } else {
+                                // Redirect ke halaman List Data
+                                window.location.href = '@Url.Action("DraftingRequest", "LegalPermit", new { area = "HC" })';
+                            }
+                        });
+                    } else {
+                        Swal.fire('Gagal', response.message, 'error');
+                    }
+                },
+                error: function (err) {
+                    Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+                }
+            });
+        }
+
+        // --- CLICK HANDLERS ---
+
+        // 1. Klik Save Draft
+        $('#btnDraft').click(function (e) {
+            e.preventDefault();
+            processSaving('Draft'); // Kirim parameter Draft
+        });
+
+        // 2. Klik Submit (ADA KONFIRMASI DULU)
+        $('#btnSubmit').click(function (e) {
+            e.preventDefault();
+
+            // Cek validasi form sederhana dulu sebelum tanya konfirmasi (Opsional, tapi disarankan)
+            // Agar kalau form masih kosong, tidak muncul pertanyaan "Apakah yakin?"
+            // Kita cek field mandatory utama saja, misal Request Date
+            //if ($('#txtRequestDate').val() == "") {
+            //    Swal.fire('Perhatian', 'Mohon isi Request Date terlebih dahulu.', 'warning');
+            //    return;
+            //}
+
+            // Tampilkan Konfirmasi
+            Swal.fire({
+                title: 'Konfirmasi Submit',
+                text: "Apakah Anda yakin data sudah lengkap? Data akan disimpan dengan status Submitted.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#28a745', // Warna hijau biar senada dengan tombol Submit
+                cancelButtonColor: '#d33',     // Warna merah untuk batal
+                confirmButtonText: 'Ya, Submit!',
+                cancelButtonText: 'Batal',
+                reverseButtons: true // Tombol Batal di kiri, Submit di kanan (opsional)
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Jika user klik "Ya, Submit!", baru jalankan proses ke database
+                    processSaving('Submitted');
+                }
+            });
+        });
+
+    });
+</script>

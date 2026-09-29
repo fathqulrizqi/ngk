@@ -1,0 +1,245 @@
+﻿@using NGKBusi.Models;
+@using NGKBusi.Areas.FA.Controllers;
+@using System.Security.Claims
+@using Microsoft.AspNet.Identity;
+
+@{
+    var currUser = (ClaimsIdentity)User.Identity;
+    DefaultConnection db = new DefaultConnection();
+}
+<script type="text/javascript">
+    $(document).ready(function () {
+        $(".thDebitTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdDebit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+        $(".thCreditTotal").each(function () {
+            var currTable = $(this).closest("table");
+            var currTotal = 0;
+            $(".tdCredit", currTable).each(function () {
+                var value = accounting.unformat($(this).text());
+                // add only if the value is number
+                if (!isNaN(value) && value.length != 0) {
+                    currTotal += parseFloat(value);
+                }
+            });
+            $(this).text(accounting.formatNumber(currTotal, 2));
+        });
+    });
+</script>
+<table class="table tblJournal"> 
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Account Name</th>
+            <th>Section Name</th>
+            <th>Description</th>
+            <th>Currency</th>
+            <th>Debit</th>
+            <th>Credit</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.NonPOList)
+        {
+            var currID = (int)item.id;
+            var nonPOSub = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList();
+            var TotalAllocation = db.FA_Payment_Request_Non_PO_Sub.Where(w => w.Non_PO_ID == currID).ToList().Sum(s => s.Allocation_Amount);
+            double totalCredit = 0;
+            double totalDebit = 0;
+
+            <tr>
+                <td class="p-2" colspan="7">
+                    <label style="width:20%">
+                        <span class="font-weight-bold">Pay. Number :</span>
+                        <span class="spanPayNumber">@(item.Receive_Number)</span>
+                    </label>
+                    <label style="width:20%">
+                        <span class="font-weight-bold">Invoice :</span>
+                        <span class="spanInvoice">@(item.Invoice_Number)</span>
+                    </label>
+                    <label style="width:20%">
+                        <span class="font-weight-bold">AP Journal :</span>
+                        <span class="spanAPJournal">@(!string.IsNullOrEmpty(item.AP_Number) ? item.AP_Number : "-")</span>
+                    </label>
+                    <label style="width:20%">
+                        <span class="font-weight-bold">Due Date :</span>
+                        <span class="spanDueDate">@(item.Due_Date.ToString("MM/dd/yyyy"))</span>
+                    </label>
+                </td>
+            </tr>
+            foreach (var subItem in nonPOSub)
+            {
+                totalDebit += (double)subItem.Allocation_Amount;
+                totalCredit += 0;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@(subItem.COA_Name)</td>
+                    <td>@(subItem.Section_To_Name)</td>
+                    <td>@(subItem.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(subItem.Allocation_Amount.ToString("N2"))</td>
+                    <td class="tdCredit">0</td>
+                </tr>
+            }
+            if (item.Payment_Type == "Pre-Payment")
+            {
+                totalDebit += (double)item.Amount_of_Invoice;
+                totalCredit += 0;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@("Prepaid Expense")</td>
+                    <td>@(item.Section_From_Name)</td>
+                    <td>@(item.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                    <td class="tdCredit">0</td>
+                </tr>
+            }
+            else if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice != TotalAllocation)
+            {
+                <tr>
+                    <td>@Html.Raw("<span title='" + item.Third_Party_Name + "'>" + item.Third_Party_Id + "</span>")</td>
+                    <td>@(item.Invoice_Number)</td>
+                    <td>@("-")</td>
+                    <td>@("AP Other")</td>
+                    <td>@(item.Currency_Code)</td>
+                    @if (item.Amount_of_Invoice > TotalAllocation)
+                    {
+                        totalDebit += (item.Amount_of_Invoice - TotalAllocation);
+                        <td class="tdDebit">@((item.Amount_of_Invoice - TotalAllocation).ToString("N2"))</td>
+                        <td class="tdCredit">0</td>
+                    }
+                    else
+                    {
+                        totalCredit += (TotalAllocation - item.Amount_of_Invoice) - (item.WHT_Amount != null ? item.WHT_Amount : 0);
+                        <td class="tdDebit">0</td>
+                        <td class="tdCredit">@(((TotalAllocation - item.Amount_of_Invoice) - (item.WHT_Amount != null ? item.WHT_Amount : 0)).ToString("N2"))</td>
+                    }
+                </tr>
+            }
+
+            if (item.VAT > 0)
+            {
+                totalCredit += 0;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@("Prepaid Tax - VAT IN")</td>
+                    <td>@(item.Section_From_Name)</td>
+                    <td>@(item.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    @if (item.Payment_Type == "Pre-Payment")
+                    {
+                        totalDebit += ((double)(((double)item.Amount_of_Invoice / 100) * item.VAT));
+                        <td class="tdDebit">@(((double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                    }
+                    else
+                    {
+                        totalDebit += ((double)(((double)TotalAllocation / 100) * item.VAT));
+                        <td class="tdDebit">@(((double)(((double)TotalAllocation / 100) * item.VAT)).ToString("N2"))</td>
+                    }
+
+                    <td class="tdCredit">0</td>
+                </tr>
+            }
+            if (item.WHT_Amount > 0)
+            {
+                totalDebit += 0;
+                totalCredit += item.WHT_Amount;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@(item.WHT_COA_Name)</td>
+                    <td>@(item.Section_From_Name)</td>
+                    <td>@(item.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(0)</td>
+                    <td class="tdCredit">@(item.WHT_Amount.ToString("N2"))</td>
+                </tr>
+            }
+
+            totalDebit += 0;
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@("(" + item.Third_Party_Id + ")" + item.Third_Party_Name)</td>
+                    <td>@(item.Section_From_Name)</td>
+                    @if (item.Payment_Type == "Settlement")
+                    {
+                        <td>Prepaid Expense</td>
+                    }
+                    else
+                    {
+                        <td>@(item.Description)</td>
+                    }
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(0)</td>
+                    @if (item.Payment_Type == "Pre-Payment")
+                    {
+                        if (item.WHT_Amount > 0)
+                        {
+                            totalCredit += (item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)) - item.WHT_Amount;
+                            <td class="tdCredit">@(((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)) - item.WHT_Amount).ToString("N2"))</td>
+                        }
+                        else
+                        {
+                            totalCredit += (item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT));
+                            <td class="tdCredit">@((item.Amount_of_Invoice + (double)(((double)item.Amount_of_Invoice / 100) * item.VAT)).ToString("N2"))</td>
+                        }
+                    }
+                    else
+                    {
+                        if (item.WHT_Amount > 0)
+                        {
+                            if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice < TotalAllocation)
+                            {
+                                totalCredit += item.Amount_of_Invoice;
+                                <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                            }
+                            else
+                            {
+                                totalCredit += (item.Amount_of_Invoice - item.WHT_Amount);
+                                <td class="tdCredit">@((item.Amount_of_Invoice - item.WHT_Amount).ToString("N2"))</td>
+                            }
+                        }
+                        else
+                        {
+                            totalCredit += item.Amount_of_Invoice;
+                            <td class="tdCredit">@(item.Amount_of_Invoice.ToString("N2"))</td>
+                        }
+                    }
+                </tr>
+            @*if (item.Payment_Type == "Settlement" && item.Amount_of_Invoice < TotalAllocation)
+            {
+                totalDebit += 0;
+                totalCredit += (TotalAllocation - item.Amount_of_Invoice);
+                <tr>
+                    <td>@(item.Entry_Date.ToString("MM/dd/yyyy"))</td>
+                    <td>@(item.Third_Party_Name)</td>
+                    <td>@(item.Section_From_Name)</td>
+                    <td>@(item.Description)</td>
+                    <td>@(item.Currency_Code)</td>
+                    <td class="tdDebit">@(0)</td>
+                    <td class="tdCredit">@((TotalAllocation - item.Amount_of_Invoice).ToString("N2"))</td>
+                </tr>
+            }*@
+            <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Total</th>
+                <th>@(totalDebit.ToString("N2"))</th>
+                <th>@(totalCredit.ToString("N2"))</th>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+    </tfoot>
+</table>

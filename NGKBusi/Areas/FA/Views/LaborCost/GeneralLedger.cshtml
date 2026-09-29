@@ -1,0 +1,228 @@
+﻿@using NGKBusi.Models;
+@{
+    ViewBag.Title = "General Ledger";
+    ViewBag.SideMenuHeader = "Labor Cost";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var currDate = new DateTime(ViewBag.Period, 11, 1);
+    var lastDate = new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1);
+    var beginYear = 2018;
+    var endYear = DateTime.Now.Year;
+    int dateDiff = Math.Abs(12 * (currDate.Year - lastDate.Year) + currDate.Month - lastDate.Month);
+    var cntSummary = ViewBag.GL?.Count;
+    int i = 0;
+    int a = 0;
+    var beforeSection = "";
+    var currSection = "";
+    DefaultConnection db = new DefaultConnection();
+}
+
+@section cssHead{
+    <link href="@Url.Content("~/Content/tablesorter/theme.metro-dark.min.css")" rel="stylesheet" type="text/css" />
+    <link href="@Url.Content("~/Content/tablesorter/jquery.tablesorter.pager.min.css")" rel="stylesheet" type="text/css" />
+}
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/extras/jquery.tablesorter.pager.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-math.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/tablesorter/widgets/widget-output.min.js")"></script>
+    <script src="@Url.Content("~/Scripts/FA/LaborCost/GeneralLedger.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+@section sideMenu{
+    @Html.Partial("../Shared/_SideMenuPartialLaborCost")
+}
+
+<h2>
+    General Ledger
+    <form action="@Url.Action("generateGL", "LaborCost", new { area = "FA" })" method="post" style="display:inline-block;">
+        <select id="selLCGeneralLedgerPeriod" name="iLCGeneralLedgerPeriod" class="form-control selLCGeneralLedgerPeriod" style="width:125px; display:inline-block;">
+            @for (var z = beginYear; z <= endYear; z++)
+            {
+                <option value="@(z)" @(z == ViewBag.Period ? "selected" : "")>@("FY1" + (Int32.Parse(z.ToString().Substring(z.ToString().Length - 2, 2)) + 2))</option>
+            }
+        </select>
+        <button id="btnLCGenerateGL" type="submit" class="btnGenerate btn btn-success" title="Generate GL" onclick="return confirm('Generate General Ledger ?')">
+            Generate GL
+        </button>
+    </form>
+    <button id="btnDownload" class="btn btn-default" style="z-index:99;">Download</button>
+</h2>
+<div id="tblLCGeneralLedgerWrapper" style="overflow-x:auto;">
+    <table id="tblLCGeneralLedger" class="tablesorter">
+        <thead>
+            <tr>
+                @*<th class="filter-select" data-placeholder="-BUDGET TYPE-">BUDGET TYPE</th>
+                <th data-placeholder="-BUDGET NO-">BUDGET NO.</th>*@
+                <th class="filter-select" data-placeholder="-Section Code (From)-">Section Code (From)</th>
+                <th class="filter-select" data-placeholder="-Section Name (From)-">Section Name (From)</th>
+                <th class="filter-select" data-placeholder="-Section Code (To)-">Section Code (To)</th>
+                <th class="filter-select" data-placeholder="-Section Name (To)-">Section Name (To)</th>
+                <th class="filter-select" data-placeholder="-COA_AX-">COA_AX</th>
+                <th class="filter-select" data-placeholder="-COA_Name-">COA_Name</th>
+                <th class="filter-select" data-placeholder="-Description-">Description</th>
+                <th class="filter-select" data-placeholder="-Group_Section-">Group_Section</th>
+                <th class="filter-select" data-placeholder="-Group_Cost-">Group_Cost</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()), 11, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()), 12, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 1, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 2, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 3, 1).ToString("yyyy-MM"))</th>
+                @*<th class="text-nowrap">@("Total FY1" + (new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 12, 1)).ToString("yy"))</th>*@
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 4, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 5, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 6, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 7, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 8, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 9, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 10, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 11, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 1, 12, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 1, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 2, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 3, 1).ToString("yyyy-MM"))</th>
+                @*<th class="text-nowrap">@("Total FY1" + (new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 12, 1)).ToString("yy"))</th>*@
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 4, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 5, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 6, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 7, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 8, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 9, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 10, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 11, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 2, 12, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 1, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 2, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 3, 1).ToString("yyyy-MM"))</th>
+                @*<th class="text-nowrap">@("Total FY1" + (new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 12, 1)).ToString("yy"))</th>*@
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 4, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 5, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 6, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 7, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 8, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 9, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 10, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 11, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 3, 12, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 1, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 2, 1).ToString("yyyy-MM"))</th>
+                <th class="text-nowrap">@(new DateTime(int.Parse(ViewBag.Period.ToString()) + 4, 3, 1).ToString("yyyy-MM"))</th>
+                @*<th class="text-nowrap">@("Total FY1" + (new DateTime(int.Parse(ViewBag.Period.ToString()) - 1 + 5, 12, 1)).ToString("yy"))</th>*@
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ViewBag.GL)
+            {
+                a++;
+                currSection = item.Section;
+                if (beforeSection != item.Section && beforeSection != "")
+                {
+                    <tr>
+                        <th colspan="3"></th>
+                        <th colspan="5">
+                            @(beforeSection)
+                        </th>
+                        <th>Total</th>
+                        @for (var q = 0; q <= dateDiff; q++)
+                        {
+                            <th class="bold text-right" data-math="above-sum">above-sum</th>
+                        }
+                    </tr>
+                }
+                <tr>
+                    @*<td>BEL</td>
+                    <td>@(a)</td>*@
+                    <td>B2220</td>
+                    <td>Human Resource</td>
+                    <td class="text-nowrap">@(db.FA_Section.Where(w => w.Section_Name == currSection).Select(s => s.New_Section_Code).FirstOrDefault())</td>
+                    <td class="text-nowrap">@(item.Section)</td>
+                    <td class="text-nowrap">@(item.COA_ID)</td>
+                    <td class="text-nowrap">@(item.COA_Name)</td>
+                    <td class="text-nowrap">@(item.Description)</td>
+                    <td class="text-nowrap">@(db.FA_Section.Where(w => w.Section_Name == currSection).Select(s => s.Group_Section).FirstOrDefault())</td>
+                    <td class="text-nowrap">@(db.FA_Section.Where(w => w.Section_Name == currSection).Select(s => s.Account_Group).FirstOrDefault().Split('-')[0])</td>
+                    <td>@(item.M011?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M012?.ToString("N0") ?? 0)</td>
+                    @*<td data-math="col-sum"></td>*@
+                    <td>@(item.M101?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M102?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M103?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M104?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M105?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M106?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M107?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M108?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M109?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M110?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M111?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M112?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M201?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M202?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M203?.ToString("N0") ?? 0)</td>
+                    @*<td data-math="col-sum"></td>*@
+                    <td>@(item.M204?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M205?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M206?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M207?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M208?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M209?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M210?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M211?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M212?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M301?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M302?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M303?.ToString("N0") ?? 0)</td>
+                    @*<td class="col-sum"></td>*@
+                    <td>@(item.M304?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M305?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M306?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M307?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M308?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M309?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M310?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M311?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M312?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M401?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M402?.ToString("N0") ?? 0)</td>
+                    <td>@(item.M403?.ToString("N0") ?? 0)</td>
+                    @*<td data-math="col-sum"></td>*@
+                </tr>
+
+                if (a == cntSummary)
+                {
+                    <tr>
+                        <th colspan="3"></th>
+                        <th colspan="5">
+                            @(beforeSection)
+                        </th>
+                        <th>Total</th>
+                        @for (var q = 0; q <= dateDiff; q++)
+                        {
+                            <th class="bold text-right" data-math="above-sum">above-sum</th>
+                        }
+                    </tr>
+                }
+
+                beforeSection = item.Section;
+            }
+        </tbody>
+        <tfoot>
+            <tr class="dark-row">
+                <th colspan="50">
+                    <div class="pager">
+                        <button type="button" class="first"><<</button>
+                        <button type="button" class="prev"><</button>
+                        <span class="pagedisplay"></span>
+                        <button type="button" class="next">></button>
+                        <button type="button" class="last">>></button>
+                        <select class="pagesize" title="Select page size" style="color:black;">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="30">30</option>
+                            <option value="40">40</option>
+                        </select>
+                        <select class="gotoPage" title="Select page number" style="color:black;"></select>
+                    </div>
+                </th>
+            </tr>
+        </tfoot>
+    </table>
+</div>

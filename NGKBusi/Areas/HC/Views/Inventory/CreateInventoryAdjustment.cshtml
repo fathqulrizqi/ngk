@@ -1,0 +1,713 @@
+﻿
+@{
+    ViewBag.Title = "Create Adjustment Price";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section cssHead {
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.6/css/dataTables.dataTables.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <link href="~/Content/sweetalert2/sweetalert2.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .modal-hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .page-content {
+            background: linear-gradient(135deg, #1E555C 10%, #fefee3 100%);
+            padding-top: 1rem !important;
+        }
+
+        .custom-input {
+            width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+            .custom-input:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            }
+
+        .select2-container--default .select2-selection--single {
+            border: 1px solid #d1d5db !important;
+            height: 42px !important;
+            border-radius: 0.5rem !important;
+            padding-top: 5px;
+        }
+
+            .select2-container--default .select2-selection--single .select2-selection__arrow {
+                height: 40px !important;
+            }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        table.dataTable,
+        table.dataTable thead th,
+        table.dataTable tbody td,
+        table.dataTable tfoot th {
+            border: none !important;
+        }
+
+            table.dataTable thead {
+                border-bottom: none !important;
+            }
+
+            table.dataTable tbody tr {
+                border-bottom: none !important;
+            }
+
+        .divide-y > :not([hidden]) ~ :not([hidden]) {
+            border-top-width: 1px;
+            border-color: #f3f4f6;
+        }
+    </style>
+}
+
+@section scriptHead {
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.6/js/dataTables.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <script src="~/Content/sweetalert2/sweetalert2@11.js"></script>
+    <script>
+
+        function loadRecentAdjustments() {
+            $.ajax({
+                url: '@Url.Action("GetRecentAdjustments", "Inventory", new { area = "HC" })',
+                type: 'GET',
+                cache: false,
+                success: function (res) {
+                    const container = $('#recentNotification');
+                    container.empty();
+
+                    if (res.success && res.data.length > 0) {
+                        res.data.forEach((adj, index) => {
+
+                            const isNewest = index === 0;
+
+                            const cardClass = isNewest
+                                ? "bg-blue-50 border-blue-300 shadow-md transform scale-[1.02]"
+                                : "bg-white border-gray-200 shadow-sm opacity-90";
+
+                            const badgeNew = isNewest
+                                ? `<span class="ml-2 px-1.5 py-0.5 text-[9px] font-bold bg-blue-600 text-white rounded shadow-sm">NEW</span>`
+                                : ``;
+
+                            container.append(`
+                                <div class="${cardClass} p-3 rounded-xl border flex justify-between items-center transition-all duration-300 mb-2">
+                                    <div class="flex-1 overflow-hidden">
+                                        <div class="flex items-center">
+                                            <p class="text-sm font-bold text-gray-800 truncate max-w-[140px]" title="${adj.ItemName}">
+                                                ${adj.ItemName}
+                                            </p>
+                                            ${badgeNew}
+                                        </div>
+                                        <p class="text-[10px] uppercase tracking-wider text-orange-500 mt-0.5">
+                                            ${adj.Request_No || '-'} - ${adj.Subject || '-'}
+                                        </p>
+                                        <p class="text-[10px] text-gray-400 flex items-center gap-1 mt-1">
+                                            <i class="far fa-clock ${isNewest ? 'text-blue-500' : ''}"></i> ${adj.DateStr}
+                                        </p>
+                                    </div>
+                                    <div class="text-right pl-2 border-l ${isNewest ? 'border-blue-200' : 'border-gray-100'} ml-2">
+                                        <p class="text-lg font-bold ${isNewest ? 'text-blue-700' : 'text-gray-700'} leading-none">
+                                            ${adj.Qty_After}
+                                        </p>
+                                        <p class="text-[9px] text-gray-400 mt-1">
+                                            Was: ${adj.Qty_Before}
+                                        </p>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    } else {
+                        container.append(`
+                            <div class="text-center py-4 border-2 border-dashed border-gray-200 rounded-xl">
+                                <i class="fas fa-inbox text-gray-300 text-2xl mb-2"></i>
+                                <p class="text-xs text-gray-400">No recent adjustments</p>
+                            </div>
+                        `);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error(error);
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            loadRecentAdjustments();
+            initSelect2();
+
+            // SAVE ITEM
+            $("#adjustmentForm").on("submit", function (e) {
+                e.preventDefault();
+
+                const data = {
+                    ItemID: $("#ItemID").val(),
+                    Qty_After: $("#Qty").val(),
+                    Qty_Before: $("#QtyBefore").val(),
+                    Request_No: $("#RequestNo").val(),
+                };
+
+                $.ajax({
+                    url: "@Url.Action("SaveAdjustment", "Inventory", new { area = "HC" })",
+                    type: "POST",
+                    data: data,
+                    success: function (res) {
+                        if (res.success) {
+                            Swal.fire({
+                                icon: "success",
+                                title: "Success",
+                                text: "Item added successfully"
+                            }).then(() => {
+                                location.reload();
+                            });
+
+                        } else {
+                            Swal.fire("Error", res.message || "Failed to save", "error");
+                        }
+                    },
+                    error: function () {
+                        Swal.fire("Error", "Server error", "error");
+                    }
+                });
+            });
+
+            $(document).on('change', '#RequestNo', function () {
+
+                const requestNo = $(this).val();
+
+                if (!requestNo) {
+                    $('#Subject').val('');
+                    $('#ItemID').html('<option value="">-- Select Item --</option>');
+                    return;
+                }
+
+                $.ajax({
+                    url: "@Url.Action("GetRequestSubject", "Inventory", new { area = "HC" })",
+                    type: 'GET',
+                    data: { requestNo: requestNo },
+                    success: function (res) {
+                        if (res.success) {
+                            $('#Subject').val(res.subject ?? '');
+                        } else {
+                            $('#Subject').val('');
+                        }
+                    },
+                    error: function (err) {
+                        $('#Subject').val('');
+                    }
+                });
+
+                $('#ItemID').html('<option value="">-- Select Item --</option>');
+
+                $.ajax({
+                    url: "@Url.Action("GetItemsByRequestNo", "Inventory", new { area = "HC" })",
+                    type: 'GET',
+                    data: { requestNo: requestNo },
+                    success: function (res) {
+                        console.log("Items Result:", res);
+                        if (!res.success) return;
+
+                        res.data.forEach(item => {
+                            const newOption = new Option(item.ItemName, item.ItemId, false, false);
+                            $('#ItemID').append(newOption);
+                        });
+
+                        $('#ItemID').trigger('change');
+                    },
+                    error: function(err) {
+                        console.error("Error Items:", err);
+                    }
+                });
+            });
+
+            $(document).on('change', '#ItemID', function () {
+                const requestNo = $('#RequestNo').val();
+                const itemId = $(this).val();
+
+                console.log("Request:", requestNo, "Item:", itemId);
+
+                $('#Qty').val('');
+                $('#QtyBefore').val('');
+
+                if (!requestNo || !itemId) {
+                    return;
+                }
+
+                $.ajax({
+                    url: "@Url.Action("GetItemQuantity", "Inventory", new { area = "HC" })",
+                    type: 'GET',
+                    data: { requestNo: requestNo, itemId: itemId },
+                    success: function (res) {
+                        console.log("Response:", res);
+
+                        if (res.success) {
+                            $('#Qty').val(res.qty);
+                            $('#QtyBefore').val(res.qty);
+                        } else {
+                            Swal.fire('Error', res.message || 'Data not found', 'error');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error("AJAX Error:", error);
+                        $('#Qty').val('');
+                        $('#QtyBefore').val('');
+                    }
+                });
+            });
+
+});
+
+        function initSelect2() {
+            $('#ItemID').select2({
+                placeholder: '-- Select Item --',
+                allowClear: true,
+                width: '100%'
+            });
+            $('#RequestNo').select2({
+                placeholder: '-- Select Request No --',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
+
+
+        let isUploadMode = false;
+        let excelTable = null;
+
+        function toggleMode() {
+            const manualSec = document.getElementById('manualFormSection');
+            const uploadSec = document.getElementById('uploadFormSection');
+            const formTitle = document.getElementById('formTitle');
+            const toggleText = document.getElementById('toggleText');
+            const toggleIcon = document.getElementById('toggleIcon');
+
+            isUploadMode = !isUploadMode;
+
+            if (isUploadMode) {
+                manualSec.classList.add('hidden');
+                uploadSec.classList.remove('hidden');
+                formTitle.innerHTML = '<i class="fas fa-file-excel mr-2 text-green-600"></i> Excel Upload';
+                toggleText.innerText = "Switch to Manual Form";
+                toggleIcon.className = "fas fa-keyboard";
+            } else {
+                manualSec.classList.remove('hidden');
+                uploadSec.classList.add('hidden');
+                formTitle.innerHTML = '<i class="fas fa-edit mr-2 text-blue-600"></i> Inventory Adjustment Form';
+                toggleText.innerText = "Switch to Upload Excel";
+                toggleIcon.className = "fas fa-file-excel";
+
+                setTimeout(initSelect2, 50);
+            }
+
+        }
+    </script>
+
+    @*HANDLING FILE EXCEL*@
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const fileInput = document.getElementById("dropzone-file");
+    const modal = document.getElementById("adjustmentDetail");
+
+    if (!fileInput) {
+        console.error("dropzone-file not found");
+        return;
+    }
+
+    // ======================
+    // FILE SELECT
+    // ======================
+    fileInput.addEventListener("change", function () {
+        if (this.files.length > 0) {
+            uploadFile(this.files[0]);
+        }
+    });
+
+    // ======================
+    // DRAG & DROP
+    // ======================
+    const dropZone = fileInput.closest("label");
+
+    if (dropZone) {
+        dropZone.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            dropZone.classList.add("border-blue-400");
+        });
+
+        dropZone.addEventListener("dragleave", function () {
+            dropZone.classList.remove("border-blue-400");
+        });
+
+        dropZone.addEventListener("drop", function (e) {
+            e.preventDefault();
+            dropZone.classList.remove("border-blue-400");
+
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+    }
+
+    // ======================
+    // UPLOAD
+    // ======================
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        const uploadUrl = "@Url.Action("UploadItemXls", "Inventory", new { area = "HC" })";
+
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", uploadUrl, true);
+
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+
+                const res = JSON.parse(xhr.responseText);
+                console.log("UPLOAD RESPONSE:", res);
+
+                if (res.success) {
+                    renderDetailTable(res.data);
+                    openModal();
+                } else {
+                    alert(res.message);
+                }
+
+            } else {
+                alert("Upload failed");
+            }
+        };
+
+
+        xhr.send(formData);
+    }
+
+    function renderDetailTable(items) {
+        console.log("ITEMS FROM EXCEL:", items);
+
+        const tbody = document.getElementById("detailItemBody");
+        if (!tbody) {
+            console.error("detailItemBody not found");
+            return;
+        }
+
+        tbody.innerHTML = "";
+
+        items.forEach((item, index) => {
+            tbody.innerHTML += `
+            <tr>
+                <td class="px-3 py-2">${index + 1}</td>
+                <td class="px-3 py-2">${item.RequestNo}</td>
+                <td class="px-3 py-2 hidden">${item.ItemId}</td>
+                <td class="px-3 py-2">${item.RequestSubject}</td>
+                <td class="px-3 py-2">${item.ItemName}</td>
+                <td class="px-3 py-2 text-center">${item.Qty_Before}</td>
+                <td class="px-3 py-2 text-center">${item.Qty_After}</td>
+            </tr>
+        `;
+        });
+    }
+
+
+    // ======================
+    // MODAL
+    // ======================
+    function openModal() {
+        document.body.classList.add("overflow-hidden");
+        modal.classList.remove("modal-hidden");
+        modal.classList.add("modal-show");
+    }
+
+    function closeModal() {
+        document.body.classList.remove("overflow-hidden");
+        modal.classList.add("modal-hidden");
+        modal.classList.remove("modal-show");
+    }
+
+    document.querySelectorAll("[data-dialog-close]").forEach(btn => {
+        btn.addEventListener("click", closeModal);
+    });
+
+    modal?.addEventListener("click", function (e) {
+        if (e.target === modal) closeModal();
+    });
+
+$("#btnAddAdjustment").on("click", function () {
+
+    const items = [];
+
+    $("#detailItemBody tr").each(function () {
+
+        const requestNo = $(this).find("td:eq(1)").text().trim();
+        const itemId = parseInt($(this).find("td:eq(2)").text().trim());
+        const qtyAfter = parseInt($(this).find("td:eq(6)").text().trim());
+
+        if (!requestNo || isNaN(itemId) || isNaN(qtyAfter) || qtyAfter <= 0)
+            return;
+
+        items.push({
+            Request_No: requestNo,
+            Item_ID: itemId,
+            Qty_After: qtyAfter
+        });
+    });
+
+    console.log("ITEMS TO SAVE:", items);
+
+    if (items.length === 0) {
+        Swal.fire("Warning", "No valid item to save", "warning");
+        return;
+    }
+
+    $.ajax({
+        url: "@Url.Action("SaveAdjustmentItemExcel", "Inventory", new { area = "HC" })",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(items),
+        success: function (res) {
+            if (res.success) {
+                Swal.fire("Success", res.message, "success")
+                    .then(() => location.reload());
+            } else {
+                Swal.fire("Error", res.message, "error");
+            }
+        },
+        error: function () {
+            Swal.fire("Error", "Server error", "error");
+        }
+    });
+});
+
+});
+</script>
+
+}
+
+<div class="p-4">
+    <div class="flex items-center space-x-4">
+        <div class="w-1.5 h-8 bg-gradient-to-b from-yellow-500 to-orange-600 rounded-full shadow-sm"></div>
+        <h1 class="text-2xl font-bold text-gray-50 drop-shadow-sm">Create Inventory Adjustment</h1>
+    </div>
+</div>
+
+<div class="px-4">
+    <nav class="mt-3 mb-6 bg-gray-50 py-2 rounded-md" aria-label="Breadcrumb">
+        <ol class="flex px-2 items-center gap-2 text-sm text-gray-400">
+            <li class="flex items-center gap-1 hover:text-white transition">
+                <a href="@Url.Action("InventoryAdjustment", "Inventory", new { area = "HC" })"
+                   class="flex items-center gap-1">
+                    <i class="fa-solid fa-house pr-1"></i>
+                    Home
+                </a>
+            </li>
+
+            <li class="text-gray-500">/</li>
+
+            <li class="font-semibold text-gray-500">
+                Create Adjustment
+            </li>
+        </ol>
+    </nav>
+</div>
+
+
+<div class="flex flex-col lg:flex-row gap-6 px-4">
+    <div class="flex-1 bg-white rounded-2xl shadow-xl overflow-hidden border border-white/20">
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center">
+            <h3 id="formTitle" class="text-lg font-bold text-gray-800 flex items-center">
+                <i class="fas fa-edit mr-2 text-blue-600"></i> Manual Form
+            </h3>
+            <button id="toggleBtn" onclick="toggleMode()" class="flex items-center gap-2 px-4 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-100 transition-all border border-blue-200">
+                <i id="toggleIcon" class="fas fa-file-excel"></i>
+                <span id="toggleText">Switch to Upload Excel</span>
+            </button>
+        </div>
+
+        <div id="manualFormSection" class="p-8 fade-in">
+            <form id="adjustmentForm" class="space-y-6">
+                <div class="grid grid-cols-1">
+
+                    <div>
+                        <label class="block mb-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider">Created By</label>
+                        <input type="text" id="Creator_NIK" value="@ViewBag.UserName" readonly class="custom-input bg-gray-100 text-gray-500 cursor-not-allowed border-none" />
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 items-end">
+
+                    <div class="md:col-span-1">
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">Request No</label>
+                        <select id="RequestNo" name="Request_No" class="form-control" required>
+                            <option value="">-- Select Request No --</option>
+                            @foreach (var request in ViewBag.RequestList)
+                            {
+                                <option value="@request">@request</option>
+                            }
+                        </select>
+
+                    </div>
+
+                    <div>
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">Subject</label>
+                        <input type="text" id="Subject" readonly class="custom-input bg-gray-100 text-gray-500 cursor-not-allowed border-none" />
+                    </div>
+
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 items-end">
+
+                    <div class="md:col-span-1">
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">Item</label>
+                        <select id="ItemID" name="Item_Id" class="form-control" required>
+                            <option value="">-- Select Item --</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">Quantity</label>
+                        <input type="number" id="Qty" placeholder="0" class="custom-input" required />
+                        <input type="hidden" id="QtyBefore" name="Qty_Before" />
+                    </div>
+
+                </div>
+
+                <div class="pt-6 border-t flex justify-end">
+                    <button type="submit" class="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg">
+                        Add to List <i class="fas fa-plus ml-2"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="uploadFormSection" class="p-8 hidden fade-in">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                <div class="space-y-4">
+                    <h4 class="font-bold text-gray-700">1. Download Template</h4>
+                    <p class="text-sm text-gray-500 italic">Please use our latest template.</p>
+                    <a href="@Url.Action("DownloadAdjustmentTemplate", "Inventory", new { area = "HC" })"
+                       class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-600 text-white font-bold rounded-xl shadow-md">
+                        <i class="fas fa-download mr-2"></i> Get Template .xlsx
+                    </a>
+
+                </div>
+                <div class="space-y-4">
+                    <h4 class="font-bold text-gray-700">2. Upload & Preview</h4>
+                    <label class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-blue-200 rounded-2xl cursor-pointer bg-blue-50/30">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-blue-400 mb-3"></i>
+                        <p class="text-xs font-semibold text-blue-600">CLICK OR DRAG FILE HERE</p>
+                        <input type="file" id="dropzone-file" class="hidden" />
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full lg:w-[400px] bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[520px]">
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                <i class="fas fa-list-ul mr-2 text-green-600"></i> Recently Added
+            </h3>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 gap-2">
+            <div id="recentNotification" class="space-y-3 mt-4">
+                <p class="text-xs text-gray-400 text-center">Loading recent activity...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div id="adjustmentDetail"
+     class="modal-hidden fixed inset-0 z-[999] grid place-items-center
+            bg-black/60 backdrop-blur-sm transition-opacity duration-300">
+
+    <div class="w-3/4 bg-white rounded-lg shadow-lg flex flex-col max-h-[90vh]">
+
+        <!-- HEADER -->
+        <div class="px-6 py-4 bg-gray-50 border-b flex justify-between items-center shrink-0">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center">
+                <i class="fas fa-file-alt mr-2 text-blue-600"></i>
+                Detail Adjustment Request
+            </h3>
+            <button type="button" data-dialog-close
+                    class="text-gray-500 hover:text-black">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- BODY -->
+        <div class="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+
+            <!-- ITEM DETAILS -->
+            <div>
+                <label class="text-[10px] font-bold uppercase text-gray-500 mb-2 ml-1 block">
+                    Item Details
+                </label>
+
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100 text-xs uppercase text-gray-500 border-b">
+                            <tr>
+                                <th class="px-3 py-2 text-left">No</th>
+                                <th class="px-3 py-2 text-left">Request No</th>
+                                <th class="px-3 py-2 text-left">Subject</th>
+                                <th class="px-3 py-2 text-left">Item Name</th>
+                                <th class="px-3 py-2 text-center">Qty Before</th>
+                                <th class="px-3 py-2 text-center">Qty After</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailItemBody" class="divide-y divide-gray-100">
+                            <!-- JS render here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="px-6 py-3 border-t flex justify-end bg-gray-50 rounded-b-lg">
+            <button type="button" id="btnAddAdjustment"
+                    class="px-8 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold">
+                Create Adjustment <i class="fas fa-plus ml-2"></i>
+            </button>
+        </div>
+
+    </div>
+</div>

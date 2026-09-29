@@ -1,0 +1,435 @@
+@{
+    ViewBag.Title = "Detail Checksheet Kendaraan";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    var header = ViewBag.Header as NGKBusi.Areas.SCM.Models.WHFG_VehicleChecksheet_Header;
+    var items = ViewBag.Items as IEnumerable<NGKBusi.Areas.SCM.Models.WHFG_VehicleChecksheet_Item>;
+    var details = ViewBag.Details as Dictionary<int, string>;
+}
+
+<!-- Load Tailwind CSS -->
+<script src="@Url.Content("~/Scripts/tailwind/tailwind.js")"></script>
+
+<style>
+    .print-layout {
+        display: none;
+    }
+
+    @@media print {
+        /* Hide layout sidebar, header, footers, and other UI panels */
+        #sidebar, #show-sidebar, .no-print, footer, header, .navbar, .screen-layout {
+            display: none !important;
+        }
+        
+        /* Show print layout */
+        .print-layout {
+            display: block !important;
+        }
+
+        /* Reset portal page layout height and overflow limits to allow normal document page flow */
+        html, body, .page-wrapper, .page-content, main, .form-group, .row, .container, .container-fluid {
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            position: static !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background-color: white !important;
+        }
+
+        /* Force A4 portrait print orientation and margins */
+        @@page {
+            size: A4 portrait;
+            margin: 8mm 10mm;
+        }
+
+        /* Table thin black border rules */
+        .print-table, .print-table th, .print-table td {
+            border: 1px solid black !important;
+            border-collapse: collapse !important;
+        }
+        
+        .print-table th {
+            font-weight: bold !important;
+            background-color: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+</style>
+
+<div class="screen-layout no-print">
+<div class="container mx-auto p-4 md:p-6 font-sans max-w-5xl">
+
+    <!-- Header Panel -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4 no-print">
+        
+        <div class="flex items-center">
+            <button onclick="window.print()" class="inline-flex items-center justify-center px-4 py-2 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors focus:outline-none" style="background-color: rgb(79 70 229) !important; color: white !important; margin-right: 12px !important;">
+                <svg class="w-4.5 h-4.5 mr-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Cetak PDF
+            </button>
+            <a href="@Url.Action("Index")" class="inline-flex items-center justify-center px-4 py-2 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors focus:outline-none" style="background-color: rgb(31 41 55) !important; color: white !important;">
+                Kembali ke List
+            </a>
+        </div>
+    </div>
+
+    <!-- Detail Container Card -->
+    <div id="print-container" class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        
+        <!-- HEADER BLOCK (Matches Physical Form Style) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 print-grid-cols-4 border-b border-gray-300 bg-white text-gray-800">
+            <!-- Niterra Logo Block -->
+            <div class="p-6 flex flex-col justify-center border-b md:border-b-0 md:border-r print-border-r print-border-b-0 border-gray-300">
+                <span class="text-2xl font-bold tracking-tight text-blue-900 flex items-center">
+                    <img src="~/Images/niterra-logo.jpg" class=""/>
+                </span>
+            </div>
+            
+            <!-- Form Title Block -->
+            <div class="p-3 md:col-span-2 print-col-span-2 flex items-center justify-center border-b md:border-b-0 md:border-r print-border-r print-border-b-0 border-gray-300 text-center overflow-hidden">
+                <h1 class="font-bold uppercase tracking-wide text-gray-900" style="font-size: 24px !important; white-space: nowrap !important;">
+                    Checksheet Kendaraan Operasional
+                </h1>
+            </div>
+            
+            <!-- Document Meta Box -->
+            <div class="p-4 text-xs flex flex-col justify-center space-y-1.5 bg-white">
+                <div class="flex justify-between">
+                    <span class="text-gray-400 font-medium">No. Dok:</span>
+                    <span class="font-bold text-gray-800">LOG / WHF / 045</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-250 pt-1">
+                    <span class="text-gray-400 font-medium">Revisi:</span>
+                    <span class="font-bold text-gray-800">00</span>
+                </div>
+                <div class="flex justify-between border-t border-gray-250 pt-1">
+                    <span class="text-gray-400 font-medium">Tanggal:</span>
+                    <span class="font-bold text-gray-800">08-Jun-2020</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            
+            <!-- VEHICLE METADATA GRID -->
+            <div class="bg-gray-55 p-4 rounded-xl border border-gray-200 grid grid-cols-1 md:grid-cols-2 print-grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div>
+                        <span class="block text-xxs font-bold uppercase text-gray-400">Supplier</span>
+                        <span class="text-sm font-semibold text-gray-800">@header.Supplier</span>
+                    </div>
+                    <div>
+                        <span class="block text-xxs font-bold uppercase text-gray-400">Driver</span>
+                        <span class="text-sm font-semibold text-gray-800">@header.DriverName</span>
+                    </div>
+                    <div>
+                        <span class="block text-xxs font-bold uppercase text-gray-400">Tanggal Pengisian</span>
+                        <span class="text-sm font-semibold text-gray-800">@header.CheckDate.ToString("dd-MMM-yyyy")</span>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <span class="block text-xxs font-bold uppercase text-gray-400">Nopol (No. Polisi)</span>
+                        <span class="inline-flex items-center px-2.5 py-1 rounded bg-gray-100 text-gray-800 font-bold text-xs border border-gray-200 mt-1">
+                            @(header.Vehicle != null ? header.Vehicle.LicensePlate : "-")
+                        </span>
+                        @if (header.Vehicle != null && !string.IsNullOrEmpty(header.Vehicle.VehicleType))
+                        {
+                            <span class="text-xs text-gray-500 ml-2">(@header.Vehicle.VehicleType)</span>
+                        }
+                    </div>
+
+                    <div>
+                        <span class="block text-xxs font-bold uppercase text-gray-400">Tujuan</span>
+                        <span class="text-sm font-semibold text-gray-850">@(header.Destination != null ? header.Destination.DestinationName : "-")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHECKLIST ITEMS TABLE -->
+            <div class="space-y-2">
+                
+                <div class="overflow-x-auto border border-gray-350 rounded-xl">
+                    <table class="min-w-full divide-y divide-gray-300 text-sm text-gray-700">
+                        <thead class="bg-gray-100 text-gray-700 font-bold">
+                            <tr>
+                                <th class="px-3 py-3 text-left w-24 border-r border-gray-300">Kategori</th>
+                                <th class="px-2 py-3 text-center w-12 border-r border-gray-300">No.</th>
+                                <th class="px-4 py-3 text-left w-64 border-r border-gray-300">Item Check</th>
+                                <th class="px-4 py-3 text-left border-r border-gray-300">Standard</th>
+                                <th class="px-2 py-3 text-center w-16 border-r border-gray-300">V (OK)</th>
+                                <th class="px-2 py-3 text-center w-16 border-r border-gray-300">X (NG)</th>
+                                <th class="px-2 py-3 text-center w-20">N/A</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            @{
+                                int lastRowSpan = 0;
+                                string currentCategory = "";
+                            }
+                            @if (items != null)
+                            {
+                                for (int idx = 0; idx < items.Count(); idx++)
+                                {
+                                    var item = items.ElementAt(idx);
+                                    bool isNewCategory = (item.Category != currentCategory);
+                                    if (isNewCategory)
+                                    {
+                                        currentCategory = item.Category;
+                                        lastRowSpan = items.Count(i => i.Category == currentCategory);
+                                    }
+
+                                    string savedValue = (details != null && details.ContainsKey(item.ItemID)) ? details[item.ItemID] : "";
+
+                                    <tr class="hover:bg-gray-50 transition-colors">
+                                        <!-- Category Group Cell -->
+                                        @if (isNewCategory)
+                                        {
+                                            <td rowspan="@lastRowSpan" class="px-3 py-4 text-xs font-bold text-gray-900 border-r border-gray-200 bg-gray-55 align-top uppercase leading-relaxed text-center tracking-wide">
+                                                @item.Category
+                                            </td>
+                                        }
+                                        
+                                        <!-- Item Number -->
+                                        <td class="px-2 py-4 text-center font-semibold text-gray-500 border-r border-gray-200">
+                                            @item.ItemNumber
+                                        </td>
+                                        
+                                        <!-- Item Check Name -->
+                                        <td class="px-4 py-4 font-medium text-gray-900 border-r border-gray-200">
+                                            @item.ItemName
+                                        </td>
+                                        
+                                        <!-- Standard Text -->
+                                        <td class="px-4 py-4 text-xs text-gray-500 border-r border-gray-200 leading-normal">
+                                            @item.Standard
+                                        </td>
+                                        
+                                        <!-- V (OK) Choice -->
+                                        <td class="px-1 py-1 text-center border-r border-gray-200 bg-white">
+                                            <div class="flex items-center justify-center p-3 select-none">
+                                                @if (savedValue == "V")
+                                                {
+                                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 border border-green-300 font-bold text-md">
+                                                        V
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    @*<span class="w-2 h-2 rounded-full bg-gray-200"></span>*@
+                                                }
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- X (NG) Choice -->
+                                        <td class="px-1 py-1 text-center border-r border-gray-200 bg-white">
+                                            <div class="flex items-center justify-center p-3 select-none">
+                                                @if (savedValue == "X")
+                                                {
+                                                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100 text-red-700 border border-red-300 font-bold text-md">
+                                                       X
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    @*<span class="w-2 h-2 rounded-full bg-gray-200"></span>*@
+                                                }
+                                            </div>
+                                        </td>
+                                        
+                                        <!-- N/A Choice -->
+                                        <td class="px-1 py-1 text-center bg-white">
+                                            <div class="flex items-center justify-center p-3 select-none">
+                                                @if (savedValue == "NA")
+                                                {
+                                                    <span class="inline-flex items-center justify-center px-2 py-1 rounded bg-gray-150 text-gray-600 border border-gray-300 text-xs font-semibold">
+                                                        N/A
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    @*<span class="w-2 h-2 rounded-full bg-gray-200"></span>*@
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- REMARKS -->
+            <div>
+                <span class="block text-sm font-bold text-gray-700 mb-2">Catatan / Remarks</span>
+                <div class="w-full text-sm border border-gray-300 rounded-xl p-4 bg-gray-50 text-gray-700 leading-normal min-h-16 whitespace-pre-wrap">
+                    @(string.IsNullOrEmpty(header.Remarks) ? "-" : header.Remarks)
+                </div>
+            </div>
+
+            <!-- LEGEND AND RETURN ACTIONS -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between border-t border-gray-200 pt-6 gap-4">
+                <div class="text-xs text-gray-400 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <span class="font-bold text-gray-600 mr-2">Legend:</span>
+                    <span class="mr-3 font-semibold text-green-700">V = Sesuai Standar (OK)</span>
+                    <span class="mr-3 font-semibold text-red-700">X = Tidak Sesuai Standar (NG)</span>
+                    <span class="font-semibold text-gray-500">N/A = Tidak Berlaku</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- PRINT ONLY LAYOUT (Styled exactly like the official paper form) -->
+<div class="print-layout font-sans text-[10px] text-black bg-white">
+    <!-- Header Table -->
+    <table style="width: 100%; border: 1.5px solid black; border-collapse: collapse; margin-bottom: 12px; font-family: sans-serif;">
+        <tr>
+            <!-- Niterra Logo Block -->
+            <td style="width: 25%; text-align: center; vertical-align: middle; padding: 8px; border: 1.5px solid black; border-right: 1.5px solid black;">
+                <img src="@Url.Content("~/Images/niterra-logo.jpg")" style="max-height: 55px; display: inline-block;" />
+            </td>
+            <!-- Form Title Block -->
+            <td style="width: 50%; text-align: center; vertical-align: middle; padding: 8px; border: 1.5px solid black; border-right: 1.5px solid black;">
+                <h1 style="font-size: 15px !important; font-weight: bold; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; font-family: sans-serif; color: black; line-height: 1.2;">
+                    Checksheet Kendaraan Operasional
+                </h1>
+            </td>
+            <!-- Document Meta Box -->
+            <td style="width: 25%; padding: 0; border: 1.5px solid black; vertical-align: middle;">
+                <table style="width: 100%; border: none; font-size: 12px; border-collapse: collapse; font-family: sans-serif;">
+                    <tr style="border-bottom: 1px solid black; height: 18px;">
+                        <td style="padding: 2px 6px; font-weight: 500; border: none; text-align: left;">No. Dok:</td>
+                        <td style="padding: 2px 6px; text-align: right; font-weight: bold; border: none;">LOG / WHF / 045</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid black; height: 18px;">
+                        <td style="padding: 2px 6px; font-weight: 500; border: none; text-align: left;">Revisi:</td>
+                        <td style="padding: 2px 6px; text-align: right; font-weight: bold; border: none;">00</td>
+                    </tr>
+                    <tr style="height: 18px;">
+                        <td style="padding: 2px 6px; font-weight: 500; border: none; text-align: left;">Tanggal:</td>
+                        <td style="padding: 2px 6px; text-align: right; font-weight: bold; border: none;">08-Jun-2020</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Metadata Block -->
+    <table style="width: 100%; margin-bottom: 12px; font-size: 14px; font-family: sans-serif; border: none; border-collapse: collapse; line-height: 1.6;">
+        <tr>
+            <td style="width: 90px; font-weight: bold; border: none; color: #374151;">SUPPLIER</td>
+            <td style="width: 20px; border: none; text-align: center;">:</td>
+            <td style="font-weight: bold; border: none; color: black; text-transform: uppercase;">@header.Supplier</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; border: none; color: #374151;">DRIVER</td>
+            <td style="border: none; text-align: center;">:</td>
+            <td style="font-weight: bold; border: none; color: black; text-transform: uppercase;">@header.DriverName (@header.DriverNIK)</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; border: none; color: #374151;">NOPOL</td>
+            <td style="border: none; text-align: center;">:</td>
+            <td style="font-weight: bold; border: none; color: black; text-transform: uppercase;">@(header.Vehicle != null ? header.Vehicle.LicensePlate : "-")</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; border: none; color: #374151;">TUJUAN</td>
+            <td style="border: none; text-align: center;">:</td>
+            <td style="font-weight: bold; border: none; color: black; text-transform: uppercase;">@(header.Destination != null ? header.Destination.DestinationName : "-")</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; border: none; color: #374151;">TANGGAL</td>
+            <td style="border: none; text-align: center;">:</td>
+            <td style="font-weight: bold; border: none; color: black;">@header.CheckDate.ToString("dd-MMM-yyyy")</td>
+        </tr>
+    </table>
+
+    <!-- Checklist Table -->
+    <table class="print-table" style="width: 100%; border: 1.5px solid black; border-collapse: collapse; font-size: 8px; font-family: Arial, sans-serif; line-height: 1.5;">
+        <thead>
+            <tr style="background-color: #f3f4f6; height: 18px;">
+                <th rowspan="2" style="border: 1.5px solid black; padding: 2px; text-align: center; vertical-align: middle; font-weight: bold; width: 12%; font-size: 12px;">Kategori</th>
+                <th rowspan="2" style="border: 1.5px solid black; padding: 2px; text-align: center; vertical-align: middle; font-weight: bold; width: 5%; font-size: 12px;">No.</th>
+                <th rowspan="2" style="border: 1.5px solid black; padding: 2px; text-align: center; vertical-align: middle; font-weight: bold; width: 33%; font-size: 12px;">Item Check</th>
+                <th rowspan="2" style="border: 1.5px solid black; padding: 2px; text-align: center; vertical-align: middle; font-weight: bold; width: 35%; font-size: 12px;">Standard</th>
+                <th colspan="3" style="border: 1.5px solid black; padding: 2px; text-align: center; vertical-align: middle; font-weight: bold; width: 15%; font-size: 12px;">Hasil Pengecekan Armada</th>
+            </tr>
+            <tr style="background-color: #f3f4f6; height: 14px;">
+                <th style="border: 1.5px solid black; padding: 1px; text-align: center; font-weight: bold; font-size: 12px; width: 5%;">OK</th>
+                <th style="border: 1.5px solid black; padding: 1px; text-align: center; font-weight: bold; font-size: 12px; width: 5%;">NG</th>
+                <th style="border: 1.5px solid black; padding: 1px; text-align: center; font-weight: bold; font-size: 12px; width: 5%;">N/A</th>
+            </tr>
+        </thead>
+        <tbody style="font-size:14px">
+            @{
+                int pLastRowSpan = 0;
+                string pCurrentCategory = "";
+            }
+            @if (items != null)
+            {
+                for (int idx = 0; idx < items.Count(); idx++)
+                {
+                    var item = items.ElementAt(idx);
+                    bool isNewCategory = (item.Category != pCurrentCategory);
+                    if (isNewCategory)
+                    {
+                        pCurrentCategory = item.Category;
+                        pLastRowSpan = items.Count(i => i.Category == pCurrentCategory);
+                    }
+
+                    string savedValue = (details != null && details.ContainsKey(item.ItemID)) ? details[item.ItemID] : "";
+
+                    <tr style="height: 13px;">
+                        @if (isNewCategory)
+                        {
+                            <td rowspan="@pLastRowSpan" style="border: 1.5px solid black; padding: 2px; font-weight: bold; text-align: center; vertical-align: middle; text-transform: uppercase; background-color: #ffffff;">
+                                @item.Category
+                            </td>
+                        }
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; text-align: center; vertical-align: middle; font-weight: bold;">
+                            @item.ItemNumber
+                        </td>
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; vertical-align: middle; font-weight: 300;">
+                            @item.ItemName
+                        </td>
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; vertical-align: middle; line-height: 1.1;">
+                            @item.Standard
+                        </td>
+                        <!-- OK -->
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; text-align: center; vertical-align: middle; font-weight: bold;">
+                            @(savedValue == "V" ? "V" : "")
+                        </td>
+                        <!-- NG -->
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; text-align: center; vertical-align: middle; font-weight: bold; color: red;">
+                            @(savedValue == "X" ? "X" : "")
+                        </td>
+                        <!-- N/A -->
+                        <td style="border: 1.5px solid black; padding: 1.5px 1.5px; text-align: center; vertical-align: middle;">
+                            @(savedValue == "NA" ? "N/A" : "")
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+
+    <!-- Remarks / Footer -->
+    <div style="margin-top: 6px; font-family: sans-serif; font-size: 16px; line-height: 1.4;">
+        @if (!string.IsNullOrEmpty(header.Remarks))
+        {
+            <div style="margin-bottom: 2px;">
+                <strong>Catatan / Remarks:</strong> <span style="font-style: italic;">@header.Remarks</span>
+            </div>
+        }
+        <div>
+            <strong>Remarks :</strong> *) V : Jika sesuai standar, X : Jika tidak sesuai standar, N/A : Tidak Berlaku
+        </div>
+    </div>
+</div>

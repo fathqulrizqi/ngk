@@ -1,0 +1,254 @@
+﻿@using NGKBusi.Models;
+@using Microsoft.AspNet.Identity;
+@using NGKBusi.Areas.MTN.Controllers;
+@using System.Security.Claims;
+
+@{
+    DefaultConnection db = new DefaultConnection();
+    ViewBag.Title = "Maintenance Schedule";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    Uri myUri = new Uri(HttpContext.Current.Request.Url.AbsoluteUri);
+    var MTN = ViewContext.Controller as MachineDatabaseController;
+    string param = HttpUtility.ParseQueryString(myUri.Query).Get("param1");
+    var currUser = (ClaimsIdentity)User.Identity;
+    var currUserID = currUser.GetUserId().Trim();
+    var currHeader = ViewBag.Header;
+    var isAllowSign = false;
+    int currDataApproval = (int)currHeader.Approval;
+    int currDataApprovalSub = (int)currHeader.Approval_Sub;
+    if (currHeader != null)
+    {
+        var checkSign = db.Approval_Master.Where(w => w.User_NIK == currUserID && w.Menu_Id == 22 && w.Document_Id == 1 && w.Levels == currDataApproval && w.Levels_Sub == currDataApprovalSub).FirstOrDefault();
+        isAllowSign = checkSign != null ? true : false;
+    }
+}
+
+@section sideMenu{
+    @Html.Partial("_SideMenuMachineDatabase")
+}
+
+@section scriptHead{
+    <script src="@Url.Content("~/Scripts/tablesorter/jquery.tablesorter.combined.js")"></script>
+    <script src="@Url.Content("~/Scripts/MTN/MaintenanceSchedule.js?v=" + DateTime.Now.TimeOfDay)"></script>
+}
+
+@section cssHead{
+    <style type="text/css">
+        #tblMSData tbody td.ui-selecting {
+            background-color: #FECA40;
+        }
+
+        #tblMSData tbody td.ui-selected {
+            background-color: #F39814;
+            color: white;
+        }
+
+        #tblMSData tbody td:not(:nth-child(1)):not(:nth-child(2)):hover {
+            cursor: pointer;
+            background-color: #FECA40 !important;
+            color: white;
+        }
+
+        #tblMSData tbody td:not(:nth-child(1)):not(:nth-child(2)):active {
+            background-color: #ffdc81;
+            color: white;
+        }
+        .linkMaintenanceScheduleMonthly{
+            color:white;
+        }
+    </style>
+}
+
+<h2>
+    Maintenance Schedule
+    <form id="formMaintenanceScheduleLock" action="@Url.Action("setMaintenanceScheduleLock","MachineDatabase",new { area = "MTN" })" method="post" style="@(currUserID == "737.02.16" || currUserID == "809.11.18" || currUserID == "767.11.16" ? "display:inline-block;" : "display:none;")">
+        <input type="hidden" name="iPeriodFY" value="@(ViewBag.PeriodFY)" />
+        <input type="hidden" name="iPeriod" value="@(ViewBag.Period)" />
+        <input type="hidden" id="hfIsLock" value="@(ViewBag.IsLock ? "Locked" : "Unlocked")" />
+        <button type="submit" class="btn btn-@(ViewBag.IsLock ? "success" : "warning")">@(ViewBag.IsLock ? "Locked" : "Unlocked")</button>
+    </form>
+</h2>
+<form id="formMaintenanceSchedule" action="@Url.Action("MaintenanceSchedule","MachineDatabase",new { area = "MTN" })" method="post">
+    <div class="form-group">
+        <input id="hfPeriod" type="hidden" name="iPeriod" value="@(ViewBag.Period)" />
+        <select id="selMSPeriod" class="form-control" name="iPeriodFY">
+            <option value="">-Period-</option>
+            @for (var i = 2021; i <= (DateTime.Now.Month < 3 ? DateTime.Now.Year - 1 : DateTime.Now.Year); i++)
+            {
+                <option data-year="@(i)" value="@("FY1" + (i + 1).ToString().Substring(2, 2))" @("FY1" + (i + 1).ToString().Substring(2, 2) == ViewBag.PeriodFY ? "selected" : "")>@("FY1" + (i + 1).ToString().Substring(2, 2))</option>
+            }
+        </select>
+    </div>
+</form>
+<table id="tblMScheduleHeader" border="1" style="width:100%">
+    <thead>
+        <tr>
+            <td rowspan="4" style="width:175px;" class="p-2">
+                <img src="~/Images/niterra-logo.jpg" alt="Alternate Text" class="img-fluid" />
+            </td>
+            <td rowspan="2" class="text-center">FORMULIR INTEGRASI</td>
+            <td>No. Dok</td>
+            <td class="text-center">PMLK3-MTN-01/L2</td>
+        </tr>
+        <tr>
+            <td style="width:75px;">Revisi</td>
+            <td style="width:125px;" class="text-center">00</td>
+        </tr>
+        <tr>
+            <td rowspan="2" class="text-center">JADWAL PERAWATAN MESIN BERKALA</td>
+            <td>Tanggal</td>
+            <td class="text-center">05-Apr-2023</td>
+        </tr>
+        <tr>
+            <td>Halaman</td>
+            <td class="text-center">1</td>
+        </tr>
+        <tr>
+            <td colspan="4" class="text-center">Fiscal : @(ViewBag.PeriodFY)</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td colspan="4">
+                <table id="tblMSData" border="1" style="width:100%;">
+                    <thead>
+                        <tr class="text-center bg-info text-bg-info text-white">
+                            <th rowspan="3">No</th>
+                            <th rowspan="3">Mesin</th>
+                            <th colspan="27">@(ViewBag.Period)</th>
+                            <th colspan="9">@(ViewBag.Period + 1)</th>
+                        </tr>
+                        <tr class="text-center bg-primary text-bg-primary text-white">
+                            @for (var i = 4; i <= 12; i++)
+                            {
+                                <th colspan="3" style="border-left:2px solid black;border-right:2px solid black;">
+                                    <a class="linkMaintenanceScheduleMonthly" target="_blank" href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceScheduleMonthly?iPeriod=" + ViewBag.Period + "&iMonth=" + i + "&iPeriodFY=" + ViewBag.PeriodFY)">
+                                        @( new DateTime(ViewBag.Period, i, 1).ToString("MMMM"))
+                                    </a>
+                                </th>
+                            }
+                            @for (var i = 1; i <= 3; i++)
+                            {
+                                <th colspan="3" style="border-left:2px solid black;border-right:2px solid black;">
+                                    <a class="linkMaintenanceScheduleMonthly" target="_blank" href="@( "/NGKBusi/MTN/MachineDatabase/MaintenanceScheduleMonthly?iPeriod=" + (ViewBag.Period + 1) + "&iMonth=" + i + "&iPeriodFY=" + ViewBag.PeriodFY)">
+                                        @( new DateTime(ViewBag.Period + 1, i, 1).ToString("MMMM"))
+                                    </a>
+                                </th>
+                            }
+                        </tr>
+                        <tr style="background-color: lightgrey;" class="text-center">
+                            @for (var i = 1; i <= 12; i++)
+                            {
+                                <th style="border-left:2px solid black;">3B</th>
+                                <th>6B</th>
+                                <th style="border-right:2px solid black;border-right:2px solid black;">1T</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in ViewBag.MachineList)
+                        {
+                            <tr data-areaid="@(item.Area_ID)" data-area="@(item.Area)" data-machineno="@(item.Machine_No)" data-machineid="@(item.Machine_ID)" data-machinename="@(item.Machine_Name)" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)">
+                                <td class="text-right">@(ViewBag.MachineList.IndexOf(item) + 1)</td>
+                                <td><a class="linkMaintenanceChecklist" target="_blank" href="@("/NGKBusi/MTN/MachineDatabase/MaintenanceChecklist?iMachineName="+ HttpUtility.UrlEncode(item.Machine_Name) + "&iPeriod=" + ViewBag.Period + "&iPeriodFY=" + ViewBag.PeriodFY + "&iArea=" + HttpUtility.UrlEncode(item.Area) + "&iMachineNo=" + item.Machine_No)">@(item.Machine_Name + " (" + item.Area + ")")</a></td>
+                                @for (var i = 4; i <= 12; i++)
+                                {
+                                    <td class="tdScheduleData" data-schedule="3B" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)" data-month="@(i)" style="border-left:2px solid black; color:white;"></td>
+                                    <td class="tdScheduleData" data-schedule="6B" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)" data-month="@(i)" style="color:white;"></td>
+                                    <td class="tdScheduleData" data-schedule="1T" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period)" data-month="@(i)" style="border-right:2px solid black; color:white;"></td>
+                                }
+                                @for (var i = 1; i <= 3; i++)
+                                {
+                                    <td class="tdScheduleData" data-schedule="3B" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period + 1)" data-month="@(i)" style="border-left:2px solid black; color:white;"></td>
+                                    <td class="tdScheduleData" data-schedule="6B" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period + 1)" data-month="@(i)" style="color:white;"></td>
+                                    <td class="tdScheduleData" data-schedule="1T" data-fy="@(ViewBag.PeriodFY)" data-year="@(ViewBag.Period + 1)" data-month="@(i)" style="border-right:2px solid black; color:white;"></td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="4">
+                <div class="row">
+                    <div class="col-4"></div>
+                    <div class="col-8">
+
+                        @{
+                            var currFY = currHeader.Period_FY;
+                            var currSignList = db.Approval_Master.Where(w => w.Menu_Id == 22 && w.Document_Id == 1).Select(s => new { Title = s.Title, Header = s.Header, Label = s.Label, Levels = s.Levels, Levels_Sub = s.Levels_Sub }).Distinct().ToList().OrderByDescending(o => o.Levels).ThenByDescending(o => o.Levels_Sub);
+                        }
+
+                        <table class="table table-bordered tblSign mt-3">
+                            <thead>
+                                <tr class="bg-info text-bg-info text-white">
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <th class="text-center">
+                                            @(dList.Label)
+                                        </th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center align-middle" style="height:125px;width:100px;">
+                                            @if (currHeader != null && currHeader.Approval == dList.Levels && currHeader.Approval_Sub == dList.Levels_Sub && isAllowSign)
+                                            {
+                                                <form action="@Url.Action("signMaintenanceSchedule", "MachineDatabase", new { area = "MTN" })" method="post">
+                                                    <input type="hidden" name="iPeriodFY" value="@(ViewBag.PeriodFY)" />
+                                                    <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure want to sign this data ?')" name="btnType" value="Sign">Sign</button>
+                                                </form>
+                                                if (currHeader != null && currHeader.Approval == 1 && currHeader.Approval_Sub != 0)
+                                                {
+                                                    <hr />
+                                                    <form action="@Url.Action("signMaintenanceSchedule", "MachineDatabase", new { area = "MTN" })" method="post">
+                                                        <input type="hidden" name="iPeriodFY" value="@(ViewBag.PeriodFY)" />
+                                                        @Html.Partial("Partial/returnRejectForm", new ViewDataDictionary { { "modelId", "returnModal" }, { "btnType", "Return" } })
+                                                        <button type="button" class="btn btn-warning" data-toggle="modal" data-target="#returnModal">Return</button>
+                                                    </form>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                if (currHeader != null && (currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels)
+                                                {
+                                                    <i class="fas fa-check-circle img-fluid" style="color:green;font-size:7em;"></i>
+                                                }
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center">
+                                            @if (currHeader != null && ((currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels))
+                                            {
+                                                @(MTN.ApprovalHistory(currHeader.Period_FY, dList.Levels, dList.Levels_Sub, 1, 1));
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                                <tr>
+                                    @foreach (var dList in currSignList)
+                                    {
+                                        <td class="text-center">
+                                            @if (currHeader != null && ((currHeader.Approval >= dList.Levels && currHeader.Approval_Sub > dList.Levels_Sub) || currHeader.Approval > dList.Levels))
+                                            {
+                                                @(MTN.ApprovalHistory(currHeader.Period_FY, dList.Levels, dList.Levels_Sub, 2, 1));
+                                            }
+                                        </td>
+                                    }
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
